@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>股票紀錄 v14.5 (Auto-Link)</title>
+    <title>股票紀錄 v14.6 (中文修正版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -41,7 +41,7 @@
         <div class="flex items-center gap-6">
             <h1 class="font-bold text-xl tracking-wide flex items-center gap-2 text-white">
                 <i class="fas fa-book-open text-yellow-500"></i> 股票紀錄 
-                <span v-if="!isSimMode" class="text-xs bg-yellow-600 px-2 py-0.5 rounded text-black font-bold">v14.5 Smart</span>
+                <span v-if="!isSimMode" class="text-xs bg-yellow-600 px-2 py-0.5 rounded text-black font-bold">v14.6 TW</span>
                 <span v-else class="text-xs bg-red-600 px-2 py-0.5 rounded text-white font-bold animate-pulse">模擬中</span>
             </h1>
             
@@ -52,7 +52,7 @@
 
             <div class="hidden md:flex items-center gap-2 bg-slate-800 py-1 px-3 rounded-lg border border-slate-700 w-80">
                 <i class="fab fa-google text-green-500"></i>
-                <input v-model="sheetUrl" placeholder="貼上 Google Sheet 網址 (一般網址即可)" class="w-full bg-transparent text-xs text-white focus:outline-none placeholder-gray-500">
+                <input v-model="sheetUrl" placeholder="貼上 Google Sheet 網址 (一般網址)" class="w-full bg-transparent text-xs text-white focus:outline-none placeholder-gray-500">
             </div>
 
             <nav class="flex gap-6 font-medium ml-4 hidden md:flex">
@@ -70,12 +70,11 @@
                 </button>
              </div>
              <button @click="fetchPrices" class="p-2 text-blue-400 hover:text-white transition" title="從 Sheet 更新"><i class="fas fa-sync-alt" :class="{'fa-spin': isUpdating}"></i></button>
-             
-             <label class="p-2 text-yellow-400 hover:text-white transition cursor-pointer" title="匯入備份 (點擊選擇檔案)">
+             <label class="p-2 text-yellow-400 hover:text-white transition cursor-pointer" title="匯入備份">
                  <i class="fas fa-file-upload"></i>
                  <input type="file" @change="importData" class="hidden" accept=".json">
              </label>
-             <button @click="exportAll" class="p-2 text-green-400 hover:text-white transition" title="匯出備份 (可存USB)"><i class="fas fa-download"></i></button>
+             <button @click="exportAll" class="p-2 text-green-400 hover:text-white transition" title="匯出備份"><i class="fas fa-download"></i></button>
         </div>
     </header>
 
@@ -396,13 +395,11 @@ createApp({
             updateCharts();
         }
 
-        // --- NEW: Smart URL Parser ---
+        // --- UPDATED FETCH LOGIC: Tries "工作表1" first, then "Sheet1" ---
         async function fetchPrices() {
             if (!sheetUrl.value) { alert('請輸入 Google Sheet 網址'); return; }
             
-            // 1. Try Extract ID from ANY google sheet url
             let sheetId = null;
-            // Match pattern: /d/([ID])/
             const match = sheetUrl.value.match(/\/d\/([a-zA-Z0-9-_]+)/);
             
             if (match && match[1]) {
@@ -412,28 +409,32 @@ createApp({
                 return;
             }
 
-            // 2. Construct the MAGIC URL (GViz)
-            // Note: Assuming "Sheet1" is default. If fails, user needs to rename sheet.
-            const targetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=Sheet1`; // Or try '工作表1' if needed
-
             isUpdating.value = true;
+            
+            // Helper to fetch CSV
+            const tryFetch = async (sheetName) => {
+                const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${sheetName}`;
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Fetch Failed');
+                return await response.text();
+            };
+
             try {
-                const response = await fetch(targetUrl);
-                if (!response.ok) {
-                    if(response.status === 400 || response.status === 404) {
-                        throw new Error('找不到工作表 "Sheet1"。請確認你的 Excel 下方分頁名稱是否為 "Sheet1" (英文)。');
-                    }
-                    throw new Error('存取被拒 (403/401)。請確認權限已設為「知道連結的人均可檢視」。');
+                let csvText = '';
+                try {
+                    // 1. Try '工作表1' (Chinese default)
+                    csvText = await tryFetch('工作表1');
+                } catch (e) {
+                    // 2. Fallback to 'Sheet1' (English default)
+                    console.log('工作表1 failed, trying Sheet1...');
+                    csvText = await tryFetch('Sheet1');
                 }
-                const csvText = await response.text();
                 
-                // 3. Parse
                 Papa.parse(csvText, {
                     header: true,
                     complete: (results) => {
                         let count = 0;
                         results.data.forEach(row => {
-                            // Looking for 'Ticker' and 'Price' columns
                             if (row.Ticker && row.Price) {
                                 const t = row.Ticker.toUpperCase().trim();
                                 const p = parseFloat(row.Price);
@@ -444,13 +445,14 @@ createApp({
                         lastUpdate.value = new Date().toLocaleTimeString();
                         isUpdating.value = false;
                         updateCharts();
-                        alert(`成功！已更新 ${count} 筆報價。\n(ID: ${sheetId.substring(0,5)}...)`);
+                        alert(`更新成功！抓到 ${count} 筆。\n(ID: ${sheetId.substring(0,5)}...)`);
                     },
-                    error: (err) => { throw new Error('CSV 格式錯誤，請檢查欄位名稱是否為 Ticker, Price'); }
+                    error: () => { throw new Error('CSV 解析失敗'); }
                 });
+
             } catch (e) { 
                 isUpdating.value = false; 
-                alert(`失敗：${e.message}\n\n建議：\n1. 檢查權限是否為「公開/檢視」\n2. 檢查分頁名稱是否為 "Sheet1"`); 
+                alert(`失敗：無法抓取資料。\n請確認：\n1. 權限已設為「知道連結的人均可檢視」\n2. 工作表名稱為「工作表1」或「Sheet1」`); 
             }
         }
 
@@ -750,6 +752,7 @@ createApp({
                 const history = displayHistory.value;
                 if (chartHist && history.length > 0) {
                     const sorted = [...history].sort((a,b) => new Date(a.date) - new Date(b.date));
+                    
                     chartHist.data.labels = sorted.map(h => h.date);
                     chartHist.data.datasets[0].data = sorted.map(h => h.assets); // Update NAV
                     chartHist.data.datasets[1].data = sorted.map(h => h.cost);   // Update Cost
