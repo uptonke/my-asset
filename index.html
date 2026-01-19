@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>資產管理大師 v8.0 | 台幣/美金雙軌制</title>
+    <title>資產管理大師 v9.0 | 歷史回溯版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body { font-family: 'Microsoft JhengHei', 'Segoe UI', Roboto, sans-serif; background-color: #0f172a; color: #e2e8f0; }
-        .glass { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .glass { background: rgba(30, 41, 59, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2); }
         .input-dark { background: #1e293b; border: 1px solid #475569; color: white; transition: all 0.2s; }
         .input-dark:focus { border-color: #3b82f6; ring: 2px; outline: none; }
         .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; font-weight: bold; }
@@ -19,6 +19,7 @@
         .tab-inactive:hover { color: #cbd5e1; }
         .btn-primary { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); }
         .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .btn-success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
         .card-header { border-left: 4px solid #3b82f6; padding-left: 1rem; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
@@ -32,23 +33,22 @@
     <header class="glass z-50 flex-none h-16 px-6 flex items-center justify-between shadow-lg">
         <div class="flex items-center gap-6">
             <h1 class="font-bold text-xl tracking-wide flex items-center gap-2 text-white">
-                <i class="fas fa-chart-pie text-blue-500"></i> 資產管理大師 <span class="text-xs bg-blue-600 px-2 py-0.5 rounded text-white">v8.0 中文版</span>
+                <i class="fas fa-chart-line text-blue-500"></i> 資產管理大師 <span class="text-xs bg-indigo-600 px-2 py-0.5 rounded text-white">v9.0 歷史回溯版</span>
             </h1>
             
             <div class="hidden md:flex items-center gap-3 bg-slate-800 py-1 px-3 rounded-lg border border-slate-700">
-                <span class="text-gray-400 text-xs">美金匯率 (USD/TWD):</span>
+                <span class="text-gray-400 text-xs">USD/TWD:</span>
                 <input v-model.number="exchangeRate" type="number" step="0.01" class="w-16 bg-transparent text-center font-mono font-bold text-green-400 focus:outline-none border-b border-gray-600">
             </div>
 
             <nav class="flex gap-6 font-medium ml-4 hidden md:flex">
                 <button @click="currentTab='summary'" :class="currentTab==='summary'?'tab-active':'tab-inactive'" class="py-4 px-2 transition"><i class="fas fa-home mr-1"></i> 總覽</button>
                 <button @click="currentTab='holdings'" :class="currentTab==='holdings'?'tab-active':'tab-inactive'" class="py-4 px-2 transition"><i class="fas fa-wallet mr-1"></i> 庫存明細</button>
-                <button @click="currentTab='analytics'" :class="currentTab==='analytics'?'tab-active':'tab-inactive'" class="py-4 px-2 transition"><i class="fas fa-chart-line mr-1"></i> 量化分析</button>
+                <button @click="currentTab='analytics'" :class="currentTab==='analytics'?'tab-active':'tab-inactive'" class="py-4 px-2 transition"><i class="fas fa-history mr-1"></i> 量化分析 & 歷史</button>
                 <button @click="currentTab='ledger'" :class="currentTab==='ledger'?'tab-active':'tab-inactive'" class="py-4 px-2 transition"><i class="fas fa-list mr-1"></i> 交易紀錄</button>
             </nav>
         </div>
         <div class="flex gap-3">
-             <button @click="generateMockData" class="p-2 text-purple-400 hover:text-white transition" title="產生測試數據 (讓圖表動起來)"><i class="fas fa-flask"></i></button>
              <button @click="fetchPrices" class="p-2 text-blue-400 hover:text-white transition" title="更新報價"><i class="fas fa-sync-alt" :class="{'fa-spin': isUpdating}"></i></button>
              <button @click="exportAll" class="p-2 text-green-400 hover:text-white transition" title="備份資料"><i class="fas fa-download"></i></button>
         </div>
@@ -62,7 +62,7 @@
                     <div class="glass p-6 rounded-2xl border-t-4 border-blue-500">
                         <div class="text-xs text-gray-400 font-bold uppercase">總資產 (Total Assets)</div>
                         <div class="text-3xl font-bold text-white mt-2 font-mono">NT$ {{ formatNumber(totalAssetsTwd) }}</div>
-                        <div class="text-xs text-gray-500 mt-2">以台幣計價</div>
+                        <div class="text-xs text-gray-500 mt-2">約 USD {{ formatNumber(totalAssetsTwd / exchangeRate) }}</div>
                     </div>
                     <div class="glass p-6 rounded-2xl border-t-4 border-emerald-500">
                         <div class="text-xs text-gray-400 font-bold uppercase">總投入成本 (Cost)</div>
@@ -90,28 +90,36 @@
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-96">
                     <div class="glass p-5 rounded-2xl col-span-1 flex flex-col">
-                        <h4 class="text-white font-bold mb-4 card-header">資產配置圓餅圖</h4>
-                        <div class="flex-1 relative"><canvas id="allocationChart"></canvas></div>
+                        <h4 class="text-white font-bold mb-4 card-header">資產配置</h4>
+                        <div class="flex-1 relative">
+                            <canvas id="allocationChart"></canvas>
+                            <div v-if="holdings.length === 0" class="absolute inset-0 flex items-center justify-center text-gray-500 text-xs">
+                                尚無庫存資料，請至交易紀錄新增
+                            </div>
+                        </div>
                     </div>
                     <div class="glass p-5 rounded-2xl col-span-2 flex flex-col">
-                        <h4 class="text-white font-bold mb-4 card-header">資產成長趨勢圖 (台幣計價)</h4>
-                        <div class="flex-1 relative"><canvas id="historyChart"></canvas></div>
+                        <h4 class="text-white font-bold mb-4 card-header">資產成長趨勢 (台幣計價)</h4>
+                        <div class="flex-1 relative">
+                            <canvas id="historyChart"></canvas>
+                             <div v-if="historyData.length === 0" class="absolute inset-0 flex items-center justify-center text-gray-500 text-xs">
+                                尚無歷史資料，請至「量化分析」補登或按快照
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <div v-if="currentTab === 'holdings'" class="flex flex-col h-full max-h-[85vh] space-y-4 animate-fade-in">
-                
                 <div class="glass rounded-xl overflow-hidden flex flex-col flex-1">
                     <div class="p-4 bg-gray-800/50 border-b border-gray-700 flex justify-between items-center">
                         <h3 class="font-bold text-white"><i class="fas fa-layer-group text-blue-500 mr-2"></i>分類庫存報表</h3>
                         <div class="text-xs text-gray-400">
-                            報價來源: <span :class="sheetUrl ? 'text-green-400' : 'text-yellow-400'">{{ sheetUrl ? 'Google Finance 連線中' : '手動輸入模式' }}</span>
+                            來源: <span :class="sheetUrl ? 'text-green-400' : 'text-yellow-400'">{{ sheetUrl ? 'Google Finance' : '手動報價' }}</span>
                         </div>
                     </div>
                     
                     <div class="overflow-auto flex-1 p-4 space-y-6">
-                        
                         <div v-for="cat in ['台股', '美股', '基金', '加密貨幣']" :key="cat" v-if="holdings.some(h => h.category === cat)" class="border border-gray-700 rounded-lg overflow-hidden">
                             <div class="bg-gray-800 p-3 flex justify-between items-center border-b border-gray-700">
                                 <span class="font-bold text-white text-sm border-l-4 pl-2" :class="getCategoryColor(cat)">{{ cat }}</span>
@@ -124,10 +132,10 @@
                                     <tr>
                                         <th class="p-3 pl-4">代號/名稱</th>
                                         <th class="p-3 text-right">數量</th>
-                                        <th class="p-3 text-right">均價 (原幣)</th>
-                                        <th class="p-3 text-right">現價 (原幣)</th>
-                                        <th class="p-3 text-right">市值 (台幣)</th>
-                                        <th class="p-3 text-right">損益 (台幣)</th>
+                                        <th class="p-3 text-right">均價(原幣)</th>
+                                        <th class="p-3 text-right">現價(原幣)</th>
+                                        <th class="p-3 text-right">市值(台幣)</th>
+                                        <th class="p-3 text-right">損益(台幣)</th>
                                         <th class="p-3 text-right">報酬率</th>
                                     </tr>
                                 </thead>
@@ -137,7 +145,7 @@
                                         <td class="p-3 text-right font-mono text-gray-400">{{ formatNumber(stock.shares) }}</td>
                                         <td class="p-3 text-right font-mono text-gray-500">{{ formatNumber(stock.avgCost) }}</td>
                                         <td class="p-3 text-right font-mono font-bold">
-                                            <input v-model.number="stock.manualPrice" @change="manualUpdate(stock)" class="w-24 bg-transparent text-right outline-none border-b border-gray-700 focus:border-blue-500 text-yellow-400 placeholder-gray-600" placeholder="輸入現價">
+                                            <input v-model.number="stock.manualPrice" @change="manualUpdate(stock)" class="w-24 bg-transparent text-right outline-none border-b border-gray-700 focus:border-blue-500 text-yellow-400 placeholder-gray-600" placeholder="輸入">
                                         </td>
                                         <td class="p-3 text-right font-mono text-white font-bold">{{ formatNumber(stock.marketValueTwd) }}</td>
                                         <td class="p-3 text-right font-bold" :class="stock.unrealizedPLTwd >= 0 ? 'text-red-400' : 'text-green-400'">
@@ -150,12 +158,10 @@
                                 </tbody>
                             </table>
                         </div>
-
                          <div class="bg-gray-800 p-4 rounded-lg flex justify-between border-l-4 border-gray-500">
                              <span class="font-bold text-gray-300">現金餘額 (Cash)</span>
                              <span class="font-mono text-white font-bold">NT$ {{ formatNumber(cashBalanceTwd) }}</span>
                          </div>
-
                     </div>
                 </div>
             </div>
@@ -164,15 +170,13 @@
                 
                 <div class="glass p-5 rounded-xl flex flex-wrap items-center justify-between gap-4">
                     <div>
-                        <h3 class="font-bold text-white text-lg">量化風險指標 (Quantitative Metrics)</h3>
-                        <p class="text-xs text-gray-400 mt-1" v-if="historyData.length < 3">⚠️ 數據不足：請按右上角「產生測試數據」或累積至少 3 天的快照。</p>
-                        <p class="text-xs text-gray-400 mt-1" v-else>基於過去 {{ historyData.length }} 筆歷史紀錄計算</p>
+                        <h3 class="font-bold text-white text-lg">量化分析與歷史</h3>
+                        <p class="text-xs text-gray-400 mt-1">分析依據：{{ historyData.length }} 筆歷史紀錄</p>
                     </div>
                     <div class="flex gap-4 items-center">
-                        <div class="flex items-center gap-2 text-xs">
-                             <label class="text-gray-400">無風險利率(%):</label>
-                             <input v-model.number="riskParams.rf" type="number" step="0.1" class="w-16 input-dark p-1 rounded text-center">
-                        </div>
+                        <button @click="showHistoryModal = true" class="text-purple-400 hover:text-white text-xs border border-purple-500/50 px-3 py-2 rounded transition">
+                            <i class="fas fa-edit mr-1"></i> 補登/編輯歷史資料
+                        </button>
                         <button @click="takeSnapshot" class="btn-primary text-white px-6 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2">
                             <i class="fas fa-camera"></i> 紀錄今日狀態
                         </button>
@@ -196,7 +200,6 @@
                                     <th class="p-3 text-right">總資產 (台幣)</th>
                                     <th class="p-3 text-right">總成本 (台幣)</th>
                                     <th class="p-3 text-right">單日報酬</th>
-                                    <th class="p-3 text-center">操作</th>
                                 </tr>
                             </thead>
                             <tbody class="text-sm divide-y divide-white/5">
@@ -207,9 +210,6 @@
                                     <td class="p-3 text-right font-mono" :class="h.dailyReturn >= 0 ? 'text-red-400' : 'text-green-400'">
                                         {{ h.dailyReturn ? (h.dailyReturn * 100).toFixed(2) + '%' : '-' }}
                                     </td>
-                                    <td class="p-3 text-center">
-                                        <button @click="removeHistory(historyData.length - 1 - idx)" class="text-gray-600 hover:text-red-500"><i class="fas fa-trash"></i></button>
-                                    </td>
                                 </tr>
                             </tbody>
                         </table>
@@ -218,12 +218,11 @@
             </div>
 
             <div v-if="currentTab === 'ledger'" class="flex flex-col md:flex-row gap-6 h-full max-h-[85vh]">
-                 
                  <div class="w-full md:w-80 glass p-5 rounded-xl h-fit space-y-4">
-                    <h3 class="font-bold text-white text-lg border-b border-gray-700 pb-2">新增交易 / 資產</h3>
+                    <h3 class="font-bold text-white text-lg border-b border-gray-700 pb-2">新增交易</h3>
                     
                     <div>
-                        <label class="text-xs text-gray-400 mb-1 block">1. 選擇資產類別 (Category)</label>
+                        <label class="text-xs text-gray-400 mb-1 block">1. 資產類別</label>
                         <div class="grid grid-cols-2 gap-2">
                              <button @click="txForm.category='台股'" :class="txForm.category==='台股'?'bg-blue-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs transition">台股</button>
                              <button @click="txForm.category='美股'" :class="txForm.category==='美股'?'bg-indigo-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs transition">美股</button>
@@ -233,17 +232,17 @@
                     </div>
 
                     <div>
-                        <label class="text-xs text-gray-400 mb-1 block">2. 交易資訊</label>
+                        <label class="text-xs text-gray-400 mb-1 block">2. 交易內容</label>
                         <div class="grid grid-cols-2 gap-2 mb-2">
                             <input v-model="txForm.date" type="date" class="input-dark p-2 rounded text-xs col-span-2">
                             <select v-model="txForm.type" class="input-dark p-2 rounded text-xs col-span-2">
-                                <option value="Buy">Buy (買入/入金)</option>
-                                <option value="Sell">Sell (賣出)</option>
-                                <option value="Deposit">Deposit (純入金-現金)</option>
-                                <option value="Dividend">Dividend (股息)</option>
+                                <option value="Buy">買入 (Buy)</option>
+                                <option value="Sell">賣出 (Sell)</option>
+                                <option value="Deposit">入金 (Deposit)</option>
+                                <option value="Dividend">股息 (Dividend)</option>
                             </select>
                         </div>
-                        <input v-model="txForm.ticker" placeholder="代號 / 名稱 (如 BTC, 0050)" class="w-full input-dark p-2 rounded text-xs uppercase mb-2">
+                        <input v-model="txForm.ticker" placeholder="代號 / 名稱 (如 BTC)" class="w-full input-dark p-2 rounded text-xs uppercase mb-2">
                         
                         <div v-if="['Buy','Sell'].includes(txForm.type)" class="grid grid-cols-2 gap-2 mb-2">
                             <input v-model.number="txForm.price" type="number" placeholder="單價" class="input-dark p-2 rounded text-xs">
@@ -251,12 +250,7 @@
                         </div>
                         
                         <input v-model.number="txForm.amount" type="number" :placeholder="txForm.type==='Buy'?'手續費':'總金額'" class="w-full input-dark p-2 rounded text-xs">
-                    </div>
-                    
-                    <div class="p-3 bg-blue-900/20 rounded text-xs text-blue-300 border border-blue-900/50">
-                        <i class="fas fa-info-circle mr-1"></i> 
-                        <span v-if="txForm.category==='美股' || txForm.category==='加密貨幣'">金額請輸入 <strong>美金</strong></span>
-                        <span v-else>金額請輸入 <strong>台幣</strong></span>
+                        <p class="text-[10px] text-yellow-400 mt-1" v-if="txForm.type==='Buy' && (!txForm.shares || txForm.shares<=0)">* 買入務必填寫「數量」，否則庫存不會顯示</p>
                     </div>
 
                     <button @click="addTransaction" class="w-full btn-primary text-white rounded-lg font-bold text-sm py-3 shadow-lg">確認送出</button>
@@ -269,13 +263,12 @@
                     <div class="overflow-auto flex-1">
                         <table class="w-full text-left">
                             <thead class="sticky top-0 bg-[#0f172a] text-xs text-gray-400 uppercase font-semibold">
-                                <tr><th class="p-3">日期</th><th class="p-3">類別</th><th class="p-3">資產</th><th class="p-3">名稱</th><th class="p-3 text-right">現金流</th><th class="p-3"></th></tr>
+                                <tr><th class="p-3">日期</th><th class="p-3">類別</th><th class="p-3">名稱</th><th class="p-3 text-right">現金流</th><th class="p-3"></th></tr>
                             </thead>
                             <tbody class="text-sm divide-y divide-white/5">
                                 <tr v-for="(tx, idx) in reversedTransactions" :key="idx" class="hover:bg-white/5">
                                     <td class="p-3 text-gray-400">{{ tx.date }}</td>
                                     <td class="p-3 font-bold" :class="getTypeColor(tx.type)">{{ tx.type }}</td>
-                                    <td class="p-3 text-xs text-gray-500">{{ tx.category }}</td>
                                     <td class="p-3 text-white">{{ tx.ticker || '-' }}</td>
                                     <td class="p-3 text-right font-mono text-white">{{ formatNumber(tx.totalCashFlow) }}</td>
                                     <td class="p-3 text-center"><button @click="removeTransaction(transactions.length - 1 - idx)" class="text-gray-600 hover:text-red-500"><i class="fas fa-times"></i></button></td>
@@ -286,12 +279,39 @@
                  </div>
             </div>
 
+            <div v-if="showHistoryModal" class="fixed inset-0 bg-black/90 flex items-center justify-center z-[100]">
+                <div class="glass p-6 rounded-xl w-full max-w-lg">
+                    <h3 class="text-lg font-bold text-white mb-4">補登 / 編輯歷史資料</h3>
+                    <div class="space-y-3 mb-6">
+                        <div class="flex gap-2">
+                            <input v-model="historyForm.date" type="date" class="input-dark p-2 rounded flex-1">
+                            <input v-model.number="historyForm.assets" type="number" placeholder="當日總資產 (台幣)" class="input-dark p-2 rounded flex-1">
+                            <input v-model.number="historyForm.cost" type="number" placeholder="當日總成本 (台幣)" class="input-dark p-2 rounded flex-1">
+                        </div>
+                        <button @click="addHistoryRecord" class="w-full btn-success text-white py-2 rounded font-bold">新增紀錄</button>
+                    </div>
+                    <div class="h-64 overflow-auto border border-gray-700 rounded mb-4">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-gray-800 text-gray-400 sticky top-0"><tr><th class="p-2">日期</th><th class="p-2">資產</th><th class="p-2">刪除</th></tr></thead>
+                            <tbody>
+                                <tr v-for="(h, idx) in historyData.slice().sort((a,b)=>new Date(b.date)-new Date(a.date))" :key="idx" class="border-b border-gray-800">
+                                    <td class="p-2">{{ h.date }}</td>
+                                    <td class="p-2">{{ formatNumber(h.assets) }}</td>
+                                    <td class="p-2"><button @click="removeHistoryByDate(h.date)" class="text-red-400">刪</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <button @click="showHistoryModal=false" class="w-full bg-gray-700 py-2 rounded text-white">關閉</button>
+                </div>
+            </div>
+
             <div v-if="!sheetUrl && showSetup" class="fixed inset-0 bg-black/90 flex items-center justify-center z-[100]">
                 <div class="glass p-8 rounded-xl w-96 text-center border border-blue-500/30">
-                    <h2 class="text-xl font-bold mb-4 text-white">初始化您的資產庫</h2>
-                    <input v-model="tempUrl" placeholder="貼上 Google Sheet CSV 連結 (選填)" class="w-full input-dark p-3 rounded mb-4 text-xs">
-                    <button @click="saveUrl" class="w-full btn-primary py-2 rounded text-white font-bold mb-3">連結資料庫</button>
-                    <button @click="showSetup=false" class="text-xs text-gray-500 hover:text-white">跳過 (使用手動模式)</button>
+                    <h2 class="text-xl font-bold mb-4 text-white">資料庫連線</h2>
+                    <input v-model="tempUrl" placeholder="Google Sheet CSV 連結" class="w-full input-dark p-3 rounded mb-4 text-xs">
+                    <button @click="saveUrl" class="w-full btn-primary py-2 rounded text-white font-bold mb-3">連線</button>
+                    <button @click="showSetup=false" class="text-xs text-gray-500">跳過</button>
                 </div>
             </div>
 
@@ -306,33 +326,27 @@ createApp({
     setup() {
         const currentTab = ref('summary');
         const showSetup = ref(true);
+        const showHistoryModal = ref(false);
         const sheetUrl = ref(localStorage.getItem('googleSheetUrl') || '');
         const tempUrl = ref('');
         const isUpdating = ref(false);
-        
-        // 匯率設定 (預設 32.5)
         const exchangeRate = ref(parseFloat(localStorage.getItem('exchangeRate')) || 32.5);
         watch(exchangeRate, (val) => localStorage.setItem('exchangeRate', val));
+        const riskParams = ref({ rf: 1.5 });
 
-        const riskParams = ref({ rf: 1.5, beta: 1.0 });
-
-        // 資料儲存
         const transactions = ref(JSON.parse(localStorage.getItem('ledgerData') || '[]'));
         const historyData = ref(JSON.parse(localStorage.getItem('historyData') || '[]'));
         const priceMap = ref(JSON.parse(localStorage.getItem('priceMap') || '{}'));
         
-        // 表單
         const txForm = ref({ date: new Date().toISOString().split('T')[0], type: 'Buy', category: '台股', ticker: '', price: null, shares: null, amount: null });
+        const historyForm = ref({ date: new Date().toISOString().split('T')[0], assets: null, cost: null });
 
-        // --- 核心運算邏輯 ---
-        
-        // 1. 計算庫存 (Holdings)
+        // --- 核心邏輯 ---
         const holdings = computed(() => {
             const map = {};
             transactions.value.forEach(tx => {
                 if(!tx.ticker) return;
                 const t = tx.ticker.toUpperCase();
-                // 每個標的獨立計算
                 if(!map[t]) map[t] = { ticker: t, category: tx.category || '台股', shares: 0, totalCost: 0 };
                 
                 if(tx.type === 'Buy') { 
@@ -344,207 +358,112 @@ createApp({
                     map[t].totalCost -= avg * tx.shares; 
                 }
             });
-
             return Object.values(map).filter(h => h.shares > 0.0001).map(h => {
-                // 價格優先順序: 手動輸入 > 報價 API > 平均成本
                 const marketPrice = priceMap.value[h.ticker] || (h.totalCost / h.shares);
-                
-                // 匯率換算
                 const isUSD = (h.category === '美股' || h.category === '加密貨幣');
                 const rate = isUSD ? exchangeRate.value : 1;
-
-                const marketValueOriginal = h.shares * marketPrice;
-                const marketValueTwd = marketValueOriginal * rate;
+                const mvTwd = h.shares * marketPrice * rate;
                 const costTwd = h.totalCost * rate;
-
-                return { 
-                    ...h, 
-                    avgCost: h.totalCost / h.shares, 
-                    currentPrice: marketPrice, 
-                    manualPrice: priceMap.value[h.ticker], // 用於綁定輸入框
-                    marketValueTwd: marketValueTwd,
-                    unrealizedPLTwd: marketValueTwd - costTwd, 
-                    returnRate: costTwd ? (((marketValueTwd - costTwd) / costTwd) * 100).toFixed(2) : 0
-                };
+                return { ...h, avgCost: h.totalCost/h.shares, currentPrice: marketPrice, manualPrice: priceMap.value[h.ticker], marketValueTwd: mvTwd, unrealizedPLTwd: mvTwd - costTwd, returnRate: costTwd ? (((mvTwd - costTwd)/costTwd)*100).toFixed(2) : 0 };
             }).sort((a,b) => b.marketValueTwd - a.marketValueTwd);
         });
 
-        // 2. 計算總額 (Totals)
         const categoryTotals = computed(() => {
             const totals = {};
-            holdings.value.forEach(h => {
-                if(!totals[h.category]) totals[h.category] = 0;
-                totals[h.category] += h.marketValueTwd;
-            });
+            holdings.value.forEach(h => { if(!totals[h.category]) totals[h.category]=0; totals[h.category]+=h.marketValueTwd; });
             totals['現金'] = cashBalanceTwd.value;
             return totals;
         });
 
-        // 現金餘額 (需區分幣別，這裡簡化為全換算台幣顯示，實務上可更細)
-        const cashBalanceTwd = computed(() => {
-            return transactions.value.reduce((acc, tx) => {
-                const isUSD = (tx.category === '美股' || tx.category === '加密貨幣');
-                const rate = isUSD ? exchangeRate.value : 1;
-                return acc + (tx.totalCashFlow * rate);
-            }, 0);
-        });
+        const cashBalanceTwd = computed(() => transactions.value.reduce((acc, tx) => {
+            const isUSD = (tx.category === '美股' || tx.category === '加密貨幣');
+            return acc + (tx.totalCashFlow * (isUSD ? exchangeRate.value : 1));
+        }, 0));
 
         const totalAssetsTwd = computed(() => cashBalanceTwd.value + holdings.value.reduce((sum, h) => sum + h.marketValueTwd, 0));
-        
-        const totalPrincipalTwd = computed(() => {
-            return transactions.value.reduce((acc, tx) => {
-                const isUSD = (tx.category === '美股' || tx.category === '加密貨幣');
-                const rate = isUSD ? exchangeRate.value : 1;
-                // 本金 = 入金 - 出金
-                if(tx.type === 'Deposit') return acc + (tx.amount * rate);
-                if(tx.type === 'Withdraw') return acc - (tx.amount * rate);
-                return acc;
-            }, 0);
-        });
+        const totalPrincipalTwd = computed(() => transactions.value.reduce((acc, tx) => {
+            const isUSD = (tx.category === '美股' || tx.category === '加密貨幣');
+            const rate = isUSD ? exchangeRate.value : 1;
+            if(tx.type === 'Deposit') return acc + (tx.amount * rate);
+            if(tx.type === 'Withdraw') return acc - (tx.amount * rate);
+            return acc;
+        }, 0));
 
         const totalUnrealizedPL = computed(() => totalAssetsTwd.value - totalPrincipalTwd.value);
         const totalReturnRate = computed(() => totalPrincipalTwd.value ? ((totalUnrealizedPL.value/totalPrincipalTwd.value)*100).toFixed(2) : 0);
         const reversedTransactions = computed(() => [...transactions.value].reverse());
 
-        // --- 量化分析核心 (Quant Core) ---
+        // --- 量化分析 ---
         const stats = computed(() => {
             const data = historyData.value;
-            // 若數據少於 3 筆，顯示 N/A
-            if (data.length < 3) return { sharpe:'N/A', sortino:'N/A', var95:'N/A', stdDev:'N/A', mdd:'N/A' };
-
-            const returns = [];
-            let maxAsset = -Infinity;
-            let maxDrawdown = 0;
-
+            if (data.length < 3) return { sharpe:'-', sortino:'-', var95:'-', stdDev:'-', mdd:'-' };
+            const returns = []; let maxAsset = -Infinity; let maxDrawdown = 0;
             for(let i=1; i<data.length; i++) {
-                const prev = data[i-1]; 
-                const curr = data[i]; 
-                
-                // 簡單報酬率計算 (忽略現金流影響，以簡化計算)
-                // 若要精確需扣除 Net Flow: (Assets_t - Assets_t-1 - Flow) / Assets_t-1
-                // 這裡假設快照間無大額出入金，或直接計算淨值成長
-                const r = (curr.assets - prev.assets) / prev.assets;
+                const r = (data[i].assets - data[i-1].assets) / data[i-1].assets;
                 returns.push(r);
-
-                // MDD 計算
-                if (curr.assets > maxAsset) maxAsset = curr.assets;
-                const dd = (maxAsset - curr.assets) / maxAsset;
+                if (data[i].assets > maxAsset) maxAsset = data[i].assets;
+                const dd = (maxAsset - data[i].assets) / maxAsset;
                 if (dd > maxDrawdown) maxDrawdown = dd;
             }
-
-            // 統計運算
-            const n = returns.length;
-            const avgR = returns.reduce((a,b)=>a+b,0)/n;
-            const variance = returns.reduce((a,b) => a + Math.pow(b-avgR, 2), 0)/(n-1);
-            const stdDev = Math.sqrt(variance);
-            
-            // 年化 (假設每日快照，乘 sqrt(252)，若每週則 52)
-            // 這裡簡單假設為日資料
-            const annStdDev = stdDev * Math.sqrt(252);
-            const annReturn = avgR * 252;
+            const avgR = returns.reduce((a,b)=>a+b,0)/returns.length;
+            const stdDev = Math.sqrt(returns.reduce((a,b)=>a+Math.pow(b-avgR,2),0)/(returns.length-1));
+            const annStdDev = stdDev * Math.sqrt(252); const annReturn = avgR * 252;
             const rf = riskParams.value.rf / 100;
-
             const sharpe = (annReturn - rf) / annStdDev;
-
-            // Sortino (下行風險)
-            const downsideReturns = returns.filter(r => r < 0);
-            const downsideVar = downsideReturns.reduce((a,b)=>a+Math.pow(b,2), 0) / n;
-            const downsideDev = Math.sqrt(downsideVar) * Math.sqrt(252);
-            const sortino = (annReturn - rf) / downsideDev;
-
-            // VaR (歷史模擬法)
-            const sortedR = [...returns].sort((a,b)=>a-b);
-            const var95 = sortedR[Math.floor(n * 0.05)];
-
-            return { 
-                sharpe: sharpe.toFixed(2), 
-                sortino: isFinite(sortino) ? sortino.toFixed(2) : '∞', 
-                var95: (var95*100).toFixed(2), 
-                stdDev: (annStdDev*100).toFixed(2),
-                mdd: (maxDrawdown*100).toFixed(2)
-            };
+            const downside = returns.filter(r=>r<0);
+            const sortino = (annReturn - rf) / (Math.sqrt(downside.reduce((a,b)=>a+Math.pow(b,2),0)/returns.length)*Math.sqrt(252));
+            const var95 = [...returns].sort((a,b)=>a-b)[Math.floor(returns.length*0.05)];
+            return { sharpe: sharpe.toFixed(2), sortino: isFinite(sortino)?sortino.toFixed(2):'∞', var95: (var95*100).toFixed(2), stdDev: (annStdDev*100).toFixed(2), mdd: (maxDrawdown*100).toFixed(2) };
         });
 
-        // --- 功能函數 ---
-
+        // --- 功能 ---
         function addTransaction() {
             const { date, type, category, ticker, price, shares, amount } = txForm.value;
             if(!date) return;
+            if(type === 'Buy' && (!shares || shares <= 0)) { alert('⚠️ 買入操作必須輸入「數量」，否則庫存無法計算！'); return; }
             
             let cf = 0;
-            // 現金流邏輯
             if(type==='Buy') cf = -(price*shares + (amount||0));
             else if(type==='Sell') cf = (price*shares - (amount||0));
             else if(type==='Deposit' || type==='Dividend') cf = amount;
             
-            transactions.value.push({ 
-                date, type, category, 
-                ticker: ticker?.toUpperCase(), 
-                price, shares, amount, totalCashFlow: cf 
-            });
-            
+            transactions.value.push({ date, type, category, ticker: ticker?.toUpperCase(), price, shares, amount, totalCashFlow: cf });
             saveData();
-            // 重置表單 (保留日期與類別，方便連續輸入)
             txForm.value.ticker = ''; txForm.value.price = null; txForm.value.shares = null; txForm.value.amount = null;
             updateCharts();
         }
 
-        // 手動更新現價 (適用於 Crypto / 基金)
-        function manualUpdate(stock) {
-            if(stock.manualPrice) {
-                priceMap.value[stock.ticker] = stock.manualPrice;
-                localStorage.setItem('priceMap', JSON.stringify(priceMap.value));
-                setTimeout(updateCharts, 100);
-            }
-        }
-
-        // 拍攝快照 (記錄歷史)
-        function takeSnapshot() {
-            const today = new Date().toISOString().split('T')[0];
-            const snapshot = { date: today, assets: totalAssetsTwd.value, cost: totalPrincipalTwd.value };
-            
-            // 若今日已存，則覆蓋
-            const idx = historyData.value.findIndex(h => h.date === today);
-            if(idx !== -1) historyData.value[idx] = snapshot; 
-            else historyData.value.push(snapshot);
-            
+        function addHistoryRecord() {
+            const { date, assets, cost } = historyForm.value;
+            if(!date || !assets) return;
+            const idx = historyData.value.findIndex(h => h.date === date);
+            if(idx !== -1) historyData.value[idx] = { date, assets, cost };
+            else historyData.value.push({ date, assets, cost });
             historyData.value.sort((a,b) => new Date(a.date) - new Date(b.date));
             localStorage.setItem('historyData', JSON.stringify(historyData.value));
-            alert('✅ 今日資產快照已儲存！');
+            historyForm.value.assets = null; historyForm.value.cost = null;
             updateCharts();
+            alert('歷史資料已更新');
         }
 
-        // 產生測試數據 (Mock Data)
-        function generateMockData() {
-            if(!confirm('這將會產生過去 30 天的隨機資產紀錄以測試圖表，確定嗎？')) return;
-            
-            const mockHistory = [];
-            let baseAsset = 1000000;
-            let baseCost = 800000;
-            
-            for(let i=30; i>=0; i--) {
-                const d = new Date();
-                d.setDate(d.getDate() - i);
-                const dateStr = d.toISOString().split('T')[0];
-                
-                // 隨機波動
-                const change = (Math.random() - 0.45) * 20000; 
-                baseAsset += change;
-                
-                mockHistory.push({
-                    date: dateStr,
-                    assets: baseAsset,
-                    cost: baseCost
-                });
+        function removeHistoryByDate(date) {
+            if(confirm('刪除此日期的紀錄?')) {
+                historyData.value = historyData.value.filter(h => h.date !== date);
+                localStorage.setItem('historyData', JSON.stringify(historyData.value));
+                updateCharts();
             }
-            historyData.value = mockHistory;
-            localStorage.setItem('historyData', JSON.stringify(historyData.value));
-            alert('🧪 測試數據已生成，請查看量化分析頁面。');
-            updateCharts();
         }
 
-        function removeTransaction(idx) { if(confirm('確定刪除此筆交易?')) { transactions.value.splice(idx, 1); saveData(); updateCharts(); } }
-        function removeHistory(idx) { if(confirm('確定刪除此歷史紀錄?')) { historyData.value.splice(idx, 1); localStorage.setItem('historyData', JSON.stringify(historyData.value)); updateCharts(); } }
+        function takeSnapshot() {
+            historyForm.value = { date: new Date().toISOString().split('T')[0], assets: totalAssetsTwd.value, cost: totalPrincipalTwd.value };
+            addHistoryRecord();
+        }
+
+        function manualUpdate(stock) {
+            if(stock.manualPrice) { priceMap.value[stock.ticker] = stock.manualPrice; localStorage.setItem('priceMap', JSON.stringify(priceMap.value)); setTimeout(updateCharts, 100); }
+        }
+        
+        function removeTransaction(idx) { if(confirm('刪除?')) { transactions.value.splice(idx, 1); saveData(); updateCharts(); } }
         function saveData() { localStorage.setItem('ledgerData', JSON.stringify(transactions.value)); }
         function saveUrl() { if(tempUrl.value) { sheetUrl.value = tempUrl.value; localStorage.setItem('googleSheetUrl', sheetUrl.value); fetchPrices(); } showSetup.value = false; }
         
@@ -552,30 +471,19 @@ createApp({
             if(!sheetUrl.value) return;
             isUpdating.value = true;
             Papa.parse(sheetUrl.value, { download: true, header: false, complete: (res) => {
-                res.data.forEach(r => { 
-                    if(r[0]&&r[1]) { 
-                        const k=r[0].toString().trim().toUpperCase(); 
-                        const v=parseFloat(r[1].toString().replace(/,/g,'')); 
-                        if(!isNaN(v)) priceMap.value[k]=v;
-                    } 
-                });
-                localStorage.setItem('priceMap', JSON.stringify(priceMap.value)); 
-                isUpdating.value = false;
-                alert('報價更新完成');
+                res.data.forEach(r => { if(r[0]&&r[1]) { const k=r[0].toString().trim().toUpperCase(); const v=parseFloat(r[1].toString().replace(/,/g,'')); if(!isNaN(v)) priceMap.value[k]=v; } });
+                localStorage.setItem('priceMap', JSON.stringify(priceMap.value)); isUpdating.value = false; alert('報價更新完畢');
             }});
         }
         function exportAll() {
             const data = { ledger: transactions.value, history: historyData.value };
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(new Blob([JSON.stringify(data)], {type: "application/json"}));
-            link.download = "asset_master_backup.json"; link.click();
+            const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([JSON.stringify(data)], {type: "application/json"})); link.download = "asset_master_backup.json"; link.click();
         }
         function getTypeColor(type) { return { 'Buy':'text-red-400', 'Sell':'text-green-400', 'Deposit':'text-blue-400', 'Dividend':'text-yellow-400' }[type] || 'text-gray-400'; }
         function getCategoryColor(cat) { return { '美股':'border-indigo-500', '台股':'border-blue-500', '基金':'border-green-500', '加密貨幣':'border-purple-500' }[cat] || 'border-gray-500'; }
         function formatNumber(n) { return new Intl.NumberFormat('zh-TW', {maximumFractionDigits:0}).format(n||0); }
         function formatPercent(n) { return ((n||0)*100).toFixed(1) + '%'; }
 
-        // --- 圖表 ---
         let chartAlloc, chartHist;
         function initCharts() {
             if(!document.getElementById('allocationChart')) return;
@@ -599,31 +507,15 @@ createApp({
 
         function updateCharts() {
             if(!chartAlloc) { setTimeout(initCharts, 500); return; }
-            // 更新圓餅圖
             const cats = categoryTotals.value;
-            chartAlloc.data.labels = Object.keys(cats);
-            chartAlloc.data.datasets[0].data = Object.values(cats);
-            chartAlloc.update();
-
-            // 更新趨勢圖
+            chartAlloc.data.labels = Object.keys(cats); chartAlloc.data.datasets[0].data = Object.values(cats); chartAlloc.update();
             const src = historyData.value;
-            chartHist.data.labels = src.map(h => h.date);
-            chartHist.data.datasets[0].data = src.map(h => h.assets);
-            chartHist.data.datasets[1].data = src.map(h => h.cost);
-            chartHist.update();
+            chartHist.data.labels = src.map(h => h.date); chartHist.data.datasets[0].data = src.map(h => h.assets); chartHist.data.datasets[1].data = src.map(h => h.cost); chartHist.update();
         }
 
         onMounted(() => { if(sheetUrl.value) fetchPrices(); setTimeout(initCharts, 1000); });
-        watch([currentTab, exchangeRate], () => setTimeout(updateCharts, 100)); // Tab 切換或匯率變動時重繪
-        return { 
-            currentTab, showSetup, tempUrl, sheetUrl, isUpdating, 
-            transactions, historyData, holdings, categoryTotals, 
-            cashBalanceTwd, totalAssetsTwd, totalPrincipalTwd, totalUnrealizedPL, totalReturnRate, reversedTransactions, 
-            txForm, riskParams, stats, exchangeRate,
-            addTransaction, manualUpdate, takeSnapshot, generateMockData,
-            removeTransaction, removeHistory, saveUrl, fetchPrices, exportAll, 
-            getTypeColor, getCategoryColor, formatNumber, formatPercent 
-        };
+        watch([currentTab, exchangeRate], () => setTimeout(updateCharts, 100));
+        return { currentTab, showSetup, showHistoryModal, tempUrl, sheetUrl, isUpdating, transactions, historyData, holdings, categoryTotals, cashBalanceTwd, totalAssetsTwd, totalPrincipalTwd, totalUnrealizedPL, totalReturnRate, reversedTransactions, txForm, historyForm, riskParams, stats, exchangeRate, addTransaction, addHistoryRecord, removeHistoryByDate, manualUpdate, takeSnapshot, removeTransaction, saveUrl, fetchPrices, exportAll, getTypeColor, getCategoryColor, formatNumber, formatPercent };
     }
 }).mount('#app');
 </script>
