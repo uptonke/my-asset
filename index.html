@@ -3,144 +3,147 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASSET MASTER v7.2 | Multi-Asset</title>
+    <title>資產管理大師 v8.0 | 台幣/美金雙軌制</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0b1121; color: #e2e8f0; }
-        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); }
-        .input-dark { background: #1e293b; border: 1px solid #334155; color: white; transition: all 0.2s; }
-        .input-dark:focus { border-color: #3b82f6; ring: 2px; outline: none; background: #0f172a; }
-        .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; text-shadow: 0 0 10px rgba(59,130,246,0.5); }
-        .tab-inactive { color: #64748b; }
-        .tab-inactive:hover { color: #94a3b8; }
+        body { font-family: 'Microsoft JhengHei', 'Segoe UI', Roboto, sans-serif; background-color: #0f172a; color: #e2e8f0; }
+        .glass { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .input-dark { background: #1e293b; border: 1px solid #475569; color: white; transition: all 0.2s; }
+        .input-dark:focus { border-color: #3b82f6; ring: 2px; outline: none; }
+        .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; font-weight: bold; }
+        .tab-inactive { color: #94a3b8; }
+        .tab-inactive:hover { color: #cbd5e1; }
         .btn-primary { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); }
-        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.4); }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #0b1121; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-        .metric-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; }
-        .metric-value { font-family: 'Courier New', monospace; font-weight: bold; }
-        .category-header { background: linear-gradient(90deg, rgba(59,130,246,0.1) 0%, transparent 100%); border-left: 3px solid #3b82f6; }
+        .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .card-header { border-left: 4px solid #3b82f6; padding-left: 1rem; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden text-sm">
 
 <div id="app" class="h-full flex flex-col">
     
-    <header class="glass z-50 flex-none h-14 px-4 flex items-center justify-between">
+    <header class="glass z-50 flex-none h-16 px-6 flex items-center justify-between shadow-lg">
         <div class="flex items-center gap-6">
-            <h1 class="font-bold text-lg tracking-wide flex items-center gap-2 text-white">
-                <i class="fas fa-layer-group text-blue-500"></i> ASSET MASTER <span class="text-[10px] text-purple-400 bg-purple-900/30 px-1.5 py-0.5 rounded border border-purple-800">v7.2 Pro</span>
+            <h1 class="font-bold text-xl tracking-wide flex items-center gap-2 text-white">
+                <i class="fas fa-chart-pie text-blue-500"></i> 資產管理大師 <span class="text-xs bg-blue-600 px-2 py-0.5 rounded text-white">v8.0 中文版</span>
             </h1>
-            <nav class="flex gap-6 font-semibold ml-4 hidden md:flex">
-                <button @click="currentTab='summary'" :class="currentTab==='summary'?'tab-active':'tab-inactive'" class="py-4 px-1 transition"><i class="fas fa-tachometer-alt mr-1"></i> Dashboard</button>
-                <button @click="currentTab='holdings'" :class="currentTab==='holdings'?'tab-active':'tab-inactive'" class="py-4 px-1 transition"><i class="fas fa-wallet mr-1"></i> Holdings</button>
-                <button @click="currentTab='analytics'" :class="currentTab==='analytics'?'tab-active':'tab-inactive'" class="py-4 px-1 transition"><i class="fas fa-chart-line mr-1"></i> Analytics</button>
-                <button @click="currentTab='ledger'" :class="currentTab==='ledger'?'tab-active':'tab-inactive'" class="py-4 px-1 transition"><i class="fas fa-list-alt mr-1"></i> Ledger</button>
+            
+            <div class="hidden md:flex items-center gap-3 bg-slate-800 py-1 px-3 rounded-lg border border-slate-700">
+                <span class="text-gray-400 text-xs">美金匯率 (USD/TWD):</span>
+                <input v-model.number="exchangeRate" type="number" step="0.01" class="w-16 bg-transparent text-center font-mono font-bold text-green-400 focus:outline-none border-b border-gray-600">
+            </div>
+
+            <nav class="flex gap-6 font-medium ml-4 hidden md:flex">
+                <button @click="currentTab='summary'" :class="currentTab==='summary'?'tab-active':'tab-inactive'" class="py-4 px-2 transition"><i class="fas fa-home mr-1"></i> 總覽</button>
+                <button @click="currentTab='holdings'" :class="currentTab==='holdings'?'tab-active':'tab-inactive'" class="py-4 px-2 transition"><i class="fas fa-wallet mr-1"></i> 庫存明細</button>
+                <button @click="currentTab='analytics'" :class="currentTab==='analytics'?'tab-active':'tab-inactive'" class="py-4 px-2 transition"><i class="fas fa-chart-line mr-1"></i> 量化分析</button>
+                <button @click="currentTab='ledger'" :class="currentTab==='ledger'?'tab-active':'tab-inactive'" class="py-4 px-2 transition"><i class="fas fa-list mr-1"></i> 交易紀錄</button>
             </nav>
         </div>
-        <div class="flex gap-2">
-             <button @click="fetchPrices" class="p-2 text-gray-400 hover:text-white transition rounded-lg hover:bg-white/5" title="Sync Prices">
-                <i class="fas fa-sync-alt" :class="{'fa-spin': isUpdating}"></i>
-             </button>
-             <button @click="exportAll" class="p-2 text-gray-400 hover:text-white transition rounded-lg hover:bg-white/5" title="Backup Data">
-                <i class="fas fa-cloud-download-alt"></i>
-             </button>
+        <div class="flex gap-3">
+             <button @click="generateMockData" class="p-2 text-purple-400 hover:text-white transition" title="產生測試數據 (讓圖表動起來)"><i class="fas fa-flask"></i></button>
+             <button @click="fetchPrices" class="p-2 text-blue-400 hover:text-white transition" title="更新報價"><i class="fas fa-sync-alt" :class="{'fa-spin': isUpdating}"></i></button>
+             <button @click="exportAll" class="p-2 text-green-400 hover:text-white transition" title="備份資料"><i class="fas fa-download"></i></button>
         </div>
     </header>
 
-    <main class="flex-1 overflow-y-auto p-4 md:p-6 bg-[#0b1121]">
+    <main class="flex-1 overflow-y-auto p-4 md:p-6 bg-[#0f172a]">
         <div class="max-w-7xl mx-auto h-full space-y-6">
 
-            <div v-if="currentTab === 'summary'" class="animate-fade-in space-y-5">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div class="glass p-5 rounded-xl border-t-2 border-blue-500">
-                        <div class="metric-label">Net Asset Value (NAV)</div>
-                        <div class="text-3xl metric-value text-white mt-1">${{ formatNumber(totalAssets) }}</div>
-                        <div class="text-xs text-gray-500 mt-2">
-                             Cash: {{ formatPercent(cashBalance/totalAssets) }}
-                        </div>
+            <div v-if="currentTab === 'summary'" class="animate-fade-in space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div class="glass p-6 rounded-2xl border-t-4 border-blue-500">
+                        <div class="text-xs text-gray-400 font-bold uppercase">總資產 (Total Assets)</div>
+                        <div class="text-3xl font-bold text-white mt-2 font-mono">NT$ {{ formatNumber(totalAssetsTwd) }}</div>
+                        <div class="text-xs text-gray-500 mt-2">以台幣計價</div>
                     </div>
-                    <div class="glass p-5 rounded-xl border-t-2 border-emerald-500">
-                        <div class="metric-label">Invested Capital</div>
-                        <div class="text-3xl metric-value text-white mt-1">${{ formatNumber(totalPrincipal) }}</div>
+                    <div class="glass p-6 rounded-2xl border-t-4 border-emerald-500">
+                        <div class="text-xs text-gray-400 font-bold uppercase">總投入成本 (Cost)</div>
+                        <div class="text-3xl font-bold text-white mt-2 font-mono">NT$ {{ formatNumber(totalPrincipalTwd) }}</div>
                     </div>
-                    <div class="glass p-5 rounded-xl border-t-2" :class="totalUnrealizedPL >= 0 ? 'border-red-500' : 'border-green-500'">
-                        <div class="metric-label">Unrealized P/L</div>
-                        <div class="text-3xl metric-value mt-1" :class="totalUnrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
+                    <div class="glass p-6 rounded-2xl border-t-4" :class="totalUnrealizedPL >= 0 ? 'border-red-500' : 'border-green-500'">
+                        <div class="text-xs text-gray-400 font-bold uppercase">未實現損益 (P/L)</div>
+                        <div class="text-3xl font-bold mt-2 font-mono" :class="totalUnrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
                             {{ totalUnrealizedPL >= 0 ? '+' : '' }}{{ formatNumber(totalUnrealizedPL) }}
                         </div>
-                        <div class="text-xs font-bold mt-2" :class="totalUnrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
-                            ROI: {{ totalReturnRate }}%
+                        <div class="text-sm font-bold mt-1" :class="totalUnrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
+                            報酬率: {{ totalReturnRate }}%
                         </div>
                     </div>
-                    <div class="glass p-5 rounded-xl border-t-2 border-purple-500">
-                        <div class="metric-label">Asset Breakdown</div>
-                        <div class="mt-2 space-y-1">
-                            <div v-for="(amt, cat) in categoryTotals" :key="cat" class="flex justify-between text-xs">
-                                <span class="text-gray-400">{{ cat }}</span>
-                                <span class="font-mono text-white">{{ formatPercent(amt/totalAssets) }}</span>
-                            </div>
-                        </div>
+                    <div class="glass p-6 rounded-2xl border-t-4 border-purple-500">
+                         <div class="text-xs text-gray-400 font-bold uppercase">資產分佈</div>
+                         <div class="mt-3 space-y-2">
+                             <div class="flex justify-between text-xs" v-for="(val, cat) in categoryTotals" :key="cat">
+                                 <span class="text-gray-300">{{ cat }}</span>
+                                 <span class="font-mono text-white">{{ formatPercent(val / totalAssetsTwd) }}</span>
+                             </div>
+                         </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 h-80">
-                    <div class="glass p-4 rounded-xl col-span-1 flex flex-col">
-                        <h4 class="metric-label mb-2">Category Allocation</h4>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-96">
+                    <div class="glass p-5 rounded-2xl col-span-1 flex flex-col">
+                        <h4 class="text-white font-bold mb-4 card-header">資產配置圓餅圖</h4>
                         <div class="flex-1 relative"><canvas id="allocationChart"></canvas></div>
                     </div>
-                    <div class="glass p-4 rounded-xl col-span-2 flex flex-col">
-                        <h4 class="metric-label mb-2">NAV History & Risk</h4>
+                    <div class="glass p-5 rounded-2xl col-span-2 flex flex-col">
+                        <h4 class="text-white font-bold mb-4 card-header">資產成長趨勢圖 (台幣計價)</h4>
                         <div class="flex-1 relative"><canvas id="historyChart"></canvas></div>
                     </div>
                 </div>
             </div>
 
-            <div v-if="currentTab === 'holdings'" class="flex flex-col h-full max-h-[85vh] animate-fade-in space-y-4">
+            <div v-if="currentTab === 'holdings'" class="flex flex-col h-full max-h-[85vh] space-y-4 animate-fade-in">
                 
                 <div class="glass rounded-xl overflow-hidden flex flex-col flex-1">
-                    <div class="p-3 bg-white/5 border-b border-white/5 flex justify-between items-center">
-                        <h3 class="font-bold text-white text-sm"><i class="fas fa-layer-group text-blue-500 mr-2"></i>Portfolio by Category</h3>
-                        <div class="text-xs text-gray-400">Total Holdings: {{ holdings.length }}</div>
+                    <div class="p-4 bg-gray-800/50 border-b border-gray-700 flex justify-between items-center">
+                        <h3 class="font-bold text-white"><i class="fas fa-layer-group text-blue-500 mr-2"></i>分類庫存報表</h3>
+                        <div class="text-xs text-gray-400">
+                            報價來源: <span :class="sheetUrl ? 'text-green-400' : 'text-yellow-400'">{{ sheetUrl ? 'Google Finance 連線中' : '手動輸入模式' }}</span>
+                        </div>
                     </div>
-                    <div class="overflow-auto flex-1 p-2 space-y-4">
+                    
+                    <div class="overflow-auto flex-1 p-4 space-y-6">
                         
-                        <div v-for="cat in ['US Stock', 'TW Stock', 'Fund', 'Crypto']" :key="cat" v-if="holdings.some(h => h.category === cat)" class="mb-4">
-                            <div class="category-header p-2 text-white font-bold text-xs uppercase tracking-wider mb-1 flex justify-between">
-                                <span>{{ cat }}</span>
-                                <span class="font-mono text-blue-300 opacity-80">${{ formatNumber(holdings.filter(h=>h.category===cat).reduce((a,b)=>a+b.marketValue,0)) }}</span>
+                        <div v-for="cat in ['台股', '美股', '基金', '加密貨幣']" :key="cat" v-if="holdings.some(h => h.category === cat)" class="border border-gray-700 rounded-lg overflow-hidden">
+                            <div class="bg-gray-800 p-3 flex justify-between items-center border-b border-gray-700">
+                                <span class="font-bold text-white text-sm border-l-4 pl-2" :class="getCategoryColor(cat)">{{ cat }}</span>
+                                <span class="text-xs text-gray-400">
+                                    小計: <span class="text-white font-bold font-mono">NT$ {{ formatNumber(holdings.filter(h=>h.category===cat).reduce((a,b)=>a+b.marketValueTwd,0)) }}</span>
+                                </span>
                             </div>
-                            <table class="w-full text-left whitespace-nowrap">
-                                <thead class="bg-[#0f172a]/50 text-[10px] text-gray-500 uppercase">
+                            <table class="w-full text-left whitespace-nowrap bg-gray-900/30">
+                                <thead class="text-xs text-gray-500 uppercase">
                                     <tr>
-                                        <th class="p-2 pl-4">Ticker</th>
-                                        <th class="p-2 text-right">Qty</th>
-                                        <th class="p-2 text-right">Avg Cost</th>
-                                        <th class="p-2 text-right">Current Price</th>
-                                        <th class="p-2 text-right">Mkt Value</th>
-                                        <th class="p-2 text-right">P/L</th>
-                                        <th class="p-2 text-right">ROI</th>
+                                        <th class="p-3 pl-4">代號/名稱</th>
+                                        <th class="p-3 text-right">數量</th>
+                                        <th class="p-3 text-right">均價 (原幣)</th>
+                                        <th class="p-3 text-right">現價 (原幣)</th>
+                                        <th class="p-3 text-right">市值 (台幣)</th>
+                                        <th class="p-3 text-right">損益 (台幣)</th>
+                                        <th class="p-3 text-right">報酬率</th>
                                     </tr>
                                 </thead>
-                                <tbody class="text-sm divide-y divide-white/5">
+                                <tbody class="text-sm divide-y divide-gray-800">
                                     <tr v-for="stock in holdings.filter(h => h.category === cat)" :key="stock.ticker" class="hover:bg-white/5 transition">
-                                        <td class="p-2 pl-4 font-bold text-white">{{ stock.ticker }}</td>
-                                        <td class="p-2 text-right font-mono text-gray-400">{{ formatNumber(stock.shares) }}</td>
-                                        <td class="p-2 text-right font-mono text-gray-500">{{ formatNumber(stock.avgCost) }}</td>
-                                        <td class="p-2 text-right font-mono font-bold">
-                                            <input v-if="!sheetUrl || stock.category === 'Crypto'" v-model.number="stock.manualPrice" @change="manualUpdate(stock)" class="w-20 bg-transparent text-right outline-none border-b border-gray-700 focus:border-blue-500 text-yellow-400">
-                                            <span v-else class="text-yellow-400">{{ formatNumber(stock.currentPrice) }}</span>
+                                        <td class="p-3 pl-4 font-bold text-white">{{ stock.ticker }}</td>
+                                        <td class="p-3 text-right font-mono text-gray-400">{{ formatNumber(stock.shares) }}</td>
+                                        <td class="p-3 text-right font-mono text-gray-500">{{ formatNumber(stock.avgCost) }}</td>
+                                        <td class="p-3 text-right font-mono font-bold">
+                                            <input v-model.number="stock.manualPrice" @change="manualUpdate(stock)" class="w-24 bg-transparent text-right outline-none border-b border-gray-700 focus:border-blue-500 text-yellow-400 placeholder-gray-600" placeholder="輸入現價">
                                         </td>
-                                        <td class="p-2 text-right font-mono text-white">{{ formatNumber(stock.marketValue) }}</td>
-                                        <td class="p-2 text-right font-bold" :class="stock.unrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
-                                            {{ formatNumber(stock.unrealizedPL) }}
+                                        <td class="p-3 text-right font-mono text-white font-bold">{{ formatNumber(stock.marketValueTwd) }}</td>
+                                        <td class="p-3 text-right font-bold" :class="stock.unrealizedPLTwd >= 0 ? 'text-red-400' : 'text-green-400'">
+                                            {{ formatNumber(stock.unrealizedPLTwd) }}
                                         </td>
-                                        <td class="p-2 text-right font-bold text-xs" :class="stock.returnRate >= 0 ? 'text-red-400' : 'text-green-400'">
+                                        <td class="p-3 text-right font-bold text-xs" :class="stock.returnRate >= 0 ? 'text-red-400' : 'text-green-400'">
                                             {{ stock.returnRate }}%
                                         </td>
                                     </tr>
@@ -148,11 +151,9 @@
                             </table>
                         </div>
 
-                        <div class="mb-2">
-                            <div class="category-header p-2 text-gray-300 font-bold text-xs uppercase tracking-wider mb-1 flex justify-between border-l-4 border-gray-500">
-                                <span>CASH & EQUIVALENTS</span>
-                                <span class="font-mono text-blue-300 opacity-80">${{ formatNumber(cashBalance) }}</span>
-                            </div>
+                         <div class="bg-gray-800 p-4 rounded-lg flex justify-between border-l-4 border-gray-500">
+                             <span class="font-bold text-gray-300">現金餘額 (Cash)</span>
+                             <span class="font-mono text-white font-bold">NT$ {{ formatNumber(cashBalanceTwd) }}</span>
                          </div>
 
                     </div>
@@ -160,62 +161,115 @@
             </div>
 
             <div v-if="currentTab === 'analytics'" class="flex flex-col h-full space-y-4 animate-fade-in">
-                <div class="glass p-4 rounded-xl flex items-center justify-between">
-                    <h3 class="font-bold text-white">Quantitative Risk Metrics</h3>
-                    <div class="flex gap-4 text-xs items-center">
-                        <span class="text-gray-400">Rf: {{ riskParams.rf }}% (Manual)</span>
-                        <button @click="takeSnapshot" class="btn-primary text-white px-4 py-2 rounded-lg font-bold"><i class="fas fa-camera mr-1"></i> Snapshot</button>
+                
+                <div class="glass p-5 rounded-xl flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                        <h3 class="font-bold text-white text-lg">量化風險指標 (Quantitative Metrics)</h3>
+                        <p class="text-xs text-gray-400 mt-1" v-if="historyData.length < 3">⚠️ 數據不足：請按右上角「產生測試數據」或累積至少 3 天的快照。</p>
+                        <p class="text-xs text-gray-400 mt-1" v-else>基於過去 {{ historyData.length }} 筆歷史紀錄計算</p>
+                    </div>
+                    <div class="flex gap-4 items-center">
+                        <div class="flex items-center gap-2 text-xs">
+                             <label class="text-gray-400">無風險利率(%):</label>
+                             <input v-model.number="riskParams.rf" type="number" step="0.1" class="w-16 input-dark p-1 rounded text-center">
+                        </div>
+                        <button @click="takeSnapshot" class="btn-primary text-white px-6 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2">
+                            <i class="fas fa-camera"></i> 紀錄今日狀態
+                        </button>
                     </div>
                 </div>
-                 <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    <div class="glass p-3 rounded text-center"><div class="metric-label text-blue-400">Sharpe</div><div class="metric-value text-white">{{ stats.sharpe }}</div></div>
-                    <div class="glass p-3 rounded text-center"><div class="metric-label text-blue-400">Sortino</div><div class="metric-value text-white">{{ stats.sortino }}</div></div>
-                    <div class="glass p-3 rounded text-center"><div class="metric-label text-red-400">VaR (95%)</div><div class="metric-value text-white">{{ stats.var95 }}%</div></div>
-                    <div class="glass p-3 rounded text-center"><div class="metric-label text-gray-400">Skew</div><div class="metric-value text-white">{{ stats.skew }}</div></div>
-                    <div class="glass p-3 rounded text-center"><div class="metric-label text-gray-400">Kurtosis</div><div class="metric-value text-white">{{ stats.kurt }}</div></div>
-                 </div>
-                 <div class="flex-1 glass rounded-xl overflow-hidden p-4">
-                    <canvas id="historyChartFull"></canvas>
-                 </div>
-            </div>
 
-            <div v-if="currentTab === 'ledger'" class="flex flex-col md:flex-row gap-4 h-full max-h-[85vh]">
-                 <div class="w-full md:w-72 glass p-4 rounded-xl h-fit space-y-3">
-                    <h3 class="font-bold text-white text-sm border-b border-gray-700 pb-2">New Transaction</h3>
-                    
-                    <div class="grid grid-cols-2 gap-2">
-                        <input v-model="txForm.date" type="date" class="input-dark p-2 rounded text-xs col-span-2">
-                        <select v-model="txForm.type" class="input-dark p-2 rounded text-xs">
-                            <option value="Buy">Buy</option><option value="Sell">Sell</option>
-                            <option value="Deposit">Deposit</option><option value="Dividend">Dividend</option>
-                        </select>
-                         <select v-model="txForm.category" class="input-dark p-2 rounded text-xs">
-                             <option value="US Stock">US Stock (美股)</option>
-                             <option value="TW Stock">TW Stock (台股)</option>
-                             <option value="Fund">Fund (基金)</option>
-                             <option value="Crypto">Crypto (加密)</option>
-                        </select>
-                    </div>
-                    
-                    <div v-if="['Buy','Sell','Dividend'].includes(txForm.type)">
-                        <input v-model="txForm.ticker" placeholder="Ticker (e.g. BTC_WALLET)" class="w-full input-dark p-2 rounded text-xs uppercase">
-                        <p v-if="txForm.category==='Crypto'" class="text-[10px] text-blue-400 mt-1">* 建議 Crypto 股數設為 1，價格輸入總成本</p>
-                    </div>
-                    
-                    <div v-if="['Buy','Sell'].includes(txForm.type)" class="grid grid-cols-2 gap-2">
-                        <input v-model.number="txForm.price" type="number" placeholder="Price" class="input-dark p-2 rounded text-xs">
-                        <input v-model.number="txForm.shares" type="number" placeholder="Shares (Crypto=1)" class="input-dark p-2 rounded text-xs">
-                    </div>
-                    
-                    <input v-model.number="txForm.amount" type="number" :placeholder="txForm.type==='Buy'?'Fee':'Total Amount'" class="w-full input-dark p-2 rounded text-xs">
-                    <button @click="addTransaction" class="w-full btn-primary text-white rounded font-bold text-xs py-2 shadow-lg">Submit</button>
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div class="glass p-4 rounded-xl text-center"><div class="text-xs text-blue-400 uppercase tracking-wider">夏普比率 (Sharpe)</div><div class="text-xl font-mono text-white font-bold mt-1">{{ stats.sharpe }}</div></div>
+                    <div class="glass p-4 rounded-xl text-center"><div class="text-xs text-blue-400 uppercase tracking-wider">索提諾 (Sortino)</div><div class="text-xl font-mono text-white font-bold mt-1">{{ stats.sortino }}</div></div>
+                    <div class="glass p-4 rounded-xl text-center"><div class="text-xs text-red-400 uppercase tracking-wider">風險值 (VaR 95%)</div><div class="text-xl font-mono text-white font-bold mt-1">{{ stats.var95 }}%</div></div>
+                    <div class="glass p-4 rounded-xl text-center"><div class="text-xs text-gray-400 uppercase tracking-wider">標準差 (波動率)</div><div class="text-xl font-mono text-white font-bold mt-1">{{ stats.stdDev }}%</div></div>
+                    <div class="glass p-4 rounded-xl text-center"><div class="text-xs text-yellow-400 uppercase tracking-wider">最大回撤 (MDD)</div><div class="text-xl font-mono text-white font-bold mt-1">{{ stats.mdd }}%</div></div>
                  </div>
 
                  <div class="flex-1 glass rounded-xl overflow-hidden flex flex-col">
                     <div class="overflow-auto flex-1">
+                        <table class="w-full text-left whitespace-nowrap">
+                            <thead class="sticky top-0 bg-[#0f172a] text-xs text-gray-400 uppercase font-semibold">
+                                <tr>
+                                    <th class="p-3 pl-6">日期</th>
+                                    <th class="p-3 text-right">總資產 (台幣)</th>
+                                    <th class="p-3 text-right">總成本 (台幣)</th>
+                                    <th class="p-3 text-right">單日報酬</th>
+                                    <th class="p-3 text-center">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm divide-y divide-white/5">
+                                <tr v-for="(h, idx) in historyData.slice().reverse()" :key="idx" class="hover:bg-white/5">
+                                    <td class="p-3 pl-6 font-mono text-blue-300">{{ h.date }}</td>
+                                    <td class="p-3 text-right font-mono text-white font-bold">{{ formatNumber(h.assets) }}</td>
+                                    <td class="p-3 text-right font-mono text-gray-500">{{ formatNumber(h.cost) }}</td>
+                                    <td class="p-3 text-right font-mono" :class="h.dailyReturn >= 0 ? 'text-red-400' : 'text-green-400'">
+                                        {{ h.dailyReturn ? (h.dailyReturn * 100).toFixed(2) + '%' : '-' }}
+                                    </td>
+                                    <td class="p-3 text-center">
+                                        <button @click="removeHistory(historyData.length - 1 - idx)" class="text-gray-600 hover:text-red-500"><i class="fas fa-trash"></i></button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                 </div>
+            </div>
+
+            <div v-if="currentTab === 'ledger'" class="flex flex-col md:flex-row gap-6 h-full max-h-[85vh]">
+                 
+                 <div class="w-full md:w-80 glass p-5 rounded-xl h-fit space-y-4">
+                    <h3 class="font-bold text-white text-lg border-b border-gray-700 pb-2">新增交易 / 資產</h3>
+                    
+                    <div>
+                        <label class="text-xs text-gray-400 mb-1 block">1. 選擇資產類別 (Category)</label>
+                        <div class="grid grid-cols-2 gap-2">
+                             <button @click="txForm.category='台股'" :class="txForm.category==='台股'?'bg-blue-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs transition">台股</button>
+                             <button @click="txForm.category='美股'" :class="txForm.category==='美股'?'bg-indigo-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs transition">美股</button>
+                             <button @click="txForm.category='基金'" :class="txForm.category==='基金'?'bg-green-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs transition">基金</button>
+                             <button @click="txForm.category='加密貨幣'" :class="txForm.category==='加密貨幣'?'bg-purple-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs transition">加密貨幣</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-xs text-gray-400 mb-1 block">2. 交易資訊</label>
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <input v-model="txForm.date" type="date" class="input-dark p-2 rounded text-xs col-span-2">
+                            <select v-model="txForm.type" class="input-dark p-2 rounded text-xs col-span-2">
+                                <option value="Buy">Buy (買入/入金)</option>
+                                <option value="Sell">Sell (賣出)</option>
+                                <option value="Deposit">Deposit (純入金-現金)</option>
+                                <option value="Dividend">Dividend (股息)</option>
+                            </select>
+                        </div>
+                        <input v-model="txForm.ticker" placeholder="代號 / 名稱 (如 BTC, 0050)" class="w-full input-dark p-2 rounded text-xs uppercase mb-2">
+                        
+                        <div v-if="['Buy','Sell'].includes(txForm.type)" class="grid grid-cols-2 gap-2 mb-2">
+                            <input v-model.number="txForm.price" type="number" placeholder="單價" class="input-dark p-2 rounded text-xs">
+                            <input v-model.number="txForm.shares" type="number" placeholder="數量" class="input-dark p-2 rounded text-xs">
+                        </div>
+                        
+                        <input v-model.number="txForm.amount" type="number" :placeholder="txForm.type==='Buy'?'手續費':'總金額'" class="w-full input-dark p-2 rounded text-xs">
+                    </div>
+                    
+                    <div class="p-3 bg-blue-900/20 rounded text-xs text-blue-300 border border-blue-900/50">
+                        <i class="fas fa-info-circle mr-1"></i> 
+                        <span v-if="txForm.category==='美股' || txForm.category==='加密貨幣'">金額請輸入 <strong>美金</strong></span>
+                        <span v-else>金額請輸入 <strong>台幣</strong></span>
+                    </div>
+
+                    <button @click="addTransaction" class="w-full btn-primary text-white rounded-lg font-bold text-sm py-3 shadow-lg">確認送出</button>
+                 </div>
+
+                 <div class="flex-1 glass rounded-xl overflow-hidden flex flex-col">
+                    <div class="p-4 bg-gray-800/50 border-b border-gray-700">
+                        <h3 class="font-bold text-white">交易流水帳</h3>
+                    </div>
+                    <div class="overflow-auto flex-1">
                         <table class="w-full text-left">
-                            <thead class="sticky top-0 bg-[#0f172a] text-[10px] text-gray-400 uppercase font-semibold">
-                                <tr><th class="p-3">Date</th><th class="p-3">Type</th><th class="p-3">Cat</th><th class="p-3">Ticker</th><th class="p-3 text-right">Flow</th><th class="p-3"></th></tr>
+                            <thead class="sticky top-0 bg-[#0f172a] text-xs text-gray-400 uppercase font-semibold">
+                                <tr><th class="p-3">日期</th><th class="p-3">類別</th><th class="p-3">資產</th><th class="p-3">名稱</th><th class="p-3 text-right">現金流</th><th class="p-3"></th></tr>
                             </thead>
                             <tbody class="text-sm divide-y divide-white/5">
                                 <tr v-for="(tx, idx) in reversedTransactions" :key="idx" class="hover:bg-white/5">
@@ -233,11 +287,11 @@
             </div>
 
             <div v-if="!sheetUrl && showSetup" class="fixed inset-0 bg-black/90 flex items-center justify-center z-[100]">
-                <div class="glass p-8 rounded-xl w-96 text-center border border-purple-500/30">
-                    <h2 class="text-xl font-bold mb-2 text-white">Connect Data Feed</h2>
-                    <input v-model="tempUrl" placeholder="Google Sheet CSV Link" class="w-full input-dark p-3 rounded mb-4 text-xs">
-                    <button @click="saveUrl" class="w-full btn-primary py-2 rounded text-white font-bold mb-3">Connect</button>
-                    <button @click="showSetup=false" class="text-xs text-gray-500">Skip (Manual Mode)</button>
+                <div class="glass p-8 rounded-xl w-96 text-center border border-blue-500/30">
+                    <h2 class="text-xl font-bold mb-4 text-white">初始化您的資產庫</h2>
+                    <input v-model="tempUrl" placeholder="貼上 Google Sheet CSV 連結 (選填)" class="w-full input-dark p-3 rounded mb-4 text-xs">
+                    <button @click="saveUrl" class="w-full btn-primary py-2 rounded text-white font-bold mb-3">連結資料庫</button>
+                    <button @click="showSetup=false" class="text-xs text-gray-500 hover:text-white">跳過 (使用手動模式)</button>
                 </div>
             </div>
 
@@ -255,126 +309,242 @@ createApp({
         const sheetUrl = ref(localStorage.getItem('googleSheetUrl') || '');
         const tempUrl = ref('');
         const isUpdating = ref(false);
-        const riskParams = ref({ rf: 2.0, beta: 1.0 });
+        
+        // 匯率設定 (預設 32.5)
+        const exchangeRate = ref(parseFloat(localStorage.getItem('exchangeRate')) || 32.5);
+        watch(exchangeRate, (val) => localStorage.setItem('exchangeRate', val));
 
+        const riskParams = ref({ rf: 1.5, beta: 1.0 });
+
+        // 資料儲存
         const transactions = ref(JSON.parse(localStorage.getItem('ledgerData') || '[]'));
         const historyData = ref(JSON.parse(localStorage.getItem('historyData') || '[]'));
         const priceMap = ref(JSON.parse(localStorage.getItem('priceMap') || '{}'));
-        const txForm = ref({ date: new Date().toISOString().split('T')[0], type: 'Buy', category: 'US Stock', ticker: '', price: null, shares: null, amount: null });
+        
+        // 表單
+        const txForm = ref({ date: new Date().toISOString().split('T')[0], type: 'Buy', category: '台股', ticker: '', price: null, shares: null, amount: null });
 
-        // --- CORE LOGIC ---
+        // --- 核心運算邏輯 ---
+        
+        // 1. 計算庫存 (Holdings)
         const holdings = computed(() => {
             const map = {};
             transactions.value.forEach(tx => {
                 if(!tx.ticker) return;
                 const t = tx.ticker.toUpperCase();
-                // Persist category from latest transaction or first
-                if(!map[t]) map[t] = { ticker: t, category: tx.category || 'US Stock', shares: 0, totalCost: 0 };
+                // 每個標的獨立計算
+                if(!map[t]) map[t] = { ticker: t, category: tx.category || '台股', shares: 0, totalCost: 0 };
                 
-                if(tx.type === 'Buy') { map[t].shares += tx.shares; map[t].totalCost += (tx.price*tx.shares)+(tx.amount||0); }
-                else if(tx.type === 'Sell') { 
+                if(tx.type === 'Buy') { 
+                    map[t].shares += tx.shares; 
+                    map[t].totalCost += (tx.price * tx.shares) + (tx.amount||0); 
+                } else if(tx.type === 'Sell') { 
                     const avg = map[t].shares ? map[t].totalCost/map[t].shares : 0; 
-                    map[t].shares -= tx.shares; map[t].totalCost -= avg*tx.shares; 
+                    map[t].shares -= tx.shares; 
+                    map[t].totalCost -= avg * tx.shares; 
                 }
             });
+
             return Object.values(map).filter(h => h.shares > 0.0001).map(h => {
-                // Use Manual Price if available in priceMap, else AvgCost
-                const curr = priceMap.value[h.ticker] || (h.totalCost/h.shares);
+                // 價格優先順序: 手動輸入 > 報價 API > 平均成本
+                const marketPrice = priceMap.value[h.ticker] || (h.totalCost / h.shares);
+                
+                // 匯率換算
+                const isUSD = (h.category === '美股' || h.category === '加密貨幣');
+                const rate = isUSD ? exchangeRate.value : 1;
+
+                const marketValueOriginal = h.shares * marketPrice;
+                const marketValueTwd = marketValueOriginal * rate;
+                const costTwd = h.totalCost * rate;
+
                 return { 
                     ...h, 
-                    avgCost: h.totalCost/h.shares, 
-                    currentPrice: curr, 
-                    manualPrice: priceMap.value[h.ticker], // bind for input
-                    marketValue: h.shares*curr, 
-                    unrealizedPL: (h.shares*curr)-h.totalCost, 
-                    returnRate: h.totalCost ? (((h.shares*curr)-h.totalCost)/h.totalCost*100).toFixed(2) : 0
+                    avgCost: h.totalCost / h.shares, 
+                    currentPrice: marketPrice, 
+                    manualPrice: priceMap.value[h.ticker], // 用於綁定輸入框
+                    marketValueTwd: marketValueTwd,
+                    unrealizedPLTwd: marketValueTwd - costTwd, 
+                    returnRate: costTwd ? (((marketValueTwd - costTwd) / costTwd) * 100).toFixed(2) : 0
                 };
-            }).sort((a,b) => b.marketValue - a.marketValue);
+            }).sort((a,b) => b.marketValueTwd - a.marketValueTwd);
         });
 
+        // 2. 計算總額 (Totals)
         const categoryTotals = computed(() => {
-            const totals = { 'US Stock':0, 'TW Stock':0, 'Fund':0, 'Crypto':0, 'Cash':0 };
+            const totals = {};
             holdings.value.forEach(h => {
-                const cat = h.category || 'US Stock';
-                if(!totals[cat]) totals[cat] = 0;
-                totals[cat] += h.marketValue;
+                if(!totals[h.category]) totals[h.category] = 0;
+                totals[h.category] += h.marketValueTwd;
             });
-            totals['Cash'] = cashBalance.value;
+            totals['現金'] = cashBalanceTwd.value;
             return totals;
         });
 
-        const cashBalance = computed(() => transactions.value.reduce((acc, tx) => acc + tx.totalCashFlow, 0));
-        const stockValue = computed(() => holdings.value.reduce((sum, h) => sum + h.marketValue, 0));
-        const totalAssets = computed(() => cashBalance.value + stockValue.value);
-        const totalPrincipal = computed(() => transactions.value.reduce((acc, tx) => (tx.type==='Deposit'?acc+tx.amount:(tx.type==='Withdraw'?acc-tx.amount:acc)), 0));
-        const totalUnrealizedPL = computed(() => totalAssets.value - totalPrincipal.value);
-        const totalReturnRate = computed(() => totalPrincipal.value ? ((totalUnrealizedPL.value/totalPrincipal.value)*100).toFixed(2) : 0);
-        const reversedTransactions = computed(() => [...transactions.value].reverse());
-
-        // --- QUANT LOGIC (Simplified for v7.2) ---
-        const stats = computed(() => {
-            const data = historyData.value;
-            if (data.length < 2) return { sharpe:'-', sortino:'-', var95:'-', skew:'-', kurt:'-' };
-            const returns = [];
-            for(let i=1; i<data.length; i++) {
-                const prev = data[i-1]; const curr = data[i]; const flow = curr.cost - prev.cost; 
-                returns.push((curr.assets - flow) / prev.assets - 1);
-            }
-            const n = returns.length; const avgR = returns.reduce((a,b)=>a+b,0)/n;
-            const variance = returns.reduce((a,b) => a + Math.pow(b-avgR, 2), 0)/(n-1);
-            const stdDev = Math.sqrt(variance) * Math.sqrt(52); // Annualized
-            const sharpe = ((Math.pow(1+avgR, 52)-1) - 0.02) / stdDev;
-            
-            const sortedR = [...returns].sort((a,b)=>a-b);
-            const var95 = sortedR[Math.floor(n*0.05)];
-            
-            // Skew/Kurt
-            const m3 = returns.reduce((a,b)=>a+Math.pow(b-avgR,3),0)/n;
-            const m4 = returns.reduce((a,b)=>a+Math.pow(b-avgR,4),0)/n;
-            const skew = m3/Math.pow(Math.sqrt(variance),3);
-            const kurt = (m4/Math.pow(Math.sqrt(variance),4))-3;
-
-            return { sharpe: sharpe.toFixed(2), sortino: 'N/A', var95: (var95*100).toFixed(2), skew: skew.toFixed(2), kurt: kurt.toFixed(2) };
+        // 現金餘額 (需區分幣別，這裡簡化為全換算台幣顯示，實務上可更細)
+        const cashBalanceTwd = computed(() => {
+            return transactions.value.reduce((acc, tx) => {
+                const isUSD = (tx.category === '美股' || tx.category === '加密貨幣');
+                const rate = isUSD ? exchangeRate.value : 1;
+                return acc + (tx.totalCashFlow * rate);
+            }, 0);
         });
 
-        // --- ACTIONS ---
+        const totalAssetsTwd = computed(() => cashBalanceTwd.value + holdings.value.reduce((sum, h) => sum + h.marketValueTwd, 0));
+        
+        const totalPrincipalTwd = computed(() => {
+            return transactions.value.reduce((acc, tx) => {
+                const isUSD = (tx.category === '美股' || tx.category === '加密貨幣');
+                const rate = isUSD ? exchangeRate.value : 1;
+                // 本金 = 入金 - 出金
+                if(tx.type === 'Deposit') return acc + (tx.amount * rate);
+                if(tx.type === 'Withdraw') return acc - (tx.amount * rate);
+                return acc;
+            }, 0);
+        });
+
+        const totalUnrealizedPL = computed(() => totalAssetsTwd.value - totalPrincipalTwd.value);
+        const totalReturnRate = computed(() => totalPrincipalTwd.value ? ((totalUnrealizedPL.value/totalPrincipalTwd.value)*100).toFixed(2) : 0);
+        const reversedTransactions = computed(() => [...transactions.value].reverse());
+
+        // --- 量化分析核心 (Quant Core) ---
+        const stats = computed(() => {
+            const data = historyData.value;
+            // 若數據少於 3 筆，顯示 N/A
+            if (data.length < 3) return { sharpe:'N/A', sortino:'N/A', var95:'N/A', stdDev:'N/A', mdd:'N/A' };
+
+            const returns = [];
+            let maxAsset = -Infinity;
+            let maxDrawdown = 0;
+
+            for(let i=1; i<data.length; i++) {
+                const prev = data[i-1]; 
+                const curr = data[i]; 
+                
+                // 簡單報酬率計算 (忽略現金流影響，以簡化計算)
+                // 若要精確需扣除 Net Flow: (Assets_t - Assets_t-1 - Flow) / Assets_t-1
+                // 這裡假設快照間無大額出入金，或直接計算淨值成長
+                const r = (curr.assets - prev.assets) / prev.assets;
+                returns.push(r);
+
+                // MDD 計算
+                if (curr.assets > maxAsset) maxAsset = curr.assets;
+                const dd = (maxAsset - curr.assets) / maxAsset;
+                if (dd > maxDrawdown) maxDrawdown = dd;
+            }
+
+            // 統計運算
+            const n = returns.length;
+            const avgR = returns.reduce((a,b)=>a+b,0)/n;
+            const variance = returns.reduce((a,b) => a + Math.pow(b-avgR, 2), 0)/(n-1);
+            const stdDev = Math.sqrt(variance);
+            
+            // 年化 (假設每日快照，乘 sqrt(252)，若每週則 52)
+            // 這裡簡單假設為日資料
+            const annStdDev = stdDev * Math.sqrt(252);
+            const annReturn = avgR * 252;
+            const rf = riskParams.value.rf / 100;
+
+            const sharpe = (annReturn - rf) / annStdDev;
+
+            // Sortino (下行風險)
+            const downsideReturns = returns.filter(r => r < 0);
+            const downsideVar = downsideReturns.reduce((a,b)=>a+Math.pow(b,2), 0) / n;
+            const downsideDev = Math.sqrt(downsideVar) * Math.sqrt(252);
+            const sortino = (annReturn - rf) / downsideDev;
+
+            // VaR (歷史模擬法)
+            const sortedR = [...returns].sort((a,b)=>a-b);
+            const var95 = sortedR[Math.floor(n * 0.05)];
+
+            return { 
+                sharpe: sharpe.toFixed(2), 
+                sortino: isFinite(sortino) ? sortino.toFixed(2) : '∞', 
+                var95: (var95*100).toFixed(2), 
+                stdDev: (annStdDev*100).toFixed(2),
+                mdd: (maxDrawdown*100).toFixed(2)
+            };
+        });
+
+        // --- 功能函數 ---
+
         function addTransaction() {
             const { date, type, category, ticker, price, shares, amount } = txForm.value;
             if(!date) return;
+            
             let cf = 0;
+            // 現金流邏輯
             if(type==='Buy') cf = -(price*shares + (amount||0));
             else if(type==='Sell') cf = (price*shares - (amount||0));
             else if(type==='Deposit' || type==='Dividend') cf = amount;
-            else if(type==='Withdraw') cf = -amount;
-
-            transactions.value.push({ date, type, category: category||'US Stock', ticker: ticker?.toUpperCase(), price, shares, amount, totalCashFlow: cf });
+            
+            transactions.value.push({ 
+                date, type, category, 
+                ticker: ticker?.toUpperCase(), 
+                price, shares, amount, totalCashFlow: cf 
+            });
+            
             saveData();
-            txForm.value = { ...txForm.value, ticker:'', price:null, shares:null, amount:null }; 
+            // 重置表單 (保留日期與類別，方便連續輸入)
+            txForm.value.ticker = ''; txForm.value.price = null; txForm.value.shares = null; txForm.value.amount = null;
             updateCharts();
         }
 
-        // Handle manual price updates in Holdings table
+        // 手動更新現價 (適用於 Crypto / 基金)
         function manualUpdate(stock) {
             if(stock.manualPrice) {
                 priceMap.value[stock.ticker] = stock.manualPrice;
                 localStorage.setItem('priceMap', JSON.stringify(priceMap.value));
-                // Force re-render chart usually needs reactivity, simple trick:
                 setTimeout(updateCharts, 100);
             }
         }
 
+        // 拍攝快照 (記錄歷史)
         function takeSnapshot() {
             const today = new Date().toISOString().split('T')[0];
-            const snapshot = { date: today, assets: totalAssets.value, cost: totalPrincipal.value, cash: cashBalance.value, stock: stockValue.value };
+            const snapshot = { date: today, assets: totalAssetsTwd.value, cost: totalPrincipalTwd.value };
+            
+            // 若今日已存，則覆蓋
             const idx = historyData.value.findIndex(h => h.date === today);
-            if(idx !== -1) historyData.value[idx] = snapshot; else historyData.value.push(snapshot);
+            if(idx !== -1) historyData.value[idx] = snapshot; 
+            else historyData.value.push(snapshot);
+            
             historyData.value.sort((a,b) => new Date(a.date) - new Date(b.date));
             localStorage.setItem('historyData', JSON.stringify(historyData.value));
-            alert('Snapshot Recorded.');
+            alert('✅ 今日資產快照已儲存！');
             updateCharts();
         }
 
-        function removeTransaction(idx) { if(confirm('Delete?')) { transactions.value.splice(idx, 1); saveData(); updateCharts(); } }
+        // 產生測試數據 (Mock Data)
+        function generateMockData() {
+            if(!confirm('這將會產生過去 30 天的隨機資產紀錄以測試圖表，確定嗎？')) return;
+            
+            const mockHistory = [];
+            let baseAsset = 1000000;
+            let baseCost = 800000;
+            
+            for(let i=30; i>=0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                const dateStr = d.toISOString().split('T')[0];
+                
+                // 隨機波動
+                const change = (Math.random() - 0.45) * 20000; 
+                baseAsset += change;
+                
+                mockHistory.push({
+                    date: dateStr,
+                    assets: baseAsset,
+                    cost: baseCost
+                });
+            }
+            historyData.value = mockHistory;
+            localStorage.setItem('historyData', JSON.stringify(historyData.value));
+            alert('🧪 測試數據已生成，請查看量化分析頁面。');
+            updateCharts();
+        }
+
+        function removeTransaction(idx) { if(confirm('確定刪除此筆交易?')) { transactions.value.splice(idx, 1); saveData(); updateCharts(); } }
+        function removeHistory(idx) { if(confirm('確定刪除此歷史紀錄?')) { historyData.value.splice(idx, 1); localStorage.setItem('historyData', JSON.stringify(historyData.value)); updateCharts(); } }
         function saveData() { localStorage.setItem('ledgerData', JSON.stringify(transactions.value)); }
         function saveUrl() { if(tempUrl.value) { sheetUrl.value = tempUrl.value; localStorage.setItem('googleSheetUrl', sheetUrl.value); fetchPrices(); } showSetup.value = false; }
         
@@ -382,25 +552,34 @@ createApp({
             if(!sheetUrl.value) return;
             isUpdating.value = true;
             Papa.parse(sheetUrl.value, { download: true, header: false, complete: (res) => {
-                res.data.forEach(r => { if(r[0]&&r[1]) { const k=r[0].toString().trim().toUpperCase(); const v=parseFloat(r[1].toString().replace(/,/g,'')); if(!isNaN(v)) { priceMap.value[k]=v; priceMap.value['TPE:'+k]=v; } } });
-                localStorage.setItem('priceMap', JSON.stringify(priceMap.value)); isUpdating.value = false;
+                res.data.forEach(r => { 
+                    if(r[0]&&r[1]) { 
+                        const k=r[0].toString().trim().toUpperCase(); 
+                        const v=parseFloat(r[1].toString().replace(/,/g,'')); 
+                        if(!isNaN(v)) priceMap.value[k]=v;
+                    } 
+                });
+                localStorage.setItem('priceMap', JSON.stringify(priceMap.value)); 
+                isUpdating.value = false;
+                alert('報價更新完成');
             }});
         }
         function exportAll() {
             const data = { ledger: transactions.value, history: historyData.value };
             const link = document.createElement("a");
             link.href = URL.createObjectURL(new Blob([JSON.stringify(data)], {type: "application/json"}));
-            link.download = "asset_master_v7_backup.json"; link.click();
+            link.download = "asset_master_backup.json"; link.click();
         }
         function getTypeColor(type) { return { 'Buy':'text-red-400', 'Sell':'text-green-400', 'Deposit':'text-blue-400', 'Dividend':'text-yellow-400' }[type] || 'text-gray-400'; }
-        function formatNumber(n) { return new Intl.NumberFormat('en-US', {maximumFractionDigits:0}).format(n||0); }
+        function getCategoryColor(cat) { return { '美股':'border-indigo-500', '台股':'border-blue-500', '基金':'border-green-500', '加密貨幣':'border-purple-500' }[cat] || 'border-gray-500'; }
+        function formatNumber(n) { return new Intl.NumberFormat('zh-TW', {maximumFractionDigits:0}).format(n||0); }
         function formatPercent(n) { return ((n||0)*100).toFixed(1) + '%'; }
 
-        // --- CHARTS ---
+        // --- 圖表 ---
         let chartAlloc, chartHist;
         function initCharts() {
             if(!document.getElementById('allocationChart')) return;
-            Chart.defaults.color = '#64748b'; Chart.defaults.borderColor = '#1e293b';
+            Chart.defaults.color = '#94a3b8'; Chart.defaults.borderColor = '#334155';
             
             chartAlloc = new Chart(document.getElementById('allocationChart'), {
                 type: 'doughnut',
@@ -411,8 +590,8 @@ createApp({
             chartHist = new Chart(document.getElementById('historyChart'), {
                 type: 'line',
                 data: { labels: [], datasets: [
-                    { label: 'NAV', data: [], borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', tension: 0.4, fill: true, pointRadius: 2 },
-                    { label: 'Cost', data: [], borderColor: '#10b981', borderDash: [5, 5], tension: 0.4, pointRadius: 0 }
+                    { label: '總資產 (NAV)', data: [], borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', tension: 0.4, fill: true, pointRadius: 2 },
+                    { label: '總成本 (Cost)', data: [], borderColor: '#10b981', borderDash: [5, 5], tension: 0.4, pointRadius: 0 }
                 ] },
                 options: { responsive: true, maintainAspectRatio: false, scales: { x: { grid: { display: false } }, y: { grid: { color: '#1e293b' } } }, plugins: { legend: { position: 'top', align: 'end' } } }
             });
@@ -420,12 +599,13 @@ createApp({
 
         function updateCharts() {
             if(!chartAlloc) { setTimeout(initCharts, 500); return; }
-            // Chart by Category
+            // 更新圓餅圖
             const cats = categoryTotals.value;
             chartAlloc.data.labels = Object.keys(cats);
             chartAlloc.data.datasets[0].data = Object.values(cats);
             chartAlloc.update();
 
+            // 更新趨勢圖
             const src = historyData.value;
             chartHist.data.labels = src.map(h => h.date);
             chartHist.data.datasets[0].data = src.map(h => h.assets);
@@ -434,8 +614,16 @@ createApp({
         }
 
         onMounted(() => { if(sheetUrl.value) fetchPrices(); setTimeout(initCharts, 1000); });
-        watch(currentTab, () => setTimeout(updateCharts, 100));
-        return { currentTab, showSetup, tempUrl, sheetUrl, isUpdating, transactions, historyData, holdings, categoryTotals, cashBalance, totalAssets, totalPrincipal, totalUnrealizedPL, totalReturnRate, reversedTransactions, txForm, riskParams, stats, addTransaction, manualUpdate, takeSnapshot, removeTransaction, saveUrl, fetchPrices, exportAll, getTypeColor, formatNumber, formatPercent };
+        watch([currentTab, exchangeRate], () => setTimeout(updateCharts, 100)); // Tab 切換或匯率變動時重繪
+        return { 
+            currentTab, showSetup, tempUrl, sheetUrl, isUpdating, 
+            transactions, historyData, holdings, categoryTotals, 
+            cashBalanceTwd, totalAssetsTwd, totalPrincipalTwd, totalUnrealizedPL, totalReturnRate, reversedTransactions, 
+            txForm, riskParams, stats, exchangeRate,
+            addTransaction, manualUpdate, takeSnapshot, generateMockData,
+            removeTransaction, removeHistory, saveUrl, fetchPrices, exportAll, 
+            getTypeColor, getCategoryColor, formatNumber, formatPercent 
+        };
     }
 }).mount('#app');
 </script>
