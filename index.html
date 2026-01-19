@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>資產管理大師 v13.0 | 沙盒量化版</title>
+    <title>資產管理大師 v13.1 | 蒙地卡羅版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -11,7 +11,7 @@
     <style>
         body { font-family: 'Microsoft JhengHei', 'Segoe UI', Roboto, sans-serif; background-color: #0f172a; color: #e2e8f0; }
         .glass { background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2); }
-        .glass-sim { background: rgba(50, 20, 20, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(255, 100, 100, 0.2); } /* 沙盒模式背景 */
+        .glass-sim { background: rgba(50, 20, 20, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(255, 100, 100, 0.2); }
         
         .input-dark { background: #1e293b; border: 1px solid #475569; color: white; transition: all 0.2s; }
         .input-dark:focus { border-color: #fbbf24; ring: 2px; outline: none; }
@@ -22,7 +22,7 @@
         
         .btn-primary { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); }
         .btn-gold { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; }
-        .btn-danger { background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); color: white; }
+        .btn-purple { background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); color: white; }
         
         .progress-bar-bg { background: #334155; border-radius: 999px; overflow: hidden; height: 8px; }
         .progress-bar-fill { height: 100%; transition: width 0.5s ease; }
@@ -32,10 +32,6 @@
         .quant-card:hover { background: rgba(255, 255, 255, 0.05); transform: translateY(-2px); }
         .quant-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; opacity: 0.8; }
         .quant-value { font-family: 'Courier New', monospace; font-weight: bold; font-size: 1.25rem; text-shadow: 0 0 10px rgba(0,0,0,0.5); }
-        
-        /* Toggle Switch */
-        .toggle-checkbox:checked { right: 0; border-color: #ef4444; }
-        .toggle-checkbox:checked + .toggle-label { background-color: #ef4444; }
         
         /* Table */
         .excel-table th { background-color: #1e293b; color: #94a3b8; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; border-bottom: 2px solid #334155; }
@@ -56,8 +52,8 @@
         <div class="flex items-center gap-6">
             <h1 class="font-bold text-xl tracking-wide flex items-center gap-2 text-white">
                 <i class="fas fa-chart-line text-yellow-500"></i> 資產管理大師 
-                <span v-if="!isSimMode" class="text-xs bg-yellow-600 px-2 py-0.5 rounded text-black font-bold">v13.0 Production</span>
-                <span v-else class="text-xs bg-red-600 px-2 py-0.5 rounded text-white font-bold animate-pulse">SANDBOX MODE</span>
+                <span v-if="!isSimMode" class="text-xs bg-yellow-600 px-2 py-0.5 rounded text-black font-bold">v13.1 Future</span>
+                <span v-else class="text-xs bg-red-600 px-2 py-0.5 rounded text-white font-bold animate-pulse">SANDBOX</span>
             </h1>
             
             <div class="hidden md:flex items-center gap-3 bg-slate-800 py-1 px-3 rounded-lg border border-slate-700">
@@ -75,13 +71,12 @@
         <div class="flex gap-3 items-center">
              <div class="flex items-center mr-4">
                 <span class="text-xs mr-2 font-bold" :class="isSimMode ? 'text-red-400' : 'text-gray-400'">
-                    {{ isSimMode ? '沙盒模式 (模擬)' : '正式環境 (Real)' }}
+                    {{ isSimMode ? '歷史模擬 (Fake History)' : '真實歷史 (Real History)' }}
                 </span>
                 <button @click="toggleSimMode" class="relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none" :class="isSimMode ? 'bg-red-600' : 'bg-gray-600'">
                     <span class="inline-block w-4 h-4 transform bg-white rounded-full transition-transform" :class="isSimMode ? 'translate-x-6' : 'translate-x-1'"></span>
                 </button>
              </div>
-
              <button @click="fetchPrices" class="p-2 text-blue-400 hover:text-white transition" title="更新報價"><i class="fas fa-sync-alt" :class="{'fa-spin': isUpdating}"></i></button>
              <button @click="exportAll" class="p-2 text-green-400 hover:text-white transition" title="備份資料"><i class="fas fa-download"></i></button>
         </div>
@@ -136,15 +131,14 @@
                     <div class="glass p-5 rounded-2xl col-span-2 flex flex-col">
                         <h4 class="text-white font-bold mb-4 border-l-4 border-emerald-500 pl-3">
                             淨值成長趨勢 (NAV)
-                            <span v-if="isSimMode" class="text-xs bg-red-500 text-white px-2 py-0.5 rounded ml-2">SIMULATION</span>
                         </h4>
                         <div class="flex-1 relative">
                             <canvas id="historyChart"></canvas>
                              <div v-if="displayHistory.length < 2" class="absolute inset-0 flex items-center justify-center text-gray-500 text-xs bg-gray-900/50 rounded-lg">
                                 <div class="text-center">
                                     <p class="text-lg mb-2"><i class="fas fa-chart-line text-gray-600 text-4xl"></i></p>
-                                    <p>需要更多數據</p>
-                                    <p class="mt-1">請補登紀錄或開啟沙盒模式</p>
+                                    <p>需要歷史數據</p>
+                                    <p class="mt-1">請補登紀錄或開啟「歷史模擬」</p>
                                 </div>
                             </div>
                         </div>
@@ -160,7 +154,6 @@
                             * 現價由外幣 x {{ exchangeRate }} 換算
                         </div>
                     </div>
-                    
                     <div class="overflow-auto flex-1 p-0">
                         <table class="w-full text-left whitespace-nowrap excel-table">
                             <thead>
@@ -216,28 +209,26 @@
                         <h3 class="font-bold text-white text-lg flex items-center gap-2">
                             <i class="fas fa-brain" :class="isSimMode ? 'text-red-500' : 'text-yellow-500'"></i> 
                             量化風險分析 (Quant)
-                            <span v-if="isSimMode" class="text-xs bg-red-600 px-2 rounded text-white ml-2">SANDBOX ACTIVE</span>
+                            <span v-if="isSimMode" class="text-xs bg-red-600 px-2 rounded text-white ml-2">SIMULATION DATA</span>
                         </h3>
-                        <p class="text-xs text-gray-400 mt-1" v-if="isSimMode">
-                            * 目前使用虛擬數據，不會覆蓋真實資料。
-                        </p>
                     </div>
                     <div class="flex gap-4 items-center">
                         <div class="flex items-center gap-2 text-xs mr-2">
-                             <label class="text-gray-400">Rf (年化):</label>
+                             <label class="text-gray-400">Rf (年化%):</label>
                              <input v-model.number="riskParams.rf" type="number" step="0.1" class="w-12 input-dark p-1 rounded text-center">
                              <label class="text-gray-400">Beta:</label>
                              <input v-model.number="riskParams.beta" type="number" step="0.1" class="w-12 input-dark p-1 rounded text-center">
                         </div>
                         
+                        <button @click="openMonteCarlo" class="btn-purple px-4 py-2 rounded font-bold text-xs flex items-center gap-2 shadow-lg hover:shadow-purple-500/50 transition transform hover:scale-105">
+                            <i class="fas fa-random"></i> 蒙地卡羅 (未來模擬)
+                        </button>
+
                         <button v-if="isSimMode" @click="generateMonthlyMockData" class="text-red-300 hover:text-white text-xs border border-red-500/50 bg-red-900/20 px-3 py-2 rounded transition animate-pulse">
-                            <i class="fas fa-dice mr-1"></i> 重刷數據
+                            <i class="fas fa-dice mr-1"></i> 重刷歷史數據
                         </button>
                         <button v-if="!isSimMode" @click="showHistoryModal = true" class="text-blue-400 hover:text-white text-xs border border-blue-500/50 px-3 py-2 rounded transition">
                             <i class="fas fa-edit mr-1"></i> 補登紀錄
-                        </button>
-                        <button v-if="!isSimMode" @click="takeSnapshot" class="btn-gold px-6 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2">
-                            <i class="fas fa-camera"></i> 快照
                         </button>
                     </div>
                 </div>
@@ -254,15 +245,15 @@
                     
                     <div class="quant-card">
                         <div class="quant-label text-yellow-400">夏普 (Sharpe)</div>
-                        <div class="quant-value text-white">{{ stats.sharpe }}</div>
+                        <div class="quant-value text-white">{{ stats.sharpe }}%</div>
                     </div>
                     <div class="quant-card">
                         <div class="quant-label text-yellow-400">索提諾 (Sortino)</div>
-                        <div class="quant-value text-white">{{ stats.sortino }}</div>
+                        <div class="quant-value text-white">{{ stats.sortino }}%</div>
                     </div>
                     <div class="quant-card">
                         <div class="quant-label text-yellow-400">崔娜 (Treynor)</div>
-                        <div class="quant-value text-white">{{ stats.treynor }}</div>
+                        <div class="quant-value text-white">{{ stats.treynor }}%</div>
                     </div>
 
                     <div class="quant-card">
@@ -321,7 +312,6 @@
             <div v-if="currentTab === 'ledger'" class="flex flex-col md:flex-row gap-6 h-full max-h-[85vh]">
                  <div class="w-full md:w-80 glass p-5 rounded-xl h-fit space-y-4">
                     <h3 class="font-bold text-white text-lg border-b border-gray-700 pb-2">新增交易 (TWD)</h3>
-                    
                     <div>
                         <label class="text-xs text-gray-400 mb-1 block">1. 資產類別</label>
                         <div class="grid grid-cols-2 gap-2">
@@ -331,7 +321,6 @@
                              <button @click="txForm.category='加密貨幣'" :class="txForm.category==='加密貨幣'?'bg-purple-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs transition">加密貨幣</button>
                         </div>
                     </div>
-
                     <div>
                         <label class="text-xs text-gray-400 mb-1 block">2. 交易內容</label>
                         <div class="grid grid-cols-2 gap-2 mb-2">
@@ -344,7 +333,6 @@
                             </select>
                         </div>
                         <input v-model="txForm.ticker" placeholder="代號 / 名稱 (如 AAPL)" class="w-full input-dark p-2 rounded text-xs uppercase mb-2">
-                        
                         <div v-if="['Buy','Sell'].includes(txForm.type)">
                             <div class="grid grid-cols-2 gap-2 mb-2">
                                 <div>
@@ -360,15 +348,12 @@
                                 總金額: <span class="text-white font-bold">{{ formatNumber((txForm.price || 0) * (txForm.shares || 0)) }}</span> TWD
                             </div>
                         </div>
-
                         <div v-if="['Deposit','Dividend'].includes(txForm.type)">
                              <input v-model.number="txForm.amount" type="number" placeholder="總金額 (TWD)" class="w-full input-dark p-2 rounded text-xs">
                         </div>
                     </div>
-
                     <button @click="addTransaction" class="w-full btn-primary text-white rounded-lg font-bold text-sm py-3 shadow-lg">確認送出 (TWD)</button>
                  </div>
-
                  <div class="flex-1 glass rounded-xl overflow-hidden flex flex-col">
                     <div class="p-4 bg-gray-800/50 border-b border-gray-700">
                         <h3 class="font-bold text-white">交易流水帳 (TWD)</h3>
@@ -407,6 +392,29 @@
                 </div>
             </div>
 
+            <div v-if="showMCModal" class="fixed inset-0 bg-black/95 flex items-center justify-center z-[100]">
+                <div class="glass p-6 rounded-xl w-full max-w-4xl h-[80vh] flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                            <i class="fas fa-random text-purple-400"></i> 蒙地卡羅未來模擬 (Monte Carlo)
+                        </h3>
+                        <div class="text-xs text-gray-400">
+                             基於歷史 Volatility: <span class="text-white font-bold">{{ mcParams.vol }}%</span> | 
+                             歷史 Annual Mean: <span class="text-white font-bold">{{ mcParams.mean }}%</span>
+                        </div>
+                    </div>
+                    <div class="flex-1 bg-gray-900 rounded-xl relative p-4 mb-4 border border-gray-700">
+                        <canvas id="mcChart"></canvas>
+                    </div>
+                    <div class="flex justify-between items-center">
+                         <div class="text-xs text-gray-500">
+                             * 模擬 100 條路徑 (Geometric Brownian Motion)
+                         </div>
+                        <button @click="showMCModal=false" class="bg-gray-700 hover:bg-gray-600 px-6 py-2 rounded text-white font-bold transition">關閉</button>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </main>
 </div>
@@ -418,43 +426,39 @@ createApp({
     setup() {
         const currentTab = ref('summary');
         const showHistoryModal = ref(false);
+        const showMCModal = ref(false);
         const isUpdating = ref(false);
-        const isSimMode = ref(false); // 沙盒模式開關
+        const isSimMode = ref(false);
         
         const exchangeRate = ref(parseFloat(localStorage.getItem('exchangeRate')) || 32.5);
         watch(exchangeRate, (val) => localStorage.setItem('exchangeRate', val));
         const riskParams = ref({ rf: 1.5, beta: 1.0 });
 
         const transactions = ref(JSON.parse(localStorage.getItem('ledgerData') || '[]'));
-        const realHistoryData = ref(JSON.parse(localStorage.getItem('historyData') || '[]')); // 真實資料
-        const mockHistoryData = ref([]); // 模擬資料 (不存 LocalStorage)
+        const realHistoryData = ref(JSON.parse(localStorage.getItem('historyData') || '[]'));
+        const mockHistoryData = ref([]);
         const priceMap = ref(JSON.parse(localStorage.getItem('priceMap') || '{}'));
         
         const txForm = ref({ date: new Date().toISOString().split('T')[0], type: 'Buy', category: '美股', ticker: '', price: null, shares: null, amount: null });
         const historyForm = ref({ date: new Date().toISOString().split('T')[0], assets: null, cost: null });
+        const mcParams = ref({ vol: 0, mean: 0 });
 
-        // --- Core: Display History Logic ---
-        // 根據模式決定要顯示哪一份資料
         const displayHistory = computed(() => isSimMode.value ? mockHistoryData.value : realHistoryData.value);
 
-        // --- Toggle Simulation ---
         function toggleSimMode() {
             isSimMode.value = !isSimMode.value;
-            // 如果切換到模擬模式且沒有資料，自動產生一份
             if (isSimMode.value && mockHistoryData.value.length === 0) {
                 generateMonthlyMockData();
             }
             updateCharts();
         }
 
-        // --- TWD Base Holdings Logic ---
         const holdings = computed(() => {
             const map = {};
             transactions.value.forEach(tx => {
                 if(!tx.ticker) return;
                 const t = tx.ticker.toUpperCase();
                 if(!map[t]) map[t] = { ticker: t, category: tx.category || '台股', shares: 0, totalCostTwd: 0 };
-                
                 if(tx.type === 'Buy') { 
                     map[t].shares += tx.shares; 
                     map[t].totalCostTwd += Math.abs(tx.totalCashFlow); 
@@ -491,7 +495,6 @@ createApp({
         const totalStockReturnRate = computed(() => totalStockCostTwd.value ? ((totalStockUnrealizedPL.value/totalStockCostTwd.value)*100).toFixed(2) : 0);
         const reversedTransactions = computed(() => [...transactions.value].reverse());
 
-        // --- Enriched History for Table ---
         const enrichedHistory = computed(() => {
             const sorted = [...displayHistory.value].sort((a,b) => new Date(a.date) - new Date(b.date));
             return sorted.map((item, index) => {
@@ -505,95 +508,132 @@ createApp({
             }).reverse();
         });
 
-        // --- QUANT ENGINE v13.0 (Full Metrics) ---
+        // --- QUANT ENGINE v13.1 (With Percentages) ---
         const stats = computed(() => {
             const data = displayHistory.value;
-            // Initial placeholders
             const empty = { twr:'-', mwr:'-', sharpe:'-', sortino:'-', treynor:'-', var95:'-', cvar95:'-', skew:'-', kurt:'-', stdDev:'-' };
             if (data.length < 3) return empty;
             
             const sorted = [...data].sort((a,b) => new Date(a.date) - new Date(b.date));
             const returns = []; 
-            
             for(let i=1; i<sorted.length; i++) {
                 const prev = sorted[i-1]; const curr = sorted[i];
                 const netFlow = curr.cost - prev.cost; 
-                if (prev.assets > 0) {
-                    returns.push((curr.assets - prev.assets - netFlow) / prev.assets);
-                }
+                if (prev.assets > 0) returns.push((curr.assets - prev.assets - netFlow) / prev.assets);
             }
             if (returns.length < 2) return empty;
 
-            // 1. TWR
             const twr = returns.reduce((acc, r) => acc * (1 + r), 1) - 1;
-
-            // 2. MWR (Simplified)
             const startV = sorted[0].assets;
             const endV = sorted[sorted.length-1].assets;
             const totalFlows = sorted[sorted.length-1].cost - sorted[0].cost;
             const mwr = (endV - startV - totalFlows) / (startV + 0.5 * totalFlows);
 
-            // 3. Volatility & Distribution
             const n = returns.length;
             const avgR = returns.reduce((a,b)=>a+b,0)/n;
             const variance = returns.reduce((a,b) => a + Math.pow(b-avgR, 2), 0)/(n-1);
             const stdDev = Math.sqrt(variance);
-            const annStdDev = stdDev * Math.sqrt(12); // Annualized
+            const annStdDev = stdDev * Math.sqrt(12);
 
-            // Skewness
             const m3 = returns.reduce((a,b) => a + Math.pow(b-avgR, 3), 0) / n;
-            const skew = m3 / Math.pow(stdDev, 3); // Sample Skewness simplified
-
-            // Kurtosis (Excess)
+            const skew = m3 / Math.pow(stdDev, 3);
             const m4 = returns.reduce((a,b) => a + Math.pow(b-avgR, 4), 0) / n;
             const kurt = (m4 / Math.pow(stdDev, 4)) - 3;
 
-            // 4. Risk Adjusted
             const annReturn = avgR * 12;
             const rf = riskParams.value.rf / 100;
             const beta = riskParams.value.beta;
 
-            const sharpe = (annReturn - rf) / (annStdDev || 1);
-            const treynor = (annReturn - rf) / (beta || 1);
+            // Updated to use % (multiply ratio by 100)
+            const sharpe = ((annReturn - rf) / (annStdDev || 1)) * 100;
+            const treynor = ((annReturn - rf) / (beta || 1)) * 100;
 
             const downside = returns.filter(r=>r<0);
             const downsideVar = downside.length > 0 ? downside.reduce((a,b)=>a+Math.pow(b,2),0)/n : 0;
-            const sortino = (annReturn - rf) / (Math.sqrt(downsideVar) * Math.sqrt(12));
+            const sortino = ((annReturn - rf) / (Math.sqrt(downsideVar) * Math.sqrt(12))) * 100;
 
-            // 5. Tail Risk (VaR / CVaR)
             const sortedR = [...returns].sort((a,b)=>a-b);
             const idx95 = Math.floor(n * 0.05);
-            const var95 = sortedR[idx95] || 0; // Value at Risk
+            const var95 = sortedR[idx95] || 0;
             const tailLosses = sortedR.slice(0, idx95+1);
             const cvar95 = tailLosses.length > 0 ? tailLosses.reduce((a,b)=>a+b,0)/tailLosses.length : var95;
+            
+            // Store params for Monte Carlo
+            mcParams.value = { vol: (annStdDev*100).toFixed(2), mean: (annReturn*100).toFixed(2) };
 
             return { 
-                twr: (twr*100).toFixed(2), 
-                mwr: (mwr*100).toFixed(2),
-                sharpe: sharpe.toFixed(2), 
-                sortino: isFinite(sortino)?sortino.toFixed(2):'∞', 
-                treynor: isFinite(treynor)?treynor.toFixed(2):'∞',
-                var95: (var95*100).toFixed(2), 
-                cvar95: (cvar95*100).toFixed(2),
-                stdDev: (annStdDev*100).toFixed(2),
-                skew: skew.toFixed(2),
-                kurt: kurt.toFixed(2)
+                twr: (twr*100).toFixed(2), mwr: (mwr*100).toFixed(2),
+                sharpe: sharpe.toFixed(2), sortino: isFinite(sortino)?sortino.toFixed(2):'∞', treynor: isFinite(treynor)?treynor.toFixed(2):'∞',
+                var95: (var95*100).toFixed(2), cvar95: (cvar95*100).toFixed(2),
+                stdDev: (annStdDev*100).toFixed(2), skew: skew.toFixed(2), kurt: kurt.toFixed(2)
             };
         });
 
-        // --- Operations ---
+        // --- Monte Carlo Logic ---
+        function openMonteCarlo() {
+            if(displayHistory.value.length < 5) { alert('歷史數據不足 (Need History to simulate Future)'); return; }
+            showMCModal.value = true;
+            nextTick(runMonteCarlo);
+        }
+
+        function runMonteCarlo() {
+            const ctx = document.getElementById('mcChart');
+            if(!ctx) return;
+            
+            // Params from History
+            const annualMean = parseFloat(mcParams.value.mean) / 100;
+            const annualVol = parseFloat(mcParams.value.vol) / 100;
+            const startPrice = totalStockValueTwd.value || 100000;
+            const steps = 252; // Daily steps for 1 year
+            const dt = 1/252;
+            const sims = 100; // 100 paths
+            
+            const datasets = [];
+            for(let s=0; s<sims; s++) {
+                const data = [startPrice];
+                let current = startPrice;
+                for(let t=1; t<=steps; t++) {
+                    // Geometric Brownian Motion: dS = S * (mu*dt + sigma*dW)
+                    const u1 = Math.random(); const u2 = Math.random();
+                    const z = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2); // Box-Muller
+                    const drift = (annualMean - 0.5 * annualVol * annualVol) * dt;
+                    const shock = annualVol * Math.sqrt(dt) * z;
+                    current = current * Math.exp(drift + shock);
+                    if(t % 5 === 0) data.push(current); // Downsample for chart performance
+                }
+                datasets.push({ 
+                    data: data, 
+                    borderColor: s===0 ? '#f59e0b' : 'rgba(139, 92, 246, 0.15)', // Highlight first, others dim
+                    borderWidth: s===0 ? 2 : 1,
+                    pointRadius: 0,
+                    fill: false
+                });
+            }
+
+            if(window.mcChartInstance) window.mcChartInstance.destroy();
+            window.mcChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: { 
+                    labels: Array.from({length: Math.ceil(steps/5)+1}, (_, i) => i),
+                    datasets: datasets 
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, title: { display: true, text: '未來一年資產走勢預測 (100 Paths)', color: 'white' } },
+                    scales: { x: { display: false }, y: { grid: { color: '#334155' } } }
+                }
+            });
+        }
+
+        // --- Standard Operations ---
         function addTransaction() {
             const { date, type, category, ticker, price, shares, amount } = txForm.value;
             if(!date) return;
             let cf = 0;
-            if(type === 'Buy') {
-                if(!shares || shares <= 0) { alert('請輸入數量'); return; }
-                cf = -(price * shares);
-            } else if(type === 'Sell') {
-                if(!shares || shares <= 0) { alert('請輸入數量'); return; }
-                cf = (price * shares);
-            } else if(type === 'Deposit' || type === 'Dividend') cf = amount || 0;
-            
+            if(type === 'Buy') { if(!shares) return; cf = -(price * shares); }
+            else if(type === 'Sell') { if(!shares) return; cf = (price * shares); }
+            else cf = amount || 0;
             transactions.value.push({ date, type, category, ticker: ticker?.toUpperCase(), price, shares, amount, totalCashFlow: cf });
             saveData();
             txForm.value.ticker = ''; txForm.value.price = null; txForm.value.shares = null; txForm.value.amount = null;
@@ -601,15 +641,12 @@ createApp({
         }
 
         function addHistoryRecord() {
-            // Only allow editing Real Data manually
-            if(isSimMode.value) { alert('沙盒模式無法手動補登，請使用自動生成功能'); return; }
-
+            if(isSimMode.value) { alert('沙盒模式無法手動補登'); return; }
             const { date, assets, cost } = historyForm.value;
             if(!date || !assets) return;
             const idx = realHistoryData.value.findIndex(h => h.date === date);
             if(idx !== -1) realHistoryData.value[idx] = { date, assets, cost };
             else realHistoryData.value.push({ date, assets, cost });
-            
             realHistoryData.value.sort((a,b) => new Date(a.date) - new Date(b.date));
             localStorage.setItem('historyData', JSON.stringify(realHistoryData.value));
             historyForm.value.assets = null; historyForm.value.cost = null;
@@ -617,22 +654,18 @@ createApp({
         }
 
         function generateMonthlyMockData() {
-            // Always generate into mockHistoryData
             const mock = [];
             let base = 1000000; let cost = 800000;
-            // Generate more points for better Skew/Kurt visualization (24 months)
             for(let i=24; i>=0; i--) {
                 const d = new Date(); d.setMonth(d.getMonth() - i); d.setDate(28);
-                // Add some "Fat Tail" events occasionally
                 let noise = (Math.random()-0.48)*0.10; 
-                if (Math.random() > 0.95) noise = -0.15; // Black swan crash
-
+                if (Math.random() > 0.95) noise = -0.15;
                 base = base * (1 + noise);
                 if(i%3===0) { cost += 50000; base += 50000; }
                 mock.push({ date: d.toISOString().split('T')[0], assets: Math.round(base), cost: cost });
             }
             mockHistoryData.value = mock;
-            if(!isSimMode.value) toggleSimMode(); // Switch to Sim if not already
+            if(!isSimMode.value) toggleSimMode();
             else updateCharts();
         }
 
@@ -679,16 +712,14 @@ createApp({
             if (allocCtx) chartAlloc = new Chart(allocCtx, { type: 'doughnut', data: { labels: [], datasets: [{ data: [], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } }, cutout: '70%' } });
             
             if (histCtx) {
-                // Change color based on mode
                 const lineColor = isSimMode.value ? '#ef4444' : '#3b82f6';
                 const areaColor = isSimMode.value ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59,130,246,0.1)';
-                
                 chartHist = new Chart(histCtx, { 
                     type: 'line', 
                     data: { 
                         labels: [], 
                         datasets: [
-                            { label: isSimMode.value ? 'NAV (SIMULATION)' : 'NAV (Real)', borderColor: lineColor, backgroundColor: areaColor, fill: true, tension: 0.3 }, 
+                            { label: isSimMode.value ? 'NAV (SIM)' : 'NAV (Real)', borderColor: lineColor, backgroundColor: areaColor, fill: true, tension: 0.3 }, 
                             { label: 'Cost', borderColor: '#10b981', borderDash: [5,5], pointRadius: 0 }
                         ] 
                     }, 
@@ -718,7 +749,7 @@ createApp({
         }
         onMounted(() => { setTimeout(updateCharts, 1000); });
         watch([currentTab, exchangeRate], () => updateCharts());
-        return { currentTab, showHistoryModal, isUpdating, isSimMode, toggleSimMode, transactions, realHistoryData, mockHistoryData, displayHistory, enrichedHistory, holdings, categoryTotals, totalStockValueTwd, totalStockCostTwd, totalStockUnrealizedPL, totalStockReturnRate, reversedTransactions, txForm, historyForm, riskParams, stats, exchangeRate, addTransaction, addHistoryRecord, generateMonthlyMockData, removeHistoryByDate, manualUpdate, takeSnapshot, removeTransaction, fetchPrices, exportAll, getTypeColor, getCategoryBadgeClass, getCategoryColorCode, formatNumber, formatPercent };
+        return { currentTab, showHistoryModal, showMCModal, isUpdating, isSimMode, toggleSimMode, transactions, realHistoryData, mockHistoryData, displayHistory, enrichedHistory, holdings, categoryTotals, totalStockValueTwd, totalStockCostTwd, totalStockUnrealizedPL, totalStockReturnRate, reversedTransactions, txForm, historyForm, riskParams, stats, mcParams, exchangeRate, addTransaction, addHistoryRecord, generateMonthlyMockData, removeHistoryByDate, manualUpdate, takeSnapshot, removeTransaction, fetchPrices, exportAll, getTypeColor, getCategoryBadgeClass, getCategoryColorCode, formatNumber, formatPercent, openMonteCarlo, runMonteCarlo };
     }
 }).mount('#app');
 </script>
