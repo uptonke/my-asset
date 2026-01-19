@@ -3,294 +3,547 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alpha Portfolio | ENTJ Management</title>
+    <title>ENTJ Asset Master | 全方位帳務系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #0f172a; color: #e2e8f0; }
-        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .input-dark { background: #334155; border: 1px solid #475569; color: white; }
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0f172a; color: #e2e8f0; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .input-dark { background: #1e293b; border: 1px solid #334155; color: white; transition: all 0.2s; }
+        .input-dark:focus { border-color: #3b82f6; ring: 2px; outline: none; }
+        .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; }
+        .tab-inactive { color: #64748b; }
+        .tab-inactive:hover { color: #94a3b8; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
     </style>
 </head>
-<body class="antialiased min-h-screen">
+<body class="antialiased h-screen overflow-hidden flex flex-col">
 
-<div id="app" class="container mx-auto p-4 max-w-7xl">
+<div id="app" class="h-full flex flex-col">
     
-    <div v-if="!sheetUrl" class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
-        <div class="glass p-8 rounded-xl max-w-lg w-full">
-            <h2 class="text-2xl font-bold text-white mb-4">系統初始化</h2>
-            <p class="text-gray-400 mb-4">請貼上 Phase 1 取得的 Google Sheets CSV 連結：</p>
-            <input v-model="tempUrl" type="text" placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv" class="w-full p-3 rounded input-dark mb-4 text-sm">
-            <button @click="saveUrl" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded font-bold transition">啟動系統</button>
-        </div>
-    </div>
-
-    <div v-else>
-        <header class="flex flex-col md:flex-row justify-between items-center mb-8 py-4 border-b border-gray-700">
-            <div>
-                <h1 class="text-3xl font-bold text-white tracking-tight">ALPHA PORTFOLIO</h1>
-                <p class="text-gray-400 text-sm mt-1">資產配置管理系統 | 即時連動 Google Sheets</p>
+    <header class="glass z-50 flex-none">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-6">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-layer-group text-blue-500 text-xl"></i>
+                    <h1 class="font-bold text-lg tracking-wide">ASSET MASTER <span class="text-xs text-gray-500 font-normal">v4.0</span></h1>
+                </div>
+                
+                <nav class="flex gap-6 ml-8 text-sm font-semibold">
+                    <button @click="currentTab = 'summary'" :class="currentTab === 'summary' ? 'tab-active' : 'tab-inactive'" class="py-5 px-1 transition">
+                        <i class="fas fa-chart-pie mr-1"></i> 資產總計
+                    </button>
+                    <button @click="currentTab = 'holdings'" :class="currentTab === 'holdings' ? 'tab-active' : 'tab-inactive'" class="py-5 px-1 transition">
+                        <i class="fas fa-list-ul mr-1"></i> 連結資料 (庫存)
+                    </button>
+                    <button @click="currentTab = 'ledger'" :class="currentTab === 'ledger' ? 'tab-active' : 'tab-inactive'" class="py-5 px-1 transition">
+                        <i class="fas fa-history mr-1"></i> 流水帳 (交易)
+                    </button>
+                </nav>
             </div>
-            <div class="flex items-center gap-3 mt-4 md:mt-0">
-                <span class="text-xs text-gray-500 mr-2">上次更新: {{ lastUpdate || '尚未更新' }}</span>
-                <button @click="fetchPrices" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded text-sm font-bold transition flex items-center">
-                    <i class="fas fa-sync-alt mr-2" :class="{'fa-spin': isUpdating}"></i> 同步報價
+
+            <div class="flex items-center gap-3">
+                <div class="text-right mr-2 hidden md:block">
+                    <p class="text-xs text-gray-400">現金餘額 (Cash)</p>
+                    <p class="font-mono font-bold text-emerald-400">${{ formatNumber(cashBalance) }}</p>
+                </div>
+                <button @click="fetchPrices" class="p-2 text-gray-400 hover:text-white transition" title="更新報價">
+                    <i class="fas fa-sync-alt" :class="{'fa-spin': isUpdating}"></i>
                 </button>
-                <button @click="resetUrl" class="text-gray-500 hover:text-white text-sm"><i class="fas fa-cog"></i></button>
-            </div>
-        </header>
-
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div class="glass p-5 rounded-lg border-l-4 border-blue-500">
-                <div class="text-gray-400 text-xs uppercase tracking-wider">Net Asset Value</div>
-                <div class="text-2xl font-bold text-white mt-1">${{ formatNumber(totalMarketValue) }}</div>
-            </div>
-            <div class="glass p-5 rounded-lg border-l-4 border-gray-500">
-                <div class="text-gray-400 text-xs uppercase tracking-wider">Invested Capital</div>
-                <div class="text-2xl font-bold text-white mt-1">${{ formatNumber(totalCost) }}</div>
-            </div>
-            <div class="glass p-5 rounded-lg" :class="totalPnL >= 0 ? 'border-l-4 border-red-500' : 'border-l-4 border-green-500'">
-                <div class="text-gray-400 text-xs uppercase tracking-wider">Unrealized P/L</div>
-                <div class="text-2xl font-bold mt-1" :class="totalPnL >= 0 ? 'text-red-400' : 'text-green-400'">
-                    {{ totalPnL >= 0 ? '+' : '' }}{{ formatNumber(totalPnL) }}
-                    <span class="text-sm ml-1 opacity-80">({{ totalRoi }}%)</span>
-                </div>
-            </div>
-            <div class="glass p-5 rounded-lg border-l-4 border-purple-500">
-                <div class="text-gray-400 text-xs uppercase tracking-wider">Holdings</div>
-                <div class="text-2xl font-bold text-white mt-1">{{ portfolio.length }} Positions</div>
+                <button @click="exportData" class="p-2 text-gray-400 hover:text-white transition" title="備份資料">
+                    <i class="fas fa-download"></i>
+                </button>
             </div>
         </div>
+    </header>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div class="lg:col-span-2 space-y-6">
-                <div class="glass p-6 rounded-xl">
-                    <h3 class="text-lg font-bold text-white mb-4"><i class="fas fa-plus-circle text-blue-500 mr-2"></i>New Position</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-                        <input v-model="newItem.date" type="date" class="input-dark p-2 rounded">
-                        <input v-model="newItem.ticker" type="text" placeholder="Ticker (e.g. 2330)" class="input-dark p-2 rounded uppercase">
-                        <input v-model.number="newItem.price" type="number" placeholder="Cost Price" class="input-dark p-2 rounded">
-                        <input v-model.number="newItem.shares" type="number" placeholder="Shares" class="input-dark p-2 rounded">
+    <main class="flex-1 overflow-y-auto p-4 md:p-6 bg-gradient-to-br from-gray-900 to-gray-800">
+        <div class="max-w-7xl mx-auto h-full">
+
+            <div v-if="currentTab === 'summary'" class="space-y-6 animate-fade-in">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="glass p-6 rounded-2xl relative overflow-hidden group">
+                        <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition"><i class="fas fa-wallet text-6xl text-blue-500"></i></div>
+                        <h3 class="text-gray-400 text-sm font-bold uppercase tracking-wider">總資產 (Total Assets)</h3>
+                        <p class="text-4xl font-bold text-white mt-2">${{ formatNumber(totalAssets) }}</p>
+                        <div class="mt-4 flex gap-2 text-xs">
+                            <span class="px-2 py-1 rounded bg-blue-500/20 text-blue-300">現金: {{ formatPercent(cashBalance / totalAssets) }}</span>
+                            <span class="px-2 py-1 rounded bg-purple-500/20 text-purple-300">證券: {{ formatPercent(stockValue / totalAssets) }}</span>
+                        </div>
                     </div>
-                    <button @click="addRecord" class="w-full mt-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded font-medium transition">Execute Trade</button>
-                    <p class="text-xs text-gray-500 mt-2">* 新增代號後，請確認 Google Sheet A欄也有對應代號。</p>
+                    
+                    <div class="glass p-6 rounded-2xl relative overflow-hidden group">
+                        <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition"><i class="fas fa-chart-line text-6xl text-emerald-500"></i></div>
+                        <h3 class="text-gray-400 text-sm font-bold uppercase tracking-wider">未實現損益 (Unrealized P/L)</h3>
+                        <p class="text-4xl font-bold mt-2" :class="totalUnrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
+                            {{ totalUnrealizedPL >= 0 ? '+' : '' }}{{ formatNumber(totalUnrealizedPL) }}
+                        </p>
+                        <p class="text-sm mt-1 opacity-70">報酬率: {{ totalReturnRate }}%</p>
+                    </div>
+
+                    <div class="glass p-6 rounded-2xl relative overflow-hidden group">
+                        <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition"><i class="fas fa-coins text-6xl text-yellow-500"></i></div>
+                        <h3 class="text-gray-400 text-sm font-bold uppercase tracking-wider">總投入成本 (Principal)</h3>
+                        <p class="text-4xl font-bold text-white mt-2">${{ formatNumber(totalPrincipal) }}</p>
+                        <p class="text-sm mt-1 text-gray-500">含手續費與稅金</p>
+                    </div>
                 </div>
 
-                <div class="glass p-6 rounded-xl overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead>
-                            <tr class="text-gray-400 text-xs border-b border-gray-700 uppercase">
-                                <th class="pb-3">Ticker</th>
-                                <th class="pb-3 text-right">Avg Cost</th>
-                                <th class="pb-3 text-right">Shares</th>
-                                <th class="pb-3 text-right">Mkt Price</th>
-                                <th class="pb-3 text-right">Mkt Value</th>
-                                <th class="pb-3 text-right">ROI</th>
-                                <th class="pb-3 text-center">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody class="text-sm text-gray-300">
-                            <tr v-for="(item, index) in portfolio" :key="index" class="border-b border-gray-800 hover:bg-gray-800 transition">
-                                <td class="py-4 font-bold text-white">{{ item.ticker }}</td>
-                                <td class="py-4 text-right">{{ formatNumber(item.avgPrice) }}</td>
-                                <td class="py-4 text-right">{{ formatNumber(item.shares) }}</td>
-                                <td class="py-4 text-right text-yellow-400 font-mono">{{ item.currentPrice || 'Loading...' }}</td>
-                                <td class="py-4 text-right font-medium text-white">{{ formatNumber(item.shares * (item.currentPrice || item.avgPrice)) }}</td>
-                                <td class="py-4 text-right font-bold" :class="getReturn(item) >= 0 ? 'text-red-400' : 'text-green-400'">
-                                    {{ getReturn(item) }}%
-                                </td>
-                                <td class="py-4 text-center">
-                                    <button @click="removeRecord(index)" class="text-gray-600 hover:text-red-500"><i class="fas fa-times"></i></button>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-96">
+                    <div class="glass p-6 rounded-2xl col-span-1 flex flex-col">
+                        <h3 class="font-bold text-white mb-4 text-center">資產配置 (Allocation)</h3>
+                        <div class="flex-1 relative">
+                            <canvas id="allocationChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="glass p-6 rounded-2xl col-span-2 flex flex-col">
+                        <h3 class="font-bold text-white mb-4">資產成長趨勢 (Growth)</h3>
+                        <div class="flex-1 relative w-full h-full">
+                            <canvas id="historyChart"></canvas>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="space-y-6">
-                <div class="glass p-6 rounded-xl">
-                    <h3 class="text-white font-bold mb-4">Allocation</h3>
-                    <canvas id="allocationChart"></canvas>
-                </div>
-                <div class="glass p-6 rounded-xl">
-                    <h3 class="text-white font-bold mb-4">Performance</h3>
-                    <canvas id="comparisonChart"></canvas>
-                </div>
-                <div class="glass p-4 rounded-xl text-center">
-                    <button @click="exportData" class="text-gray-400 hover:text-white text-sm underline">Export Data to CSV</button>
+            <div v-if="currentTab === 'holdings'" class="h-full flex flex-col animate-fade-in">
+                <div class="glass rounded-xl overflow-hidden flex-1 flex flex-col">
+                    <div class="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800/50">
+                        <h3 class="font-bold text-white"><i class="fas fa-list text-blue-500 mr-2"></i>庫存明細</h3>
+                        <span class="text-xs text-gray-500">價格來源: {{ sheetUrl ? 'Google Sheets' : '手動輸入' }}</span>
+                    </div>
+                    <div class="overflow-auto flex-1">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="sticky top-0 bg-gray-800 text-xs text-gray-400 uppercase font-semibold z-10 shadow-md">
+                                <tr>
+                                    <th class="p-4">標的 (Ticker)</th>
+                                    <th class="p-4 text-right">庫存 (Qty)</th>
+                                    <th class="p-4 text-right">均價 (Avg Cost)</th>
+                                    <th class="p-4 text-right">現價 (Mkt Price)</th>
+                                    <th class="p-4 text-right">市值 (Mkt Value)</th>
+                                    <th class="p-4 text-right">損益 (P/L)</th>
+                                    <th class="p-4 text-right">占比 (%)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-800 text-sm">
+                                <tr v-for="stock in holdings" :key="stock.ticker" class="hover:bg-white/5 transition group">
+                                    <td class="p-4 font-bold text-white">{{ stock.ticker }}</td>
+                                    <td class="p-4 text-right font-mono text-gray-300">{{ formatNumber(stock.shares) }}</td>
+                                    <td class="p-4 text-right font-mono text-gray-400">{{ formatNumber(stock.avgCost) }}</td>
+                                    <td class="p-4 text-right font-mono font-bold text-yellow-400">
+                                        <input v-if="!sheetUrl" v-model.number="stock.manualPrice" @change="manualUpdate" class="w-20 bg-transparent text-right outline-none border-b border-gray-600 focus:border-blue-500" placeholder="Price">
+                                        <span v-else>{{ formatNumber(stock.currentPrice) }}</span>
+                                    </td>
+                                    <td class="p-4 text-right font-mono text-white">{{ formatNumber(stock.marketValue) }}</td>
+                                    <td class="p-4 text-right font-bold" :class="stock.unrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
+                                        {{ formatNumber(stock.unrealizedPL) }} <span class="text-xs opacity-75">({{ stock.returnRate }}%)</span>
+                                    </td>
+                                    <td class="p-4 text-right text-gray-500">{{ formatPercent(stock.marketValue / totalAssets) }}</td>
+                                </tr>
+                                <tr class="bg-blue-900/10 border-t border-blue-900/30">
+                                    <td class="p-4 font-bold text-blue-300"><i class="fas fa-money-bill-wave mr-2"></i>現金 (Cash)</td>
+                                    <td class="p-4" colspan="3"></td>
+                                    <td class="p-4 text-right font-bold text-blue-300">{{ formatNumber(cashBalance) }}</td>
+                                    <td class="p-4"></td>
+                                    <td class="p-4 text-right text-blue-300">{{ formatPercent(cashBalance / totalAssets) }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
+
+            <div v-if="currentTab === 'ledger'" class="h-full flex flex-col md:flex-row gap-6 animate-fade-in">
+                <div class="w-full md:w-80 glass p-6 rounded-xl flex-none space-y-4 h-fit">
+                    <h3 class="font-bold text-white border-b border-gray-700 pb-2">新增交易</h3>
+                    
+                    <div>
+                        <label class="text-xs text-gray-400 block mb-1">日期 (Date)</label>
+                        <input v-model="txForm.date" type="date" class="w-full input-dark p-2 rounded">
+                    </div>
+
+                    <div>
+                        <label class="text-xs text-gray-400 block mb-1">類別 (Type)</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button @click="txForm.type='Buy'" :class="txForm.type=='Buy'?'bg-red-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs font-bold transition">買入 Buy</button>
+                            <button @click="txForm.type='Sell'" :class="txForm.type=='Sell'?'bg-green-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs font-bold transition">賣出 Sell</button>
+                            <button @click="txForm.type='Deposit'" :class="txForm.type=='Deposit'?'bg-blue-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs font-bold transition">入金 Deposit</button>
+                            <button @click="txForm.type='Dividend'" :class="txForm.type=='Dividend'?'bg-yellow-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs font-bold transition">股息 Div</button>
+                        </div>
+                    </div>
+
+                    <div v-if="['Buy', 'Sell', 'Dividend'].includes(txForm.type)">
+                        <label class="text-xs text-gray-400 block mb-1">標的 (Ticker)</label>
+                        <input v-model="txForm.ticker" type="text" placeholder="e.g. 2330" class="w-full input-dark p-2 rounded uppercase">
+                    </div>
+
+                    <div v-if="['Buy', 'Sell'].includes(txForm.type)">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="text-xs text-gray-400 block mb-1">價格 (Price)</label>
+                                <input v-model.number="txForm.price" type="number" step="0.01" class="w-full input-dark p-2 rounded">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-400 block mb-1">股數 (Shares)</label>
+                                <input v-model.number="txForm.shares" type="number" class="w-full input-dark p-2 rounded">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="['Buy', 'Sell', 'Dividend', 'Deposit', 'Withdraw'].includes(txForm.type)">
+                        <label class="text-xs text-gray-400 block mb-1">
+                            {{ txForm.type === 'Buy' || txForm.type === 'Sell' ? '手續費 + 稅 (Fees)' : '總金額 (Amount)' }}
+                        </label>
+                        <input v-model.number="txForm.amount" type="number" class="w-full input-dark p-2 rounded">
+                        <p class="text-xs text-gray-500 mt-1" v-if="txForm.type === 'Buy'">系統將自動計算: (價x量) + 費用</p>
+                    </div>
+
+                    <button @click="addTransaction" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded shadow-lg transition">確認記帳</button>
+                </div>
+
+                <div class="flex-1 glass rounded-xl overflow-hidden flex flex-col">
+                    <div class="p-4 border-b border-gray-700 bg-gray-800/50">
+                        <h3 class="font-bold text-white">交易紀錄 (Ledger)</h3>
+                    </div>
+                    <div class="overflow-auto flex-1">
+                        <table class="w-full text-left">
+                            <thead class="sticky top-0 bg-gray-800 text-xs text-gray-400 uppercase">
+                                <tr>
+                                    <th class="p-3">日期</th>
+                                    <th class="p-3">類別</th>
+                                    <th class="p-3">標的</th>
+                                    <th class="p-3 text-right">股數</th>
+                                    <th class="p-3 text-right">價格</th>
+                                    <th class="p-3 text-right">總金額/費用</th>
+                                    <th class="p-3 text-center">刪除</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm divide-y divide-gray-800">
+                                <tr v-for="(tx, index) in reversedTransactions" :key="index" class="hover:bg-white/5 transition">
+                                    <td class="p-3 text-gray-400">{{ tx.date }}</td>
+                                    <td class="p-3 font-bold" :class="{
+                                        'text-red-400': tx.type === 'Buy',
+                                        'text-green-400': tx.type === 'Sell',
+                                        'text-blue-400': tx.type === 'Deposit',
+                                        'text-yellow-400': tx.type === 'Dividend'
+                                    }">{{ tx.type }}</td>
+                                    <td class="p-3 font-bold text-white">{{ tx.ticker || '-' }}</td>
+                                    <td class="p-3 text-right text-gray-300">{{ tx.shares ? formatNumber(tx.shares) : '-' }}</td>
+                                    <td class="p-3 text-right text-gray-300">{{ tx.price ? formatNumber(tx.price) : '-' }}</td>
+                                    <td class="p-3 text-right font-mono text-white">{{ formatNumber(tx.totalCashFlow) }}</td>
+                                    <td class="p-3 text-center">
+                                        <button @click="removeTransaction(transactions.length - 1 - index)" class="text-gray-600 hover:text-red-500"><i class="fas fa-times"></i></button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div v-if="showSettings" class="fixed inset-0 bg-black/80 flex items-center justify-center z-[100]">
+        <div class="glass p-6 rounded-xl w-96">
+            <h3 class="text-xl font-bold mb-4">資料來源設定</h3>
+            <p class="text-xs text-gray-400 mb-2">Google Sheet CSV 連結:</p>
+            <input v-model="tempSheetUrl" class="w-full input-dark p-2 rounded mb-4 text-xs">
+            <div class="flex gap-2">
+                <button @click="saveSettings" class="flex-1 bg-blue-600 py-2 rounded text-white text-sm font-bold">儲存</button>
+                <button @click="showSettings=false" class="flex-1 bg-gray-700 py-2 rounded text-white text-sm">取消</button>
+            </div>
+            <button @click="tempSheetUrl=''; saveSettings()" class="w-full mt-2 text-xs text-red-400 hover:text-red-300">清除設定 (使用手動報價)</button>
         </div>
     </div>
 </div>
 
 <script>
-    const { createApp } = Vue;
+    const { createApp, computed, ref, onMounted, watch } = Vue;
 
     createApp({
-        data() {
-            return {
-                sheetUrl: localStorage.getItem('googleSheetUrl') || '',
-                tempUrl: '',
-                newItem: { date: new Date().toISOString().split('T')[0], ticker: '', price: null, shares: null },
-                portfolio: JSON.parse(localStorage.getItem('myPortfolioData') || '[]'),
-                isUpdating: false,
-                lastUpdate: localStorage.getItem('lastUpdate') || '',
-                charts: { allocation: null, comparison: null },
-                marketData: {} // Cache for fetched prices
-            }
-        },
-        computed: {
-            totalCost() { return this.portfolio.reduce((sum, item) => sum + (item.avgPrice * item.shares), 0); },
-            totalMarketValue() { return this.portfolio.reduce((sum, item) => sum + ((item.currentPrice || item.avgPrice) * item.shares), 0); },
-            totalPnL() { return this.totalMarketValue - this.totalCost; },
-            totalRoi() { return this.totalCost === 0 ? 0 : ((this.totalPnL / this.totalCost) * 100).toFixed(2); }
-        },
-        mounted() {
-            if (this.sheetUrl) {
-                this.fetchPrices();
-            }
-            this.initCharts();
-        },
-        methods: {
-            saveUrl() {
-                if(this.tempUrl) {
-                    this.sheetUrl = this.tempUrl;
-                    localStorage.setItem('googleSheetUrl', this.sheetUrl);
-                    this.fetchPrices();
-                }
-            },
-            resetUrl() {
-                localStorage.removeItem('googleSheetUrl');
-                location.reload();
-            },
-            addRecord() {
-                if(!this.newItem.ticker || !this.newItem.price || !this.newItem.shares) return;
-                const ticker = this.newItem.ticker.toUpperCase().replace('台股', 'TPE:'); // Simple fix
+        setup() {
+            // --- State ---
+            const currentTab = ref('summary');
+            const showSettings = ref(false);
+            const sheetUrl = ref(localStorage.getItem('googleSheetUrl') || '');
+            const tempSheetUrl = ref(sheetUrl.value);
+            const isUpdating = ref(false);
+            
+            // Core Data Store: The Ledger
+            const transactions = ref(JSON.parse(localStorage.getItem('ledgerData') || '[]'));
+            
+            // Market Data Cache: { "2330": 1050, "NVDA": 135 }
+            const priceMap = ref(JSON.parse(localStorage.getItem('priceMap') || '{}'));
+
+            // Transaction Form
+            const txForm = ref({
+                date: new Date().toISOString().split('T')[0],
+                type: 'Buy',
+                ticker: '',
+                price: null,
+                shares: null,
+                amount: null // Used for total amount in Deposit, or Fee in Buy/Sell
+            });
+
+            // --- Computed Logic (The Brain) ---
+            
+            // 1. Calculate Holdings from Transactions
+            const holdings = computed(() => {
+                const map = {};
                 
-                const existing = this.portfolio.find(p => p.ticker === ticker);
-                if (existing) {
-                    const totalOldCost = existing.avgPrice * existing.shares;
-                    const newCost = this.newItem.price * this.newItem.shares;
-                    existing.shares += this.newItem.shares;
-                    existing.avgPrice = (totalOldCost + newCost) / existing.shares;
-                } else {
-                    this.portfolio.push({
-                        ticker: ticker,
-                        avgPrice: this.newItem.price,
-                        shares: this.newItem.shares,
-                        currentPrice: this.newItem.price 
-                    });
-                }
-                this.saveData();
-                this.newItem.ticker = ''; this.newItem.price = null; this.newItem.shares = null;
-                this.updateCharts();
-                this.fetchPrices(); // Try to fetch price for new item
-            },
-            removeRecord(index) {
-                if(confirm('Confirm deletion?')) {
-                    this.portfolio.splice(index, 1);
-                    this.saveData();
-                    this.updateCharts();
-                }
-            },
-            saveData() {
-                localStorage.setItem('myPortfolioData', JSON.stringify(this.portfolio));
-            },
-            fetchPrices() {
-                if (!this.sheetUrl) return;
-                this.isUpdating = true;
+                transactions.value.forEach(tx => {
+                    if (!tx.ticker) return;
+                    const t = tx.ticker.toUpperCase();
+                    if (!map[t]) map[t] = { ticker: t, shares: 0, totalCost: 0, realizedPL: 0 };
 
-                Papa.parse(this.sheetUrl, {
-                    download: true,
-                    header: false, // Assuming raw dump without fancy headers sometimes
-                    complete: (results) => {
-                        // Create a map: { "TPE:2330": 1050, "NVDA": 130 }
-                        const priceMap = {};
-                        results.data.forEach(row => {
-                            if (row[0] && row[1]) {
-                                // Clean up ticker and price string
-                                const key = row[0].toString().trim().toUpperCase();
-                                const val = parseFloat(row[1].toString().replace(/,/g, '')); // Remove commas
-                                if (!isNaN(val)) priceMap[key] = val;
-                            }
-                        });
-
-                        // Update Portfolio
-                        let updated = false;
-                        this.portfolio.forEach(item => {
-                            // Try exact match first, then try appending TPE: if missing
-                            let match = priceMap[item.ticker];
-                            if (!match && !item.ticker.includes(':')) {
-                                match = priceMap['TPE:' + item.ticker];
-                            }
-                            
-                            if (match) {
-                                item.currentPrice = match;
-                                updated = true;
-                            }
-                        });
-
-                        this.isUpdating = false;
-                        if (updated) {
-                            this.lastUpdate = new Date().toLocaleString();
-                            localStorage.setItem('lastUpdate', this.lastUpdate);
-                            this.saveData();
-                            this.updateCharts();
-                        }
-                    },
-                    error: (err) => {
-                        console.error('CSV Fetch Error:', err);
-                        this.isUpdating = false;
-                        alert('無法讀取 Google Sheet，請檢查連結權限是否為「公開」且格式為 CSV。');
+                    if (tx.type === 'Buy') {
+                        map[t].shares += tx.shares;
+                        // Cost = Price * Shares + Fee
+                        const cost = (tx.price * tx.shares) + (tx.amount || 0);
+                        map[t].totalCost += cost;
+                    } else if (tx.type === 'Sell') {
+                        // Calculate Cost Basis used
+                        const avgCost = map[t].shares === 0 ? 0 : map[t].totalCost / map[t].shares;
+                        const costBasis = avgCost * tx.shares;
+                        
+                        map[t].shares -= tx.shares;
+                        map[t].totalCost -= costBasis; // Reduce total cost proportionally
+                        
+                        // Realized PL = (Price * Shares - Fee) - CostBasis
+                        // logic simplified for display
                     }
                 });
-            },
-            getReturn(item) {
-                const cost = item.avgPrice;
-                const curr = item.currentPrice || item.avgPrice;
-                return (((curr - cost) / cost) * 100).toFixed(2);
-            },
-            formatNumber(num) {
-                return new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 0 }).format(num);
-            },
-            exportData() {
-                let csv = "Ticker,AvgPrice,Shares,CurrentPrice\n";
-                this.portfolio.forEach(p => csv += `${p.ticker},${p.avgPrice},${p.shares},${p.currentPrice}\n`);
+
+                // Convert to Array and enrich with Price
+                return Object.values(map)
+                    .filter(h => h.shares > 0) // Hide closed positions
+                    .map(h => {
+                        const currentPrice = priceMap.value[h.ticker] || h.manualPrice || (h.totalCost/h.shares);
+                        const marketValue = h.shares * currentPrice;
+                        const avgCost = h.totalCost / h.shares;
+                        return {
+                            ...h,
+                            avgCost,
+                            currentPrice,
+                            manualPrice: h.manualPrice || currentPrice, // UI helper
+                            marketValue,
+                            unrealizedPL: marketValue - h.totalCost,
+                            returnRate: ((marketValue - h.totalCost) / h.totalCost * 100).toFixed(2)
+                        };
+                    })
+                    .sort((a,b) => b.marketValue - a.marketValue);
+            });
+
+            // 2. Calculate Cash Balance
+            const cashBalance = computed(() => {
+                return transactions.value.reduce((acc, tx) => {
+                    switch(tx.type) {
+                        case 'Deposit': return acc + (tx.amount || 0);
+                        case 'Withdraw': return acc - (tx.amount || 0);
+                        case 'Dividend': return acc + (tx.amount || 0);
+                        case 'Buy': return acc - ((tx.price * tx.shares) + (tx.amount || 0)); // Cash Out
+                        case 'Sell': return acc + ((tx.price * tx.shares) - (tx.amount || 0)); // Cash In
+                        default: return acc;
+                    }
+                }, 0);
+            });
+
+            // 3. Totals
+            const stockValue = computed(() => holdings.value.reduce((sum, h) => sum + h.marketValue, 0));
+            const totalAssets = computed(() => cashBalance.value + stockValue.value);
+            
+            // Principal: Simple approx (Net Deposits) or Cost Basis? 
+            // Usually Principal = Net Deposits (Cash In - Cash Out)
+            const totalPrincipal = computed(() => {
+                 return transactions.value.reduce((acc, tx) => {
+                    if (tx.type === 'Deposit') return acc + tx.amount;
+                    if (tx.type === 'Withdraw') return acc - tx.amount;
+                    return acc;
+                 }, 0);
+            });
+            
+            const totalUnrealizedPL = computed(() => totalAssets.value - totalPrincipal.value);
+            const totalReturnRate = computed(() => totalPrincipal.value ? ((totalUnrealizedPL.value / totalPrincipal.value)*100).toFixed(2) : 0);
+
+            const reversedTransactions = computed(() => [...transactions.value].reverse());
+
+            // --- Actions ---
+
+            function addTransaction() {
+                const { date, type, ticker, price, shares, amount } = txForm.value;
+                
+                // Validation
+                if (!date || !type) return alert('日期與類別為必填');
+                if ((type === 'Buy' || type === 'Sell') && (!ticker || !price || !shares)) return alert('買賣需填寫標的、價格與股數');
+                
+                // Calculate Cash Flow for display
+                let totalCashFlow = 0;
+                if (type === 'Buy') totalCashFlow = -(price * shares + (amount || 0));
+                if (type === 'Sell') totalCashFlow = (price * shares - (amount || 0));
+                if (type === 'Deposit' || type === 'Dividend') totalCashFlow = amount;
+                if (type === 'Withdraw') totalCashFlow = -amount;
+
+                transactions.value.push({
+                    date, type, ticker: ticker?.toUpperCase(), price, shares, amount, totalCashFlow,
+                    id: Date.now()
+                });
+
+                // Reset Form (intelligent reset)
+                txForm.value.shares = null;
+                txForm.value.amount = null;
+                
+                saveData();
+                updateCharts();
+            }
+
+            function removeTransaction(index) {
+                if(confirm('確定刪除此筆交易？這會影響庫存計算。')) {
+                    transactions.value.splice(index, 1);
+                    saveData();
+                    updateCharts();
+                }
+            }
+
+            function manualUpdate() {
+                // If user edits price manually in table, update cache
+                holdings.value.forEach(h => {
+                    if(h.manualPrice) priceMap.value[h.ticker] = h.manualPrice;
+                });
+                localStorage.setItem('priceMap', JSON.stringify(priceMap.value));
+                updateCharts();
+            }
+
+            function saveData() {
+                localStorage.setItem('ledgerData', JSON.stringify(transactions.value));
+            }
+
+            function saveSettings() {
+                sheetUrl.value = tempSheetUrl.value;
+                if(sheetUrl.value) {
+                    localStorage.setItem('googleSheetUrl', sheetUrl.value);
+                    fetchPrices();
+                } else {
+                    localStorage.removeItem('googleSheetUrl');
+                }
+                showSettings.value = false;
+            }
+
+            // Google Sheets Logic
+            function fetchPrices() {
+                if (!sheetUrl.value) {
+                    showSettings.value = true;
+                    return;
+                }
+                isUpdating.value = true;
+                Papa.parse(sheetUrl.value, {
+                    download: true,
+                    header: false,
+                    complete: (results) => {
+                        results.data.forEach(row => {
+                            if (row[0] && row[1]) {
+                                const key = row[0].toString().trim().toUpperCase();
+                                const val = parseFloat(row[1].toString().replace(/,/g, ''));
+                                if (!isNaN(val)) priceMap.value[key] = val;
+                                // Try TPE format too
+                                priceMap.value[key.replace('TPE:', '')] = val;
+                                priceMap.value['TPE:' + key] = val;
+                            }
+                        });
+                        localStorage.setItem('priceMap', JSON.stringify(priceMap.value));
+                        isUpdating.value = false;
+                        updateCharts();
+                    },
+                    error: () => { isUpdating.value = false; alert('無法更新報價，請檢查連結'); }
+                });
+            }
+
+            // Export logic (matches user excel structure)
+            function exportData() {
+                let csv = "\uFEFFDate,Type,Ticker,Price,Shares,Fee/Amt,Total\n";
+                transactions.value.forEach(tx => {
+                    csv += `${tx.date},${tx.type},${tx.ticker||''},${tx.price||''},${tx.shares||''},${tx.amount||''},${tx.totalCashFlow}\n`;
+                });
                 const link = document.createElement("a");
-                link.href = "data:text/csv;charset=utf-8,\uFEFF" + encodeURI(csv);
-                link.download = "portfolio_backup.csv";
+                link.href = "data:text/csv;charset=utf-8," + encodeURI(csv);
+                link.download = "流水帳_backup.csv";
                 link.click();
-            },
-            initCharts() {
+            }
+
+            // --- Charts ---
+            let charts = {};
+            
+            function initCharts() {
+                if(!document.getElementById('allocationChart')) return;
+                
                 Chart.defaults.color = '#94a3b8';
                 Chart.defaults.borderColor = '#334155';
-                
-                this.charts.allocation = new Chart(document.getElementById('allocationChart'), {
+
+                charts.allocation = new Chart(document.getElementById('allocationChart'), {
                     type: 'doughnut',
-                    data: { labels: [], datasets: [{ data: [], backgroundColor: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'], borderWidth: 0 }] },
-                    options: { plugins: { legend: { position: 'right' } } }
+                    data: { labels: [], datasets: [{ data: [], backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#6366f1'] }] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
                 });
 
-                this.charts.comparison = new Chart(document.getElementById('comparisonChart'), {
-                    type: 'bar',
-                    data: { labels: ['Portfolio'], datasets: [{ label: 'Cost', data: [0], backgroundColor: '#64748b' }, { label: 'Market Value', data: [0], backgroundColor: '#3b82f6' }] },
-                    options: { scales: { y: { beginAtZero: true } } }
+                charts.history = new Chart(document.getElementById('historyChart'), {
+                    type: 'line',
+                    data: { labels: ['Start', 'Now'], datasets: [{ label: 'Net Worth', data: [0, 0], borderColor: '#3b82f6', tension: 0.4, fill: true, backgroundColor: 'rgba(59, 130, 246, 0.1)' }] },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false } } }
                 });
-            },
-            updateCharts() {
-                this.charts.allocation.data.labels = this.portfolio.map(p => p.ticker);
-                this.charts.allocation.data.datasets[0].data = this.portfolio.map(p => (p.currentPrice || p.avgPrice) * p.shares);
-                this.charts.allocation.update();
-
-                this.charts.comparison.data.datasets[0].data = [this.totalCost];
-                this.charts.comparison.data.datasets[1].data = [this.totalMarketValue];
-                this.charts.comparison.update();
             }
+
+            function updateCharts() {
+                if (!charts.allocation) {
+                    // Try waiting for DOM
+                    setTimeout(initCharts, 100);
+                    return;
+                }
+
+                // Update Allocation
+                const labels = holdings.value.map(h => h.ticker);
+                const data = holdings.value.map(h => h.marketValue);
+                // Add Cash
+                if (cashBalance.value > 0) {
+                    labels.push('Cash');
+                    data.push(cashBalance.value);
+                }
+                
+                charts.allocation.data.labels = labels;
+                charts.allocation.data.datasets[0].data = data;
+                charts.allocation.update();
+                
+                // Update History (Simplified: Principal vs Current)
+                charts.history.data.datasets[0].data = [totalPrincipal.value, totalAssets.value];
+                charts.history.update();
+            }
+
+            function formatNumber(num) {
+                return new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 0 }).format(num || 0);
+            }
+            function formatPercent(num) {
+                return ((num || 0) * 100).toFixed(1) + '%';
+            }
+
+            onMounted(() => {
+                if(sheetUrl.value) fetchPrices();
+                setTimeout(initCharts, 500); // Wait for tab render
+            });
+
+            return {
+                currentTab, showSettings, sheetUrl, tempSheetUrl, isUpdating,
+                transactions, holdings, cashBalance, totalAssets, stockValue,
+                totalPrincipal, totalUnrealizedPL, totalReturnRate, reversedTransactions,
+                txForm,
+                addTransaction, removeTransaction, manualUpdate, saveData, saveSettings, fetchPrices, exportData,
+                formatNumber, formatPercent
+            };
         }
     }).mount('#app');
 </script>
