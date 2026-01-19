@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>資產管理大師 v12.1 | 簡化本位幣版</title>
+    <title>資產管理大師 v13.0 | 沙盒量化版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -11,42 +11,57 @@
     <style>
         body { font-family: 'Microsoft JhengHei', 'Segoe UI', Roboto, sans-serif; background-color: #0f172a; color: #e2e8f0; }
         .glass { background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2); }
+        .glass-sim { background: rgba(50, 20, 20, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(255, 100, 100, 0.2); } /* 沙盒模式背景 */
+        
         .input-dark { background: #1e293b; border: 1px solid #475569; color: white; transition: all 0.2s; }
         .input-dark:focus { border-color: #fbbf24; ring: 2px; outline: none; }
+        
         .tab-active { border-bottom: 2px solid #fbbf24; color: #fbbf24; font-weight: bold; text-shadow: 0 0 8px rgba(251, 191, 36, 0.3); }
         .tab-inactive { color: #94a3b8; }
         .tab-inactive:hover { color: #cbd5e1; }
+        
         .btn-primary { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); }
         .btn-gold { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; }
+        .btn-danger { background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); color: white; }
+        
         .progress-bar-bg { background: #334155; border-radius: 999px; overflow: hidden; height: 8px; }
         .progress-bar-fill { height: 100%; transition: width 0.5s ease; }
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
         
-        .quant-card { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 0.75rem; padding: 1rem; text-align: center; transition: all 0.2s; }
+        /* Quant Grid Layout */
+        .quant-card { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 0.75rem; padding: 1rem; text-align: center; transition: all 0.2s; position: relative; overflow: hidden; }
         .quant-card:hover { background: rgba(255, 255, 255, 0.05); transform: translateY(-2px); }
-        .quant-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; }
-        .quant-value { font-family: 'Courier New', monospace; font-weight: bold; font-size: 1.25rem; }
-
+        .quant-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; opacity: 0.8; }
+        .quant-value { font-family: 'Courier New', monospace; font-weight: bold; font-size: 1.25rem; text-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        
+        /* Toggle Switch */
+        .toggle-checkbox:checked { right: 0; border-color: #ef4444; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #ef4444; }
+        
+        /* Table */
         .excel-table th { background-color: #1e293b; color: #94a3b8; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; border-bottom: 2px solid #334155; }
         .excel-table td { border-bottom: 1px solid #334155; padding: 0.75rem 1rem; }
         .excel-table tr:hover td { background-color: rgba(255,255,255,0.03); }
         .excel-table tfoot td { background-color: #1e293b; font-weight: bold; border-top: 2px solid #475569; color: #e2e8f0; }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden text-sm">
 
-<div id="app" class="h-full flex flex-col">
+<div id="app" class="h-full flex flex-col transition-colors duration-500" :class="isSimMode ? 'bg-[#1a0505]' : 'bg-[#0f172a]'">
     
-    <header class="glass z-50 flex-none h-16 px-6 flex items-center justify-between shadow-lg">
+    <header class="z-50 flex-none h-16 px-6 flex items-center justify-between shadow-lg transition-colors duration-500" :class="isSimMode ? 'glass-sim' : 'glass'">
         <div class="flex items-center gap-6">
             <h1 class="font-bold text-xl tracking-wide flex items-center gap-2 text-white">
-                <i class="fas fa-chart-line text-yellow-500"></i> 資產管理大師 <span class="text-xs bg-yellow-600 px-2 py-0.5 rounded text-black font-bold">v12.1 NTD本位版</span>
+                <i class="fas fa-chart-line text-yellow-500"></i> 資產管理大師 
+                <span v-if="!isSimMode" class="text-xs bg-yellow-600 px-2 py-0.5 rounded text-black font-bold">v13.0 Production</span>
+                <span v-else class="text-xs bg-red-600 px-2 py-0.5 rounded text-white font-bold animate-pulse">SANDBOX MODE</span>
             </h1>
             
             <div class="hidden md:flex items-center gap-3 bg-slate-800 py-1 px-3 rounded-lg border border-slate-700">
-                <span class="text-gray-400 text-xs">估值匯率 (USD/TWD):</span>
+                <span class="text-gray-400 text-xs">USD/TWD:</span>
                 <input v-model.number="exchangeRate" type="number" step="0.01" class="w-16 bg-transparent text-center font-mono font-bold text-green-400 focus:outline-none border-b border-gray-600">
             </div>
 
@@ -57,13 +72,22 @@
                 <button @click="currentTab='ledger'" :class="currentTab==='ledger'?'tab-active':'tab-inactive'" class="py-4 px-2 transition"><i class="fas fa-list mr-1"></i> 交易紀錄</button>
             </nav>
         </div>
-        <div class="flex gap-3">
+        <div class="flex gap-3 items-center">
+             <div class="flex items-center mr-4">
+                <span class="text-xs mr-2 font-bold" :class="isSimMode ? 'text-red-400' : 'text-gray-400'">
+                    {{ isSimMode ? '沙盒模式 (模擬)' : '正式環境 (Real)' }}
+                </span>
+                <button @click="toggleSimMode" class="relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none" :class="isSimMode ? 'bg-red-600' : 'bg-gray-600'">
+                    <span class="inline-block w-4 h-4 transform bg-white rounded-full transition-transform" :class="isSimMode ? 'translate-x-6' : 'translate-x-1'"></span>
+                </button>
+             </div>
+
              <button @click="fetchPrices" class="p-2 text-blue-400 hover:text-white transition" title="更新報價"><i class="fas fa-sync-alt" :class="{'fa-spin': isUpdating}"></i></button>
              <button @click="exportAll" class="p-2 text-green-400 hover:text-white transition" title="備份資料"><i class="fas fa-download"></i></button>
         </div>
     </header>
 
-    <main class="flex-1 overflow-y-auto p-4 md:p-6 bg-[#0f172a]">
+    <main class="flex-1 overflow-y-auto p-4 md:p-6 transition-colors duration-500">
         <div class="max-w-7xl mx-auto h-full space-y-6">
 
             <div v-if="currentTab === 'summary'" class="animate-fade-in space-y-6">
@@ -76,7 +100,6 @@
                     <div class="glass p-6 rounded-2xl border-t-4 border-emerald-500">
                         <div class="text-xs text-gray-400 font-bold uppercase">投資總成本 (Total Cost)</div>
                         <div class="text-3xl font-bold text-white mt-2 font-mono">NT$ {{ formatNumber(totalStockCostTwd) }}</div>
-                        <div class="text-xs text-gray-500 mt-2">* 實際支出台幣</div>
                     </div>
                     <div class="glass p-6 rounded-2xl border-t-4" :class="totalStockUnrealizedPL >= 0 ? 'border-red-500' : 'border-green-500'">
                         <div class="text-xs text-gray-400 font-bold uppercase">未實現損益 (P/L)</div>
@@ -111,14 +134,17 @@
                         </div>
                     </div>
                     <div class="glass p-5 rounded-2xl col-span-2 flex flex-col">
-                        <h4 class="text-white font-bold mb-4 border-l-4 border-emerald-500 pl-3">淨值成長趨勢 (NAV History)</h4>
+                        <h4 class="text-white font-bold mb-4 border-l-4 border-emerald-500 pl-3">
+                            淨值成長趨勢 (NAV)
+                            <span v-if="isSimMode" class="text-xs bg-red-500 text-white px-2 py-0.5 rounded ml-2">SIMULATION</span>
+                        </h4>
                         <div class="flex-1 relative">
                             <canvas id="historyChart"></canvas>
-                             <div v-if="historyData.length < 2" class="absolute inset-0 flex items-center justify-center text-gray-500 text-xs bg-gray-900/50 rounded-lg">
+                             <div v-if="displayHistory.length < 2" class="absolute inset-0 flex items-center justify-center text-gray-500 text-xs bg-gray-900/50 rounded-lg">
                                 <div class="text-center">
                                     <p class="text-lg mb-2"><i class="fas fa-chart-line text-gray-600 text-4xl"></i></p>
                                     <p>需要更多數據</p>
-                                    <p class="mt-1">請至「量化分析」或補登紀錄</p>
+                                    <p class="mt-1">請補登紀錄或開啟沙盒模式</p>
                                 </div>
                             </div>
                         </div>
@@ -179,27 +205,22 @@
                                     </td>
                                 </tr>
                             </tbody>
-                            <tfoot>
-                                <tr>
-                                    <td colspan="5" class="text-right pl-6">總計 (Total):</td>
-                                    <td class="text-right">{{ formatNumber(totalStockCostTwd) }}</td>
-                                    <td class="text-right">{{ formatNumber(totalStockValueTwd) }}</td>
-                                    <td class="text-right" :class="totalStockUnrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">{{ formatNumber(totalStockUnrealizedPL) }}</td>
-                                    <td class="text-right" :class="totalStockReturnRate >= 0 ? 'text-red-400' : 'text-green-400'">{{ totalStockReturnRate }}%</td>
-                                    <td class="text-right pr-6">100.0%</td>
-                                </tr>
-                            </tfoot>
                         </table>
                     </div>
                 </div>
             </div>
 
             <div v-if="currentTab === 'analytics'" class="flex flex-col h-full space-y-4 animate-fade-in">
-                <div class="glass p-5 rounded-xl flex flex-wrap items-center justify-between gap-4">
+                <div class="p-5 rounded-xl flex flex-wrap items-center justify-between gap-4 border transition-colors duration-500" :class="isSimMode ? 'glass-sim border-red-900/50' : 'glass border-white/5'">
                     <div>
                         <h3 class="font-bold text-white text-lg flex items-center gap-2">
-                            <i class="fas fa-brain text-yellow-500"></i> 量化風險分析 (Quant)
+                            <i class="fas fa-brain" :class="isSimMode ? 'text-red-500' : 'text-yellow-500'"></i> 
+                            量化風險分析 (Quant)
+                            <span v-if="isSimMode" class="text-xs bg-red-600 px-2 rounded text-white ml-2">SANDBOX ACTIVE</span>
                         </h3>
+                        <p class="text-xs text-gray-400 mt-1" v-if="isSimMode">
+                            * 目前使用虛擬數據，不會覆蓋真實資料。
+                        </p>
                     </div>
                     <div class="flex gap-4 items-center">
                         <div class="flex items-center gap-2 text-xs mr-2">
@@ -208,13 +229,14 @@
                              <label class="text-gray-400">Beta:</label>
                              <input v-model.number="riskParams.beta" type="number" step="0.1" class="w-12 input-dark p-1 rounded text-center">
                         </div>
-                        <button @click="generateMonthlyMockData" class="text-gray-400 hover:text-white text-xs border border-gray-600 px-3 py-2 rounded transition">
-                            <i class="fas fa-flask mr-1"></i> 測試資料
+                        
+                        <button v-if="isSimMode" @click="generateMonthlyMockData" class="text-red-300 hover:text-white text-xs border border-red-500/50 bg-red-900/20 px-3 py-2 rounded transition animate-pulse">
+                            <i class="fas fa-dice mr-1"></i> 重刷數據
                         </button>
-                        <button @click="showHistoryModal = true" class="text-blue-400 hover:text-white text-xs border border-blue-500/50 px-3 py-2 rounded transition">
-                            <i class="fas fa-edit mr-1"></i> 補登
+                        <button v-if="!isSimMode" @click="showHistoryModal = true" class="text-blue-400 hover:text-white text-xs border border-blue-500/50 px-3 py-2 rounded transition">
+                            <i class="fas fa-edit mr-1"></i> 補登紀錄
                         </button>
-                        <button @click="takeSnapshot" class="btn-gold px-6 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2">
+                        <button v-if="!isSimMode" @click="takeSnapshot" class="btn-gold px-6 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2">
                             <i class="fas fa-camera"></i> 快照
                         </button>
                     </div>
@@ -229,8 +251,22 @@
                         <div class="quant-label text-blue-400">MWR (內部報酬)</div>
                         <div class="quant-value text-white">{{ stats.mwr }}%</div>
                     </div>
+                    
                     <div class="quant-card">
-                        <div class="quant-label text-gray-400">年化標準差</div>
+                        <div class="quant-label text-yellow-400">夏普 (Sharpe)</div>
+                        <div class="quant-value text-white">{{ stats.sharpe }}</div>
+                    </div>
+                    <div class="quant-card">
+                        <div class="quant-label text-yellow-400">索提諾 (Sortino)</div>
+                        <div class="quant-value text-white">{{ stats.sortino }}</div>
+                    </div>
+                    <div class="quant-card">
+                        <div class="quant-label text-yellow-400">崔娜 (Treynor)</div>
+                        <div class="quant-value text-white">{{ stats.treynor }}</div>
+                    </div>
+
+                    <div class="quant-card">
+                        <div class="quant-label text-gray-400">標準差 (StdDev)</div>
                         <div class="quant-value text-white">{{ stats.stdDev }}%</div>
                     </div>
                     <div class="quant-card">
@@ -238,8 +274,17 @@
                         <div class="quant-value text-white">{{ stats.var95 }}%</div>
                     </div>
                     <div class="quant-card">
-                        <div class="quant-label text-yellow-400">夏普比率</div>
-                        <div class="quant-value text-white">{{ stats.sharpe }}</div>
+                        <div class="quant-label text-red-400">CVaR (Expected Loss)</div>
+                        <div class="quant-value text-white">{{ stats.cvar95 }}%</div>
+                    </div>
+
+                    <div class="quant-card">
+                        <div class="quant-label text-purple-400">偏度 (Skewness)</div>
+                        <div class="quant-value text-white">{{ stats.skew }}</div>
+                    </div>
+                    <div class="quant-card">
+                        <div class="quant-label text-purple-400">峭度 (Kurtosis)</div>
+                        <div class="quant-value text-white">{{ stats.kurt }}</div>
                     </div>
                 </div>
 
@@ -252,7 +297,7 @@
                                     <th class="p-3 text-right">總資產 (NAV)</th>
                                     <th class="p-3 text-right">總成本 (Cost)</th>
                                     <th class="p-3 text-right">週期報酬 (Return)</th>
-                                    <th class="p-3 text-center">刪除</th>
+                                    <th class="p-3 text-center" v-if="!isSimMode">動作</th>
                                 </tr>
                             </thead>
                             <tbody class="text-sm divide-y divide-white/5">
@@ -263,7 +308,7 @@
                                     <td class="p-3 text-right font-mono" :class="h.dailyReturn >= 0 ? 'text-red-400' : 'text-green-400'">
                                         {{ h.dailyReturn ? (h.dailyReturn * 100).toFixed(2) + '%' : '-' }}
                                     </td>
-                                    <td class="p-3 text-center">
+                                    <td class="p-3 text-center" v-if="!isSimMode">
                                         <button @click="removeHistoryByDate(h.date)" class="text-gray-600 hover:text-red-500"><i class="fas fa-trash"></i></button>
                                     </td>
                                 </tr>
@@ -374,57 +419,60 @@ createApp({
         const currentTab = ref('summary');
         const showHistoryModal = ref(false);
         const isUpdating = ref(false);
+        const isSimMode = ref(false); // 沙盒模式開關
+        
         const exchangeRate = ref(parseFloat(localStorage.getItem('exchangeRate')) || 32.5);
         watch(exchangeRate, (val) => localStorage.setItem('exchangeRate', val));
         const riskParams = ref({ rf: 1.5, beta: 1.0 });
 
         const transactions = ref(JSON.parse(localStorage.getItem('ledgerData') || '[]'));
-        const historyData = ref(JSON.parse(localStorage.getItem('historyData') || '[]'));
+        const realHistoryData = ref(JSON.parse(localStorage.getItem('historyData') || '[]')); // 真實資料
+        const mockHistoryData = ref([]); // 模擬資料 (不存 LocalStorage)
         const priceMap = ref(JSON.parse(localStorage.getItem('priceMap') || '{}'));
         
-        // Ledger Form: Removed fee 'amount', kept generic 'amount' for Deposit/Dividend
         const txForm = ref({ date: new Date().toISOString().split('T')[0], type: 'Buy', category: '美股', ticker: '', price: null, shares: null, amount: null });
         const historyForm = ref({ date: new Date().toISOString().split('T')[0], assets: null, cost: null });
 
-        // --- 核心邏輯: TWD 本位 ---
+        // --- Core: Display History Logic ---
+        // 根據模式決定要顯示哪一份資料
+        const displayHistory = computed(() => isSimMode.value ? mockHistoryData.value : realHistoryData.value);
+
+        // --- Toggle Simulation ---
+        function toggleSimMode() {
+            isSimMode.value = !isSimMode.value;
+            // 如果切換到模擬模式且沒有資料，自動產生一份
+            if (isSimMode.value && mockHistoryData.value.length === 0) {
+                generateMonthlyMockData();
+            }
+            updateCharts();
+        }
+
+        // --- TWD Base Holdings Logic ---
         const holdings = computed(() => {
             const map = {};
             transactions.value.forEach(tx => {
                 if(!tx.ticker) return;
                 const t = tx.ticker.toUpperCase();
-                // 累積成本直接使用 totalCashFlow (已經是台幣)
                 if(!map[t]) map[t] = { ticker: t, category: tx.category || '台股', shares: 0, totalCostTwd: 0 };
                 
                 if(tx.type === 'Buy') { 
                     map[t].shares += tx.shares; 
-                    map[t].totalCostTwd += Math.abs(tx.totalCashFlow); // Buy flow is negative, cost is positive
+                    map[t].totalCostTwd += Math.abs(tx.totalCashFlow); 
                 } else if(tx.type === 'Sell') { 
                     const avgCost = map[t].shares ? map[t].totalCostTwd / map[t].shares : 0; 
                     map[t].shares -= tx.shares; 
                     map[t].totalCostTwd -= avgCost * tx.shares; 
                 }
             });
-            
             return Object.values(map).filter(h => h.shares > 0.0001).map(h => {
-                // 原幣現價 (來自爬蟲或手動)
                 const rawPrice = priceMap.value[h.ticker]; 
                 const isUSD = (h.category === '美股' || h.category === '加密貨幣');
-                
-                // 如果沒有爬到價格，暫時用成本價代替，避免顯示 0
                 const estimatedCurrentPriceNative = rawPrice || (h.totalCostTwd / h.shares / (isUSD ? exchangeRate.value : 1));
-                
-                // 核心: 只有在計算「市值」時，才把 USD 轉回 TWD
                 const currentPriceTwd = estimatedCurrentPriceNative * (isUSD ? exchangeRate.value : 1);
                 const mvTwd = h.shares * currentPriceTwd;
-                
                 return { 
-                    ...h, 
-                    isUSD,
-                    avgCostTwd: h.totalCostTwd / h.shares, 
-                    currentPriceTwd: currentPriceTwd,
-                    manualPrice: rawPrice, // 綁定 input 顯示原幣
-                    marketValueTwd: mvTwd, 
-                    unrealizedPLTwd: mvTwd - h.totalCostTwd, 
+                    ...h, isUSD, avgCostTwd: h.totalCostTwd / h.shares, currentPriceTwd: currentPriceTwd, manualPrice: rawPrice,
+                    marketValueTwd: mvTwd, unrealizedPLTwd: mvTwd - h.totalCostTwd, 
                     returnRate: h.totalCostTwd ? (((mvTwd - h.totalCostTwd)/h.totalCostTwd)*100).toFixed(2) : 0 
                 };
             }).sort((a,b) => b.marketValueTwd - a.marketValueTwd);
@@ -437,15 +485,15 @@ createApp({
         });
 
         const cashBalanceTwd = computed(() => transactions.value.reduce((acc, tx) => acc + tx.totalCashFlow, 0));
-
         const totalStockValueTwd = computed(() => holdings.value.reduce((sum, h) => sum + h.marketValueTwd, 0));
         const totalStockCostTwd = computed(() => holdings.value.reduce((sum, h) => sum + h.totalCostTwd, 0));
         const totalStockUnrealizedPL = computed(() => totalStockValueTwd.value - totalStockCostTwd.value);
         const totalStockReturnRate = computed(() => totalStockCostTwd.value ? ((totalStockUnrealizedPL.value/totalStockCostTwd.value)*100).toFixed(2) : 0);
         const reversedTransactions = computed(() => [...transactions.value].reverse());
 
+        // --- Enriched History for Table ---
         const enrichedHistory = computed(() => {
-            const sorted = [...historyData.value].sort((a,b) => new Date(a.date) - new Date(b.date));
+            const sorted = [...displayHistory.value].sort((a,b) => new Date(a.date) - new Date(b.date));
             return sorted.map((item, index) => {
                 let dailyReturn = null;
                 if (index > 0) {
@@ -457,13 +505,15 @@ createApp({
             }).reverse();
         });
 
-        // --- QUANT CORE (Same logic, easier data) ---
+        // --- QUANT ENGINE v13.0 (Full Metrics) ---
         const stats = computed(() => {
-            const data = historyData.value;
-            if (data.length < 3) return { twr:'-', mwr:'-', sharpe:'-', sortino:'-', treynor:'-', var95:'-', cvar95:'-', skew:'-', kurt:'-', stdDev:'-', mdd:'-' };
+            const data = displayHistory.value;
+            // Initial placeholders
+            const empty = { twr:'-', mwr:'-', sharpe:'-', sortino:'-', treynor:'-', var95:'-', cvar95:'-', skew:'-', kurt:'-', stdDev:'-' };
+            if (data.length < 3) return empty;
             
             const sorted = [...data].sort((a,b) => new Date(a.date) - new Date(b.date));
-            const returns = []; let maxAsset = -Infinity; let maxDrawdown = 0;
+            const returns = []; 
             
             for(let i=1; i<sorted.length; i++) {
                 const prev = sorted[i-1]; const curr = sorted[i];
@@ -471,24 +521,34 @@ createApp({
                 if (prev.assets > 0) {
                     returns.push((curr.assets - prev.assets - netFlow) / prev.assets);
                 }
-                if (curr.assets > maxAsset) maxAsset = curr.assets;
-                const dd = (maxAsset - curr.assets) / maxAsset;
-                if (dd > maxDrawdown) maxDrawdown = dd;
             }
+            if (returns.length < 2) return empty;
 
-            if (returns.length === 0) return {};
-
+            // 1. TWR
             const twr = returns.reduce((acc, r) => acc * (1 + r), 1) - 1;
+
+            // 2. MWR (Simplified)
             const startV = sorted[0].assets;
             const endV = sorted[sorted.length-1].assets;
             const totalFlows = sorted[sorted.length-1].cost - sorted[0].cost;
             const mwr = (endV - startV - totalFlows) / (startV + 0.5 * totalFlows);
 
+            // 3. Volatility & Distribution
             const n = returns.length;
             const avgR = returns.reduce((a,b)=>a+b,0)/n;
-            const variance = returns.reduce((a,b) => a + Math.pow(b-avgR, 2), 0)/(n-1 || 1);
+            const variance = returns.reduce((a,b) => a + Math.pow(b-avgR, 2), 0)/(n-1);
             const stdDev = Math.sqrt(variance);
-            const annStdDev = stdDev * Math.sqrt(12);
+            const annStdDev = stdDev * Math.sqrt(12); // Annualized
+
+            // Skewness
+            const m3 = returns.reduce((a,b) => a + Math.pow(b-avgR, 3), 0) / n;
+            const skew = m3 / Math.pow(stdDev, 3); // Sample Skewness simplified
+
+            // Kurtosis (Excess)
+            const m4 = returns.reduce((a,b) => a + Math.pow(b-avgR, 4), 0) / n;
+            const kurt = (m4 / Math.pow(stdDev, 4)) - 3;
+
+            // 4. Risk Adjusted
             const annReturn = avgR * 12;
             const rf = riskParams.value.rf / 100;
             const beta = riskParams.value.beta;
@@ -500,36 +560,39 @@ createApp({
             const downsideVar = downside.length > 0 ? downside.reduce((a,b)=>a+Math.pow(b,2),0)/n : 0;
             const sortino = (annReturn - rf) / (Math.sqrt(downsideVar) * Math.sqrt(12));
 
+            // 5. Tail Risk (VaR / CVaR)
             const sortedR = [...returns].sort((a,b)=>a-b);
             const idx95 = Math.floor(n * 0.05);
-            const var95 = sortedR[idx95] || 0;
+            const var95 = sortedR[idx95] || 0; // Value at Risk
             const tailLosses = sortedR.slice(0, idx95+1);
             const cvar95 = tailLosses.length > 0 ? tailLosses.reduce((a,b)=>a+b,0)/tailLosses.length : var95;
 
             return { 
-                twr: (twr*100).toFixed(2), mwr: (mwr*100).toFixed(2),
-                sharpe: sharpe.toFixed(2), sortino: isFinite(sortino)?sortino.toFixed(2):'∞', treynor: treynor.toFixed(2),
-                var95: (var95*100).toFixed(2), cvar95: (cvar95*100).toFixed(2),
-                stdDev: (annStdDev*100).toFixed(2)
+                twr: (twr*100).toFixed(2), 
+                mwr: (mwr*100).toFixed(2),
+                sharpe: sharpe.toFixed(2), 
+                sortino: isFinite(sortino)?sortino.toFixed(2):'∞', 
+                treynor: isFinite(treynor)?treynor.toFixed(2):'∞',
+                var95: (var95*100).toFixed(2), 
+                cvar95: (cvar95*100).toFixed(2),
+                stdDev: (annStdDev*100).toFixed(2),
+                skew: skew.toFixed(2),
+                kurt: kurt.toFixed(2)
             };
         });
 
-        // --- Functions ---
+        // --- Operations ---
         function addTransaction() {
             const { date, type, category, ticker, price, shares, amount } = txForm.value;
             if(!date) return;
-            
             let cf = 0;
-            // 簡化邏輯：完全使用台幣計算
             if(type === 'Buy') {
                 if(!shares || shares <= 0) { alert('請輸入數量'); return; }
-                cf = -(price * shares); // 不再加手續費
+                cf = -(price * shares);
             } else if(type === 'Sell') {
                 if(!shares || shares <= 0) { alert('請輸入數量'); return; }
-                cf = (price * shares); // 不再扣手續費
-            } else if(type === 'Deposit' || type === 'Dividend') {
-                cf = amount || 0;
-            }
+                cf = (price * shares);
+            } else if(type === 'Deposit' || type === 'Dividend') cf = amount || 0;
             
             transactions.value.push({ date, type, category, ticker: ticker?.toUpperCase(), price, shares, amount, totalCashFlow: cf });
             saveData();
@@ -538,34 +601,43 @@ createApp({
         }
 
         function addHistoryRecord() {
+            // Only allow editing Real Data manually
+            if(isSimMode.value) { alert('沙盒模式無法手動補登，請使用自動生成功能'); return; }
+
             const { date, assets, cost } = historyForm.value;
             if(!date || !assets) return;
-            const idx = historyData.value.findIndex(h => h.date === date);
-            if(idx !== -1) historyData.value[idx] = { date, assets, cost };
-            else historyData.value.push({ date, assets, cost });
-            historyData.value.sort((a,b) => new Date(a.date) - new Date(b.date));
-            localStorage.setItem('historyData', JSON.stringify(historyData.value));
+            const idx = realHistoryData.value.findIndex(h => h.date === date);
+            if(idx !== -1) realHistoryData.value[idx] = { date, assets, cost };
+            else realHistoryData.value.push({ date, assets, cost });
+            
+            realHistoryData.value.sort((a,b) => new Date(a.date) - new Date(b.date));
+            localStorage.setItem('historyData', JSON.stringify(realHistoryData.value));
             historyForm.value.assets = null; historyForm.value.cost = null;
             updateCharts();
         }
 
         function generateMonthlyMockData() {
-            if(!confirm('產生測試資料？(將覆蓋現有歷史)')) return;
+            // Always generate into mockHistoryData
             const mock = [];
             let base = 1000000; let cost = 800000;
-            for(let i=12; i>=0; i--) {
+            // Generate more points for better Skew/Kurt visualization (24 months)
+            for(let i=24; i>=0; i--) {
                 const d = new Date(); d.setMonth(d.getMonth() - i); d.setDate(28);
-                const noise = (Math.random()-0.45)*0.08; 
+                // Add some "Fat Tail" events occasionally
+                let noise = (Math.random()-0.48)*0.10; 
+                if (Math.random() > 0.95) noise = -0.15; // Black swan crash
+
                 base = base * (1 + noise);
                 if(i%3===0) { cost += 50000; base += 50000; }
                 mock.push({ date: d.toISOString().split('T')[0], assets: Math.round(base), cost: cost });
             }
-            historyData.value = mock;
-            localStorage.setItem('historyData', JSON.stringify(mock));
-            updateCharts();
+            mockHistoryData.value = mock;
+            if(!isSimMode.value) toggleSimMode(); // Switch to Sim if not already
+            else updateCharts();
         }
 
         function takeSnapshot() {
+            if(isSimMode.value) return;
             historyForm.value = { date: new Date().toISOString().split('T')[0], assets: totalStockValueTwd.value + cashBalanceTwd.value, cost: totalStockCostTwd.value + transactions.value.reduce((acc,tx)=>tx.type==='Deposit'?acc+tx.totalCashFlow:acc, 0) }; 
             addHistoryRecord();
         }
@@ -578,10 +650,17 @@ createApp({
             } 
         }
         function removeTransaction(idx) { if(confirm('刪除?')) { transactions.value.splice(idx, 1); saveData(); updateCharts(); } }
-        function removeHistoryByDate(date) { if(confirm('刪除?')) { historyData.value = historyData.value.filter(h=>h.date!==date); localStorage.setItem('historyData', JSON.stringify(historyData.value)); updateCharts(); } }
+        function removeHistoryByDate(date) { 
+            if(isSimMode.value) return;
+            if(confirm('刪除?')) { 
+                realHistoryData.value = realHistoryData.value.filter(h=>h.date!==date); 
+                localStorage.setItem('historyData', JSON.stringify(realHistoryData.value)); 
+                updateCharts(); 
+            } 
+        }
         function saveData() { localStorage.setItem('ledgerData', JSON.stringify(transactions.value)); }
         function fetchPrices() { alert('請輸入現價 (美股輸入 USD, 台股輸入 TWD)'); }
-        function exportAll() { const data = { ledger: transactions.value, history: historyData.value }; const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([JSON.stringify(data)], {type: "application/json"})); link.download = "asset_master_backup.json"; link.click(); }
+        function exportAll() { const data = { ledger: transactions.value, history: realHistoryData.value }; const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([JSON.stringify(data)], {type: "application/json"})); link.download = "asset_master_backup.json"; link.click(); }
         
         function getTypeColor(type) { return { 'Buy':'text-red-400', 'Sell':'text-green-400', 'Deposit':'text-blue-400', 'Dividend':'text-yellow-400' }[type] || 'text-gray-400'; }
         function getCategoryBadgeClass(cat) { return { '美股':'bg-yellow-900 text-yellow-300 border-yellow-600', '台股':'bg-blue-900 text-blue-300 border-blue-700', '基金':'bg-green-900 text-green-300 border-green-700', '加密貨幣':'bg-purple-900 text-purple-300 border-purple-700' }[cat] || 'bg-gray-800 text-gray-400'; }
@@ -596,8 +675,26 @@ createApp({
             if(chartAlloc) { chartAlloc.destroy(); chartAlloc = null; }
             if(chartHist) { chartHist.destroy(); chartHist = null; }
             Chart.defaults.color = '#94a3b8'; Chart.defaults.borderColor = '#334155';
+            
             if (allocCtx) chartAlloc = new Chart(allocCtx, { type: 'doughnut', data: { labels: [], datasets: [{ data: [], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } }, cutout: '70%' } });
-            if (histCtx) chartHist = new Chart(histCtx, { type: 'line', data: { labels: [], datasets: [{ label: 'NAV (TWD)', borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true }, { label: 'Cost (TWD)', borderColor: '#10b981', borderDash: [5,5] }] }, options: { responsive: true, maintainAspectRatio: false } });
+            
+            if (histCtx) {
+                // Change color based on mode
+                const lineColor = isSimMode.value ? '#ef4444' : '#3b82f6';
+                const areaColor = isSimMode.value ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59,130,246,0.1)';
+                
+                chartHist = new Chart(histCtx, { 
+                    type: 'line', 
+                    data: { 
+                        labels: [], 
+                        datasets: [
+                            { label: isSimMode.value ? 'NAV (SIMULATION)' : 'NAV (Real)', borderColor: lineColor, backgroundColor: areaColor, fill: true, tension: 0.3 }, 
+                            { label: 'Cost', borderColor: '#10b981', borderDash: [5,5], pointRadius: 0 }
+                        ] 
+                    }, 
+                    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false } } 
+                });
+            }
         }
 
         function updateCharts() {
@@ -610,8 +707,8 @@ createApp({
                     chartAlloc.data.datasets[0].backgroundColor = Object.keys(cats).map(c => getCategoryColorCode(c));
                     chartAlloc.update();
                 }
-                if (chartHist && historyData.value.length > 0) {
-                    const sorted = [...historyData.value].sort((a,b) => new Date(a.date) - new Date(b.date));
+                if (chartHist && displayHistory.value.length > 0) {
+                    const sorted = [...displayHistory.value].sort((a,b) => new Date(a.date) - new Date(b.date));
                     chartHist.data.labels = sorted.map(h => h.date); 
                     chartHist.data.datasets[0].data = sorted.map(h => h.assets); 
                     chartHist.data.datasets[1].data = sorted.map(h => h.cost); 
@@ -621,7 +718,7 @@ createApp({
         }
         onMounted(() => { setTimeout(updateCharts, 1000); });
         watch([currentTab, exchangeRate], () => updateCharts());
-        return { currentTab, showHistoryModal, isUpdating, transactions, historyData, enrichedHistory, holdings, categoryTotals, totalStockValueTwd, totalStockCostTwd, totalStockUnrealizedPL, totalStockReturnRate, reversedTransactions, txForm, historyForm, riskParams, stats, exchangeRate, addTransaction, addHistoryRecord, generateMonthlyMockData, removeHistoryByDate, manualUpdate, takeSnapshot, removeTransaction, fetchPrices, exportAll, getTypeColor, getCategoryBadgeClass, getCategoryColorCode, formatNumber, formatPercent };
+        return { currentTab, showHistoryModal, isUpdating, isSimMode, toggleSimMode, transactions, realHistoryData, mockHistoryData, displayHistory, enrichedHistory, holdings, categoryTotals, totalStockValueTwd, totalStockCostTwd, totalStockUnrealizedPL, totalStockReturnRate, reversedTransactions, txForm, historyForm, riskParams, stats, exchangeRate, addTransaction, addHistoryRecord, generateMonthlyMockData, removeHistoryByDate, manualUpdate, takeSnapshot, removeTransaction, fetchPrices, exportAll, getTypeColor, getCategoryBadgeClass, getCategoryColorCode, formatNumber, formatPercent };
     }
 }).mount('#app');
 </script>
