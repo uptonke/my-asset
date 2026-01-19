@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alpha Portfolio | ENTJ Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #0f172a; color: #e2e8f0; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .input-dark { background: #334155; border: 1px solid #475569; color: white; }
+    </style>
+</head>
+<body class="antialiased min-h-screen">
+
+<div id="app" class="container mx-auto p-4 max-w-7xl">
+    
+    <div v-if="!sheetUrl" class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
+        <div class="glass p-8 rounded-xl max-w-lg w-full">
+            <h2 class="text-2xl font-bold text-white mb-4">系統初始化</h2>
+            <p class="text-gray-400 mb-4">請貼上 Phase 1 取得的 Google Sheets CSV 連結：</p>
+            <input v-model="tempUrl" type="text" placeholder="https://docs.google.com/spreadsheets/d/.../pub?output=csv" class="w-full p-3 rounded input-dark mb-4 text-sm">
+            <button @click="saveUrl" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded font-bold transition">啟動系統</button>
+        </div>
+    </div>
+
+    <div v-else>
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 py-4 border-b border-gray-700">
+            <div>
+                <h1 class="text-3xl font-bold text-white tracking-tight">ALPHA PORTFOLIO</h1>
+                <p class="text-gray-400 text-sm mt-1">資產配置管理系統 | 即時連動 Google Sheets</p>
+            </div>
+            <div class="flex items-center gap-3 mt-4 md:mt-0">
+                <span class="text-xs text-gray-500 mr-2">上次更新: {{ lastUpdate || '尚未更新' }}</span>
+                <button @click="fetchPrices" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded text-sm font-bold transition flex items-center">
+                    <i class="fas fa-sync-alt mr-2" :class="{'fa-spin': isUpdating}"></i> 同步報價
+                </button>
+                <button @click="resetUrl" class="text-gray-500 hover:text-white text-sm"><i class="fas fa-cog"></i></button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="glass p-5 rounded-lg border-l-4 border-blue-500">
+                <div class="text-gray-400 text-xs uppercase tracking-wider">Net Asset Value</div>
+                <div class="text-2xl font-bold text-white mt-1">${{ formatNumber(totalMarketValue) }}</div>
+            </div>
+            <div class="glass p-5 rounded-lg border-l-4 border-gray-500">
+                <div class="text-gray-400 text-xs uppercase tracking-wider">Invested Capital</div>
+                <div class="text-2xl font-bold text-white mt-1">${{ formatNumber(totalCost) }}</div>
+            </div>
+            <div class="glass p-5 rounded-lg" :class="totalPnL >= 0 ? 'border-l-4 border-red-500' : 'border-l-4 border-green-500'">
+                <div class="text-gray-400 text-xs uppercase tracking-wider">Unrealized P/L</div>
+                <div class="text-2xl font-bold mt-1" :class="totalPnL >= 0 ? 'text-red-400' : 'text-green-400'">
+                    {{ totalPnL >= 0 ? '+' : '' }}{{ formatNumber(totalPnL) }}
+                    <span class="text-sm ml-1 opacity-80">({{ totalRoi }}%)</span>
+                </div>
+            </div>
+            <div class="glass p-5 rounded-lg border-l-4 border-purple-500">
+                <div class="text-gray-400 text-xs uppercase tracking-wider">Holdings</div>
+                <div class="text-2xl font-bold text-white mt-1">{{ portfolio.length }} Positions</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-2 space-y-6">
+                <div class="glass p-6 rounded-xl">
+                    <h3 class="text-lg font-bold text-white mb-4"><i class="fas fa-plus-circle text-blue-500 mr-2"></i>New Position</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <input v-model="newItem.date" type="date" class="input-dark p-2 rounded">
+                        <input v-model="newItem.ticker" type="text" placeholder="Ticker (e.g. 2330)" class="input-dark p-2 rounded uppercase">
+                        <input v-model.number="newItem.price" type="number" placeholder="Cost Price" class="input-dark p-2 rounded">
+                        <input v-model.number="newItem.shares" type="number" placeholder="Shares" class="input-dark p-2 rounded">
+                    </div>
+                    <button @click="addRecord" class="w-full mt-3 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded font-medium transition">Execute Trade</button>
+                    <p class="text-xs text-gray-500 mt-2">* 新增代號後，請確認 Google Sheet A欄也有對應代號。</p>
+                </div>
+
+                <div class="glass p-6 rounded-xl overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead>
+                            <tr class="text-gray-400 text-xs border-b border-gray-700 uppercase">
+                                <th class="pb-3">Ticker</th>
+                                <th class="pb-3 text-right">Avg Cost</th>
+                                <th class="pb-3 text-right">Shares</th>
+                                <th class="pb-3 text-right">Mkt Price</th>
+                                <th class="pb-3 text-right">Mkt Value</th>
+                                <th class="pb-3 text-right">ROI</th>
+                                <th class="pb-3 text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm text-gray-300">
+                            <tr v-for="(item, index) in portfolio" :key="index" class="border-b border-gray-800 hover:bg-gray-800 transition">
+                                <td class="py-4 font-bold text-white">{{ item.ticker }}</td>
+                                <td class="py-4 text-right">{{ formatNumber(item.avgPrice) }}</td>
+                                <td class="py-4 text-right">{{ formatNumber(item.shares) }}</td>
+                                <td class="py-4 text-right text-yellow-400 font-mono">{{ item.currentPrice || 'Loading...' }}</td>
+                                <td class="py-4 text-right font-medium text-white">{{ formatNumber(item.shares * (item.currentPrice || item.avgPrice)) }}</td>
+                                <td class="py-4 text-right font-bold" :class="getReturn(item) >= 0 ? 'text-red-400' : 'text-green-400'">
+                                    {{ getReturn(item) }}%
+                                </td>
+                                <td class="py-4 text-center">
+                                    <button @click="removeRecord(index)" class="text-gray-600 hover:text-red-500"><i class="fas fa-times"></i></button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="space-y-6">
+                <div class="glass p-6 rounded-xl">
+                    <h3 class="text-white font-bold mb-4">Allocation</h3>
+                    <canvas id="allocationChart"></canvas>
+                </div>
+                <div class="glass p-6 rounded-xl">
+                    <h3 class="text-white font-bold mb-4">Performance</h3>
+                    <canvas id="comparisonChart"></canvas>
+                </div>
+                <div class="glass p-4 rounded-xl text-center">
+                    <button @click="exportData" class="text-gray-400 hover:text-white text-sm underline">Export Data to CSV</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const { createApp } = Vue;
+
+    createApp({
+        data() {
+            return {
+                sheetUrl: localStorage.getItem('googleSheetUrl') || '',
+                tempUrl: '',
+                newItem: { date: new Date().toISOString().split('T')[0], ticker: '', price: null, shares: null },
+                portfolio: JSON.parse(localStorage.getItem('myPortfolioData') || '[]'),
+                isUpdating: false,
+                lastUpdate: localStorage.getItem('lastUpdate') || '',
+                charts: { allocation: null, comparison: null },
+                marketData: {} // Cache for fetched prices
+            }
+        },
+        computed: {
+            totalCost() { return this.portfolio.reduce((sum, item) => sum + (item.avgPrice * item.shares), 0); },
+            totalMarketValue() { return this.portfolio.reduce((sum, item) => sum + ((item.currentPrice || item.avgPrice) * item.shares), 0); },
+            totalPnL() { return this.totalMarketValue - this.totalCost; },
+            totalRoi() { return this.totalCost === 0 ? 0 : ((this.totalPnL / this.totalCost) * 100).toFixed(2); }
+        },
+        mounted() {
+            if (this.sheetUrl) {
+                this.fetchPrices();
+            }
+            this.initCharts();
+        },
+        methods: {
+            saveUrl() {
+                if(this.tempUrl) {
+                    this.sheetUrl = this.tempUrl;
+                    localStorage.setItem('googleSheetUrl', this.sheetUrl);
+                    this.fetchPrices();
+                }
+            },
+            resetUrl() {
+                localStorage.removeItem('googleSheetUrl');
+                location.reload();
+            },
+            addRecord() {
+                if(!this.newItem.ticker || !this.newItem.price || !this.newItem.shares) return;
+                const ticker = this.newItem.ticker.toUpperCase().replace('台股', 'TPE:'); // Simple fix
+                
+                const existing = this.portfolio.find(p => p.ticker === ticker);
+                if (existing) {
+                    const totalOldCost = existing.avgPrice * existing.shares;
+                    const newCost = this.newItem.price * this.newItem.shares;
+                    existing.shares += this.newItem.shares;
+                    existing.avgPrice = (totalOldCost + newCost) / existing.shares;
+                } else {
+                    this.portfolio.push({
+                        ticker: ticker,
+                        avgPrice: this.newItem.price,
+                        shares: this.newItem.shares,
+                        currentPrice: this.newItem.price 
+                    });
+                }
+                this.saveData();
+                this.newItem.ticker = ''; this.newItem.price = null; this.newItem.shares = null;
+                this.updateCharts();
+                this.fetchPrices(); // Try to fetch price for new item
+            },
+            removeRecord(index) {
+                if(confirm('Confirm deletion?')) {
+                    this.portfolio.splice(index, 1);
+                    this.saveData();
+                    this.updateCharts();
+                }
+            },
+            saveData() {
+                localStorage.setItem('myPortfolioData', JSON.stringify(this.portfolio));
+            },
+            fetchPrices() {
+                if (!this.sheetUrl) return;
+                this.isUpdating = true;
+
+                Papa.parse(this.sheetUrl, {
+                    download: true,
+                    header: false, // Assuming raw dump without fancy headers sometimes
+                    complete: (results) => {
+                        // Create a map: { "TPE:2330": 1050, "NVDA": 130 }
+                        const priceMap = {};
+                        results.data.forEach(row => {
+                            if (row[0] && row[1]) {
+                                // Clean up ticker and price string
+                                const key = row[0].toString().trim().toUpperCase();
+                                const val = parseFloat(row[1].toString().replace(/,/g, '')); // Remove commas
+                                if (!isNaN(val)) priceMap[key] = val;
+                            }
+                        });
+
+                        // Update Portfolio
+                        let updated = false;
+                        this.portfolio.forEach(item => {
+                            // Try exact match first, then try appending TPE: if missing
+                            let match = priceMap[item.ticker];
+                            if (!match && !item.ticker.includes(':')) {
+                                match = priceMap['TPE:' + item.ticker];
+                            }
+                            
+                            if (match) {
+                                item.currentPrice = match;
+                                updated = true;
+                            }
+                        });
+
+                        this.isUpdating = false;
+                        if (updated) {
+                            this.lastUpdate = new Date().toLocaleString();
+                            localStorage.setItem('lastUpdate', this.lastUpdate);
+                            this.saveData();
+                            this.updateCharts();
+                        }
+                    },
+                    error: (err) => {
+                        console.error('CSV Fetch Error:', err);
+                        this.isUpdating = false;
+                        alert('無法讀取 Google Sheet，請檢查連結權限是否為「公開」且格式為 CSV。');
+                    }
+                });
+            },
+            getReturn(item) {
+                const cost = item.avgPrice;
+                const curr = item.currentPrice || item.avgPrice;
+                return (((curr - cost) / cost) * 100).toFixed(2);
+            },
+            formatNumber(num) {
+                return new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 0 }).format(num);
+            },
+            exportData() {
+                let csv = "Ticker,AvgPrice,Shares,CurrentPrice\n";
+                this.portfolio.forEach(p => csv += `${p.ticker},${p.avgPrice},${p.shares},${p.currentPrice}\n`);
+                const link = document.createElement("a");
+                link.href = "data:text/csv;charset=utf-8,\uFEFF" + encodeURI(csv);
+                link.download = "portfolio_backup.csv";
+                link.click();
+            },
+            initCharts() {
+                Chart.defaults.color = '#94a3b8';
+                Chart.defaults.borderColor = '#334155';
+                
+                this.charts.allocation = new Chart(document.getElementById('allocationChart'), {
+                    type: 'doughnut',
+                    data: { labels: [], datasets: [{ data: [], backgroundColor: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'], borderWidth: 0 }] },
+                    options: { plugins: { legend: { position: 'right' } } }
+                });
+
+                this.charts.comparison = new Chart(document.getElementById('comparisonChart'), {
+                    type: 'bar',
+                    data: { labels: ['Portfolio'], datasets: [{ label: 'Cost', data: [0], backgroundColor: '#64748b' }, { label: 'Market Value', data: [0], backgroundColor: '#3b82f6' }] },
+                    options: { scales: { y: { beginAtZero: true } } }
+                });
+            },
+            updateCharts() {
+                this.charts.allocation.data.labels = this.portfolio.map(p => p.ticker);
+                this.charts.allocation.data.datasets[0].data = this.portfolio.map(p => (p.currentPrice || p.avgPrice) * p.shares);
+                this.charts.allocation.update();
+
+                this.charts.comparison.data.datasets[0].data = [this.totalCost];
+                this.charts.comparison.data.datasets[1].data = [this.totalMarketValue];
+                this.charts.comparison.update();
+            }
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>
