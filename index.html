@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>股票紀錄 v14.4</title>
+    <title>股票紀錄 v14.5 (Auto-Link)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -41,7 +41,7 @@
         <div class="flex items-center gap-6">
             <h1 class="font-bold text-xl tracking-wide flex items-center gap-2 text-white">
                 <i class="fas fa-book-open text-yellow-500"></i> 股票紀錄 
-                <span v-if="!isSimMode" class="text-xs bg-yellow-600 px-2 py-0.5 rounded text-black font-bold">v14.4 Stable</span>
+                <span v-if="!isSimMode" class="text-xs bg-yellow-600 px-2 py-0.5 rounded text-black font-bold">v14.5 Smart</span>
                 <span v-else class="text-xs bg-red-600 px-2 py-0.5 rounded text-white font-bold animate-pulse">模擬中</span>
             </h1>
             
@@ -50,9 +50,9 @@
                 <input v-model.number="exchangeRate" type="number" step="0.01" class="w-16 bg-transparent text-center font-mono font-bold text-green-400 focus:outline-none border-b border-gray-600">
             </div>
 
-            <div class="hidden md:flex items-center gap-2 bg-slate-800 py-1 px-3 rounded-lg border border-slate-700 w-64">
+            <div class="hidden md:flex items-center gap-2 bg-slate-800 py-1 px-3 rounded-lg border border-slate-700 w-80">
                 <i class="fab fa-google text-green-500"></i>
-                <input v-model="sheetUrl" placeholder="Google Sheet CSV 連結" class="w-full bg-transparent text-xs text-white focus:outline-none placeholder-gray-500">
+                <input v-model="sheetUrl" placeholder="貼上 Google Sheet 網址 (一般網址即可)" class="w-full bg-transparent text-xs text-white focus:outline-none placeholder-gray-500">
             </div>
 
             <nav class="flex gap-6 font-medium ml-4 hidden md:flex">
@@ -123,7 +123,9 @@
                         <div class="flex-1 relative"><canvas id="allocationChart"></canvas></div>
                     </div>
                     <div class="glass p-5 rounded-2xl col-span-2 flex flex-col">
-                        <h4 class="text-white font-bold mb-4 border-l-4 border-emerald-500 pl-3">淨值成長趨勢 (NAV)</h4>
+                        <div class="flex justify-between items-center mb-4 border-l-4 border-emerald-500 pl-3">
+                            <h4 class="text-white font-bold">淨值成長趨勢 (NAV)</h4>
+                        </div>
                         <div class="flex-1 relative">
                             <canvas id="historyChart"></canvas>
                              <div v-if="displayHistory.length < 2" class="absolute inset-0 flex items-center justify-center text-gray-500 text-xs bg-gray-900/50 rounded-lg">
@@ -394,18 +396,44 @@ createApp({
             updateCharts();
         }
 
+        // --- NEW: Smart URL Parser ---
         async function fetchPrices() {
-            if (!sheetUrl.value) { alert('請輸入 Sheet CSV 網址'); return; }
+            if (!sheetUrl.value) { alert('請輸入 Google Sheet 網址'); return; }
+            
+            // 1. Try Extract ID from ANY google sheet url
+            let sheetId = null;
+            // Match pattern: /d/([ID])/
+            const match = sheetUrl.value.match(/\/d\/([a-zA-Z0-9-_]+)/);
+            
+            if (match && match[1]) {
+                sheetId = match[1];
+            } else {
+                alert('無法辨識網址中的 ID，請確認這是 Google Sheet 網址');
+                return;
+            }
+
+            // 2. Construct the MAGIC URL (GViz)
+            // Note: Assuming "Sheet1" is default. If fails, user needs to rename sheet.
+            const targetUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=Sheet1`; // Or try '工作表1' if needed
+
             isUpdating.value = true;
             try {
-                const response = await fetch(sheetUrl.value);
-                if (!response.ok) throw new Error('Network Error');
+                const response = await fetch(targetUrl);
+                if (!response.ok) {
+                    if(response.status === 400 || response.status === 404) {
+                        throw new Error('找不到工作表 "Sheet1"。請確認你的 Excel 下方分頁名稱是否為 "Sheet1" (英文)。');
+                    }
+                    throw new Error('存取被拒 (403/401)。請確認權限已設為「知道連結的人均可檢視」。');
+                }
                 const csvText = await response.text();
+                
+                // 3. Parse
                 Papa.parse(csvText, {
                     header: true,
                     complete: (results) => {
                         let count = 0;
                         results.data.forEach(row => {
+                            // Looking for 'Ticker' and 'Price' columns
                             if (row.Ticker && row.Price) {
                                 const t = row.Ticker.toUpperCase().trim();
                                 const p = parseFloat(row.Price);
@@ -416,10 +444,14 @@ createApp({
                         lastUpdate.value = new Date().toLocaleTimeString();
                         isUpdating.value = false;
                         updateCharts();
-                        alert(`更新 ${count} 筆報價`);
-                    }
+                        alert(`成功！已更新 ${count} 筆報價。\n(ID: ${sheetId.substring(0,5)}...)`);
+                    },
+                    error: (err) => { throw new Error('CSV 格式錯誤，請檢查欄位名稱是否為 Ticker, Price'); }
                 });
-            } catch (e) { isUpdating.value = false; alert('抓取失敗，檢查網址'); }
+            } catch (e) { 
+                isUpdating.value = false; 
+                alert(`失敗：${e.message}\n\n建議：\n1. 檢查權限是否為「公開/檢視」\n2. 檢查分頁名稱是否為 "Sheet1"`); 
+            }
         }
 
         const holdingsFlat = computed(() => {
@@ -673,30 +705,16 @@ createApp({
         function formatNumber(n) { return new Intl.NumberFormat('zh-TW', {maximumFractionDigits:0}).format(n||0); }
         function formatPercent(n) { return ((n||0)*100).toFixed(1) + '%'; }
 
-        let chartAlloc = null;
-        let chartHist = null;
-
+        let chartAlloc, chartHist;
         function initCharts() {
-            // Destroy existing instances if any
-            if (chartAlloc) { chartAlloc.destroy(); chartAlloc = null; }
-            if (chartHist) { chartHist.destroy(); chartHist = null; }
-
-            Chart.defaults.color = '#94a3b8'; 
-            Chart.defaults.borderColor = '#334155';
-            
             const allocCtx = document.getElementById('allocationChart');
             const histCtx = document.getElementById('historyChart');
-
-            // 1. Allocation Chart
-            if (allocCtx) {
-                chartAlloc = new Chart(allocCtx, { 
-                    type: 'doughnut', 
-                    data: { labels: [], datasets: [{ data: [], borderWidth: 0 }] }, 
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } }, cutout: '70%' } 
-                });
-            }
+            if(chartAlloc) { chartAlloc.destroy(); chartAlloc = null; }
+            if(chartHist) { chartHist.destroy(); chartHist = null; }
+            Chart.defaults.color = '#94a3b8'; Chart.defaults.borderColor = '#334155';
             
-            // 2. History Chart (Fix: Create it even if empty, then update data)
+            if (allocCtx) chartAlloc = new Chart(allocCtx, { type: 'doughnut', data: { labels: [], datasets: [{ data: [], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } }, cutout: '70%' } });
+            
             if (histCtx) {
                 const lineColor = isSimMode.value ? '#ef4444' : '#3b82f6';
                 const areaColor = isSimMode.value ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59,130,246,0.1)';
@@ -704,7 +722,7 @@ createApp({
                 chartHist = new Chart(histCtx, { 
                     type: 'line', 
                     data: { 
-                        labels: [], 
+                        labels: [], // Initial Empty
                         datasets: [
                             { label: isSimMode.value ? 'NAV (SIM)' : 'NAV', borderColor: lineColor, backgroundColor: areaColor, fill: true, tension: 0.3, data: [] }, 
                             { label: 'Cost', borderColor: '#10b981', borderDash: [5,5], pointRadius: 0, data: [] }
@@ -716,13 +734,9 @@ createApp({
         }
 
         function updateCharts() {
-            // Only update if we are on Summary tab
-            if (currentTab.value !== 'summary') return;
-
             nextTick(() => {
-                // Re-init chart instances to handle destroy/create cycle properly
-                if(!chartHist || !chartAlloc) initCharts();
-
+                if(!chartHist || !chartAlloc) initCharts(); // Ensure created
+                
                 // 1. Update Allocation
                 if (chartAlloc) {
                     const cats = categoryTotals.value;
@@ -736,29 +750,15 @@ createApp({
                 const history = displayHistory.value;
                 if (chartHist && history.length > 0) {
                     const sorted = [...history].sort((a,b) => new Date(a.date) - new Date(b.date));
-                    
                     chartHist.data.labels = sorted.map(h => h.date);
-                    // Use index 0 for NAV, index 1 for Cost
-                    chartHist.data.datasets[0].data = sorted.map(h => h.assets);
-                    chartHist.data.datasets[1].data = sorted.map(h => h.cost);
-                    
+                    chartHist.data.datasets[0].data = sorted.map(h => h.assets); // Update NAV
+                    chartHist.data.datasets[1].data = sorted.map(h => h.cost);   // Update Cost
                     chartHist.update();
                 }
             });
         }
-        
-        onMounted(() => { setTimeout(updateCharts, 500); });
-        
-        // Watch for tab change -> Force Re-init Charts
-        watch(currentTab, (newTab) => {
-            if (newTab === 'summary') {
-                setTimeout(initCharts, 100); // Give DOM time to render canvas
-                setTimeout(updateCharts, 300); // Then fill data
-            }
-        });
-
-        watch([exchangeRate, sheetUrl, isSimMode], () => updateCharts());
-
+        onMounted(() => { setTimeout(updateCharts, 1000); });
+        watch([currentTab, exchangeRate, sheetUrl], () => updateCharts());
         return { currentTab, showHistoryModal, showMCModal, isUpdating, isSimMode, toggleSimMode, transactions, groupedHoldings, categoryTotals, totalStockValueTwd, totalStockCostTwd, totalStockUnrealizedPL, totalStockReturnRate, reversedTransactions, txForm, historyForm, riskParams, stats, mcParams, exchangeRate, sheetUrl, addTransaction, addHistoryRecord, generateMonthlyMockData, removeHistoryByDate, manualUpdate, fetchPrices, exportAll, importData, getTypeColor, getCategoryColorCode, formatNumber, formatPercent, openMonteCarlo, runMonteCarlo, lastUpdate, displayHistory, enrichedHistory };
     }
 }).mount('#app');
