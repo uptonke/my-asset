@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>股票紀錄 v14.2</title>
+    <title>股票紀錄 v14.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -41,7 +41,7 @@
         <div class="flex items-center gap-6">
             <h1 class="font-bold text-xl tracking-wide flex items-center gap-2 text-white">
                 <i class="fas fa-book-open text-yellow-500"></i> 股票紀錄 
-                <span v-if="!isSimMode" class="text-xs bg-yellow-600 px-2 py-0.5 rounded text-black font-bold">v14.2</span>
+                <span v-if="!isSimMode" class="text-xs bg-yellow-600 px-2 py-0.5 rounded text-black font-bold">v14.3 Fix</span>
                 <span v-else class="text-xs bg-red-600 px-2 py-0.5 rounded text-white font-bold animate-pulse">模擬中</span>
             </h1>
             
@@ -71,7 +71,7 @@
              </div>
              <button @click="fetchPrices" class="p-2 text-blue-400 hover:text-white transition" title="從 Sheet 更新"><i class="fas fa-sync-alt" :class="{'fa-spin': isUpdating}"></i></button>
              
-             <label class="p-2 text-yellow-400 hover:text-white transition cursor-pointer" title="匯入備份">
+             <label class="p-2 text-yellow-400 hover:text-white transition cursor-pointer" title="匯入備份 (點擊選擇檔案)">
                  <i class="fas fa-file-upload"></i>
                  <input type="file" @change="importData" class="hidden" accept=".json">
              </label>
@@ -558,6 +558,7 @@ createApp({
             };
         });
 
+        // --- Monte Carlo ---
         function openMonteCarlo() {
             if(displayHistory.value.length < 5) { alert('歷史數據不足'); return; }
             showMCModal.value = true;
@@ -600,7 +601,6 @@ createApp({
             });
         }
 
-        // --- NEW: Import Function ---
         function importData(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -617,9 +617,7 @@ createApp({
                             updateCharts();
                             alert('匯入成功！');
                         }
-                    } else {
-                        alert('檔案格式錯誤');
-                    }
+                    } else { alert('檔案格式錯誤'); }
                 } catch (err) { alert('解析失敗'); }
             };
             reader.readAsText(file);
@@ -695,28 +693,14 @@ createApp({
                 const lineColor = isSimMode.value ? '#ef4444' : '#3b82f6';
                 const areaColor = isSimMode.value ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59,130,246,0.1)';
                 
-                // --- NEW: Benchmark Data ---
-                // Simple 8% Annual Growth Line based on start
-                const history = isSimMode.value ? mockHistoryData.value : realHistoryData.value;
-                const sorted = [...history].sort((a,b) => new Date(a.date) - new Date(b.date));
-                let benchmarkData = [];
-                if(sorted.length > 0) {
-                    const startVal = sorted[0].assets;
-                    const startDate = new Date(sorted[0].date);
-                    benchmarkData = sorted.map(h => {
-                        const days = (new Date(h.date) - startDate) / (1000 * 60 * 60 * 24);
-                        return startVal * Math.pow(1.08, days/365); // 8% Annual
-                    });
-                }
-
                 chartHist = new Chart(histCtx, { 
                     type: 'line', 
                     data: { 
-                        labels: sorted.map(h => h.date), 
+                        labels: [], // Initial Empty
                         datasets: [
-                            { label: isSimMode.value ? 'NAV (SIM)' : 'NAV', borderColor: lineColor, backgroundColor: areaColor, fill: true, tension: 0.3 }, 
-                            { label: 'Cost', borderColor: '#10b981', borderDash: [5,5], pointRadius: 0 },
-                            { label: 'Benchmark (8%)', borderColor: '#64748b', borderDash: [2,2], borderWidth: 1, pointRadius: 0, fill: false, data: benchmarkData }
+                            { label: isSimMode.value ? 'NAV (SIM)' : 'NAV', borderColor: lineColor, backgroundColor: areaColor, fill: true, tension: 0.3, data: [] }, 
+                            { label: 'Cost', borderColor: '#10b981', borderDash: [5,5], pointRadius: 0, data: [] },
+                            { label: 'Benchmark (8%)', borderColor: '#64748b', borderDash: [2,2], borderWidth: 1, pointRadius: 0, fill: false, data: [] }
                         ] 
                     }, 
                     options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false } } 
@@ -726,7 +710,9 @@ createApp({
 
         function updateCharts() {
             nextTick(() => {
-                initCharts();
+                if(!chartHist || !chartAlloc) initCharts(); // Ensure created
+                
+                // 1. Update Allocation
                 if (chartAlloc) {
                     const cats = categoryTotals.value;
                     chartAlloc.data.labels = Object.keys(cats); 
@@ -734,8 +720,28 @@ createApp({
                     chartAlloc.data.datasets[0].backgroundColor = Object.keys(cats).map(c => getCategoryColorCode(c));
                     chartAlloc.update();
                 }
-                if (chartHist && displayHistory.value.length > 0) {
-                    // Update handled in initCharts now to include Benchmark calculation
+
+                // 2. Update History & Benchmark
+                const history = displayHistory.value;
+                if (chartHist && history.length > 0) {
+                    const sorted = [...history].sort((a,b) => new Date(a.date) - new Date(b.date));
+                    
+                    // Calc Benchmark
+                    let benchmarkData = [];
+                    if(sorted.length > 0) {
+                        const startVal = sorted[0].assets;
+                        const startDate = new Date(sorted[0].date);
+                        benchmarkData = sorted.map(h => {
+                            const days = (new Date(h.date) - startDate) / (1000 * 60 * 60 * 24);
+                            return startVal * Math.pow(1.08, days/365); // 8% Annual
+                        });
+                    }
+
+                    chartHist.data.labels = sorted.map(h => h.date);
+                    chartHist.data.datasets[0].data = sorted.map(h => h.assets); // Update NAV
+                    chartHist.data.datasets[1].data = sorted.map(h => h.cost);   // Update Cost
+                    chartHist.data.datasets[2].data = benchmarkData;             // Update Bench
+                    chartHist.update();
                 }
             });
         }
