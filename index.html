@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>股票紀錄 v14.3</title>
+    <title>股票紀錄 v14.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -41,7 +41,7 @@
         <div class="flex items-center gap-6">
             <h1 class="font-bold text-xl tracking-wide flex items-center gap-2 text-white">
                 <i class="fas fa-book-open text-yellow-500"></i> 股票紀錄 
-                <span v-if="!isSimMode" class="text-xs bg-yellow-600 px-2 py-0.5 rounded text-black font-bold">v14.3 Fix</span>
+                <span v-if="!isSimMode" class="text-xs bg-yellow-600 px-2 py-0.5 rounded text-black font-bold">v14.4 Stable</span>
                 <span v-else class="text-xs bg-red-600 px-2 py-0.5 rounded text-white font-bold animate-pulse">模擬中</span>
             </h1>
             
@@ -75,7 +75,7 @@
                  <i class="fas fa-file-upload"></i>
                  <input type="file" @change="importData" class="hidden" accept=".json">
              </label>
-             <button @click="exportAll" class="p-2 text-green-400 hover:text-white transition" title="匯出備份"><i class="fas fa-download"></i></button>
+             <button @click="exportAll" class="p-2 text-green-400 hover:text-white transition" title="匯出備份 (可存USB)"><i class="fas fa-download"></i></button>
         </div>
     </header>
 
@@ -123,12 +123,7 @@
                         <div class="flex-1 relative"><canvas id="allocationChart"></canvas></div>
                     </div>
                     <div class="glass p-5 rounded-2xl col-span-2 flex flex-col">
-                        <div class="flex justify-between items-center mb-4 border-l-4 border-emerald-500 pl-3">
-                            <h4 class="text-white font-bold">淨值成長趨勢 (NAV)</h4>
-                            <div class="text-[10px] text-gray-400 flex items-center gap-2">
-                                <span class="w-3 h-1 bg-gray-500/50 inline-block border-t border-gray-400 border-dashed"></span> Benchmark (8%)
-                            </div>
-                        </div>
+                        <h4 class="text-white font-bold mb-4 border-l-4 border-emerald-500 pl-3">淨值成長趨勢 (NAV)</h4>
                         <div class="flex-1 relative">
                             <canvas id="historyChart"></canvas>
                              <div v-if="displayHistory.length < 2" class="absolute inset-0 flex items-center justify-center text-gray-500 text-xs bg-gray-900/50 rounded-lg">
@@ -558,7 +553,6 @@ createApp({
             };
         });
 
-        // --- Monte Carlo ---
         function openMonteCarlo() {
             if(displayHistory.value.length < 5) { alert('歷史數據不足'); return; }
             showMCModal.value = true;
@@ -679,16 +673,30 @@ createApp({
         function formatNumber(n) { return new Intl.NumberFormat('zh-TW', {maximumFractionDigits:0}).format(n||0); }
         function formatPercent(n) { return ((n||0)*100).toFixed(1) + '%'; }
 
-        let chartAlloc, chartHist;
+        let chartAlloc = null;
+        let chartHist = null;
+
         function initCharts() {
+            // Destroy existing instances if any
+            if (chartAlloc) { chartAlloc.destroy(); chartAlloc = null; }
+            if (chartHist) { chartHist.destroy(); chartHist = null; }
+
+            Chart.defaults.color = '#94a3b8'; 
+            Chart.defaults.borderColor = '#334155';
+            
             const allocCtx = document.getElementById('allocationChart');
             const histCtx = document.getElementById('historyChart');
-            if(chartAlloc) { chartAlloc.destroy(); chartAlloc = null; }
-            if(chartHist) { chartHist.destroy(); chartHist = null; }
-            Chart.defaults.color = '#94a3b8'; Chart.defaults.borderColor = '#334155';
+
+            // 1. Allocation Chart
+            if (allocCtx) {
+                chartAlloc = new Chart(allocCtx, { 
+                    type: 'doughnut', 
+                    data: { labels: [], datasets: [{ data: [], borderWidth: 0 }] }, 
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } }, cutout: '70%' } 
+                });
+            }
             
-            if (allocCtx) chartAlloc = new Chart(allocCtx, { type: 'doughnut', data: { labels: [], datasets: [{ data: [], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } }, cutout: '70%' } });
-            
+            // 2. History Chart (Fix: Create it even if empty, then update data)
             if (histCtx) {
                 const lineColor = isSimMode.value ? '#ef4444' : '#3b82f6';
                 const areaColor = isSimMode.value ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59,130,246,0.1)';
@@ -696,11 +704,10 @@ createApp({
                 chartHist = new Chart(histCtx, { 
                     type: 'line', 
                     data: { 
-                        labels: [], // Initial Empty
+                        labels: [], 
                         datasets: [
                             { label: isSimMode.value ? 'NAV (SIM)' : 'NAV', borderColor: lineColor, backgroundColor: areaColor, fill: true, tension: 0.3, data: [] }, 
-                            { label: 'Cost', borderColor: '#10b981', borderDash: [5,5], pointRadius: 0, data: [] },
-                            { label: 'Benchmark (8%)', borderColor: '#64748b', borderDash: [2,2], borderWidth: 1, pointRadius: 0, fill: false, data: [] }
+                            { label: 'Cost', borderColor: '#10b981', borderDash: [5,5], pointRadius: 0, data: [] }
                         ] 
                     }, 
                     options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false } } 
@@ -709,9 +716,13 @@ createApp({
         }
 
         function updateCharts() {
+            // Only update if we are on Summary tab
+            if (currentTab.value !== 'summary') return;
+
             nextTick(() => {
-                if(!chartHist || !chartAlloc) initCharts(); // Ensure created
-                
+                // Re-init chart instances to handle destroy/create cycle properly
+                if(!chartHist || !chartAlloc) initCharts();
+
                 // 1. Update Allocation
                 if (chartAlloc) {
                     const cats = categoryTotals.value;
@@ -721,32 +732,33 @@ createApp({
                     chartAlloc.update();
                 }
 
-                // 2. Update History & Benchmark
+                // 2. Update History (Fixed)
                 const history = displayHistory.value;
                 if (chartHist && history.length > 0) {
                     const sorted = [...history].sort((a,b) => new Date(a.date) - new Date(b.date));
                     
-                    // Calc Benchmark
-                    let benchmarkData = [];
-                    if(sorted.length > 0) {
-                        const startVal = sorted[0].assets;
-                        const startDate = new Date(sorted[0].date);
-                        benchmarkData = sorted.map(h => {
-                            const days = (new Date(h.date) - startDate) / (1000 * 60 * 60 * 24);
-                            return startVal * Math.pow(1.08, days/365); // 8% Annual
-                        });
-                    }
-
                     chartHist.data.labels = sorted.map(h => h.date);
-                    chartHist.data.datasets[0].data = sorted.map(h => h.assets); // Update NAV
-                    chartHist.data.datasets[1].data = sorted.map(h => h.cost);   // Update Cost
-                    chartHist.data.datasets[2].data = benchmarkData;             // Update Bench
+                    // Use index 0 for NAV, index 1 for Cost
+                    chartHist.data.datasets[0].data = sorted.map(h => h.assets);
+                    chartHist.data.datasets[1].data = sorted.map(h => h.cost);
+                    
                     chartHist.update();
                 }
             });
         }
-        onMounted(() => { setTimeout(updateCharts, 1000); });
-        watch([currentTab, exchangeRate, sheetUrl], () => updateCharts());
+        
+        onMounted(() => { setTimeout(updateCharts, 500); });
+        
+        // Watch for tab change -> Force Re-init Charts
+        watch(currentTab, (newTab) => {
+            if (newTab === 'summary') {
+                setTimeout(initCharts, 100); // Give DOM time to render canvas
+                setTimeout(updateCharts, 300); // Then fill data
+            }
+        });
+
+        watch([exchangeRate, sheetUrl, isSimMode], () => updateCharts());
+
         return { currentTab, showHistoryModal, showMCModal, isUpdating, isSimMode, toggleSimMode, transactions, groupedHoldings, categoryTotals, totalStockValueTwd, totalStockCostTwd, totalStockUnrealizedPL, totalStockReturnRate, reversedTransactions, txForm, historyForm, riskParams, stats, mcParams, exchangeRate, sheetUrl, addTransaction, addHistoryRecord, generateMonthlyMockData, removeHistoryByDate, manualUpdate, fetchPrices, exportAll, importData, getTypeColor, getCategoryColorCode, formatNumber, formatPercent, openMonteCarlo, runMonteCarlo, lastUpdate, displayHistory, enrichedHistory };
     }
 }).mount('#app');
