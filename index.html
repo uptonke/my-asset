@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ENTJ Asset Master | 全方位帳務系統</title>
+    <title>ASSET MASTER v5.0 | ENTJ Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -12,147 +12,155 @@
     <style>
         body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0f172a; color: #e2e8f0; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
-        .input-dark { background: #1e293b; border: 1px solid #334155; color: white; transition: all 0.2s; }
+        .input-dark { background: #1e293b; border: 1px solid #334155; color: white; }
         .input-dark:focus { border-color: #3b82f6; ring: 2px; outline: none; }
         .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; }
         .tab-inactive { color: #64748b; }
         .tab-inactive:hover { color: #94a3b8; }
-        
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
     </style>
 </head>
-<body class="antialiased h-screen overflow-hidden flex flex-col">
+<body class="h-screen flex flex-col overflow-hidden">
 
 <div id="app" class="h-full flex flex-col">
     
-    <header class="glass z-50 flex-none">
-        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-            <div class="flex items-center gap-6">
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-layer-group text-blue-500 text-xl"></i>
-                    <h1 class="font-bold text-lg tracking-wide">ASSET MASTER <span class="text-xs text-gray-500 font-normal">v4.0</span></h1>
-                </div>
-                
-                <nav class="flex gap-6 ml-8 text-sm font-semibold">
-                    <button @click="currentTab = 'summary'" :class="currentTab === 'summary' ? 'tab-active' : 'tab-inactive'" class="py-5 px-1 transition">
-                        <i class="fas fa-chart-pie mr-1"></i> 資產總計
-                    </button>
-                    <button @click="currentTab = 'holdings'" :class="currentTab === 'holdings' ? 'tab-active' : 'tab-inactive'" class="py-5 px-1 transition">
-                        <i class="fas fa-list-ul mr-1"></i> 連結資料 (庫存)
-                    </button>
-                    <button @click="currentTab = 'ledger'" :class="currentTab === 'ledger' ? 'tab-active' : 'tab-inactive'" class="py-5 px-1 transition">
-                        <i class="fas fa-history mr-1"></i> 流水帳 (交易)
-                    </button>
-                </nav>
-            </div>
-
-            <div class="flex items-center gap-3">
-                <div class="text-right mr-2 hidden md:block">
-                    <p class="text-xs text-gray-400">現金餘額 (Cash)</p>
-                    <p class="font-mono font-bold text-emerald-400">${{ formatNumber(cashBalance) }}</p>
-                </div>
-                <button @click="fetchPrices" class="p-2 text-gray-400 hover:text-white transition" title="更新報價">
-                    <i class="fas fa-sync-alt" :class="{'fa-spin': isUpdating}"></i>
-                </button>
-                <button @click="exportData" class="p-2 text-gray-400 hover:text-white transition" title="備份資料">
-                    <i class="fas fa-download"></i>
-                </button>
-            </div>
+    <header class="glass z-50 flex-none h-16 px-4 flex items-center justify-between">
+        <div class="flex items-center gap-6">
+            <h1 class="font-bold text-lg tracking-wide flex items-center gap-2">
+                <i class="fas fa-cube text-blue-500"></i> ASSET MASTER <span class="text-xs text-gray-500">v5.0</span>
+            </h1>
+            <nav class="flex gap-6 text-sm font-semibold ml-4">
+                <button @click="currentTab='summary'" :class="currentTab==='summary'?'tab-active':'tab-inactive'" class="py-5 px-1"><i class="fas fa-home mr-1"></i> 總覽</button>
+                <button @click="currentTab='holdings'" :class="currentTab==='holdings'?'tab-active':'tab-inactive'" class="py-5 px-1"><i class="fas fa-wallet mr-1"></i> 庫存</button>
+                <button @click="currentTab='history'" :class="currentTab==='history'?'tab-active':'tab-inactive'" class="py-5 px-1"><i class="fas fa-chart-bar mr-1"></i> 資產變化</button>
+                <button @click="currentTab='ledger'" :class="currentTab==='ledger'?'tab-active':'tab-inactive'" class="py-5 px-1"><i class="fas fa-list mr-1"></i> 流水帳</button>
+            </nav>
+        </div>
+        <div class="flex gap-3">
+             <button @click="fetchPrices" class="p-2 text-gray-400 hover:text-white" title="更新報價"><i class="fas fa-sync-alt" :class="{'fa-spin': isUpdating}"></i></button>
+             <button @click="exportAll" class="p-2 text-gray-400 hover:text-white" title="全備份"><i class="fas fa-save"></i></button>
         </div>
     </header>
 
-    <main class="flex-1 overflow-y-auto p-4 md:p-6 bg-gradient-to-br from-gray-900 to-gray-800">
-        <div class="max-w-7xl mx-auto h-full">
+    <main class="flex-1 overflow-y-auto p-6 bg-gradient-to-br from-gray-900 to-gray-800">
+        <div class="max-w-7xl mx-auto h-full space-y-6">
 
-            <div v-if="currentTab === 'summary'" class="space-y-6 animate-fade-in">
+            <div v-if="currentTab === 'summary'" class="animate-fade-in space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="glass p-6 rounded-2xl relative overflow-hidden group">
-                        <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition"><i class="fas fa-wallet text-6xl text-blue-500"></i></div>
-                        <h3 class="text-gray-400 text-sm font-bold uppercase tracking-wider">總資產 (Total Assets)</h3>
+                    <div class="glass p-6 rounded-2xl border-l-4 border-blue-500">
+                        <h3 class="text-xs font-bold text-gray-400 uppercase">目前總資產 (Total Assets)</h3>
                         <p class="text-4xl font-bold text-white mt-2">${{ formatNumber(totalAssets) }}</p>
-                        <div class="mt-4 flex gap-2 text-xs">
-                            <span class="px-2 py-1 rounded bg-blue-500/20 text-blue-300">現金: {{ formatPercent(cashBalance / totalAssets) }}</span>
-                            <span class="px-2 py-1 rounded bg-purple-500/20 text-purple-300">證券: {{ formatPercent(stockValue / totalAssets) }}</span>
-                        </div>
                     </div>
-                    
-                    <div class="glass p-6 rounded-2xl relative overflow-hidden group">
-                        <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition"><i class="fas fa-chart-line text-6xl text-emerald-500"></i></div>
-                        <h3 class="text-gray-400 text-sm font-bold uppercase tracking-wider">未實現損益 (Unrealized P/L)</h3>
+                    <div class="glass p-6 rounded-2xl border-l-4 border-emerald-500">
+                        <h3 class="text-xs font-bold text-gray-400 uppercase">目前總成本 (Total Cost)</h3>
+                        <p class="text-4xl font-bold text-white mt-2">${{ formatNumber(totalPrincipal) }}</p>
+                    </div>
+                    <div class="glass p-6 rounded-2xl" :class="totalUnrealizedPL >= 0 ? 'border-l-4 border-red-500' : 'border-l-4 border-green-500'">
+                        <h3 class="text-xs font-bold text-gray-400 uppercase">未實現損益 (Unrealized P/L)</h3>
                         <p class="text-4xl font-bold mt-2" :class="totalUnrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
                             {{ totalUnrealizedPL >= 0 ? '+' : '' }}{{ formatNumber(totalUnrealizedPL) }}
+                            <span class="text-lg opacity-70 ml-2">({{ totalReturnRate }}%)</span>
                         </p>
-                        <p class="text-sm mt-1 opacity-70">報酬率: {{ totalReturnRate }}%</p>
-                    </div>
-
-                    <div class="glass p-6 rounded-2xl relative overflow-hidden group">
-                        <div class="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition"><i class="fas fa-coins text-6xl text-yellow-500"></i></div>
-                        <h3 class="text-gray-400 text-sm font-bold uppercase tracking-wider">總投入成本 (Principal)</h3>
-                        <p class="text-4xl font-bold text-white mt-2">${{ formatNumber(totalPrincipal) }}</p>
-                        <p class="text-sm mt-1 text-gray-500">含手續費與稅金</p>
                     </div>
                 </div>
-
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-96">
-                    <div class="glass p-6 rounded-2xl col-span-1 flex flex-col">
-                        <h3 class="font-bold text-white mb-4 text-center">資產配置 (Allocation)</h3>
-                        <div class="flex-1 relative">
-                            <canvas id="allocationChart"></canvas>
-                        </div>
+                    <div class="glass p-4 rounded-2xl col-span-1 flex flex-col">
+                        <h4 class="text-white font-bold mb-2 text-center">現有配置</h4>
+                        <div class="flex-1 relative"><canvas id="allocationChart"></canvas></div>
                     </div>
-                    <div class="glass p-6 rounded-2xl col-span-2 flex flex-col">
-                        <h3 class="font-bold text-white mb-4">資產成長趨勢 (Growth)</h3>
-                        <div class="flex-1 relative w-full h-full">
-                            <canvas id="historyChart"></canvas>
-                        </div>
+                    <div class="glass p-4 rounded-2xl col-span-2 flex flex-col">
+                        <h4 class="text-white font-bold mb-2">資產歷史走勢 (對應資產變化表)</h4>
+                        <div class="flex-1 relative"><canvas id="historyChart"></canvas></div>
                     </div>
                 </div>
             </div>
 
-            <div v-if="currentTab === 'holdings'" class="h-full flex flex-col animate-fade-in">
-                <div class="glass rounded-xl overflow-hidden flex-1 flex flex-col">
-                    <div class="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800/50">
-                        <h3 class="font-bold text-white"><i class="fas fa-list text-blue-500 mr-2"></i>庫存明細</h3>
-                        <span class="text-xs text-gray-500">價格來源: {{ sheetUrl ? 'Google Sheets' : '手動輸入' }}</span>
+            <div v-if="currentTab === 'holdings'" class="glass rounded-xl overflow-hidden flex flex-col h-full max-h-[80vh]">
+                <div class="p-4 bg-gray-800/50 border-b border-gray-700 flex justify-between">
+                    <h3 class="font-bold text-white">庫存明細 (Linked Data)</h3>
+                    <span class="text-xs text-gray-500">自動計算自流水帳</span>
+                </div>
+                <div class="overflow-auto flex-1">
+                    <table class="w-full text-left">
+                        <thead class="sticky top-0 bg-gray-800 text-xs text-gray-400 uppercase font-semibold">
+                            <tr>
+                                <th class="p-4">標的</th>
+                                <th class="p-4 text-right">股數</th>
+                                <th class="p-4 text-right">均價</th>
+                                <th class="p-4 text-right">現價</th>
+                                <th class="p-4 text-right">市值</th>
+                                <th class="p-4 text-right">損益</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-sm divide-y divide-gray-800">
+                            <tr v-for="stock in holdings" :key="stock.ticker" class="hover:bg-white/5">
+                                <td class="p-4 font-bold text-white">{{ stock.ticker }}</td>
+                                <td class="p-4 text-right font-mono">{{ formatNumber(stock.shares) }}</td>
+                                <td class="p-4 text-right font-mono text-gray-400">{{ formatNumber(stock.avgCost) }}</td>
+                                <td class="p-4 text-right font-mono font-bold text-yellow-400">{{ formatNumber(stock.currentPrice) }}</td>
+                                <td class="p-4 text-right font-mono text-white">{{ formatNumber(stock.marketValue) }}</td>
+                                <td class="p-4 text-right font-bold" :class="stock.unrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
+                                    {{ formatNumber(stock.unrealizedPL) }} <span class="text-xs opacity-70">({{ stock.returnRate }}%)</span>
+                                </td>
+                            </tr>
+                            <tr class="bg-blue-900/10">
+                                <td class="p-4 font-bold text-blue-300">現金 (Cash)</td>
+                                <td colspan="3"></td>
+                                <td class="p-4 text-right font-bold text-blue-300">{{ formatNumber(cashBalance) }}</td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div v-if="currentTab === 'history'" class="flex flex-col md:flex-row gap-6 h-full max-h-[80vh]">
+                <div class="w-full md:w-72 glass p-5 rounded-xl h-fit">
+                    <h3 class="font-bold text-white mb-4 border-b border-gray-700 pb-2">新增歷史紀錄</h3>
+                    <p class="text-xs text-gray-400 mb-4">請定期輸入當下的「總資產」與「總成本」，以繪製資產成長圖。</p>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-xs text-gray-500">日期</label>
+                            <input v-model="historyForm.date" type="date" class="w-full input-dark p-2 rounded">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">總資產市值</label>
+                            <input v-model.number="historyForm.assets" type="number" class="w-full input-dark p-2 rounded">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-500">總投入成本</label>
+                            <input v-model.number="historyForm.cost" type="number" class="w-full input-dark p-2 rounded">
+                        </div>
+                        <button @click="addHistory" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold transition">紀錄</button>
+                    </div>
+                </div>
+                <div class="flex-1 glass rounded-xl overflow-hidden flex flex-col">
+                    <div class="p-4 bg-gray-800/50 border-b border-gray-700">
+                        <h3 class="font-bold text-white">資產變化表 (Asset History)</h3>
                     </div>
                     <div class="overflow-auto flex-1">
-                        <table class="w-full text-left border-collapse">
-                            <thead class="sticky top-0 bg-gray-800 text-xs text-gray-400 uppercase font-semibold z-10 shadow-md">
+                        <table class="w-full text-left">
+                            <thead class="sticky top-0 bg-gray-800 text-xs text-gray-400 uppercase">
                                 <tr>
-                                    <th class="p-4">標的 (Ticker)</th>
-                                    <th class="p-4 text-right">庫存 (Qty)</th>
-                                    <th class="p-4 text-right">均價 (Avg Cost)</th>
-                                    <th class="p-4 text-right">現價 (Mkt Price)</th>
-                                    <th class="p-4 text-right">市值 (Mkt Value)</th>
-                                    <th class="p-4 text-right">損益 (P/L)</th>
-                                    <th class="p-4 text-right">占比 (%)</th>
+                                    <th class="p-3">日期</th>
+                                    <th class="p-3 text-right">總資產</th>
+                                    <th class="p-3 text-right">總成本</th>
+                                    <th class="p-3 text-right">損益金額</th>
+                                    <th class="p-3 text-right">報酬率</th>
+                                    <th class="p-3 text-center">刪除</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-gray-800 text-sm">
-                                <tr v-for="stock in holdings" :key="stock.ticker" class="hover:bg-white/5 transition group">
-                                    <td class="p-4 font-bold text-white">{{ stock.ticker }}</td>
-                                    <td class="p-4 text-right font-mono text-gray-300">{{ formatNumber(stock.shares) }}</td>
-                                    <td class="p-4 text-right font-mono text-gray-400">{{ formatNumber(stock.avgCost) }}</td>
-                                    <td class="p-4 text-right font-mono font-bold text-yellow-400">
-                                        <input v-if="!sheetUrl" v-model.number="stock.manualPrice" @change="manualUpdate" class="w-20 bg-transparent text-right outline-none border-b border-gray-600 focus:border-blue-500" placeholder="Price">
-                                        <span v-else>{{ formatNumber(stock.currentPrice) }}</span>
-                                    </td>
-                                    <td class="p-4 text-right font-mono text-white">{{ formatNumber(stock.marketValue) }}</td>
-                                    <td class="p-4 text-right font-bold" :class="stock.unrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
-                                        {{ formatNumber(stock.unrealizedPL) }} <span class="text-xs opacity-75">({{ stock.returnRate }}%)</span>
-                                    </td>
-                                    <td class="p-4 text-right text-gray-500">{{ formatPercent(stock.marketValue / totalAssets) }}</td>
-                                </tr>
-                                <tr class="bg-blue-900/10 border-t border-blue-900/30">
-                                    <td class="p-4 font-bold text-blue-300"><i class="fas fa-money-bill-wave mr-2"></i>現金 (Cash)</td>
-                                    <td class="p-4" colspan="3"></td>
-                                    <td class="p-4 text-right font-bold text-blue-300">{{ formatNumber(cashBalance) }}</td>
-                                    <td class="p-4"></td>
-                                    <td class="p-4 text-right text-blue-300">{{ formatPercent(cashBalance / totalAssets) }}</td>
+                            <tbody class="text-sm divide-y divide-gray-800">
+                                <tr v-for="(h, idx) in historyData" :key="idx" class="hover:bg-white/5">
+                                    <td class="p-3 text-gray-300">{{ h.date }}</td>
+                                    <td class="p-3 text-right text-white font-mono font-bold">{{ formatNumber(h.assets) }}</td>
+                                    <td class="p-3 text-right text-gray-400 font-mono">{{ formatNumber(h.cost) }}</td>
+                                    <td class="p-3 text-right font-bold" :class="(h.assets-h.cost)>=0?'text-red-400':'text-green-400'">{{ formatNumber(h.assets - h.cost) }}</td>
+                                    <td class="p-3 text-right" :class="(h.assets-h.cost)>=0?'text-red-400':'text-green-400'">{{ h.cost?(((h.assets-h.cost)/h.cost)*100).toFixed(2):0 }}%</td>
+                                    <td class="p-3 text-center"><button @click="removeHistory(idx)" class="text-gray-600 hover:text-red-500"><i class="fas fa-trash"></i></button></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -160,57 +168,35 @@
                 </div>
             </div>
 
-            <div v-if="currentTab === 'ledger'" class="h-full flex flex-col md:flex-row gap-6 animate-fade-in">
-                <div class="w-full md:w-80 glass p-6 rounded-xl flex-none space-y-4 h-fit">
-                    <h3 class="font-bold text-white border-b border-gray-700 pb-2">新增交易</h3>
-                    
-                    <div>
-                        <label class="text-xs text-gray-400 block mb-1">日期 (Date)</label>
+            <div v-if="currentTab === 'ledger'" class="flex flex-col md:flex-row gap-6 h-full max-h-[80vh]">
+                <div class="w-full md:w-72 glass p-5 rounded-xl h-fit">
+                    <h3 class="font-bold text-white mb-4 border-b border-gray-700 pb-2">新增交易</h3>
+                    <div class="space-y-3">
                         <input v-model="txForm.date" type="date" class="w-full input-dark p-2 rounded">
-                    </div>
-
-                    <div>
-                        <label class="text-xs text-gray-400 block mb-1">類別 (Type)</label>
                         <div class="grid grid-cols-2 gap-2">
-                            <button @click="txForm.type='Buy'" :class="txForm.type=='Buy'?'bg-red-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs font-bold transition">買入 Buy</button>
-                            <button @click="txForm.type='Sell'" :class="txForm.type=='Sell'?'bg-green-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs font-bold transition">賣出 Sell</button>
-                            <button @click="txForm.type='Deposit'" :class="txForm.type=='Deposit'?'bg-blue-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs font-bold transition">入金 Deposit</button>
-                            <button @click="txForm.type='Dividend'" :class="txForm.type=='Dividend'?'bg-yellow-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs font-bold transition">股息 Div</button>
+                             <select v-model="txForm.type" class="col-span-2 input-dark p-2 rounded">
+                                 <option value="Buy">買入 Buy</option>
+                                 <option value="Sell">賣出 Sell</option>
+                                 <option value="Deposit">入金 Deposit</option>
+                                 <option value="Dividend">股息 Dividend</option>
+                             </select>
                         </div>
-                    </div>
-
-                    <div v-if="['Buy', 'Sell', 'Dividend'].includes(txForm.type)">
-                        <label class="text-xs text-gray-400 block mb-1">標的 (Ticker)</label>
-                        <input v-model="txForm.ticker" type="text" placeholder="e.g. 2330" class="w-full input-dark p-2 rounded uppercase">
-                    </div>
-
-                    <div v-if="['Buy', 'Sell'].includes(txForm.type)">
-                        <div class="grid grid-cols-2 gap-2">
-                            <div>
-                                <label class="text-xs text-gray-400 block mb-1">價格 (Price)</label>
-                                <input v-model.number="txForm.price" type="number" step="0.01" class="w-full input-dark p-2 rounded">
-                            </div>
-                            <div>
-                                <label class="text-xs text-gray-400 block mb-1">股數 (Shares)</label>
-                                <input v-model.number="txForm.shares" type="number" class="w-full input-dark p-2 rounded">
-                            </div>
+                        <div v-if="['Buy','Sell','Dividend'].includes(txForm.type)">
+                            <input v-model="txForm.ticker" placeholder="標的 (如 2330)" class="w-full input-dark p-2 rounded uppercase">
                         </div>
+                        <div v-if="['Buy','Sell'].includes(txForm.type)" class="grid grid-cols-2 gap-2">
+                            <input v-model.number="txForm.price" type="number" placeholder="單價" class="input-dark p-2 rounded">
+                            <input v-model.number="txForm.shares" type="number" placeholder="股數" class="input-dark p-2 rounded">
+                        </div>
+                        <div>
+                             <input v-model.number="txForm.amount" type="number" :placeholder="txForm.type==='Buy'?'手續費':'總金額'" class="w-full input-dark p-2 rounded">
+                        </div>
+                        <button @click="addTransaction" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white rounded font-bold">確認</button>
                     </div>
-
-                    <div v-if="['Buy', 'Sell', 'Dividend', 'Deposit', 'Withdraw'].includes(txForm.type)">
-                        <label class="text-xs text-gray-400 block mb-1">
-                            {{ txForm.type === 'Buy' || txForm.type === 'Sell' ? '手續費 + 稅 (Fees)' : '總金額 (Amount)' }}
-                        </label>
-                        <input v-model.number="txForm.amount" type="number" class="w-full input-dark p-2 rounded">
-                        <p class="text-xs text-gray-500 mt-1" v-if="txForm.type === 'Buy'">系統將自動計算: (價x量) + 費用</p>
-                    </div>
-
-                    <button @click="addTransaction" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded shadow-lg transition">確認記帳</button>
                 </div>
-
                 <div class="flex-1 glass rounded-xl overflow-hidden flex flex-col">
-                    <div class="p-4 border-b border-gray-700 bg-gray-800/50">
-                        <h3 class="font-bold text-white">交易紀錄 (Ledger)</h3>
+                    <div class="p-4 bg-gray-800/50 border-b border-gray-700">
+                        <h3 class="font-bold text-white">交易流水帳 (Ledger)</h3>
                     </div>
                     <div class="overflow-auto flex-1">
                         <table class="w-full text-left">
@@ -219,333 +205,235 @@
                                     <th class="p-3">日期</th>
                                     <th class="p-3">類別</th>
                                     <th class="p-3">標的</th>
-                                    <th class="p-3 text-right">股數</th>
-                                    <th class="p-3 text-right">價格</th>
-                                    <th class="p-3 text-right">總金額/費用</th>
+                                    <th class="p-3 text-right">價格/股數</th>
+                                    <th class="p-3 text-right">現金流</th>
                                     <th class="p-3 text-center">刪除</th>
                                 </tr>
                             </thead>
                             <tbody class="text-sm divide-y divide-gray-800">
-                                <tr v-for="(tx, index) in reversedTransactions" :key="index" class="hover:bg-white/5 transition">
+                                <tr v-for="(tx, idx) in reversedTransactions" :key="idx" class="hover:bg-white/5">
                                     <td class="p-3 text-gray-400">{{ tx.date }}</td>
-                                    <td class="p-3 font-bold" :class="{
-                                        'text-red-400': tx.type === 'Buy',
-                                        'text-green-400': tx.type === 'Sell',
-                                        'text-blue-400': tx.type === 'Deposit',
-                                        'text-yellow-400': tx.type === 'Dividend'
-                                    }">{{ tx.type }}</td>
-                                    <td class="p-3 font-bold text-white">{{ tx.ticker || '-' }}</td>
-                                    <td class="p-3 text-right text-gray-300">{{ tx.shares ? formatNumber(tx.shares) : '-' }}</td>
-                                    <td class="p-3 text-right text-gray-300">{{ tx.price ? formatNumber(tx.price) : '-' }}</td>
+                                    <td class="p-3 font-bold" :class="getTypeColor(tx.type)">{{ tx.type }}</td>
+                                    <td class="p-3 text-white">{{ tx.ticker || '-' }}</td>
+                                    <td class="p-3 text-right text-gray-400">{{ tx.price ? `${formatNumber(tx.price)} x ${formatNumber(tx.shares)}` : '-' }}</td>
                                     <td class="p-3 text-right font-mono text-white">{{ formatNumber(tx.totalCashFlow) }}</td>
-                                    <td class="p-3 text-center">
-                                        <button @click="removeTransaction(transactions.length - 1 - index)" class="text-gray-600 hover:text-red-500"><i class="fas fa-times"></i></button>
-                                    </td>
+                                    <td class="p-3 text-center"><button @click="removeTransaction(transactions.length - 1 - idx)" class="text-gray-600 hover:text-red-500"><i class="fas fa-times"></i></button></td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
+            
+            <div v-if="!sheetUrl && showSetup" class="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
+                <div class="glass p-8 rounded-xl w-96 text-center">
+                    <h2 class="text-xl font-bold mb-4">初始化設定</h2>
+                    <input v-model="tempUrl" placeholder="Google Sheet CSV Link (可跳過)" class="w-full input-dark p-2 rounded mb-4 text-xs">
+                    <button @click="saveUrl" class="w-full bg-blue-600 py-2 rounded text-white font-bold mb-2">確認</button>
+                    <button @click="showSetup=false" class="text-xs text-gray-500 underline">暫時跳過，使用手動報價</button>
+                </div>
+            </div>
 
         </div>
     </main>
-
-    <div v-if="showSettings" class="fixed inset-0 bg-black/80 flex items-center justify-center z-[100]">
-        <div class="glass p-6 rounded-xl w-96">
-            <h3 class="text-xl font-bold mb-4">資料來源設定</h3>
-            <p class="text-xs text-gray-400 mb-2">Google Sheet CSV 連結:</p>
-            <input v-model="tempSheetUrl" class="w-full input-dark p-2 rounded mb-4 text-xs">
-            <div class="flex gap-2">
-                <button @click="saveSettings" class="flex-1 bg-blue-600 py-2 rounded text-white text-sm font-bold">儲存</button>
-                <button @click="showSettings=false" class="flex-1 bg-gray-700 py-2 rounded text-white text-sm">取消</button>
-            </div>
-            <button @click="tempSheetUrl=''; saveSettings()" class="w-full mt-2 text-xs text-red-400 hover:text-red-300">清除設定 (使用手動報價)</button>
-        </div>
-    </div>
 </div>
 
 <script>
-    const { createApp, computed, ref, onMounted, watch } = Vue;
+const { createApp, ref, computed, onMounted, watch } = Vue;
 
-    createApp({
-        setup() {
-            // --- State ---
-            const currentTab = ref('summary');
-            const showSettings = ref(false);
-            const sheetUrl = ref(localStorage.getItem('googleSheetUrl') || '');
-            const tempSheetUrl = ref(sheetUrl.value);
-            const isUpdating = ref(false);
-            
-            // Core Data Store: The Ledger
-            const transactions = ref(JSON.parse(localStorage.getItem('ledgerData') || '[]'));
-            
-            // Market Data Cache: { "2330": 1050, "NVDA": 135 }
-            const priceMap = ref(JSON.parse(localStorage.getItem('priceMap') || '{}'));
+createApp({
+    setup() {
+        const currentTab = ref('summary');
+        const showSetup = ref(true);
+        const sheetUrl = ref(localStorage.getItem('googleSheetUrl') || '');
+        const tempUrl = ref('');
+        const isUpdating = ref(false);
 
-            // Transaction Form
-            const txForm = ref({
-                date: new Date().toISOString().split('T')[0],
-                type: 'Buy',
-                ticker: '',
-                price: null,
-                shares: null,
-                amount: null // Used for total amount in Deposit, or Fee in Buy/Sell
-            });
+        // DATA STORE
+        const transactions = ref(JSON.parse(localStorage.getItem('ledgerData') || '[]'));
+        const historyData = ref(JSON.parse(localStorage.getItem('historyData') || '[]'));
+        const priceMap = ref(JSON.parse(localStorage.getItem('priceMap') || '{}'));
 
-            // --- Computed Logic (The Brain) ---
-            
-            // 1. Calculate Holdings from Transactions
-            const holdings = computed(() => {
-                const map = {};
-                
-                transactions.value.forEach(tx => {
-                    if (!tx.ticker) return;
-                    const t = tx.ticker.toUpperCase();
-                    if (!map[t]) map[t] = { ticker: t, shares: 0, totalCost: 0, realizedPL: 0 };
+        // FORMS
+        const txForm = ref({ date: new Date().toISOString().split('T')[0], type: 'Buy', ticker: '', price: null, shares: null, amount: null });
+        const historyForm = ref({ date: new Date().toISOString().split('T')[0], assets: null, cost: null });
 
-                    if (tx.type === 'Buy') {
-                        map[t].shares += tx.shares;
-                        // Cost = Price * Shares + Fee
-                        const cost = (tx.price * tx.shares) + (tx.amount || 0);
-                        map[t].totalCost += cost;
-                    } else if (tx.type === 'Sell') {
-                        // Calculate Cost Basis used
-                        const avgCost = map[t].shares === 0 ? 0 : map[t].totalCost / map[t].shares;
-                        const costBasis = avgCost * tx.shares;
-                        
-                        map[t].shares -= tx.shares;
-                        map[t].totalCost -= costBasis; // Reduce total cost proportionally
-                        
-                        // Realized PL = (Price * Shares - Fee) - CostBasis
-                        // logic simplified for display
-                    }
-                });
-
-                // Convert to Array and enrich with Price
-                return Object.values(map)
-                    .filter(h => h.shares > 0) // Hide closed positions
-                    .map(h => {
-                        const currentPrice = priceMap.value[h.ticker] || h.manualPrice || (h.totalCost/h.shares);
-                        const marketValue = h.shares * currentPrice;
-                        const avgCost = h.totalCost / h.shares;
-                        return {
-                            ...h,
-                            avgCost,
-                            currentPrice,
-                            manualPrice: h.manualPrice || currentPrice, // UI helper
-                            marketValue,
-                            unrealizedPL: marketValue - h.totalCost,
-                            returnRate: ((marketValue - h.totalCost) / h.totalCost * 100).toFixed(2)
-                        };
-                    })
-                    .sort((a,b) => b.marketValue - a.marketValue);
-            });
-
-            // 2. Calculate Cash Balance
-            const cashBalance = computed(() => {
-                return transactions.value.reduce((acc, tx) => {
-                    switch(tx.type) {
-                        case 'Deposit': return acc + (tx.amount || 0);
-                        case 'Withdraw': return acc - (tx.amount || 0);
-                        case 'Dividend': return acc + (tx.amount || 0);
-                        case 'Buy': return acc - ((tx.price * tx.shares) + (tx.amount || 0)); // Cash Out
-                        case 'Sell': return acc + ((tx.price * tx.shares) - (tx.amount || 0)); // Cash In
-                        default: return acc;
-                    }
-                }, 0);
-            });
-
-            // 3. Totals
-            const stockValue = computed(() => holdings.value.reduce((sum, h) => sum + h.marketValue, 0));
-            const totalAssets = computed(() => cashBalance.value + stockValue.value);
-            
-            // Principal: Simple approx (Net Deposits) or Cost Basis? 
-            // Usually Principal = Net Deposits (Cash In - Cash Out)
-            const totalPrincipal = computed(() => {
-                 return transactions.value.reduce((acc, tx) => {
-                    if (tx.type === 'Deposit') return acc + tx.amount;
-                    if (tx.type === 'Withdraw') return acc - tx.amount;
-                    return acc;
-                 }, 0);
-            });
-            
-            const totalUnrealizedPL = computed(() => totalAssets.value - totalPrincipal.value);
-            const totalReturnRate = computed(() => totalPrincipal.value ? ((totalUnrealizedPL.value / totalPrincipal.value)*100).toFixed(2) : 0);
-
-            const reversedTransactions = computed(() => [...transactions.value].reverse());
-
-            // --- Actions ---
-
-            function addTransaction() {
-                const { date, type, ticker, price, shares, amount } = txForm.value;
-                
-                // Validation
-                if (!date || !type) return alert('日期與類別為必填');
-                if ((type === 'Buy' || type === 'Sell') && (!ticker || !price || !shares)) return alert('買賣需填寫標的、價格與股數');
-                
-                // Calculate Cash Flow for display
-                let totalCashFlow = 0;
-                if (type === 'Buy') totalCashFlow = -(price * shares + (amount || 0));
-                if (type === 'Sell') totalCashFlow = (price * shares - (amount || 0));
-                if (type === 'Deposit' || type === 'Dividend') totalCashFlow = amount;
-                if (type === 'Withdraw') totalCashFlow = -amount;
-
-                transactions.value.push({
-                    date, type, ticker: ticker?.toUpperCase(), price, shares, amount, totalCashFlow,
-                    id: Date.now()
-                });
-
-                // Reset Form (intelligent reset)
-                txForm.value.shares = null;
-                txForm.value.amount = null;
-                
-                saveData();
-                updateCharts();
-            }
-
-            function removeTransaction(index) {
-                if(confirm('確定刪除此筆交易？這會影響庫存計算。')) {
-                    transactions.value.splice(index, 1);
-                    saveData();
-                    updateCharts();
+        // COMPUTED: HOLDINGS
+        const holdings = computed(() => {
+            const map = {};
+            transactions.value.forEach(tx => {
+                if(!tx.ticker) return;
+                const t = tx.ticker.toUpperCase();
+                if(!map[t]) map[t] = { ticker: t, shares: 0, totalCost: 0 };
+                if(tx.type === 'Buy') {
+                    map[t].shares += tx.shares;
+                    map[t].totalCost += (tx.price * tx.shares) + (tx.amount||0);
+                } else if(tx.type === 'Sell') {
+                    const avg = map[t].shares ? map[t].totalCost/map[t].shares : 0;
+                    map[t].shares -= tx.shares;
+                    map[t].totalCost -= avg * tx.shares;
                 }
-            }
-
-            function manualUpdate() {
-                // If user edits price manually in table, update cache
-                holdings.value.forEach(h => {
-                    if(h.manualPrice) priceMap.value[h.ticker] = h.manualPrice;
-                });
-                localStorage.setItem('priceMap', JSON.stringify(priceMap.value));
-                updateCharts();
-            }
-
-            function saveData() {
-                localStorage.setItem('ledgerData', JSON.stringify(transactions.value));
-            }
-
-            function saveSettings() {
-                sheetUrl.value = tempSheetUrl.value;
-                if(sheetUrl.value) {
-                    localStorage.setItem('googleSheetUrl', sheetUrl.value);
-                    fetchPrices();
-                } else {
-                    localStorage.removeItem('googleSheetUrl');
-                }
-                showSettings.value = false;
-            }
-
-            // Google Sheets Logic
-            function fetchPrices() {
-                if (!sheetUrl.value) {
-                    showSettings.value = true;
-                    return;
-                }
-                isUpdating.value = true;
-                Papa.parse(sheetUrl.value, {
-                    download: true,
-                    header: false,
-                    complete: (results) => {
-                        results.data.forEach(row => {
-                            if (row[0] && row[1]) {
-                                const key = row[0].toString().trim().toUpperCase();
-                                const val = parseFloat(row[1].toString().replace(/,/g, ''));
-                                if (!isNaN(val)) priceMap.value[key] = val;
-                                // Try TPE format too
-                                priceMap.value[key.replace('TPE:', '')] = val;
-                                priceMap.value['TPE:' + key] = val;
-                            }
-                        });
-                        localStorage.setItem('priceMap', JSON.stringify(priceMap.value));
-                        isUpdating.value = false;
-                        updateCharts();
-                    },
-                    error: () => { isUpdating.value = false; alert('無法更新報價，請檢查連結'); }
-                });
-            }
-
-            // Export logic (matches user excel structure)
-            function exportData() {
-                let csv = "\uFEFFDate,Type,Ticker,Price,Shares,Fee/Amt,Total\n";
-                transactions.value.forEach(tx => {
-                    csv += `${tx.date},${tx.type},${tx.ticker||''},${tx.price||''},${tx.shares||''},${tx.amount||''},${tx.totalCashFlow}\n`;
-                });
-                const link = document.createElement("a");
-                link.href = "data:text/csv;charset=utf-8," + encodeURI(csv);
-                link.download = "流水帳_backup.csv";
-                link.click();
-            }
-
-            // --- Charts ---
-            let charts = {};
-            
-            function initCharts() {
-                if(!document.getElementById('allocationChart')) return;
-                
-                Chart.defaults.color = '#94a3b8';
-                Chart.defaults.borderColor = '#334155';
-
-                charts.allocation = new Chart(document.getElementById('allocationChart'), {
-                    type: 'doughnut',
-                    data: { labels: [], datasets: [{ data: [], backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#6366f1'] }] },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
-                });
-
-                charts.history = new Chart(document.getElementById('historyChart'), {
-                    type: 'line',
-                    data: { labels: ['Start', 'Now'], datasets: [{ label: 'Net Worth', data: [0, 0], borderColor: '#3b82f6', tension: 0.4, fill: true, backgroundColor: 'rgba(59, 130, 246, 0.1)' }] },
-                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false } } }
-                });
-            }
-
-            function updateCharts() {
-                if (!charts.allocation) {
-                    // Try waiting for DOM
-                    setTimeout(initCharts, 100);
-                    return;
-                }
-
-                // Update Allocation
-                const labels = holdings.value.map(h => h.ticker);
-                const data = holdings.value.map(h => h.marketValue);
-                // Add Cash
-                if (cashBalance.value > 0) {
-                    labels.push('Cash');
-                    data.push(cashBalance.value);
-                }
-                
-                charts.allocation.data.labels = labels;
-                charts.allocation.data.datasets[0].data = data;
-                charts.allocation.update();
-                
-                // Update History (Simplified: Principal vs Current)
-                charts.history.data.datasets[0].data = [totalPrincipal.value, totalAssets.value];
-                charts.history.update();
-            }
-
-            function formatNumber(num) {
-                return new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 0 }).format(num || 0);
-            }
-            function formatPercent(num) {
-                return ((num || 0) * 100).toFixed(1) + '%';
-            }
-
-            onMounted(() => {
-                if(sheetUrl.value) fetchPrices();
-                setTimeout(initCharts, 500); // Wait for tab render
             });
+            return Object.values(map).filter(h => h.shares > 0).map(h => {
+                const curr = priceMap.value[h.ticker] || (h.totalCost/h.shares);
+                return {
+                    ...h, avgCost: h.totalCost/h.shares, currentPrice: curr,
+                    marketValue: h.shares * curr,
+                    unrealizedPL: (h.shares * curr) - h.totalCost,
+                    returnRate: (((h.shares * curr) - h.totalCost)/h.totalCost*100).toFixed(2)
+                };
+            }).sort((a,b) => b.marketValue - a.marketValue);
+        });
 
-            return {
-                currentTab, showSettings, sheetUrl, tempSheetUrl, isUpdating,
-                transactions, holdings, cashBalance, totalAssets, stockValue,
-                totalPrincipal, totalUnrealizedPL, totalReturnRate, reversedTransactions,
-                txForm,
-                addTransaction, removeTransaction, manualUpdate, saveData, saveSettings, fetchPrices, exportData,
-                formatNumber, formatPercent
-            };
+        // COMPUTED: CASH & TOTALS (Real-time)
+        const cashBalance = computed(() => transactions.value.reduce((acc, tx) => acc + tx.totalCashFlow, 0));
+        const stockValue = computed(() => holdings.value.reduce((sum, h) => sum + h.marketValue, 0));
+        
+        // Use History Data for "Summary" if available (Latest record), else calculate real-time
+        const latestHistory = computed(() => historyData.value.length ? historyData.value[historyData.value.length-1] : null);
+        
+        const totalAssets = computed(() => cashBalance.value + stockValue.value);
+        // Principal calculation from Ledger (Net Deposit)
+        const totalPrincipal = computed(() => transactions.value.reduce((acc, tx) => {
+             if(tx.type==='Deposit') return acc+tx.amount;
+             if(tx.type==='Withdraw') return acc-tx.amount;
+             return acc;
+        }, 0));
+
+        const totalUnrealizedPL = computed(() => totalAssets.value - totalPrincipal.value);
+        const totalReturnRate = computed(() => totalPrincipal.value ? ((totalUnrealizedPL.value/totalPrincipal.value)*100).toFixed(2) : 0);
+        
+        const reversedTransactions = computed(() => [...transactions.value].reverse());
+
+        // ACTIONS
+        function addTransaction() {
+            const { date, type, ticker, price, shares, amount } = txForm.value;
+            if(!date) return;
+            let cf = 0;
+            if(type==='Buy') cf = -(price*shares + (amount||0));
+            else if(type==='Sell') cf = (price*shares - (amount||0));
+            else if(type==='Deposit' || type==='Dividend') cf = amount;
+            else if(type==='Withdraw') cf = -amount;
+
+            transactions.value.push({ date, type, ticker: ticker?.toUpperCase(), price, shares, amount, totalCashFlow: cf });
+            saveData();
+            txForm.value = { ...txForm.value, ticker:'', price:null, shares:null, amount:null }; // Keep date/type
+            updateCharts();
         }
-    }).mount('#app');
+
+        function addHistory() {
+            const { date, assets, cost } = historyForm.value;
+            if(!date || !assets) return;
+            historyData.value.push({ date, assets, cost });
+            historyData.value.sort((a,b) => new Date(a.date) - new Date(b.date)); // Keep sorted
+            localStorage.setItem('historyData', JSON.stringify(historyData.value));
+            historyForm.value.assets = null; historyForm.value.cost = null;
+            updateCharts();
+        }
+
+        function removeTransaction(idx) {
+            if(confirm('刪除?')) { transactions.value.splice(idx, 1); saveData(); updateCharts(); }
+        }
+        function removeHistory(idx) {
+            if(confirm('刪除歷史紀錄?')) { historyData.value.splice(idx, 1); localStorage.setItem('historyData', JSON.stringify(historyData.value)); updateCharts(); }
+        }
+
+        function saveData() { localStorage.setItem('ledgerData', JSON.stringify(transactions.value)); }
+        
+        function saveUrl() {
+            if(tempUrl.value) { sheetUrl.value = tempUrl.value; localStorage.setItem('googleSheetUrl', sheetUrl.value); fetchPrices(); }
+            showSetup.value = false;
+        }
+
+        function fetchPrices() {
+            if(!sheetUrl.value) return;
+            isUpdating.value = true;
+            Papa.parse(sheetUrl.value, {
+                download: true, header: false,
+                complete: (res) => {
+                    res.data.forEach(r => {
+                        if(r[0] && r[1]) {
+                             const k = r[0].toString().trim().toUpperCase();
+                             const v = parseFloat(r[1].toString().replace(/,/g,''));
+                             if(!isNaN(v)) { priceMap.value[k] = v; priceMap.value['TPE:'+k] = v; priceMap.value[k.replace('TPE:','')] = v; }
+                        }
+                    });
+                    localStorage.setItem('priceMap', JSON.stringify(priceMap.value));
+                    isUpdating.value = false;
+                }
+            });
+        }
+
+        function exportAll() {
+            const data = { ledger: transactions.value, history: historyData.value };
+            const blob = new Blob([JSON.stringify(data)], {type: "application/json"});
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "asset_master_backup.json";
+            link.click();
+        }
+
+        function getTypeColor(type) {
+            return { 'Buy':'text-red-400', 'Sell':'text-green-400', 'Deposit':'text-blue-400', 'Dividend':'text-yellow-400' }[type] || 'text-gray-400';
+        }
+        function formatNumber(n) { return new Intl.NumberFormat('en-US', {maximumFractionDigits:0}).format(n||0); }
+
+        // CHARTS
+        let chartAlloc, chartHist;
+        function initCharts() {
+            if(!document.getElementById('allocationChart')) return;
+            Chart.defaults.color = '#94a3b8'; Chart.defaults.borderColor = '#334155';
+            
+            chartAlloc = new Chart(document.getElementById('allocationChart'), {
+                type: 'doughnut',
+                data: { labels: [], datasets: [{ data: [], backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'] }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+            });
+
+            chartHist = new Chart(document.getElementById('historyChart'), {
+                type: 'bar',
+                data: { labels: [], datasets: [
+                    { label: '總資產', data: [], backgroundColor: '#3b82f6' },
+                    { label: '總成本', data: [], backgroundColor: '#10b981' }
+                ] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { grid: { display: false } } } }
+            });
+        }
+
+        function updateCharts() {
+            if(!chartAlloc) { setTimeout(initCharts, 500); return; }
+            
+            // Allocation
+            const labels = holdings.value.map(h => h.ticker);
+            const data = holdings.value.map(h => h.marketValue);
+            if(cashBalance.value > 100) { labels.push('Cash'); data.push(cashBalance.value); }
+            chartAlloc.data.labels = labels; chartAlloc.data.datasets[0].data = data;
+            chartAlloc.update();
+
+            // History (From History Tab Data)
+            chartHist.data.labels = historyData.value.map(h => h.date);
+            chartHist.data.datasets[0].data = historyData.value.map(h => h.assets);
+            chartHist.data.datasets[1].data = historyData.value.map(h => h.cost);
+            chartHist.update();
+        }
+
+        onMounted(() => {
+            if(sheetUrl.value) fetchPrices();
+            setTimeout(initCharts, 1000);
+        });
+
+        watch(currentTab, () => setTimeout(updateCharts, 100)); // Re-render charts on tab switch
+
+        return {
+            currentTab, showSetup, tempUrl, sheetUrl, isUpdating,
+            transactions, historyData, holdings, cashBalance,
+            totalAssets, totalPrincipal, totalUnrealizedPL, totalReturnRate, reversedTransactions,
+            txForm, historyForm,
+            addTransaction, addHistory, removeTransaction, removeHistory,
+            saveUrl, fetchPrices, exportAll, getTypeColor, formatNumber
+        };
+    }
+}).mount('#app');
 </script>
 </body>
 </html>
