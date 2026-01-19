@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>資產管理大師 v13.1 | 蒙地卡羅版</title>
+    <title>資產管理大師 v13.2 | 雲端串接版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body { font-family: 'Microsoft JhengHei', 'Segoe UI', Roboto, sans-serif; background-color: #0f172a; color: #e2e8f0; }
@@ -27,13 +28,11 @@
         .progress-bar-bg { background: #334155; border-radius: 999px; overflow: hidden; height: 8px; }
         .progress-bar-fill { height: 100%; transition: width 0.5s ease; }
         
-        /* Quant Grid Layout */
         .quant-card { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 0.75rem; padding: 1rem; text-align: center; transition: all 0.2s; position: relative; overflow: hidden; }
         .quant-card:hover { background: rgba(255, 255, 255, 0.05); transform: translateY(-2px); }
         .quant-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; opacity: 0.8; }
         .quant-value { font-family: 'Courier New', monospace; font-weight: bold; font-size: 1.25rem; text-shadow: 0 0 10px rgba(0,0,0,0.5); }
         
-        /* Table */
         .excel-table th { background-color: #1e293b; color: #94a3b8; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; border-bottom: 2px solid #334155; }
         .excel-table td { border-bottom: 1px solid #334155; padding: 0.75rem 1rem; }
         .excel-table tr:hover td { background-color: rgba(255,255,255,0.03); }
@@ -52,7 +51,7 @@
         <div class="flex items-center gap-6">
             <h1 class="font-bold text-xl tracking-wide flex items-center gap-2 text-white">
                 <i class="fas fa-chart-line text-yellow-500"></i> 資產管理大師 
-                <span v-if="!isSimMode" class="text-xs bg-yellow-600 px-2 py-0.5 rounded text-black font-bold">v13.1 Future</span>
+                <span v-if="!isSimMode" class="text-xs bg-yellow-600 px-2 py-0.5 rounded text-black font-bold">v13.2 Feed</span>
                 <span v-else class="text-xs bg-red-600 px-2 py-0.5 rounded text-white font-bold animate-pulse">SANDBOX</span>
             </h1>
             
@@ -61,23 +60,28 @@
                 <input v-model.number="exchangeRate" type="number" step="0.01" class="w-16 bg-transparent text-center font-mono font-bold text-green-400 focus:outline-none border-b border-gray-600">
             </div>
 
+            <div class="hidden md:flex items-center gap-2 bg-slate-800 py-1 px-3 rounded-lg border border-slate-700 w-64">
+                <i class="fab fa-google text-green-500"></i>
+                <input v-model="sheetUrl" placeholder="Google Sheet CSV 連結" class="w-full bg-transparent text-xs text-white focus:outline-none placeholder-gray-500">
+            </div>
+
             <nav class="flex gap-6 font-medium ml-4 hidden md:flex">
                 <button @click="currentTab='summary'" :class="currentTab==='summary'?'tab-active':'tab-inactive'" class="py-4 px-2 transition"><i class="fas fa-home mr-1"></i> 總覽</button>
-                <button @click="currentTab='holdings'" :class="currentTab==='holdings'?'tab-active':'tab-inactive'" class="py-4 px-2 transition"><i class="fas fa-wallet mr-1"></i> 庫存明細</button>
-                <button @click="currentTab='analytics'" :class="currentTab==='analytics'?'tab-active':'tab-inactive'" class="py-4 px-2 transition"><i class="fas fa-brain mr-1"></i> 量化分析</button>
-                <button @click="currentTab='ledger'" :class="currentTab==='ledger'?'tab-active':'tab-inactive'" class="py-4 px-2 transition"><i class="fas fa-list mr-1"></i> 交易紀錄</button>
+                <button @click="currentTab='holdings'" :class="currentTab==='holdings'?'tab-active':'tab-inactive'" class="py-4 px-2 transition"><i class="fas fa-wallet mr-1"></i> 庫存</button>
+                <button @click="currentTab='analytics'" :class="currentTab==='analytics'?'tab-active':'tab-inactive'" class="py-4 px-2 transition"><i class="fas fa-brain mr-1"></i> 量化</button>
+                <button @click="currentTab='ledger'" :class="currentTab==='ledger'?'tab-active':'tab-inactive'" class="py-4 px-2 transition"><i class="fas fa-list mr-1"></i> 記帳</button>
             </nav>
         </div>
         <div class="flex gap-3 items-center">
              <div class="flex items-center mr-4">
                 <span class="text-xs mr-2 font-bold" :class="isSimMode ? 'text-red-400' : 'text-gray-400'">
-                    {{ isSimMode ? '歷史模擬 (Fake History)' : '真實歷史 (Real History)' }}
+                    {{ isSimMode ? '歷史模擬' : '真實歷史' }}
                 </span>
                 <button @click="toggleSimMode" class="relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none" :class="isSimMode ? 'bg-red-600' : 'bg-gray-600'">
                     <span class="inline-block w-4 h-4 transform bg-white rounded-full transition-transform" :class="isSimMode ? 'translate-x-6' : 'translate-x-1'"></span>
                 </button>
              </div>
-             <button @click="fetchPrices" class="p-2 text-blue-400 hover:text-white transition" title="更新報價"><i class="fas fa-sync-alt" :class="{'fa-spin': isUpdating}"></i></button>
+             <button @click="fetchPrices" class="p-2 text-blue-400 hover:text-white transition" title="從 Sheet 更新報價"><i class="fas fa-sync-alt" :class="{'fa-spin': isUpdating}"></i></button>
              <button @click="exportAll" class="p-2 text-green-400 hover:text-white transition" title="備份資料"><i class="fas fa-download"></i></button>
         </div>
     </header>
@@ -90,7 +94,7 @@
                     <div class="glass p-6 rounded-2xl border-t-4 border-yellow-500">
                         <div class="text-xs text-gray-400 font-bold uppercase">投資總市值 (Market Value)</div>
                         <div class="text-3xl font-bold text-white mt-2 font-mono">NT$ {{ formatNumber(totalStockValueTwd) }}</div>
-                        <div class="text-xs text-gray-500 mt-2">* 依現價及匯率換算</div>
+                        <div class="text-xs text-gray-500 mt-2">* 依 Sheet 報價及匯率換算</div>
                     </div>
                     <div class="glass p-6 rounded-2xl border-t-4 border-emerald-500">
                         <div class="text-xs text-gray-400 font-bold uppercase">投資總成本 (Total Cost)</div>
@@ -137,8 +141,8 @@
                              <div v-if="displayHistory.length < 2" class="absolute inset-0 flex items-center justify-center text-gray-500 text-xs bg-gray-900/50 rounded-lg">
                                 <div class="text-center">
                                     <p class="text-lg mb-2"><i class="fas fa-chart-line text-gray-600 text-4xl"></i></p>
-                                    <p>需要歷史數據</p>
-                                    <p class="mt-1">請補登紀錄或開啟「歷史模擬」</p>
+                                    <p>Waiting for Data</p>
+                                    <p class="mt-1">請開始投資</p>
                                 </div>
                             </div>
                         </div>
@@ -151,7 +155,8 @@
                     <div class="p-4 bg-gray-800/50 border-b border-gray-700 flex justify-between items-center">
                         <h3 class="font-bold text-white"><i class="fas fa-table text-yellow-500 mr-2"></i>投資組合明細表 (TWD)</h3>
                         <div class="text-xs text-gray-400">
-                            * 現價由外幣 x {{ exchangeRate }} 換算
+                             <span v-if="lastUpdate" class="text-green-400 mr-2">上次更新: {{ lastUpdate }}</span>
+                             * 系統自動比對 Sheet 中的 Ticker 欄位
                         </div>
                     </div>
                     <div class="overflow-auto flex-1 p-0">
@@ -209,23 +214,23 @@
                         <h3 class="font-bold text-white text-lg flex items-center gap-2">
                             <i class="fas fa-brain" :class="isSimMode ? 'text-red-500' : 'text-yellow-500'"></i> 
                             量化風險分析 (Quant)
-                            <span v-if="isSimMode" class="text-xs bg-red-600 px-2 rounded text-white ml-2">SIMULATION DATA</span>
+                            <span v-if="isSimMode" class="text-xs bg-red-600 px-2 rounded text-white ml-2">SIMULATION</span>
                         </h3>
                     </div>
                     <div class="flex gap-4 items-center">
                         <div class="flex items-center gap-2 text-xs mr-2">
-                             <label class="text-gray-400">Rf (年化%):</label>
+                             <label class="text-gray-400">Rf (%):</label>
                              <input v-model.number="riskParams.rf" type="number" step="0.1" class="w-12 input-dark p-1 rounded text-center">
                              <label class="text-gray-400">Beta:</label>
                              <input v-model.number="riskParams.beta" type="number" step="0.1" class="w-12 input-dark p-1 rounded text-center">
                         </div>
                         
                         <button @click="openMonteCarlo" class="btn-purple px-4 py-2 rounded font-bold text-xs flex items-center gap-2 shadow-lg hover:shadow-purple-500/50 transition transform hover:scale-105">
-                            <i class="fas fa-random"></i> 蒙地卡羅 (未來模擬)
+                            <i class="fas fa-random"></i> 蒙地卡羅 (MC)
                         </button>
 
                         <button v-if="isSimMode" @click="generateMonthlyMockData" class="text-red-300 hover:text-white text-xs border border-red-500/50 bg-red-900/20 px-3 py-2 rounded transition animate-pulse">
-                            <i class="fas fa-dice mr-1"></i> 重刷歷史數據
+                            <i class="fas fa-dice mr-1"></i> 重刷數據
                         </button>
                         <button v-if="!isSimMode" @click="showHistoryModal = true" class="text-blue-400 hover:text-white text-xs border border-blue-500/50 px-3 py-2 rounded transition">
                             <i class="fas fa-edit mr-1"></i> 補登紀錄
@@ -234,49 +239,16 @@
                 </div>
 
                 <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    <div class="quant-card">
-                        <div class="quant-label text-blue-400">TWR (時間加權)</div>
-                        <div class="quant-value text-white">{{ stats.twr }}%</div>
-                    </div>
-                    <div class="quant-card">
-                        <div class="quant-label text-blue-400">MWR (內部報酬)</div>
-                        <div class="quant-value text-white">{{ stats.mwr }}%</div>
-                    </div>
-                    
-                    <div class="quant-card">
-                        <div class="quant-label text-yellow-400">夏普 (Sharpe)</div>
-                        <div class="quant-value text-white">{{ stats.sharpe }}%</div>
-                    </div>
-                    <div class="quant-card">
-                        <div class="quant-label text-yellow-400">索提諾 (Sortino)</div>
-                        <div class="quant-value text-white">{{ stats.sortino }}%</div>
-                    </div>
-                    <div class="quant-card">
-                        <div class="quant-label text-yellow-400">崔娜 (Treynor)</div>
-                        <div class="quant-value text-white">{{ stats.treynor }}%</div>
-                    </div>
-
-                    <div class="quant-card">
-                        <div class="quant-label text-gray-400">標準差 (StdDev)</div>
-                        <div class="quant-value text-white">{{ stats.stdDev }}%</div>
-                    </div>
-                    <div class="quant-card">
-                        <div class="quant-label text-red-400">VaR (95%)</div>
-                        <div class="quant-value text-white">{{ stats.var95 }}%</div>
-                    </div>
-                    <div class="quant-card">
-                        <div class="quant-label text-red-400">CVaR (Expected Loss)</div>
-                        <div class="quant-value text-white">{{ stats.cvar95 }}%</div>
-                    </div>
-
-                    <div class="quant-card">
-                        <div class="quant-label text-purple-400">偏度 (Skewness)</div>
-                        <div class="quant-value text-white">{{ stats.skew }}</div>
-                    </div>
-                    <div class="quant-card">
-                        <div class="quant-label text-purple-400">峭度 (Kurtosis)</div>
-                        <div class="quant-value text-white">{{ stats.kurt }}</div>
-                    </div>
+                    <div class="quant-card"><div class="quant-label text-blue-400">TWR (時間加權)</div><div class="quant-value text-white">{{ stats.twr }}%</div></div>
+                    <div class="quant-card"><div class="quant-label text-blue-400">MWR (內部報酬)</div><div class="quant-value text-white">{{ stats.mwr }}%</div></div>
+                    <div class="quant-card"><div class="quant-label text-yellow-400">夏普 (Sharpe)</div><div class="quant-value text-white">{{ stats.sharpe }}%</div></div>
+                    <div class="quant-card"><div class="quant-label text-yellow-400">索提諾 (Sortino)</div><div class="quant-value text-white">{{ stats.sortino }}%</div></div>
+                    <div class="quant-card"><div class="quant-label text-yellow-400">崔娜 (Treynor)</div><div class="quant-value text-white">{{ stats.treynor }}%</div></div>
+                    <div class="quant-card"><div class="quant-label text-gray-400">標準差 (StdDev)</div><div class="quant-value text-white">{{ stats.stdDev }}%</div></div>
+                    <div class="quant-card"><div class="quant-label text-red-400">VaR (95%)</div><div class="quant-value text-white">{{ stats.var95 }}%</div></div>
+                    <div class="quant-card"><div class="quant-label text-red-400">CVaR (Expected Loss)</div><div class="quant-value text-white">{{ stats.cvar95 }}%</div></div>
+                    <div class="quant-card"><div class="quant-label text-purple-400">偏度 (Skewness)</div><div class="quant-value text-white">{{ stats.skew }}</div></div>
+                    <div class="quant-card"><div class="quant-label text-purple-400">峭度 (Kurtosis)</div><div class="quant-value text-white">{{ stats.kurt }}</div></div>
                 </div>
 
                  <div class="flex-1 glass rounded-xl overflow-hidden flex flex-col">
@@ -335,14 +307,8 @@
                         <input v-model="txForm.ticker" placeholder="代號 / 名稱 (如 AAPL)" class="w-full input-dark p-2 rounded text-xs uppercase mb-2">
                         <div v-if="['Buy','Sell'].includes(txForm.type)">
                             <div class="grid grid-cols-2 gap-2 mb-2">
-                                <div>
-                                    <label class="text-[10px] text-gray-500 block">成交單價 (TWD)</label>
-                                    <input v-model.number="txForm.price" type="number" placeholder="台幣單價" class="w-full input-dark p-2 rounded text-xs">
-                                </div>
-                                <div>
-                                    <label class="text-[10px] text-gray-500 block">數量 (Shares)</label>
-                                    <input v-model.number="txForm.shares" type="number" placeholder="股數" class="w-full input-dark p-2 rounded text-xs">
-                                </div>
+                                <div><input v-model.number="txForm.price" type="number" placeholder="台幣單價" class="w-full input-dark p-2 rounded text-xs"></div>
+                                <div><input v-model.number="txForm.shares" type="number" placeholder="股數" class="w-full input-dark p-2 rounded text-xs"></div>
                             </div>
                             <div class="text-xs text-right text-gray-400 font-mono">
                                 總金額: <span class="text-white font-bold">{{ formatNumber((txForm.price || 0) * (txForm.shares || 0)) }}</span> TWD
@@ -399,17 +365,14 @@
                             <i class="fas fa-random text-purple-400"></i> 蒙地卡羅未來模擬 (Monte Carlo)
                         </h3>
                         <div class="text-xs text-gray-400">
-                             基於歷史 Volatility: <span class="text-white font-bold">{{ mcParams.vol }}%</span> | 
-                             歷史 Annual Mean: <span class="text-white font-bold">{{ mcParams.mean }}%</span>
+                             Vol: <span class="text-white font-bold">{{ mcParams.vol }}%</span> | Mean: <span class="text-white font-bold">{{ mcParams.mean }}%</span>
                         </div>
                     </div>
                     <div class="flex-1 bg-gray-900 rounded-xl relative p-4 mb-4 border border-gray-700">
                         <canvas id="mcChart"></canvas>
                     </div>
                     <div class="flex justify-between items-center">
-                         <div class="text-xs text-gray-500">
-                             * 模擬 100 條路徑 (Geometric Brownian Motion)
-                         </div>
+                         <div class="text-xs text-gray-500">* 模擬 100 條 GBM 路徑 (1 Year)</div>
                         <button @click="showMCModal=false" class="bg-gray-700 hover:bg-gray-600 px-6 py-2 rounded text-white font-bold transition">關閉</button>
                     </div>
                 </div>
@@ -429,11 +392,16 @@ createApp({
         const showMCModal = ref(false);
         const isUpdating = ref(false);
         const isSimMode = ref(false);
+        const lastUpdate = ref(null);
         
         const exchangeRate = ref(parseFloat(localStorage.getItem('exchangeRate')) || 32.5);
-        watch(exchangeRate, (val) => localStorage.setItem('exchangeRate', val));
-        const riskParams = ref({ rf: 1.5, beta: 1.0 });
+        // Sheet URL Persistence
+        const sheetUrl = ref(localStorage.getItem('sheetUrl') || '');
 
+        watch(exchangeRate, (val) => localStorage.setItem('exchangeRate', val));
+        watch(sheetUrl, (val) => localStorage.setItem('sheetUrl', val));
+
+        const riskParams = ref({ rf: 1.5, beta: 1.0 });
         const transactions = ref(JSON.parse(localStorage.getItem('ledgerData') || '[]'));
         const realHistoryData = ref(JSON.parse(localStorage.getItem('historyData') || '[]'));
         const mockHistoryData = ref([]);
@@ -447,10 +415,53 @@ createApp({
 
         function toggleSimMode() {
             isSimMode.value = !isSimMode.value;
-            if (isSimMode.value && mockHistoryData.value.length === 0) {
-                generateMonthlyMockData();
-            }
+            if (isSimMode.value && mockHistoryData.value.length === 0) generateMonthlyMockData();
             updateCharts();
+        }
+
+        // --- NEW: Google Sheet Fetcher Logic ---
+        async function fetchPrices() {
+            if (!sheetUrl.value) { alert('請先在上方輸入 Google Sheet CSV 網址！\n(檔案 -> 發布到網路 -> 選擇 CSV)'); return; }
+            isUpdating.value = true;
+            try {
+                // Fetch the CSV directly
+                const response = await fetch(sheetUrl.value);
+                if (!response.ok) throw new Error('Network Error');
+                const csvText = await response.text();
+                
+                // Parse CSV
+                Papa.parse(csvText, {
+                    header: true,
+                    complete: (results) => {
+                        let count = 0;
+                        results.data.forEach(row => {
+                            // Match Columns: Ticker, Price
+                            if (row.Ticker && row.Price) {
+                                const t = row.Ticker.toUpperCase().trim();
+                                const p = parseFloat(row.Price);
+                                if (!isNaN(p)) {
+                                    priceMap.value[t] = p;
+                                    count++;
+                                }
+                            }
+                        });
+                        localStorage.setItem('priceMap', JSON.stringify(priceMap.value));
+                        lastUpdate.value = new Date().toLocaleTimeString();
+                        isUpdating.value = false;
+                        updateCharts(); // Refresh UI
+                        alert(`成功更新 ${count} 檔報價！`);
+                    },
+                    error: (err) => {
+                        console.error(err);
+                        alert('CSV 解析失敗，請檢查格式是否為 Ticker, Price');
+                        isUpdating.value = false;
+                    }
+                });
+            } catch (e) {
+                console.error(e);
+                alert('抓取失敗！請確認網址是否正確，且已發布為 "CSV" 格式。\n(可能有 CORS 限制，建議使用 Chrome)');
+                isUpdating.value = false;
+            }
         }
 
         const holdings = computed(() => {
@@ -459,13 +470,10 @@ createApp({
                 if(!tx.ticker) return;
                 const t = tx.ticker.toUpperCase();
                 if(!map[t]) map[t] = { ticker: t, category: tx.category || '台股', shares: 0, totalCostTwd: 0 };
-                if(tx.type === 'Buy') { 
-                    map[t].shares += tx.shares; 
-                    map[t].totalCostTwd += Math.abs(tx.totalCashFlow); 
-                } else if(tx.type === 'Sell') { 
+                if(tx.type === 'Buy') { map[t].shares += tx.shares; map[t].totalCostTwd += Math.abs(tx.totalCashFlow); }
+                else if(tx.type === 'Sell') { 
                     const avgCost = map[t].shares ? map[t].totalCostTwd / map[t].shares : 0; 
-                    map[t].shares -= tx.shares; 
-                    map[t].totalCostTwd -= avgCost * tx.shares; 
+                    map[t].shares -= tx.shares; map[t].totalCostTwd -= avgCost * tx.shares; 
                 }
             });
             return Object.values(map).filter(h => h.shares > 0.0001).map(h => {
@@ -508,7 +516,6 @@ createApp({
             }).reverse();
         });
 
-        // --- QUANT ENGINE v13.1 (With Percentages) ---
         const stats = computed(() => {
             const data = displayHistory.value;
             const empty = { twr:'-', mwr:'-', sharpe:'-', sortino:'-', treynor:'-', var95:'-', cvar95:'-', skew:'-', kurt:'-', stdDev:'-' };
@@ -543,8 +550,6 @@ createApp({
             const annReturn = avgR * 12;
             const rf = riskParams.value.rf / 100;
             const beta = riskParams.value.beta;
-
-            // Updated to use % (multiply ratio by 100)
             const sharpe = ((annReturn - rf) / (annStdDev || 1)) * 100;
             const treynor = ((annReturn - rf) / (beta || 1)) * 100;
 
@@ -558,7 +563,6 @@ createApp({
             const tailLosses = sortedR.slice(0, idx95+1);
             const cvar95 = tailLosses.length > 0 ? tailLosses.reduce((a,b)=>a+b,0)/tailLosses.length : var95;
             
-            // Store params for Monte Carlo
             mcParams.value = { vol: (annStdDev*100).toFixed(2), mean: (annReturn*100).toFixed(2) };
 
             return { 
@@ -569,9 +573,8 @@ createApp({
             };
         });
 
-        // --- Monte Carlo Logic ---
         function openMonteCarlo() {
-            if(displayHistory.value.length < 5) { alert('歷史數據不足 (Need History to simulate Future)'); return; }
+            if(displayHistory.value.length < 5) { alert('歷史數據不足 (Need History)'); return; }
             showMCModal.value = true;
             nextTick(runMonteCarlo);
         }
@@ -579,54 +582,32 @@ createApp({
         function runMonteCarlo() {
             const ctx = document.getElementById('mcChart');
             if(!ctx) return;
-            
-            // Params from History
             const annualMean = parseFloat(mcParams.value.mean) / 100;
             const annualVol = parseFloat(mcParams.value.vol) / 100;
             const startPrice = totalStockValueTwd.value || 100000;
-            const steps = 252; // Daily steps for 1 year
-            const dt = 1/252;
-            const sims = 100; // 100 paths
-            
+            const steps = 252; const dt = 1/252; const sims = 100;
             const datasets = [];
             for(let s=0; s<sims; s++) {
                 const data = [startPrice];
                 let current = startPrice;
                 for(let t=1; t<=steps; t++) {
-                    // Geometric Brownian Motion: dS = S * (mu*dt + sigma*dW)
                     const u1 = Math.random(); const u2 = Math.random();
-                    const z = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2); // Box-Muller
+                    const z = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
                     const drift = (annualMean - 0.5 * annualVol * annualVol) * dt;
                     const shock = annualVol * Math.sqrt(dt) * z;
                     current = current * Math.exp(drift + shock);
-                    if(t % 5 === 0) data.push(current); // Downsample for chart performance
+                    if(t % 5 === 0) data.push(current);
                 }
-                datasets.push({ 
-                    data: data, 
-                    borderColor: s===0 ? '#f59e0b' : 'rgba(139, 92, 246, 0.15)', // Highlight first, others dim
-                    borderWidth: s===0 ? 2 : 1,
-                    pointRadius: 0,
-                    fill: false
-                });
+                datasets.push({ data: data, borderColor: s===0 ? '#f59e0b' : 'rgba(139, 92, 246, 0.15)', borderWidth: s===0 ? 2 : 1, pointRadius: 0, fill: false });
             }
-
             if(window.mcChartInstance) window.mcChartInstance.destroy();
             window.mcChartInstance = new Chart(ctx, {
                 type: 'line',
-                data: { 
-                    labels: Array.from({length: Math.ceil(steps/5)+1}, (_, i) => i),
-                    datasets: datasets 
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false }, title: { display: true, text: '未來一年資產走勢預測 (100 Paths)', color: 'white' } },
-                    scales: { x: { display: false }, y: { grid: { color: '#334155' } } }
-                }
+                data: { labels: Array.from({length: Math.ceil(steps/5)+1}, (_, i) => i), datasets: datasets },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: '未來一年模擬路徑 (100 Paths)', color: 'white' } }, scales: { x: { display: false }, y: { grid: { color: '#334155' } } } }
             });
         }
 
-        // --- Standard Operations ---
         function addTransaction() {
             const { date, type, category, ticker, price, shares, amount } = txForm.value;
             if(!date) return;
@@ -669,12 +650,6 @@ createApp({
             else updateCharts();
         }
 
-        function takeSnapshot() {
-            if(isSimMode.value) return;
-            historyForm.value = { date: new Date().toISOString().split('T')[0], assets: totalStockValueTwd.value + cashBalanceTwd.value, cost: totalStockCostTwd.value + transactions.value.reduce((acc,tx)=>tx.type==='Deposit'?acc+tx.totalCashFlow:acc, 0) }; 
-            addHistoryRecord();
-        }
-        
         function manualUpdate(stock) { 
             if(stock.manualPrice) { 
                 priceMap.value[stock.ticker] = stock.manualPrice; 
@@ -692,9 +667,7 @@ createApp({
             } 
         }
         function saveData() { localStorage.setItem('ledgerData', JSON.stringify(transactions.value)); }
-        function fetchPrices() { alert('請輸入現價 (美股輸入 USD, 台股輸入 TWD)'); }
         function exportAll() { const data = { ledger: transactions.value, history: realHistoryData.value }; const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([JSON.stringify(data)], {type: "application/json"})); link.download = "asset_master_backup.json"; link.click(); }
-        
         function getTypeColor(type) { return { 'Buy':'text-red-400', 'Sell':'text-green-400', 'Deposit':'text-blue-400', 'Dividend':'text-yellow-400' }[type] || 'text-gray-400'; }
         function getCategoryBadgeClass(cat) { return { '美股':'bg-yellow-900 text-yellow-300 border-yellow-600', '台股':'bg-blue-900 text-blue-300 border-blue-700', '基金':'bg-green-900 text-green-300 border-green-700', '加密貨幣':'bg-purple-900 text-purple-300 border-purple-700' }[cat] || 'bg-gray-800 text-gray-400'; }
         function getCategoryColorCode(cat) { return { '美股':'#f59e0b', '台股':'#3b82f6', '基金':'#10b981', '加密貨幣':'#a855f7' }[cat] || '#94a3b8'; }
@@ -748,8 +721,8 @@ createApp({
             });
         }
         onMounted(() => { setTimeout(updateCharts, 1000); });
-        watch([currentTab, exchangeRate], () => updateCharts());
-        return { currentTab, showHistoryModal, showMCModal, isUpdating, isSimMode, toggleSimMode, transactions, realHistoryData, mockHistoryData, displayHistory, enrichedHistory, holdings, categoryTotals, totalStockValueTwd, totalStockCostTwd, totalStockUnrealizedPL, totalStockReturnRate, reversedTransactions, txForm, historyForm, riskParams, stats, mcParams, exchangeRate, addTransaction, addHistoryRecord, generateMonthlyMockData, removeHistoryByDate, manualUpdate, takeSnapshot, removeTransaction, fetchPrices, exportAll, getTypeColor, getCategoryBadgeClass, getCategoryColorCode, formatNumber, formatPercent, openMonteCarlo, runMonteCarlo };
+        watch([currentTab, exchangeRate, sheetUrl], () => updateCharts());
+        return { currentTab, showHistoryModal, showMCModal, isUpdating, isSimMode, toggleSimMode, transactions, realHistoryData, mockHistoryData, displayHistory, enrichedHistory, holdings, categoryTotals, totalStockValueTwd, totalStockCostTwd, totalStockUnrealizedPL, totalStockReturnRate, reversedTransactions, txForm, historyForm, riskParams, stats, mcParams, exchangeRate, sheetUrl, addTransaction, addHistoryRecord, generateMonthlyMockData, removeHistoryByDate, manualUpdate, fetchPrices, exportAll, getTypeColor, getCategoryBadgeClass, getCategoryColorCode, formatNumber, formatPercent, openMonteCarlo, runMonteCarlo, lastUpdate };
     }
 }).mount('#app');
 </script>
