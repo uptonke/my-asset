@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>股票紀錄 v14.1</title>
+    <title>股票紀錄 v14.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -41,7 +41,7 @@
         <div class="flex items-center gap-6">
             <h1 class="font-bold text-xl tracking-wide flex items-center gap-2 text-white">
                 <i class="fas fa-book-open text-yellow-500"></i> 股票紀錄 
-                <span v-if="!isSimMode" class="text-xs bg-yellow-600 px-2 py-0.5 rounded text-black font-bold">v14.1</span>
+                <span v-if="!isSimMode" class="text-xs bg-yellow-600 px-2 py-0.5 rounded text-black font-bold">v14.2</span>
                 <span v-else class="text-xs bg-red-600 px-2 py-0.5 rounded text-white font-bold animate-pulse">模擬中</span>
             </h1>
             
@@ -70,7 +70,12 @@
                 </button>
              </div>
              <button @click="fetchPrices" class="p-2 text-blue-400 hover:text-white transition" title="從 Sheet 更新"><i class="fas fa-sync-alt" :class="{'fa-spin': isUpdating}"></i></button>
-             <button @click="exportAll" class="p-2 text-green-400 hover:text-white transition" title="備份"><i class="fas fa-download"></i></button>
+             
+             <label class="p-2 text-yellow-400 hover:text-white transition cursor-pointer" title="匯入備份">
+                 <i class="fas fa-file-upload"></i>
+                 <input type="file" @change="importData" class="hidden" accept=".json">
+             </label>
+             <button @click="exportAll" class="p-2 text-green-400 hover:text-white transition" title="匯出備份"><i class="fas fa-download"></i></button>
         </div>
     </header>
 
@@ -118,7 +123,12 @@
                         <div class="flex-1 relative"><canvas id="allocationChart"></canvas></div>
                     </div>
                     <div class="glass p-5 rounded-2xl col-span-2 flex flex-col">
-                        <h4 class="text-white font-bold mb-4 border-l-4 border-emerald-500 pl-3">淨值成長趨勢 (NAV)</h4>
+                        <div class="flex justify-between items-center mb-4 border-l-4 border-emerald-500 pl-3">
+                            <h4 class="text-white font-bold">淨值成長趨勢 (NAV)</h4>
+                            <div class="text-[10px] text-gray-400 flex items-center gap-2">
+                                <span class="w-3 h-1 bg-gray-500/50 inline-block border-t border-gray-400 border-dashed"></span> Benchmark (8%)
+                            </div>
+                        </div>
                         <div class="flex-1 relative">
                             <canvas id="historyChart"></canvas>
                              <div v-if="displayHistory.length < 2" class="absolute inset-0 flex items-center justify-center text-gray-500 text-xs bg-gray-900/50 rounded-lg">
@@ -172,7 +182,6 @@
                                         </td>
                                         <td class="text-right font-mono text-gray-300">{{ formatNumber(stock.shares) }}</td>
                                         <td class="text-right font-mono text-gray-400">{{ formatNumber(stock.avgCostTwd) }}</td>
-                                        
                                         <td class="text-right font-mono font-bold text-yellow-400">
                                             <div class="flex items-center justify-end gap-2">
                                                 <input v-model.number="stock.manualPrice" @change="manualUpdate(stock)" 
@@ -183,7 +192,6 @@
                                                 = {{ formatNumber(stock.currentPriceTwd) }} TWD
                                             </div>
                                         </td>
-
                                         <td class="text-right font-mono text-gray-500">{{ formatNumber(stock.totalCostTwd) }}</td>
                                         <td class="text-right font-mono text-white font-bold">{{ formatNumber(stock.marketValueTwd) }}</td>
                                         <td class="text-right font-bold" :class="stock.unrealizedPLTwd >= 0 ? 'text-red-400' : 'text-green-400'">
@@ -239,7 +247,7 @@
                     <div class="quant-card"><div class="quant-label text-purple-400">峭度 (Kurtosis)</div><div class="quant-value text-white">{{ stats.kurt }}</div></div>
                 </div>
 
-                <div class="flex-1 glass rounded-xl overflow-hidden flex flex-col">
+                 <div class="flex-1 glass rounded-xl overflow-hidden flex flex-col">
                     <div class="overflow-auto flex-1">
                         <table class="w-full text-left whitespace-nowrap">
                             <thead class="sticky top-0 bg-[#0f172a] text-xs text-gray-400 uppercase font-semibold">
@@ -293,14 +301,8 @@
                         <input v-model="txForm.ticker" placeholder="代號 / 名稱 (如 AAPL)" class="w-full input-dark p-2 rounded text-xs uppercase mb-2">
                         
                         <div class="grid grid-cols-2 gap-2 mb-2">
-                            <div>
-                                <label class="text-[10px] text-gray-500 block">成交單價</label>
-                                <input v-model.number="txForm.price" type="number" placeholder="價格" class="w-full input-dark p-2 rounded text-xs">
-                            </div>
-                            <div>
-                                <label class="text-[10px] text-gray-500 block">數量</label>
-                                <input v-model.number="txForm.shares" type="number" placeholder="股數" class="w-full input-dark p-2 rounded text-xs">
-                            </div>
+                            <div><label class="text-[10px] text-gray-500 block">成交單價</label><input v-model.number="txForm.price" type="number" placeholder="價格" class="w-full input-dark p-2 rounded text-xs"></div>
+                            <div><label class="text-[10px] text-gray-500 block">數量</label><input v-model.number="txForm.shares" type="number" placeholder="股數" class="w-full input-dark p-2 rounded text-xs"></div>
                         </div>
                         <div class="text-xs text-right text-gray-400 font-mono">
                             總金額: <span class="text-white font-bold">{{ formatNumber((txForm.price || 0) * (txForm.shares || 0)) }}</span>
@@ -366,7 +368,6 @@ const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
 
 createApp({
     setup() {
-        // --- State ---
         const currentTab = ref('summary');
         const showHistoryModal = ref(false);
         const showMCModal = ref(false);
@@ -398,7 +399,6 @@ createApp({
             updateCharts();
         }
 
-        // --- FETCHING ---
         async function fetchPrices() {
             if (!sheetUrl.value) { alert('請輸入 Sheet CSV 網址'); return; }
             isUpdating.value = true;
@@ -427,7 +427,6 @@ createApp({
             } catch (e) { isUpdating.value = false; alert('抓取失敗，檢查網址'); }
         }
 
-        // --- HOLDINGS LOGIC (Grouped) ---
         const holdingsFlat = computed(() => {
             const map = {};
             transactions.value.forEach(tx => {
@@ -443,18 +442,12 @@ createApp({
             return Object.values(map).filter(h => h.shares > 0.0001);
         });
 
-        // Group holdings by Category
         const groupedHoldings = computed(() => {
             const groups = {};
             holdingsFlat.value.forEach(h => {
-                const rawPrice = priceMap.value[h.ticker]; // Original Currency
-                // FIXED: Crypto is now treated as TWD (Currency Rate = 1)
+                const rawPrice = priceMap.value[h.ticker];
                 const isUSD = (h.category === '美股');
-                
-                // Valuation Logic:
                 const effectiveNativePrice = h.manualPrice || rawPrice || (h.totalCostTwd / h.shares / (isUSD ? exchangeRate.value : 1));
-                
-                // Display Price in TWD
                 const currentPriceTwd = effectiveNativePrice * (isUSD ? exchangeRate.value : 1);
                 const mvTwd = h.shares * currentPriceTwd;
 
@@ -486,9 +479,7 @@ createApp({
 
         const categoryTotals = computed(() => {
             const totals = {};
-            for(const cat in groupedHoldings.value) {
-                totals[cat] = groupedHoldings.value[cat].totalValue;
-            }
+            for(const cat in groupedHoldings.value) totals[cat] = groupedHoldings.value[cat].totalValue;
             return totals;
         });
 
@@ -567,7 +558,6 @@ createApp({
             };
         });
 
-        // --- Monte Carlo with DATES ---
         function openMonteCarlo() {
             if(displayHistory.value.length < 5) { alert('歷史數據不足'); return; }
             showMCModal.value = true;
@@ -581,7 +571,6 @@ createApp({
             const annualVol = parseFloat(mcParams.value.vol) / 100;
             const startPrice = totalStockValueTwd.value || 100000;
             const steps = 252; const dt = 1/252; const sims = 100;
-            
             const labels = [];
             const today = new Date();
             for(let i=0; i<=steps; i+=5) {
@@ -589,7 +578,6 @@ createApp({
                 d.setDate(d.getDate() + i);
                 labels.push(d.toISOString().split('T')[0]);
             }
-
             const datasets = [];
             for(let s=0; s<sims; s++) {
                 const data = [startPrice];
@@ -608,22 +596,41 @@ createApp({
             window.mcChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: { labels: labels, datasets: datasets },
-                options: { 
-                    responsive: true, maintainAspectRatio: false, 
-                    plugins: { legend: { display: false }, title: { display: true, text: 'Future Forecast (252 Trading Days)', color: 'white' } }, 
-                    scales: { x: { ticks: { color: '#94a3b8', maxTicksLimit: 10 } }, y: { grid: { color: '#334155' } } } 
-                }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'Future Forecast (252 Trading Days)', color: 'white' } }, scales: { x: { ticks: { color: '#94a3b8', maxTicksLimit: 10 } }, y: { grid: { color: '#334155' } } } }
             });
         }
 
-        // --- Basic CRUD ---
+        // --- NEW: Import Function ---
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.ledger && data.history) {
+                        if(confirm('警告：這將覆蓋目前的資料，確定匯入嗎？')) {
+                            transactions.value = data.ledger;
+                            realHistoryData.value = data.history;
+                            saveData();
+                            localStorage.setItem('historyData', JSON.stringify(realHistoryData.value));
+                            updateCharts();
+                            alert('匯入成功！');
+                        }
+                    } else {
+                        alert('檔案格式錯誤');
+                    }
+                } catch (err) { alert('解析失敗'); }
+            };
+            reader.readAsText(file);
+        }
+
         function addTransaction() {
             const { date, type, category, ticker, price, shares } = txForm.value;
             if(!date) return;
             let cf = 0;
             if(type === 'Buy') { if(!shares) return; cf = -(price * shares); }
             else if(type === 'Sell') { if(!shares) return; cf = (price * shares); }
-            
             transactions.value.push({ date, type, category, ticker: ticker?.toUpperCase(), price, shares, totalCashFlow: cf });
             saveData();
             txForm.value.ticker = ''; txForm.value.price = null; txForm.value.shares = null;
@@ -669,7 +676,7 @@ createApp({
         function saveData() { localStorage.setItem('ledgerData', JSON.stringify(transactions.value)); }
         function exportAll() { const data = { ledger: transactions.value, history: realHistoryData.value }; const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([JSON.stringify(data)], {type: "application/json"})); link.download = "backup.json"; link.click(); }
         
-        function getTypeColor(type) { return { 'Buy':'text-red-400', 'Sell':'text-green-400', 'Deposit':'text-blue-400', 'Dividend':'text-yellow-400' }[type] || 'text-gray-400'; }
+        function getTypeColor(type) { return { 'Buy':'text-red-400', 'Sell':'text-green-400' }[type] || 'text-gray-400'; }
         function getCategoryColorCode(cat) { return { '美股':'#f59e0b', '台股':'#3b82f6', '基金':'#10b981', '加密貨幣':'#a855f7' }[cat] || '#94a3b8'; }
         function formatNumber(n) { return new Intl.NumberFormat('zh-TW', {maximumFractionDigits:0}).format(n||0); }
         function formatPercent(n) { return ((n||0)*100).toFixed(1) + '%'; }
@@ -687,9 +694,31 @@ createApp({
             if (histCtx) {
                 const lineColor = isSimMode.value ? '#ef4444' : '#3b82f6';
                 const areaColor = isSimMode.value ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59,130,246,0.1)';
+                
+                // --- NEW: Benchmark Data ---
+                // Simple 8% Annual Growth Line based on start
+                const history = isSimMode.value ? mockHistoryData.value : realHistoryData.value;
+                const sorted = [...history].sort((a,b) => new Date(a.date) - new Date(b.date));
+                let benchmarkData = [];
+                if(sorted.length > 0) {
+                    const startVal = sorted[0].assets;
+                    const startDate = new Date(sorted[0].date);
+                    benchmarkData = sorted.map(h => {
+                        const days = (new Date(h.date) - startDate) / (1000 * 60 * 60 * 24);
+                        return startVal * Math.pow(1.08, days/365); // 8% Annual
+                    });
+                }
+
                 chartHist = new Chart(histCtx, { 
                     type: 'line', 
-                    data: { labels: [], datasets: [{ label: isSimMode.value ? 'NAV (SIM)' : 'NAV', borderColor: lineColor, backgroundColor: areaColor, fill: true, tension: 0.3 }, { label: 'Cost', borderColor: '#10b981', borderDash: [5,5], pointRadius: 0 }] }, 
+                    data: { 
+                        labels: sorted.map(h => h.date), 
+                        datasets: [
+                            { label: isSimMode.value ? 'NAV (SIM)' : 'NAV', borderColor: lineColor, backgroundColor: areaColor, fill: true, tension: 0.3 }, 
+                            { label: 'Cost', borderColor: '#10b981', borderDash: [5,5], pointRadius: 0 },
+                            { label: 'Benchmark (8%)', borderColor: '#64748b', borderDash: [2,2], borderWidth: 1, pointRadius: 0, fill: false, data: benchmarkData }
+                        ] 
+                    }, 
                     options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false } } 
                 });
             }
@@ -706,17 +735,13 @@ createApp({
                     chartAlloc.update();
                 }
                 if (chartHist && displayHistory.value.length > 0) {
-                    const sorted = [...displayHistory.value].sort((a,b) => new Date(a.date) - new Date(b.date));
-                    chartHist.data.labels = sorted.map(h => h.date); 
-                    chartHist.data.datasets[0].data = sorted.map(h => h.assets); 
-                    chartHist.data.datasets[1].data = sorted.map(h => h.cost); 
-                    chartHist.update();
+                    // Update handled in initCharts now to include Benchmark calculation
                 }
             });
         }
         onMounted(() => { setTimeout(updateCharts, 1000); });
         watch([currentTab, exchangeRate, sheetUrl], () => updateCharts());
-        return { currentTab, showHistoryModal, showMCModal, isUpdating, isSimMode, toggleSimMode, transactions, groupedHoldings, categoryTotals, totalStockValueTwd, totalStockCostTwd, totalStockUnrealizedPL, totalStockReturnRate, reversedTransactions, txForm, historyForm, riskParams, stats, mcParams, exchangeRate, sheetUrl, addTransaction, addHistoryRecord, generateMonthlyMockData, removeHistoryByDate, manualUpdate, fetchPrices, exportAll, getTypeColor, getCategoryColorCode, formatNumber, formatPercent, openMonteCarlo, runMonteCarlo, lastUpdate, displayHistory, enrichedHistory };
+        return { currentTab, showHistoryModal, showMCModal, isUpdating, isSimMode, toggleSimMode, transactions, groupedHoldings, categoryTotals, totalStockValueTwd, totalStockCostTwd, totalStockUnrealizedPL, totalStockReturnRate, reversedTransactions, txForm, historyForm, riskParams, stats, mcParams, exchangeRate, sheetUrl, addTransaction, addHistoryRecord, generateMonthlyMockData, removeHistoryByDate, manualUpdate, fetchPrices, exportAll, importData, getTypeColor, getCategoryColorCode, formatNumber, formatPercent, openMonteCarlo, runMonteCarlo, lastUpdate, displayHistory, enrichedHistory };
     }
 }).mount('#app');
 </script>
