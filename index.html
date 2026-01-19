@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>股票紀錄 v14.0</title>
+    <title>股票紀錄 v14.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -41,7 +41,7 @@
         <div class="flex items-center gap-6">
             <h1 class="font-bold text-xl tracking-wide flex items-center gap-2 text-white">
                 <i class="fas fa-book-open text-yellow-500"></i> 股票紀錄 
-                <span v-if="!isSimMode" class="text-xs bg-yellow-600 px-2 py-0.5 rounded text-black font-bold">v14.0</span>
+                <span v-if="!isSimMode" class="text-xs bg-yellow-600 px-2 py-0.5 rounded text-black font-bold">v14.1</span>
                 <span v-else class="text-xs bg-red-600 px-2 py-0.5 rounded text-white font-bold animate-pulse">模擬中</span>
             </h1>
             
@@ -245,10 +245,10 @@
                             <thead class="sticky top-0 bg-[#0f172a] text-xs text-gray-400 uppercase font-semibold">
                                 <tr>
                                     <th class="p-3 pl-6">日期</th>
-                                    <th class="p-3 text-right">NAV</th>
-                                    <th class="p-3 text-right">Cost</th>
-                                    <th class="p-3 text-right">Return</th>
-                                    <th class="p-3 text-center" v-if="!isSimMode">Action</th>
+                                    <th class="p-3 text-right">總資產 (NAV)</th>
+                                    <th class="p-3 text-right">總成本 (Cost)</th>
+                                    <th class="p-3 text-right">週期報酬 (Return)</th>
+                                    <th class="p-3 text-center" v-if="!isSimMode">動作</th>
                                 </tr>
                             </thead>
                             <tbody class="text-sm divide-y divide-white/5">
