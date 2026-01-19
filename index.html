@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASSET MASTER v7.1 | Auto-Rf Linked</title>
+    <title>ASSET MASTER v7.2 | Multi-Asset</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -12,19 +12,19 @@
     <style>
         body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0b1121; color: #e2e8f0; }
         .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); }
-        .input-dark { background: #1e293b; border: 1px solid #334155; color: white; }
-        .input-dark:focus { border-color: #3b82f6; ring: 2px; outline: none; }
+        .input-dark { background: #1e293b; border: 1px solid #334155; color: white; transition: all 0.2s; }
+        .input-dark:focus { border-color: #3b82f6; ring: 2px; outline: none; background: #0f172a; }
         .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; text-shadow: 0 0 10px rgba(59,130,246,0.5); }
         .tab-inactive { color: #64748b; }
         .tab-inactive:hover { color: #94a3b8; }
-        .btn-primary { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); transition: all 0.3s; }
+        .btn-primary { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); }
         .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.4); }
-        /* Scrollbar */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #0b1121; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
         .metric-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; }
         .metric-value { font-family: 'Courier New', monospace; font-weight: bold; }
+        .category-header { background: linear-gradient(90deg, rgba(59,130,246,0.1) 0%, transparent 100%); border-left: 3px solid #3b82f6; }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden text-sm">
@@ -34,11 +34,11 @@
     <header class="glass z-50 flex-none h-14 px-4 flex items-center justify-between">
         <div class="flex items-center gap-6">
             <h1 class="font-bold text-lg tracking-wide flex items-center gap-2 text-white">
-                <i class="fas fa-chart-network text-blue-500"></i> ASSET MASTER <span class="text-[10px] text-emerald-400 bg-emerald-900/30 px-1.5 py-0.5 rounded border border-emerald-800">v7.1 Live Rf</span>
+                <i class="fas fa-layer-group text-blue-500"></i> ASSET MASTER <span class="text-[10px] text-purple-400 bg-purple-900/30 px-1.5 py-0.5 rounded border border-purple-800">v7.2 Pro</span>
             </h1>
             <nav class="flex gap-6 font-semibold ml-4 hidden md:flex">
                 <button @click="currentTab='summary'" :class="currentTab==='summary'?'tab-active':'tab-inactive'" class="py-4 px-1 transition"><i class="fas fa-tachometer-alt mr-1"></i> Dashboard</button>
-                <button @click="currentTab='holdings'" :class="currentTab==='holdings'?'tab-active':'tab-inactive'" class="py-4 px-1 transition"><i class="fas fa-layer-group mr-1"></i> Holdings</button>
+                <button @click="currentTab='holdings'" :class="currentTab==='holdings'?'tab-active':'tab-inactive'" class="py-4 px-1 transition"><i class="fas fa-wallet mr-1"></i> Holdings</button>
                 <button @click="currentTab='analytics'" :class="currentTab==='analytics'?'tab-active':'tab-inactive'" class="py-4 px-1 transition"><i class="fas fa-chart-line mr-1"></i> Analytics</button>
                 <button @click="currentTab='ledger'" :class="currentTab==='ledger'?'tab-active':'tab-inactive'" class="py-4 px-1 transition"><i class="fas fa-list-alt mr-1"></i> Ledger</button>
             </nav>
@@ -61,15 +61,13 @@
                     <div class="glass p-5 rounded-xl border-t-2 border-blue-500">
                         <div class="metric-label">Net Asset Value (NAV)</div>
                         <div class="text-3xl metric-value text-white mt-1">${{ formatNumber(totalAssets) }}</div>
-                        <div class="text-xs text-gray-500 mt-2 flex justify-between">
-                            <span>Cash: {{ formatPercent(cashBalance/totalAssets) }}</span>
-                            <span>Securities: {{ formatPercent(stockValue/totalAssets) }}</span>
+                        <div class="text-xs text-gray-500 mt-2">
+                             Cash: {{ formatPercent(cashBalance/totalAssets) }}
                         </div>
                     </div>
                     <div class="glass p-5 rounded-xl border-t-2 border-emerald-500">
                         <div class="metric-label">Invested Capital</div>
                         <div class="text-3xl metric-value text-white mt-1">${{ formatNumber(totalPrincipal) }}</div>
-                        <div class="text-xs text-gray-500 mt-2">Principal Amount</div>
                     </div>
                     <div class="glass p-5 rounded-xl border-t-2" :class="totalUnrealizedPL >= 0 ? 'border-red-500' : 'border-green-500'">
                         <div class="metric-label">Unrealized P/L</div>
@@ -80,210 +78,151 @@
                             ROI: {{ totalReturnRate }}%
                         </div>
                     </div>
-                    <div class="glass p-5 rounded-xl border-t-2 border-purple-500 flex flex-col justify-between">
-                        <div>
-                            <div class="metric-label flex justify-between">
-                                <span>Risk Profile</span>
-                                <span v-if="rfSource === 'auto'" class="text-[10px] text-green-400 bg-green-900/30 px-1 rounded animate-pulse">Rf: {{ riskParams.rf }}% (Live)</span>
-                                <span v-else class="text-[10px] text-gray-500">Rf: {{ riskParams.rf }}% (Manual)</span>
-                            </div>
-                            <div class="flex justify-between items-end mt-1">
-                                <span class="text-gray-400 text-xs">Sharpe</span>
-                                <span class="font-mono font-bold text-white">{{ stats.sharpe }}</span>
-                            </div>
-                            <div class="flex justify-between items-end mt-1">
-                                <span class="text-gray-400 text-xs">VaR (95%)</span>
-                                <span class="font-mono font-bold text-red-400">{{ stats.var95 }}%</span>
+                    <div class="glass p-5 rounded-xl border-t-2 border-purple-500">
+                        <div class="metric-label">Asset Breakdown</div>
+                        <div class="mt-2 space-y-1">
+                            <div v-for="(amt, cat) in categoryTotals" :key="cat" class="flex justify-between text-xs">
+                                <span class="text-gray-400">{{ cat }}</span>
+                                <span class="font-mono text-white">{{ formatPercent(amt/totalAssets) }}</span>
                             </div>
                         </div>
-                        <div class="text-[10px] text-gray-600 text-right mt-2">Based on {{ historyData.length }} snapshots</div>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 h-80">
                     <div class="glass p-4 rounded-xl col-span-1 flex flex-col">
-                        <h4 class="metric-label mb-2">Allocation</h4>
+                        <h4 class="metric-label mb-2">Category Allocation</h4>
                         <div class="flex-1 relative"><canvas id="allocationChart"></canvas></div>
                     </div>
                     <div class="glass p-4 rounded-xl col-span-2 flex flex-col">
-                        <h4 class="metric-label mb-2">NAV History & Drawdown</h4>
+                        <h4 class="metric-label mb-2">NAV History & Risk</h4>
                         <div class="flex-1 relative"><canvas id="historyChart"></canvas></div>
                     </div>
                 </div>
             </div>
 
-            <div v-if="currentTab === 'holdings'" class="glass rounded-xl overflow-hidden flex flex-col h-full max-h-[85vh] animate-fade-in">
-                <div class="p-3 bg-white/5 border-b border-white/5 flex justify-between items-center">
-                    <h3 class="font-bold text-white text-sm"><i class="fas fa-wallet text-blue-500 mr-2"></i>Portfolio Holdings</h3>
-                    <div class="text-xs text-gray-400">
-                        Source: <span :class="sheetUrl ? 'text-green-400' : 'text-yellow-400'">{{ sheetUrl ? 'Google Finance' : 'Manual Input' }}</span>
+            <div v-if="currentTab === 'holdings'" class="flex flex-col h-full max-h-[85vh] animate-fade-in space-y-4">
+                
+                <div class="glass rounded-xl overflow-hidden flex flex-col flex-1">
+                    <div class="p-3 bg-white/5 border-b border-white/5 flex justify-between items-center">
+                        <h3 class="font-bold text-white text-sm"><i class="fas fa-layer-group text-blue-500 mr-2"></i>Portfolio by Category</h3>
+                        <div class="text-xs text-gray-400">Total Holdings: {{ holdings.length }}</div>
                     </div>
-                </div>
-                <div class="overflow-auto flex-1">
-                    <table class="w-full text-left whitespace-nowrap">
-                        <thead class="sticky top-0 bg-[#0f172a] text-[10px] text-gray-400 uppercase font-semibold z-10">
-                            <tr>
-                                <th class="p-3">Ticker</th>
-                                <th class="p-3 text-right">Qty</th>
-                                <th class="p-3 text-right">Avg Cost</th>
-                                <th class="p-3 text-right">Price</th>
-                                <th class="p-3 text-right">Mkt Value</th>
-                                <th class="p-3 text-right">Unrealized P/L</th>
-                                <th class="p-3 text-right">% Portfolio</th>
-                            </tr>
-                        </thead>
-                        <tbody class="text-sm divide-y divide-white/5">
-                            <tr v-for="stock in holdings" :key="stock.ticker" class="hover:bg-white/5 transition group">
-                                <td class="p-3 font-bold text-white group-hover:text-blue-400">{{ stock.ticker }}</td>
-                                <td class="p-3 text-right font-mono text-gray-400">{{ formatNumber(stock.shares) }}</td>
-                                <td class="p-3 text-right font-mono text-gray-500">{{ formatNumber(stock.avgCost) }}</td>
-                                <td class="p-3 text-right font-mono font-bold text-yellow-400">{{ formatNumber(stock.currentPrice) }}</td>
-                                <td class="p-3 text-right font-mono text-white">{{ formatNumber(stock.marketValue) }}</td>
-                                <td class="p-3 text-right font-bold" :class="stock.unrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
-                                    {{ formatNumber(stock.unrealizedPL) }} <span class="text-[10px] opacity-70">({{ stock.returnRate }}%)</span>
-                                </td>
-                                <td class="p-3 text-right font-mono text-gray-400">{{ formatPercent(stock.marketValue / totalAssets) }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div class="overflow-auto flex-1 p-2 space-y-4">
+                        
+                        <div v-for="cat in ['US Stock', 'TW Stock', 'Fund', 'Crypto']" :key="cat" v-if="holdings.some(h => h.category === cat)" class="mb-4">
+                            <div class="category-header p-2 text-white font-bold text-xs uppercase tracking-wider mb-1 flex justify-between">
+                                <span>{{ cat }}</span>
+                                <span class="font-mono text-blue-300 opacity-80">${{ formatNumber(holdings.filter(h=>h.category===cat).reduce((a,b)=>a+b.marketValue,0)) }}</span>
+                            </div>
+                            <table class="w-full text-left whitespace-nowrap">
+                                <thead class="bg-[#0f172a]/50 text-[10px] text-gray-500 uppercase">
+                                    <tr>
+                                        <th class="p-2 pl-4">Ticker</th>
+                                        <th class="p-2 text-right">Qty</th>
+                                        <th class="p-2 text-right">Avg Cost</th>
+                                        <th class="p-2 text-right">Current Price</th>
+                                        <th class="p-2 text-right">Mkt Value</th>
+                                        <th class="p-2 text-right">P/L</th>
+                                        <th class="p-2 text-right">ROI</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="text-sm divide-y divide-white/5">
+                                    <tr v-for="stock in holdings.filter(h => h.category === cat)" :key="stock.ticker" class="hover:bg-white/5 transition">
+                                        <td class="p-2 pl-4 font-bold text-white">{{ stock.ticker }}</td>
+                                        <td class="p-2 text-right font-mono text-gray-400">{{ formatNumber(stock.shares) }}</td>
+                                        <td class="p-2 text-right font-mono text-gray-500">{{ formatNumber(stock.avgCost) }}</td>
+                                        <td class="p-2 text-right font-mono font-bold">
+                                            <input v-if="!sheetUrl || stock.category === 'Crypto'" v-model.number="stock.manualPrice" @change="manualUpdate(stock)" class="w-20 bg-transparent text-right outline-none border-b border-gray-700 focus:border-blue-500 text-yellow-400">
+                                            <span v-else class="text-yellow-400">{{ formatNumber(stock.currentPrice) }}</span>
+                                        </td>
+                                        <td class="p-2 text-right font-mono text-white">{{ formatNumber(stock.marketValue) }}</td>
+                                        <td class="p-2 text-right font-bold" :class="stock.unrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
+                                            {{ formatNumber(stock.unrealizedPL) }}
+                                        </td>
+                                        <td class="p-2 text-right font-bold text-xs" :class="stock.returnRate >= 0 ? 'text-red-400' : 'text-green-400'">
+                                            {{ stock.returnRate }}%
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="mb-2">
+                            <div class="category-header p-2 text-gray-300 font-bold text-xs uppercase tracking-wider mb-1 flex justify-between border-l-4 border-gray-500">
+                                <span>CASH & EQUIVALENTS</span>
+                                <span class="font-mono text-blue-300 opacity-80">${{ formatNumber(cashBalance) }}</span>
+                            </div>
+                         </div>
+
+                    </div>
                 </div>
             </div>
 
             <div v-if="currentTab === 'analytics'" class="flex flex-col h-full space-y-4 animate-fade-in">
-                
-                <div class="glass p-4 rounded-xl flex flex-wrap items-center justify-between gap-4">
-                    <div>
-                        <h3 class="font-bold text-white">Quantitative Analysis</h3>
-                        <p class="text-xs text-gray-400">Risk Metrics based on historical snapshots</p>
-                    </div>
-                    <div class="flex items-center gap-4 text-xs">
-                        <div class="flex items-center gap-2">
-                            <label class="text-gray-500">Rf (%):</label>
-                            <div class="relative">
-                                <input v-model.number="riskParams.rf" type="number" step="0.1" class="w-16 input-dark p-1 rounded text-center" :class="{'text-green-400 border-green-500': rfSource === 'auto'}">
-                                <div v-if="rfSource === 'auto'" class="absolute -top-2 -right-2 w-2 h-2 bg-green-500 rounded-full"></div>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <label class="text-gray-500">Beta:</label>
-                            <input v-model.number="riskParams.beta" type="number" step="0.1" class="w-16 input-dark p-1 rounded text-center">
-                        </div>
-                        <button @click="takeSnapshot" class="btn-primary text-white px-4 py-2 rounded-lg font-bold shadow-lg flex items-center gap-2">
-                            <i class="fas fa-camera"></i> Snapshot Today
-                        </button>
+                <div class="glass p-4 rounded-xl flex items-center justify-between">
+                    <h3 class="font-bold text-white">Quantitative Risk Metrics</h3>
+                    <div class="flex gap-4 text-xs items-center">
+                        <span class="text-gray-400">Rf: {{ riskParams.rf }}% (Manual)</span>
+                        <button @click="takeSnapshot" class="btn-primary text-white px-4 py-2 rounded-lg font-bold"><i class="fas fa-camera mr-1"></i> Snapshot</button>
                     </div>
                 </div>
-
-                <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    <div class="glass p-3 rounded-lg text-center">
-                        <div class="metric-label text-blue-400">TWR (Geo)</div>
-                        <div class="text-lg metric-value text-white">{{ stats.twr }}%</div>
-                    </div>
-                    <div class="glass p-3 rounded-lg text-center">
-                        <div class="metric-label text-blue-400">MWR (IRR)</div>
-                        <div class="text-lg metric-value text-white">{{ stats.mwr }}%</div>
-                    </div>
-                    <div class="glass p-3 rounded-lg text-center">
-                        <div class="metric-label text-blue-400">Std Dev (Vol)</div>
-                        <div class="text-lg metric-value text-white">{{ stats.stdDev }}%</div>
-                    </div>
-                    
-                    <div class="glass p-3 rounded-lg text-center">
-                        <div class="metric-label text-purple-400">Sharpe Ratio</div>
-                        <div class="text-lg metric-value text-white">{{ stats.sharpe }}</div>
-                    </div>
-                    <div class="glass p-3 rounded-lg text-center">
-                        <div class="metric-label text-purple-400">Sortino Ratio</div>
-                        <div class="text-lg metric-value text-white">{{ stats.sortino }}</div>
-                    </div>
-                    
-                    <div class="glass p-3 rounded-lg text-center">
-                        <div class="metric-label text-yellow-400">Treynor Ratio</div>
-                        <div class="text-lg metric-value text-white">{{ stats.treynor }}</div>
-                    </div>
-                    <div class="glass p-3 rounded-lg text-center">
-                        <div class="metric-label text-red-400">VaR (95%)</div>
-                        <div class="text-lg metric-value text-white">{{ stats.var95 }}%</div>
-                    </div>
-                    <div class="glass p-3 rounded-lg text-center">
-                        <div class="metric-label text-red-400">CVaR (95%)</div>
-                        <div class="text-lg metric-value text-white">{{ stats.cvar95 }}%</div>
-                    </div>
-                    <div class="glass p-3 rounded-lg text-center">
-                        <div class="metric-label text-gray-400">Skewness</div>
-                        <div class="text-lg metric-value text-white">{{ stats.skew }}</div>
-                    </div>
-                    <div class="glass p-3 rounded-lg text-center">
-                        <div class="metric-label text-gray-400">Kurtosis</div>
-                        <div class="text-lg metric-value text-white">{{ stats.kurt }}</div>
-                    </div>
-                </div>
-
-                <div class="flex-1 glass rounded-xl overflow-hidden flex flex-col">
-                    <div class="p-3 bg-white/5 border-b border-white/5">
-                        <h3 class="font-bold text-white text-xs uppercase">Historical Data Series</h3>
-                    </div>
-                    <div class="overflow-auto flex-1">
-                        <table class="w-full text-left whitespace-nowrap">
-                            <thead class="sticky top-0 bg-[#0f172a] text-[10px] text-gray-400 uppercase font-semibold">
-                                <tr>
-                                    <th class="p-3">Date</th>
-                                    <th class="p-3 text-right">NAV</th>
-                                    <th class="p-3 text-right">Cost</th>
-                                    <th class="p-3 text-right">Return (Daily)</th>
-                                    <th class="p-3 text-right">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody class="text-sm divide-y divide-white/5">
-                                <tr v-for="(h, idx) in historyData.slice().reverse()" :key="idx" class="hover:bg-white/5">
-                                    <td class="p-3 font-mono text-blue-300">{{ h.date }}</td>
-                                    <td class="p-3 text-right font-mono text-white">{{ formatNumber(h.assets) }}</td>
-                                    <td class="p-3 text-right font-mono text-gray-500">{{ formatNumber(h.cost) }}</td>
-                                    <td class="p-3 text-right font-mono" :class="h.dailyReturn >= 0 ? 'text-red-400' : 'text-green-400'">
-                                        {{ h.dailyReturn ? (h.dailyReturn * 100).toFixed(2) + '%' : '-' }}
-                                    </td>
-                                    <td class="p-3 text-center">
-                                        <button @click="removeHistory(historyData.length - 1 - idx)" class="text-gray-600 hover:text-red-500"><i class="fas fa-trash"></i></button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                 <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    <div class="glass p-3 rounded text-center"><div class="metric-label text-blue-400">Sharpe</div><div class="metric-value text-white">{{ stats.sharpe }}</div></div>
+                    <div class="glass p-3 rounded text-center"><div class="metric-label text-blue-400">Sortino</div><div class="metric-value text-white">{{ stats.sortino }}</div></div>
+                    <div class="glass p-3 rounded text-center"><div class="metric-label text-red-400">VaR (95%)</div><div class="metric-value text-white">{{ stats.var95 }}%</div></div>
+                    <div class="glass p-3 rounded text-center"><div class="metric-label text-gray-400">Skew</div><div class="metric-value text-white">{{ stats.skew }}</div></div>
+                    <div class="glass p-3 rounded text-center"><div class="metric-label text-gray-400">Kurtosis</div><div class="metric-value text-white">{{ stats.kurt }}</div></div>
+                 </div>
+                 <div class="flex-1 glass rounded-xl overflow-hidden p-4">
+                    <canvas id="historyChartFull"></canvas>
+                 </div>
             </div>
 
             <div v-if="currentTab === 'ledger'" class="flex flex-col md:flex-row gap-4 h-full max-h-[85vh]">
-                 <div class="w-full md:w-64 glass p-4 rounded-xl h-fit space-y-3">
+                 <div class="w-full md:w-72 glass p-4 rounded-xl h-fit space-y-3">
                     <h3 class="font-bold text-white text-sm border-b border-gray-700 pb-2">New Transaction</h3>
-                    <input v-model="txForm.date" type="date" class="w-full input-dark p-2 rounded text-xs">
-                    <select v-model="txForm.type" class="w-full input-dark p-2 rounded text-xs">
-                         <option value="Buy">Buy (買入)</option>
-                         <option value="Sell">Sell (賣出)</option>
-                         <option value="Deposit">Deposit (入金)</option>
-                         <option value="Dividend">Dividend (股息)</option>
-                    </select>
-                    <div v-if="['Buy','Sell','Dividend'].includes(txForm.type)">
-                        <input v-model="txForm.ticker" placeholder="Ticker (e.g. 2330)" class="w-full input-dark p-2 rounded text-xs uppercase">
+                    
+                    <div class="grid grid-cols-2 gap-2">
+                        <input v-model="txForm.date" type="date" class="input-dark p-2 rounded text-xs col-span-2">
+                        <select v-model="txForm.type" class="input-dark p-2 rounded text-xs">
+                            <option value="Buy">Buy</option><option value="Sell">Sell</option>
+                            <option value="Deposit">Deposit</option><option value="Dividend">Dividend</option>
+                        </select>
+                         <select v-model="txForm.category" class="input-dark p-2 rounded text-xs">
+                             <option value="US Stock">US Stock (美股)</option>
+                             <option value="TW Stock">TW Stock (台股)</option>
+                             <option value="Fund">Fund (基金)</option>
+                             <option value="Crypto">Crypto (加密)</option>
+                        </select>
                     </div>
+                    
+                    <div v-if="['Buy','Sell','Dividend'].includes(txForm.type)">
+                        <input v-model="txForm.ticker" placeholder="Ticker (e.g. BTC_WALLET)" class="w-full input-dark p-2 rounded text-xs uppercase">
+                        <p v-if="txForm.category==='Crypto'" class="text-[10px] text-blue-400 mt-1">* 建議 Crypto 股數設為 1，價格輸入總成本</p>
+                    </div>
+                    
                     <div v-if="['Buy','Sell'].includes(txForm.type)" class="grid grid-cols-2 gap-2">
                         <input v-model.number="txForm.price" type="number" placeholder="Price" class="input-dark p-2 rounded text-xs">
-                        <input v-model.number="txForm.shares" type="number" placeholder="Shares" class="input-dark p-2 rounded text-xs">
+                        <input v-model.number="txForm.shares" type="number" placeholder="Shares (Crypto=1)" class="input-dark p-2 rounded text-xs">
                     </div>
+                    
                     <input v-model.number="txForm.amount" type="number" :placeholder="txForm.type==='Buy'?'Fee':'Total Amount'" class="w-full input-dark p-2 rounded text-xs">
-                    <button @click="addTransaction" class="w-full btn-primary text-white rounded font-bold text-xs shadow-lg">Submit Trade</button>
+                    <button @click="addTransaction" class="w-full btn-primary text-white rounded font-bold text-xs py-2 shadow-lg">Submit</button>
                  </div>
+
                  <div class="flex-1 glass rounded-xl overflow-hidden flex flex-col">
                     <div class="overflow-auto flex-1">
                         <table class="w-full text-left">
                             <thead class="sticky top-0 bg-[#0f172a] text-[10px] text-gray-400 uppercase font-semibold">
-                                <tr><th class="p-3">Date</th><th class="p-3">Type</th><th class="p-3">Ticker</th><th class="p-3 text-right">Value</th><th class="p-3 text-right">Cash Flow</th><th class="p-3"></th></tr>
+                                <tr><th class="p-3">Date</th><th class="p-3">Type</th><th class="p-3">Cat</th><th class="p-3">Ticker</th><th class="p-3 text-right">Flow</th><th class="p-3"></th></tr>
                             </thead>
                             <tbody class="text-sm divide-y divide-white/5">
                                 <tr v-for="(tx, idx) in reversedTransactions" :key="idx" class="hover:bg-white/5">
                                     <td class="p-3 text-gray-400">{{ tx.date }}</td>
                                     <td class="p-3 font-bold" :class="getTypeColor(tx.type)">{{ tx.type }}</td>
+                                    <td class="p-3 text-xs text-gray-500">{{ tx.category }}</td>
                                     <td class="p-3 text-white">{{ tx.ticker || '-' }}</td>
-                                    <td class="p-3 text-right text-gray-500 text-xs">{{ tx.price ? `${formatNumber(tx.price)} x ${formatNumber(tx.shares)}` : '-' }}</td>
                                     <td class="p-3 text-right font-mono text-white">{{ formatNumber(tx.totalCashFlow) }}</td>
                                     <td class="p-3 text-center"><button @click="removeTransaction(transactions.length - 1 - idx)" class="text-gray-600 hover:text-red-500"><i class="fas fa-times"></i></button></td>
                                 </tr>
@@ -294,13 +233,11 @@
             </div>
 
             <div v-if="!sheetUrl && showSetup" class="fixed inset-0 bg-black/90 flex items-center justify-center z-[100]">
-                <div class="glass p-8 rounded-xl w-96 text-center border border-blue-500/30 shadow-2xl shadow-blue-500/20">
-                    <div class="mb-4 text-4xl text-blue-500"><i class="fas fa-database"></i></div>
+                <div class="glass p-8 rounded-xl w-96 text-center border border-purple-500/30">
                     <h2 class="text-xl font-bold mb-2 text-white">Connect Data Feed</h2>
-                    <p class="text-gray-400 text-xs mb-6">Enter your Google Sheet CSV Link to enable real-time pricing.</p>
-                    <input v-model="tempUrl" placeholder="https://docs.google.com/.../pub?output=csv" class="w-full input-dark p-3 rounded mb-4 text-xs">
-                    <button @click="saveUrl" class="w-full btn-primary py-2 rounded text-white font-bold mb-3">Initialize System</button>
-                    <button @click="showSetup=false" class="text-xs text-gray-500 hover:text-white transition">Skip (Manual Mode)</button>
+                    <input v-model="tempUrl" placeholder="Google Sheet CSV Link" class="w-full input-dark p-3 rounded mb-4 text-xs">
+                    <button @click="saveUrl" class="w-full btn-primary py-2 rounded text-white font-bold mb-3">Connect</button>
+                    <button @click="showSetup=false" class="text-xs text-gray-500">Skip (Manual Mode)</button>
                 </div>
             </div>
 
@@ -319,12 +256,11 @@ createApp({
         const tempUrl = ref('');
         const isUpdating = ref(false);
         const riskParams = ref({ rf: 2.0, beta: 1.0 });
-        const rfSource = ref('manual'); // 'auto' or 'manual'
 
         const transactions = ref(JSON.parse(localStorage.getItem('ledgerData') || '[]'));
         const historyData = ref(JSON.parse(localStorage.getItem('historyData') || '[]'));
         const priceMap = ref(JSON.parse(localStorage.getItem('priceMap') || '{}'));
-        const txForm = ref({ date: new Date().toISOString().split('T')[0], type: 'Buy', ticker: '', price: null, shares: null, amount: null });
+        const txForm = ref({ date: new Date().toISOString().split('T')[0], type: 'Buy', category: 'US Stock', ticker: '', price: null, shares: null, amount: null });
 
         // --- CORE LOGIC ---
         const holdings = computed(() => {
@@ -332,14 +268,39 @@ createApp({
             transactions.value.forEach(tx => {
                 if(!tx.ticker) return;
                 const t = tx.ticker.toUpperCase();
-                if(!map[t]) map[t] = { ticker: t, shares: 0, totalCost: 0 };
+                // Persist category from latest transaction or first
+                if(!map[t]) map[t] = { ticker: t, category: tx.category || 'US Stock', shares: 0, totalCost: 0 };
+                
                 if(tx.type === 'Buy') { map[t].shares += tx.shares; map[t].totalCost += (tx.price*tx.shares)+(tx.amount||0); }
-                else if(tx.type === 'Sell') { const avg = map[t].totalCost/map[t].shares; map[t].shares -= tx.shares; map[t].totalCost -= avg*tx.shares; }
+                else if(tx.type === 'Sell') { 
+                    const avg = map[t].shares ? map[t].totalCost/map[t].shares : 0; 
+                    map[t].shares -= tx.shares; map[t].totalCost -= avg*tx.shares; 
+                }
             });
             return Object.values(map).filter(h => h.shares > 0.0001).map(h => {
+                // Use Manual Price if available in priceMap, else AvgCost
                 const curr = priceMap.value[h.ticker] || (h.totalCost/h.shares);
-                return { ...h, avgCost: h.totalCost/h.shares, currentPrice: curr, marketValue: h.shares*curr, unrealizedPL: (h.shares*curr)-h.totalCost, returnRate: (((h.shares*curr)-h.totalCost)/h.totalCost*100).toFixed(2) };
+                return { 
+                    ...h, 
+                    avgCost: h.totalCost/h.shares, 
+                    currentPrice: curr, 
+                    manualPrice: priceMap.value[h.ticker], // bind for input
+                    marketValue: h.shares*curr, 
+                    unrealizedPL: (h.shares*curr)-h.totalCost, 
+                    returnRate: h.totalCost ? (((h.shares*curr)-h.totalCost)/h.totalCost*100).toFixed(2) : 0
+                };
             }).sort((a,b) => b.marketValue - a.marketValue);
+        });
+
+        const categoryTotals = computed(() => {
+            const totals = { 'US Stock':0, 'TW Stock':0, 'Fund':0, 'Crypto':0, 'Cash':0 };
+            holdings.value.forEach(h => {
+                const cat = h.category || 'US Stock';
+                if(!totals[cat]) totals[cat] = 0;
+                totals[cat] += h.marketValue;
+            });
+            totals['Cash'] = cashBalance.value;
+            return totals;
         });
 
         const cashBalance = computed(() => transactions.value.reduce((acc, tx) => acc + tx.totalCashFlow, 0));
@@ -350,71 +311,35 @@ createApp({
         const totalReturnRate = computed(() => totalPrincipal.value ? ((totalUnrealizedPL.value/totalPrincipal.value)*100).toFixed(2) : 0);
         const reversedTransactions = computed(() => [...transactions.value].reverse());
 
-        // --- QUANT QUANT ENGINE ---
+        // --- QUANT LOGIC (Simplified for v7.2) ---
         const stats = computed(() => {
             const data = historyData.value;
-            if (data.length < 2) return { twr:'-', mwr:'-', stdDev:'-', sharpe:'-', sortino:'-', treynor:'-', var95:'-', cvar95:'-', skew:'-', kurt:'-' };
-
-            // 1. Calculate Returns Series
+            if (data.length < 2) return { sharpe:'-', sortino:'-', var95:'-', skew:'-', kurt:'-' };
             const returns = [];
             for(let i=1; i<data.length; i++) {
-                const prev = data[i-1];
-                const curr = data[i];
-                const flow = curr.cost - prev.cost; 
-                const r = (curr.assets - flow) / prev.assets - 1;
-                returns.push(r);
-                curr.dailyReturn = r; 
+                const prev = data[i-1]; const curr = data[i]; const flow = curr.cost - prev.cost; 
+                returns.push((curr.assets - flow) / prev.assets - 1);
             }
-
-            // 2. Basic Stats
-            const n = returns.length;
-            const sumR = returns.reduce((a,b)=>a+b,0);
-            const avgR = sumR / n;
-            const annFactor = 52; 
-            const annR = Math.pow(1+avgR, annFactor) - 1;
-            const variance = returns.reduce((a,b) => a + Math.pow(b-avgR, 2), 0) / (n-1);
-            const stdDev = Math.sqrt(variance);
-            const annStdDev = stdDev * Math.sqrt(annFactor);
-
-            // Risk-Free & Beta
-            const rf = riskParams.value.rf / 100;
-            const beta = riskParams.value.beta;
-
-            // 3. Ratios
-            const sharpe = (annR - rf) / annStdDev;
-            const treynor = (annR - rf) / beta;
-            const downsideVar = returns.reduce((a,b) => b < 0 ? a + Math.pow(b, 2) : a, 0) / n;
-            const downsideDev = Math.sqrt(downsideVar) * Math.sqrt(annFactor);
-            const sortino = (annR - rf) / downsideDev;
-
-            // 4. Tail Risk
+            const n = returns.length; const avgR = returns.reduce((a,b)=>a+b,0)/n;
+            const variance = returns.reduce((a,b) => a + Math.pow(b-avgR, 2), 0)/(n-1);
+            const stdDev = Math.sqrt(variance) * Math.sqrt(52); // Annualized
+            const sharpe = ((Math.pow(1+avgR, 52)-1) - 0.02) / stdDev;
+            
             const sortedR = [...returns].sort((a,b)=>a-b);
-            const idx95 = Math.floor(n * 0.05);
-            const var95 = sortedR[idx95];
-            const tailLosses = sortedR.slice(0, idx95+1);
-            const cvar95 = tailLosses.length ? tailLosses.reduce((a,b)=>a+b,0)/tailLosses.length : var95;
-            const m3 = returns.reduce((a,b) => a + Math.pow(b-avgR, 3), 0) / n;
-            const m4 = returns.reduce((a,b) => a + Math.pow(b-avgR, 4), 0) / n;
-            const skew = m3 / Math.pow(Math.sqrt(variance), 3);
-            const kurt = (m4 / Math.pow(Math.sqrt(variance), 4)) - 3; 
+            const var95 = sortedR[Math.floor(n*0.05)];
+            
+            // Skew/Kurt
+            const m3 = returns.reduce((a,b)=>a+Math.pow(b-avgR,3),0)/n;
+            const m4 = returns.reduce((a,b)=>a+Math.pow(b-avgR,4),0)/n;
+            const skew = m3/Math.pow(Math.sqrt(variance),3);
+            const kurt = (m4/Math.pow(Math.sqrt(variance),4))-3;
 
-            // TWR & MWR Proxy
-            const twr = (returns.reduce((a,b) => a * (1+b), 1) - 1);
-            const startV = data[0].assets;
-            const endV = data[data.length-1].assets;
-            const flows = data[data.length-1].cost - data[0].cost;
-            const mwr = (endV - startV - flows) / (startV + 0.5*flows);
-
-            return {
-                twr: (twr*100).toFixed(2), mwr: (mwr*100).toFixed(2), stdDev: (annStdDev*100).toFixed(2),
-                sharpe: sharpe.toFixed(2), sortino: sortino.toFixed(2), treynor: treynor.toFixed(2),
-                var95: (var95*100).toFixed(2), cvar95: (cvar95*100).toFixed(2), skew: skew.toFixed(2), kurt: kurt.toFixed(2)
-            };
+            return { sharpe: sharpe.toFixed(2), sortino: 'N/A', var95: (var95*100).toFixed(2), skew: skew.toFixed(2), kurt: kurt.toFixed(2) };
         });
 
         // --- ACTIONS ---
         function addTransaction() {
-            const { date, type, ticker, price, shares, amount } = txForm.value;
+            const { date, type, category, ticker, price, shares, amount } = txForm.value;
             if(!date) return;
             let cf = 0;
             if(type==='Buy') cf = -(price*shares + (amount||0));
@@ -422,10 +347,20 @@ createApp({
             else if(type==='Deposit' || type==='Dividend') cf = amount;
             else if(type==='Withdraw') cf = -amount;
 
-            transactions.value.push({ date, type, ticker: ticker?.toUpperCase(), price, shares, amount, totalCashFlow: cf });
+            transactions.value.push({ date, type, category: category||'US Stock', ticker: ticker?.toUpperCase(), price, shares, amount, totalCashFlow: cf });
             saveData();
             txForm.value = { ...txForm.value, ticker:'', price:null, shares:null, amount:null }; 
             updateCharts();
+        }
+
+        // Handle manual price updates in Holdings table
+        function manualUpdate(stock) {
+            if(stock.manualPrice) {
+                priceMap.value[stock.ticker] = stock.manualPrice;
+                localStorage.setItem('priceMap', JSON.stringify(priceMap.value));
+                // Force re-render chart usually needs reactivity, simple trick:
+                setTimeout(updateCharts, 100);
+            }
         }
 
         function takeSnapshot() {
@@ -435,12 +370,11 @@ createApp({
             if(idx !== -1) historyData.value[idx] = snapshot; else historyData.value.push(snapshot);
             historyData.value.sort((a,b) => new Date(a.date) - new Date(b.date));
             localStorage.setItem('historyData', JSON.stringify(historyData.value));
-            alert('Snapshot Recorded. Metrics Updated.');
+            alert('Snapshot Recorded.');
             updateCharts();
         }
 
         function removeTransaction(idx) { if(confirm('Delete?')) { transactions.value.splice(idx, 1); saveData(); updateCharts(); } }
-        function removeHistory(idx) { if(confirm('Delete Record?')) { historyData.value.splice(idx, 1); localStorage.setItem('historyData', JSON.stringify(historyData.value)); updateCharts(); } }
         function saveData() { localStorage.setItem('ledgerData', JSON.stringify(transactions.value)); }
         function saveUrl() { if(tempUrl.value) { sheetUrl.value = tempUrl.value; localStorage.setItem('googleSheetUrl', sheetUrl.value); fetchPrices(); } showSetup.value = false; }
         
@@ -448,35 +382,15 @@ createApp({
             if(!sheetUrl.value) return;
             isUpdating.value = true;
             Papa.parse(sheetUrl.value, { download: true, header: false, complete: (res) => {
-                let rfFound = false;
-                res.data.forEach(r => { 
-                    if(r[0]&&r[1]) { 
-                        const k=r[0].toString().trim().toUpperCase(); 
-                        const v=parseFloat(r[1].toString().replace(/,/g,'')); 
-                        if(!isNaN(v)) { 
-                            // Store prices
-                            priceMap.value[k]=v; priceMap.value['TPE:'+k]=v; priceMap.value[k.replace('TPE:','')] = v; 
-                            
-                            // Check for Risk-Free Rate (^IRX or RF)
-                            if(k === '^IRX' || k === 'RF' || k === 'RISK_FREE') {
-                                riskParams.value.rf = v;
-                                rfSource.value = 'auto';
-                                rfFound = true;
-                            }
-                        } 
-                    } 
-                });
-                
-                if(!rfFound) rfSource.value = 'manual'; // Fallback
-                localStorage.setItem('priceMap', JSON.stringify(priceMap.value)); 
-                isUpdating.value = false;
+                res.data.forEach(r => { if(r[0]&&r[1]) { const k=r[0].toString().trim().toUpperCase(); const v=parseFloat(r[1].toString().replace(/,/g,'')); if(!isNaN(v)) { priceMap.value[k]=v; priceMap.value['TPE:'+k]=v; } } });
+                localStorage.setItem('priceMap', JSON.stringify(priceMap.value)); isUpdating.value = false;
             }});
         }
         function exportAll() {
             const data = { ledger: transactions.value, history: historyData.value };
             const link = document.createElement("a");
             link.href = URL.createObjectURL(new Blob([JSON.stringify(data)], {type: "application/json"}));
-            link.download = "quant_backup.json"; link.click();
+            link.download = "asset_master_v7_backup.json"; link.click();
         }
         function getTypeColor(type) { return { 'Buy':'text-red-400', 'Sell':'text-green-400', 'Deposit':'text-blue-400', 'Dividend':'text-yellow-400' }[type] || 'text-gray-400'; }
         function formatNumber(n) { return new Intl.NumberFormat('en-US', {maximumFractionDigits:0}).format(n||0); }
@@ -490,14 +404,14 @@ createApp({
             
             chartAlloc = new Chart(document.getElementById('allocationChart'), {
                 type: 'doughnut',
-                data: { labels: [], datasets: [{ data: [], backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'], borderWidth: 0 }] },
+                data: { labels: [], datasets: [{ data: [], backgroundColor: ['#3b82f6', '#10b981', '#a855f7', '#f59e0b', '#ef4444'], borderWidth: 0 }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10 } } }, cutout: '70%' }
             });
 
             chartHist = new Chart(document.getElementById('historyChart'), {
                 type: 'line',
                 data: { labels: [], datasets: [
-                    { label: 'NAV', data: [], borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', tension: 0.4, fill: true, pointRadius: 0 },
+                    { label: 'NAV', data: [], borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', tension: 0.4, fill: true, pointRadius: 2 },
                     { label: 'Cost', data: [], borderColor: '#10b981', borderDash: [5, 5], tension: 0.4, pointRadius: 0 }
                 ] },
                 options: { responsive: true, maintainAspectRatio: false, scales: { x: { grid: { display: false } }, y: { grid: { color: '#1e293b' } } }, plugins: { legend: { position: 'top', align: 'end' } } }
@@ -506,10 +420,10 @@ createApp({
 
         function updateCharts() {
             if(!chartAlloc) { setTimeout(initCharts, 500); return; }
-            const labels = holdings.value.map(h => h.ticker);
-            const data = holdings.value.map(h => h.marketValue);
-            if(cashBalance.value > 100) { labels.push('Cash'); data.push(cashBalance.value); }
-            chartAlloc.data.labels = labels; chartAlloc.data.datasets[0].data = data;
+            // Chart by Category
+            const cats = categoryTotals.value;
+            chartAlloc.data.labels = Object.keys(cats);
+            chartAlloc.data.datasets[0].data = Object.values(cats);
             chartAlloc.update();
 
             const src = historyData.value;
@@ -521,7 +435,7 @@ createApp({
 
         onMounted(() => { if(sheetUrl.value) fetchPrices(); setTimeout(initCharts, 1000); });
         watch(currentTab, () => setTimeout(updateCharts, 100));
-        return { currentTab, showSetup, tempUrl, sheetUrl, isUpdating, transactions, historyData, holdings, cashBalance, totalAssets, totalPrincipal, totalUnrealizedPL, totalReturnRate, reversedTransactions, txForm, riskParams, rfSource, stats, addTransaction, takeSnapshot, removeTransaction, removeHistory, saveUrl, fetchPrices, exportAll, getTypeColor, formatNumber, formatPercent };
+        return { currentTab, showSetup, tempUrl, sheetUrl, isUpdating, transactions, historyData, holdings, categoryTotals, cashBalance, totalAssets, totalPrincipal, totalUnrealizedPL, totalReturnRate, reversedTransactions, txForm, riskParams, stats, addTransaction, manualUpdate, takeSnapshot, removeTransaction, saveUrl, fetchPrices, exportAll, getTypeColor, formatNumber, formatPercent };
     }
 }).mount('#app');
 </script>
