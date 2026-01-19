@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>資產管理大師 v14.1 | 偵錯模式</title>
+    <title>資產管理大師 v15.0 | 直讀版</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     
     <style>
         body { font-family: 'Microsoft JhengHei', 'Segoe UI', Roboto, sans-serif; background-color: #0f172a; color: #e2e8f0; }
@@ -30,26 +30,31 @@
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        /* Loading overlay */
-        #loading-screen { position: fixed; inset: 0; background: #0f172a; display: flex; justify-content: center; align-items: center; z-index: 9999; color: white; font-size: 1.5rem; }
+        [v-cloak] { display: none; } /* 防止 Vue 載入前閃爍 */
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden text-sm">
 
-<div id="loading-screen">
-    <div><i class="fas fa-circle-notch fa-spin text-yellow-500 mr-3"></i> 系統啟動中...</div>
+<div id="error-display" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999; color:red; padding:20px; overflow:auto;">
+    <h2 class="text-2xl font-bold mb-4">系統啟動失敗 (System Error)</h2>
+    <p>如果看到這個畫面，代表程式碼有錯誤，或存檔編碼不是 UTF-8。</p>
+    <pre id="error-msg" class="bg-gray-900 p-4 rounded border border-red-800 mt-4"></pre>
+    <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-white text-black rounded">重新整理</button>
 </div>
 
-<div id="app" class="h-full flex flex-col" style="display: none;">
+<div id="app" class="h-full flex flex-col" v-cloak>
+    
     <header class="glass z-50 flex-none h-16 px-6 flex items-center justify-between shadow-lg">
         <div class="flex items-center gap-6">
             <h1 class="font-bold text-xl tracking-wide flex items-center gap-2 text-white">
-                <i class="fas fa-chart-line text-yellow-500"></i> ASSET MASTER <span class="text-xs bg-yellow-900 text-yellow-100 px-2 py-0.5 rounded border border-yellow-700">v14.1 Safe</span>
+                <i class="fas fa-chart-line text-yellow-500"></i> ASSET MASTER <span class="text-xs bg-gray-700 px-2 py-0.5 rounded text-white border border-gray-600">v15.0</span>
             </h1>
+            
             <div class="hidden md:flex items-center gap-3 bg-slate-800 py-1 px-3 rounded-lg border border-slate-700 shadow-inner">
                 <span class="text-gray-400 text-xs font-bold">USD/TWD:</span>
                 <input v-model.number="exchangeRate" type="number" step="0.01" class="w-16 bg-transparent text-center font-mono font-bold text-green-400 focus:outline-none border-b border-gray-600 focus:border-green-400 transition">
             </div>
+
             <nav class="flex gap-6 font-medium ml-4 hidden md:flex">
                 <button @click="currentTab='summary'" :class="currentTab==='summary'?'tab-active':'tab-inactive'" class="py-4 px-2 transition"><i class="fas fa-home mr-1"></i> 總覽</button>
                 <button @click="currentTab='holdings'" :class="currentTab==='holdings'?'tab-active':'tab-inactive'" class="py-4 px-2 transition"><i class="fas fa-wallet mr-1"></i> 庫存明細</button>
@@ -215,6 +220,13 @@
 </div>
 
 <script>
+// Error Handling
+window.onerror = function(msg, url, line, col, error) {
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('error-display').style.display = 'block';
+    document.getElementById('error-msg').textContent = `Error: ${msg}\nLine: ${line}\nCol: ${col}\n${error?.stack || ''}`;
+};
+
 const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
 
 createApp({
@@ -232,6 +244,7 @@ createApp({
         const transactions = ref(JSON.parse(localStorage.getItem('ledgerData') || '[]'));
         const historyData = ref(JSON.parse(localStorage.getItem('historyData') || '[]'));
         const priceMap = ref(JSON.parse(localStorage.getItem('priceMap') || '{}'));
+        
         const txForm = ref({ date: new Date().toISOString().split('T')[0], type: 'Buy', category: '美股', ticker: '', price: null, shares: null, amount: null });
         const historyForm = ref({ date: new Date().toISOString().split('T')[0], assets: null, cost: null });
 
@@ -349,10 +362,13 @@ createApp({
             });
         }
         onMounted(() => { 
-            // Remove loading screen when Vue is ready
-            document.getElementById('loading-screen').style.display = 'none'; 
-            document.getElementById('app').style.display = 'flex';
-            if(sheetUrl.value) fetchPrices(); setTimeout(updateCharts, 1000); 
+            // 移除 Loading，顯示 App
+            try {
+                document.getElementById('loading-screen').style.display = 'none'; 
+                document.getElementById('app').style.display = 'flex';
+                if(sheetUrl.value) fetchPrices(); 
+                setTimeout(updateCharts, 1000);
+            } catch(e) { console.error(e); }
         });
         watch([currentTab, exchangeRate], () => updateCharts());
         return { currentTab, showHistoryModal, showSetup, tempUrl, sheetUrl, isUpdating, transactions, historyData, enrichedHistory, holdings, categoryTotals, totalStockValue, totalStockCost, totalStockUnrealizedPL, totalStockReturnRate, reversedTransactions, txForm, historyForm, riskParams, stats, exchangeRate, addTransaction, addHistoryRecord, generateMonthlyMockData, removeHistoryByDate, manualUpdate, takeSnapshot, removeTransaction, saveUrl, fetchPrices, exportAll, getTypeColor, getCategoryBadgeClass, getCategoryColorCode, formatNumber, formatPercent };
