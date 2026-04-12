@@ -1,0 +1,33 @@
+name: Daily Quant Pipeline
+
+on:
+  schedule:
+    # GitHub 使用 UTC 時間。
+    # UTC 21:00 = 台灣時間早上 05:00 (剛好美股收盤，台股開盤前)
+    # 每天早上 5 點自動執行
+    - cron: '0 21 * * *'
+  workflow_dispatch: # 保留這個，讓你可以手動點擊測試按鈕
+
+jobs:
+  run-quant-engine:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v3
+
+      - name: 🐍 設定 Python 環境
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: 📦 安裝套件
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🚀 執行量化分析腳本
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python main.py
