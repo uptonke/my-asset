@@ -536,13 +536,14 @@
                     
                     <div class="flex flex-col md:flex-row flex-wrap gap-4 mb-4 bg-gray-800/50 p-3 rounded-lg border border-gray-700 items-start md:items-center justify-between shadow-inner">
                         <div class="flex items-center gap-2">
-                            <span class="text-xs text-gray-400 font-bold"><i class="fas fa-globe-americas"></i> 狀態:</span>
-                            <select v-model="macroRegime" @change="runMonteCarlo" class="bg-gray-900 text-white text-xs font-bold border border-gray-600 rounded px-2 py-1.5 outline-none focus:border-purple-500 transition-colors">
-                                <option value="Normal">正常 (Normal)</option>
-                                <option value="Bull">狂牛 (Bull Market)</option>
-                                <option value="Bear">熊市 (Bear Market)</option>
-                                <option value="Crisis">金融海嘯 (Copula=1)</option>
-                            </select>
+                            <span class="text-xs text-gray-400 font-bold"><i class="fas fa-satellite-dish"></i> 總經雷達:</span>
+                            <div class="bg-gray-900/80 text-white text-xs font-bold border border-indigo-500/50 rounded px-3 py-1.5 shadow-[0_0_8px_rgba(99,102,241,0.2)] flex items-center gap-2 select-none cursor-default">
+                                <i class="fas fa-robot text-indigo-400 animate-pulse"></i>
+                                <span v-if="macroRegime === 'Normal'" class="text-gray-300">⚖️ 正常 (Normal)</span>
+                                <span v-else-if="macroRegime === 'Bull'" class="text-green-400">🐂 狂牛 (Bull Market)</span>
+                                <span v-else-if="macroRegime === 'Bear'" class="text-orange-400">🐻 熊市 (Bear Market)</span>
+                                <span v-else-if="macroRegime === 'Crisis'" class="text-red-500 animate-bounce">⚠️ 金融海嘯 (Crisis)</span>
+                            </div>
                         </div>
                         <div class="flex items-center gap-2">
                             <button @click="enableBlackSwan = !enableBlackSwan; runMonteCarlo()"
