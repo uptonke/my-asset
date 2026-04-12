@@ -2,7 +2,6 @@ name: Daily NAV Snapshot
 
 on:
   schedule:
-    # 改為每週執行：台灣時間每週日晚上 23:00 (UTC 時間 15:00)
     - cron: '0 15 * * 0'
   workflow_dispatch:
 
@@ -11,10 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 📥 下載程式碼
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4  # 🌟 升級到 v4
 
       - name: 🐍 設定 Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5 # 🌟 升級到 v5
         with:
           python-version: '3.10'
 
