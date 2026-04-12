@@ -393,9 +393,45 @@
                     <div class="glass p-5 rounded-2xl flex flex-col relative">
                         <h4 class="text-white font-bold mb-2">資本市場線 (CML) - StdDev vs Return</h4>
                         <div class="flex-1 relative"><canvas id="cmlChart"></canvas></div>
+                    <div class="glass p-6 rounded-2xl flex flex-col mt-6 border-t-4 border-red-900 shadow-[0_0_20px_rgba(127,29,29,0.3)] relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 opacity-5 pointer-events-none">
+                        <i class="fas fa-biohazard text-9xl text-red-500"></i>
+                    </div>
+                    
+                    <div class="relative z-10">
+                        <h4 class="text-white text-lg font-bold mb-1 flex items-center gap-2">
+                            <i class="fas fa-radiation text-red-500 animate-pulse"></i> 歷史極端情境壓力測試 (Stress Testing)
+                        </h4>
+                        <p class="text-xs text-gray-400 mb-5">基於當前投資組合系統性風險曝險 (<span class="text-yellow-400 font-bold">β = {{ portfolioStats.beta }}</span>)，映射至歷史黑天鵝事件之預期最大回撤 (MDD)。</p>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div v-for="scenario in stressTestResults" :key="scenario.name" class="bg-gray-900/60 p-4 rounded-xl border border-gray-700/50 hover:border-red-900/50 transition-colors">
+                                <div class="flex justify-between items-end mb-2">
+                                    <div>
+                                        <div class="text-white font-bold">{{ scenario.name }}</div>
+                                        <div class="text-[10px] text-gray-500 mt-0.5">{{ scenario.desc }}</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="text-xs text-gray-400 block mb-0.5">預期跌幅</span>
+                                        <span class="font-mono font-bold text-lg" :class="scenario.portDrop < 0 ? 'text-red-500' : 'text-green-500'">
+                                            {{ scenario.portDrop }}%
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div class="w-full bg-gray-800 rounded-full h-2.5 overflow-hidden relative mb-2">
+                                    <div class="absolute top-0 bottom-0 bg-gray-400 w-[2px] z-10" :style="{ left: Math.abs(scenario.benchDrop) + '%' }" title="當時大盤跌幅"></div>
+                                    <div class="bg-gradient-to-r from-red-500 to-red-900 h-full transition-all duration-1000" :style="{ width: Math.min(Math.abs(scenario.portDrop), 100) + '%' }"></div>
+                                </div>
+                                
+                                <div class="text-[10px] flex justify-between">
+                                    <span class="text-gray-500">大盤同期: <span class="text-gray-400">{{ scenario.benchDrop }}%</span></span>
+                                    <span class="text-red-400 font-bold tracking-wider">預估蒸發: NT$ -{{ formatNumber(scenario.valueLost) }}</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
 
             <div v-show="currentTab === 'analytics'" class="flex flex-col h-full space-y-4 animate-fade-in">
                 
