@@ -415,6 +415,36 @@ createApp({
 
         const stats = ref({ annRet:'-', annVol:'-', sharpe:'-', sortino:'-', treynor:'-', alpha:'-', var95:'-', cvar95:'-', mdd:'-', calmar:'-', skew:'-', kurt:'-' });
 
+        // ==========================================
+        // ☢️ 歷史極端情境壓力測試 (Historical Stress Testing)
+        // ==========================================
+        const stressTestResults = computed(() => {
+            // 取用你當前真實持股算出的加權 Beta
+            const currentBeta = parseFloat(portfolioStats.value.beta) || 1.0;
+            
+            // 華爾街四大經典崩盤 (SPY 基準 MDD)
+            const historicalScenarios = [
+                { name: '2008 金融海嘯 (Lehman)', desc: '次貸風暴，系統性流動性枯竭', benchDrop: -50.9 },
+                { name: '2000 達康泡沫 (Dot-com)', desc: '網路科技股本夢比估值破滅', benchDrop: -49.1 },
+                { name: '2020 新冠鎔斷 (COVID-19)', desc: '疫情爆發恐慌，全球經濟瞬間停擺', benchDrop: -33.9 },
+                { name: '2022 暴力升息 (Rate Hikes)', desc: '通膨失控，聯準會急升息狂殺估值', benchDrop: -25.4 }
+            ];
+
+            return historicalScenarios.map(scenario => {
+                // 預期跌幅 = 大盤跌幅 * 投資組合 Beta
+                // (若未來引入非線性 Copula 模型，此處跌幅會更深，目前以線性 Beta 作為基準底線)
+                let expectedDrop = scenario.benchDrop * currentBeta;
+                
+                // 防呆：如果是極度深度的做空組合 (Beta < 0)，遇到股災會漲，做上限控管
+                if (expectedDrop > 100) expectedDrop = 100;
+
+                return {
+                    ...scenario,
+                    portDrop: expectedDrop.toFixed(1),
+                    valueLost: (totalStockValueTwd.value * Math.abs(expectedDrop) / 100)
+                };
+            });
+        });
         watch([filteredHistory, riskParams, dataFrequency], () => {
              const empty = { annRet:'-', annVol:'-', sharpe:'-', sortino:'-', treynor:'-', alpha:'-', var95:'-', cvar95:'-', mdd:'-', calmar:'-', skew:'-', kurt:'-' };
              const h = filteredHistory.value;
@@ -1222,7 +1252,7 @@ createApp({
             fireTargets, activeFireStageIndex, activeFireTarget, isLoggedIn, loginEmail, loginPassword, loginError, 
             isAuthenticating, handleLogin, handleLogout, checkAuth, fireProgress, 
             updateCharts, addFireTarget, macroRegime, enableBlackSwan, mcRisk, blViews, mcAvailableAssets, addBlView, enableInflation,
-            generateAutoViews, runMonteCarlo
+            generateAutoViews, runMonteCarlo, generateAutoViews, runMonteCarlo, stressTestResults
         };
     }
 }).mount('#app');
