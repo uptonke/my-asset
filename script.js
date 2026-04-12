@@ -1194,8 +1194,9 @@ createApp({
                         dates.push(h[i].date);
                     }
 
-                    const windowSize = 12; 
-                    const factor = Math.sqrt(12);
+                    // 🌟 滾動窗格改為 52 期 (代表滾動檢視過去 1 年的夏普值)
+                    const windowSize = 52; 
+                    const factor = Math.sqrt(52);
                     const rf = riskParams.value.rf / 100;
                     
                     const rollLabels = [];
