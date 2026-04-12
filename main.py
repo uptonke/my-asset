@@ -76,27 +76,13 @@ except Exception as e:
 # ==========================================
 # 🧠 3. 股票多因子運算與 Google Sheet 價格同步
 # ==========================================
-print("\n⏳ 接著開始執行股票多因子管線...")
-response = supabase.table("portfolio_db").select("*").eq("id", 1).execute()
-data = response.data
-
-if not data:
-    print("❌ 資料庫沒東西或連線失敗！")
-else:
-    db_record = data[0]
-    stock_meta = db_record.get("stock_meta", {})
-    settings = db_record.get("settings", {})
-    
-    # 讀取你的 Google Sheet 網址並抓取最新價格
-    sheet_url = settings.get("sheetUrl", "")
-    sheet_prices = get_sheet_prices(sheet_url)
-    
-    tickers = list(stock_meta.keys())
-    
-    if tickers:
-        benchmark = "SPY"
+if tickers:
+        # 🌟 升級：雙基準判定
+        tw_bench = "^TWII"  # 台灣加權指數
+        us_bench = "SPY"    # 標普 500
+        
         yf_tickers = [f"{t}.TW" if re.match(r'^\d+[A-Za-z]?$', t) else t for t in tickers]
-        download_list = yf_tickers + [benchmark]
+        download_list = yf_tickers + [tw_bench, us_bench]
 
         print(f"⏳ 正在向 Yahoo Finance 請求歷史資料...")
         prices = yf.download(download_list, period="1y")["Close"]
@@ -110,7 +96,7 @@ else:
         for i, original_ticker in enumerate(tickers):
             yf_ticker = yf_tickers[i]
 
-            # 💡 [新增] 優先將 Google Sheet 裡的真實價格寫入 meta
+            # 同步 Google Sheet 最新估值
             if original_ticker in sheet_prices:
                 stock_meta[original_ticker]["last_price"] = float(sheet_prices[original_ticker])
 
@@ -123,7 +109,11 @@ else:
             if len(stock_ret) < 60: 
                 continue
 
-            bench_ret = returns[benchmark]
+            # 🌟 動態切換 Benchmark
+            is_tw_stock = yf_ticker.endswith(".TW")
+            bench_ticker = tw_bench if is_tw_stock else us_bench
+            bench_ret = returns[bench_ticker].dropna()
+            
             aligned_data = pd.concat([stock_ret, bench_ret], axis=1).dropna()
             
             if len(aligned_data) < 30:
@@ -132,25 +122,25 @@ else:
             aligned_stock = aligned_data.iloc[:, 0]
             aligned_bench = aligned_data.iloc[:, 1]
 
-            # (A) EWMA 動態標準差
+            # 算 EWMA 標準差
             ewma_var = aligned_stock.ewm(alpha=0.06).var().iloc[-1]
             ann_std = np.sqrt(ewma_var * 252) * 100
-            
-            # (B) 1Y Rolling Beta
+
+            # 算 Beta
             cov = aligned_stock.cov(aligned_bench)
             bench_var = aligned_bench.var()
             beta = cov / bench_var if bench_var > 0 else 1.0
 
-            # (C) RSI (14)
+            # RSI (14)
             rsi_series = ta.rsi(stock_close, length=14)
             rsi_14 = rsi_series.iloc[-1] if rsi_series is not None and not rsi_series.empty else 50.0
 
-            # (D) MACD Histogram
+            # MACD Histogram
             macd_df = ta.macd(stock_close, fast=12, slow=26, signal=9)
             macd_hist = macd_df.iloc[-1, 1] if macd_df is not None and not macd_df.empty else 0.0
 
-            # (E) 6M Momentum
-            mom_6m = stock_close.pct_change(periods=126).iloc[-1] * 100
+            # 6M Momentum
+            mom_6m = stock_close.pct_change(periods=126).iloc[-1] * 100 if len(stock_close) > 126 else 0.0
 
             # 寫入 JSON 物件
             stock_meta[original_ticker]["std"] = round(ann_std, 2)
@@ -159,8 +149,8 @@ else:
             stock_meta[original_ticker]["macd_h"] = round(macd_hist, 4) if pd.notna(macd_hist) else 0.0
             stock_meta[original_ticker]["mom_6m"] = round(mom_6m, 2) if pd.notna(mom_6m) else 0.0
 
-            print(f"✅ [{original_ticker}] 更新 -> Beta:{beta:.2f}, Std:{ann_std:.1f}%, RSI:{rsi_14:.1f}, MACD_H:{macd_hist:.2f}")
+            print(f"✅ [{original_ticker}] 更新 -> 基準:{bench_ticker}, Beta:{beta:.2f}, Std:{ann_std:.1f}%, RSI:{rsi_14:.1f}")
 
         print("🚀 正在將多因子參數與最新估值打回 Supabase...")
         supabase.table("portfolio_db").update({"stock_meta": stock_meta}).eq("id", 1).execute()
-        print("🎉 雲端自動化任務完成！總經與多因子庫已全面升級。")
+        print("🎉 雲端自動化任務完成！")
