@@ -141,7 +141,7 @@ createApp({
 
         const riskParams = ref({ rf: 1.5, beta: 1.0, rm: 10.0, sm: 15.0 });
         const quantStartDate = ref(''); 
-        const dataFrequency = ref('Monthly'); 
+        const dataFrequency = ref('Weekly');
         const snapshotDate = ref(new Date().toISOString().split('T')[0]); 
 
         const transactions = ref([]);
@@ -472,8 +472,9 @@ createApp({
              if (returns.length < 2) { stats.value = empty; return; }
 
              const cumTwr = returns.reduce((acc, r) => acc * (1 + r), 1) - 1;
-             const factor = dataFrequency.value === 'Monthly' ? Math.sqrt(12) : Math.sqrt(252);
-             const years = returns.length / (dataFrequency.value === 'Monthly' ? 12 : 252);
+             // 切換為週資料頻率 (一年 52 週)
+             const factor = dataFrequency.value === 'Weekly' ? Math.sqrt(52) : Math.sqrt(252);
+             const years = returns.length / (dataFrequency.value === 'Weekly' ? 52 : 252);
              const annRet = years > 0 ? (Math.pow(1 + cumTwr, 1 / years) - 1) : 0;
 
              const avgR = returns.reduce((a,b)=>a+b,0)/returns.length;
