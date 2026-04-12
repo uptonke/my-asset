@@ -74,9 +74,26 @@ except Exception as e:
 
 
 # ==========================================
-# 🧠 3. 股票多因子運算與 Google Sheet 價格同步
+# 🧠 3. 股票多因子運算與 Google Sheet 價格同步 (雙基準大腦)
 # ==========================================
-if tickers:
+print("\n⏳ 接著開始執行股票多因子管線...")
+response = supabase.table("portfolio_db").select("*").eq("id", 1).execute()
+data = response.data
+
+if not data:
+    print("❌ 資料庫沒東西或連線失敗！")
+else:
+    db_record = data[0]
+    stock_meta = db_record.get("stock_meta", {})
+    settings = db_record.get("settings", {})
+    
+    # 讀取你的 Google Sheet 網址並抓取最新價格
+    sheet_url = settings.get("sheetUrl", "")
+    sheet_prices = get_sheet_prices(sheet_url)
+    
+    tickers = list(stock_meta.keys())
+    
+    if tickers:
         # 🌟 升級：雙基準判定
         tw_bench = "^TWII"  # 台灣加權指數
         us_bench = "SPY"    # 標普 500
