@@ -162,6 +162,51 @@ createApp({
                     transactions.value = data.ledger_data || [];
                     realHistoryData.value = data.history_data || [];
                     stockMeta.value = data.stock_meta || {};
+                    // 🚀 v18.0: Supabase (PostgreSQL) + IndexedDB 企業級雙核資料流
+        async function loadDataFromCloud() {
+            isDbSyncing.value = true;
+            try {
+                const { data, error } = await supabase.from('portfolio_db').select('*').eq('id', 1).single();
+                
+                if (error && error.code !== 'PGRST116') throw error; 
+
+                if (data) {
+                    transactions.value = data.ledger_data || [];
+                    realHistoryData.value = data.history_data || [];
+                    stockMeta.value = data.stock_meta || {};
+                    
+                    // 👇👇👇 直接把總經大腦貼在這裡 👇👇👇
+                    if (data.macro_meta) {
+                        const macroData = data.macro_meta;
+                        console.group("🌍 量化總經大腦判定中...");
+                        console.log(`10Y-2Y利差: ${macroData.yield_curve}%`);
+                        console.log(`高收益債利差 (恐慌指標): ${macroData.hy_spread}%`);
+                        console.log(`比特幣近期動能: ${macroData.btc_1m_mom}%`);
+
+                        if (macroData.hy_spread > 5.0 && macroData.yield_curve < 0.5) {
+                            macroRegime.value = 'Crisis';
+                            console.log("⚠️ 判定結果：【金融危機 Crisis】");
+                        } else if (macroData.hy_spread > 4.0 || macroData.btc_1m_mom < -15) {
+                            macroRegime.value = 'Bear';
+                            console.log("🐻 判定結果：【熊市 Bear】");
+                        } else if (macroData.yield_curve > 0 && macroData.hy_spread < 3.5 && macroData.btc_1m_mom > 5) {
+                            macroRegime.value = 'Bull';
+                            console.log("🐂 判定結果：【牛市 Bull】");
+                        } else {
+                            macroRegime.value = 'Normal';
+                            console.log("⚖️ 判定結果：【正常 Normal】");
+                        }
+                        console.groupEnd();
+                    }
+                    // 👆👆👆 總經大腦結束 👆👆👆
+
+                    if (data.settings) {
+                        if (data.settings.exchangeRate) exchangeRate.value = parseFloat(data.settings.exchangeRate);
+                        if (data.settings.sheetUrl) sheetUrl.value = data.settings.sheetUrl;
+                        if (data.settings.fireTargets) fireTargets.value = data.settings.fireTargets;
+                        if (data.settings.priceMap) priceMap.value = data.settings.priceMap;
+                    }
+                } 
                     
                     if (data.settings) {
                         if (data.settings.exchangeRate) exchangeRate.value = parseFloat(data.settings.exchangeRate);
