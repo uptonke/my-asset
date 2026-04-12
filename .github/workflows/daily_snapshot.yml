@@ -1,0 +1,28 @@
+name: Daily NAV Snapshot
+
+on:
+  schedule:
+    # 改為每週執行：台灣時間每週日晚上 23:00 (UTC 時間 15:00)
+    - cron: '0 15 * * 0'
+  workflow_dispatch:
+
+jobs:
+  take-snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v3
+
+      - name: 🐍 設定 Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: 📦 安裝套件
+        run: pip install supabase pytz requests pandas
+
+      - name: 📸 執行自動快照
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python auto_snapshot.py
