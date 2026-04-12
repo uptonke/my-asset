@@ -162,20 +162,8 @@ createApp({
                     transactions.value = data.ledger_data || [];
                     realHistoryData.value = data.history_data || [];
                     stockMeta.value = data.stock_meta || {};
-                    // 🚀 v18.0: Supabase (PostgreSQL) + IndexedDB 企業級雙核資料流
-        async function loadDataFromCloud() {
-            isDbSyncing.value = true;
-            try {
-                const { data, error } = await supabase.from('portfolio_db').select('*').eq('id', 1).single();
-                
-                if (error && error.code !== 'PGRST116') throw error; 
-
-                if (data) {
-                    transactions.value = data.ledger_data || [];
-                    realHistoryData.value = data.history_data || [];
-                    stockMeta.value = data.stock_meta || {};
                     
-                    // 👇👇👇 直接把總經大腦貼在這裡 👇👇👇
+                    // 👇👇👇 總經大腦模組 👇👇👇
                     if (data.macro_meta) {
                         const macroData = data.macro_meta;
                         console.group("🌍 量化總經大腦判定中...");
@@ -200,14 +188,6 @@ createApp({
                     }
                     // 👆👆👆 總經大腦結束 👆👆👆
 
-                    if (data.settings) {
-                        if (data.settings.exchangeRate) exchangeRate.value = parseFloat(data.settings.exchangeRate);
-                        if (data.settings.sheetUrl) sheetUrl.value = data.settings.sheetUrl;
-                        if (data.settings.fireTargets) fireTargets.value = data.settings.fireTargets;
-                        if (data.settings.priceMap) priceMap.value = data.settings.priceMap;
-                    }
-                } 
-                    
                     if (data.settings) {
                         if (data.settings.exchangeRate) exchangeRate.value = parseFloat(data.settings.exchangeRate);
                         if (data.settings.sheetUrl) sheetUrl.value = data.settings.sheetUrl;
