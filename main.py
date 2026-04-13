@@ -9,6 +9,7 @@ import io
 from supabase import create_client, Client
 import re
 import warnings
+import urllib.parse  # 💡 升級：引入網址解析庫，準備建立代理隧道
 
 warnings.filterwarnings('ignore')
 
@@ -22,19 +23,28 @@ supabase: Client = create_client(url, key)
 # ==========================================
 # 🌟 2. 總經與市場參數自動化抓取
 # ==========================================
-# 💡 升級 1：加入 flush=True，強迫 Python 瞬間把文字印到螢幕上，不准放緩衝區
 print("🌍 啟動量化大腦：開始抓取 FRED 與市場參數...", flush=True)
 
 try:
     def get_fred_latest(series_id):
         print(f"   ⏳ 正在呼叫 FRED API ({series_id})...", flush=True)
-        url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
+        target_url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         }
-        # 💡 升級 2：加上 timeout=10，伺服器 10 秒不回覆就直接當作失敗，切斷連線！
-        res = requests.get(url, headers=headers, timeout=10)
-        res.raise_for_status() 
+        
+        try:
+            # 策略 A：嘗試直連 (只給 3 秒，既然常被封鎖就不浪費時間)
+            res = requests.get(target_url, headers=headers, timeout=3)
+            res.raise_for_status()
+        except requests.exceptions.RequestException:
+            # 💡 核心戰略 B：直連失敗，立刻啟動反向代理路由 (Reverse Proxy Bypass)
+            print(f"   ⚠️ 偵測到 IP 封鎖，啟動反向代理路由繞道抓取 ({series_id})...", flush=True)
+            encoded_url = urllib.parse.quote(target_url, safe='')
+            proxy_url = f"https://api.allorigins.win/raw?url={encoded_url}"
+            res = requests.get(proxy_url, headers=headers, timeout=15)
+            res.raise_for_status()
+
         df = pd.read_csv(io.StringIO(res.text), parse_dates=['DATE'], index_col='DATE', na_values='.')
         return float(df[series_id].ffill().dropna().iloc[-1])
 
@@ -85,7 +95,7 @@ except Exception as e:
     raise e
 
 # ==========================================
-# 🧠 3. 股票多因子運算與 Google Sheet 價格同步 (雙基準大腦)
+# 🧠 3. 股票多因子管線 (往下維持原邏輯不變)
 # ==========================================
 print("\n⏳ 接著開始執行股票多因子管線...")
 response = supabase.table("portfolio_db").select("*").eq("id", 1).execute()
