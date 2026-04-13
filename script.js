@@ -353,7 +353,6 @@ createApp({
                 
                 if (holdingDaysMap[h.ticker] && holdingDaysMap[h.ticker].totalInvested > 0) {
                     avgDaysHeld = holdingDaysMap[h.ticker].weightedDaysSum / holdingDaysMap[h.ticker].totalInvested;
-                    // 如果平均持有超過 7 天才算年化，避免剛買一兩天報酬率被放大到宇宙去
                     if (avgDaysHeld > 7) {
                         const yearsHeld = avgDaysHeld / 365;
                         annualizedReturn = Math.pow(1 + cumulativeReturn, 1 / yearsHeld) - 1;
@@ -1244,6 +1243,40 @@ createApp({
                         { x: cmlMaxX, y: rf + slope * cmlMaxX } // 延伸到畫布盡頭
                     ];
 
+                    const portRet = parseFloat(stats.value.annRet) || 0;
+                    const portVol = parseFloat(stats.value.annVol) || 0;
+                    const portBeta = parseFloat(riskParams.value.beta) || 0;
+
+                    const portPoint = { x: portBeta, y: portRet, name: 'Portfolio' };
+                    const portPointCML = { x: portVol, y: portRet, name: 'Portfolio' };
+                    const marketPoint = { x: sm, y: rm, name: 'Market Index' };
+
+                    const assetPoints = [];
+                    const assetPointsCML = [];
+                    for(const cat in groupedHoldings.value) {
+                       groupedHoldings.value[cat].items.forEach(i => {
+                            // 🌟 這裡確保 SML 與 CML 都精準吃到你後台計算的 annualizedReturnRate
+                            assetPoints.push({ x: i.beta, y: parseFloat(i.annualizedReturnRate || 0), name: i.ticker });
+                            assetPointsCML.push({ x: i.stdDev, y: parseFloat(i.annualizedReturnRate || 0), name: i.ticker });
+                        });
+                    }
+
+                    chartSML.data.datasets = [
+                        { type: 'line', label: 'SML', data: smlLine, borderColor: '#94a3b8', borderWidth: 2, pointRadius: 0, fill: false, borderDash: [5,5] },
+                        { type: 'scatter', label: 'Holdings', data: assetPoints, backgroundColor: '#f59e0b', pointRadius: 5, pointHoverRadius: 8 },
+                        { type: 'scatter', label: 'Portfolio', data: [portPoint], backgroundColor: '#ef4444', pointRadius: 10, pointStyle: 'circle' }
+                    ];
+                    chartSML.update();
+
+                    chartCML.data.datasets = [
+                        { type: 'line', label: 'CML', data: cmlLine, borderColor: '#94a3b8', borderWidth: 2, pointRadius: 0, fill: false, borderDash: [5,5] },
+                        { type: 'scatter', label: 'Holdings', data: assetPointsCML, backgroundColor: '#3b82f6', pointRadius: 5, pointHoverRadius: 8 },
+                        { type: 'scatter', label: 'Market', data: [marketPoint], backgroundColor: '#10b981', pointRadius: 6, pointStyle: 'triangle' },
+                        { type: 'scatter', label: 'Portfolio', data: [portPointCML], backgroundColor: '#ef4444', pointRadius: 10, pointStyle: 'circle' }
+                    ];
+                    chartCML.update();
+                }
+
                 if (chartRolling) {
                     const h = [...enrichedHistory.value].reverse(); 
                     const periodReturns = [];
@@ -1286,8 +1319,8 @@ createApp({
                     ];
                     chartRolling.update();
                 }
-            };
-        })
+            });
+        }
         
         onMounted(() => { 
             loadDataFromCloud(); 
