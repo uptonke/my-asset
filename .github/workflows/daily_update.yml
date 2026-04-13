@@ -19,21 +19,17 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          cache: 'pip' # ⚡️ 關鍵升級：啟動 Pip 依賴快取，從此省下 1 分鐘安裝時間！
+          cache: 'pip' # ⚡️ 關鍵升級：啟動 Pip 依賴快取
 
       - name: 📦 安裝套件
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install google-genai # 🌟 整合在這裡，確保腳本執行前已安裝好 Gemini 大腦
 
       - name: 🚀 執行量化分析腳本
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # 🌟 致命關鍵：把金鑰傳遞給 Python
         run: python main.py
-        
-      - name: 📦 安裝套件
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install google-genai # 🌟 新增這行，安裝 Gemini 大腦
