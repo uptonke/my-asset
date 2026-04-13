@@ -317,7 +317,7 @@ createApp({
             const groups = {};
             let grandTotal = 0; 
 
-            // 🌟 新增：掃描交易紀錄，計算每檔股票的資金加權平均持有天數
+            // 🌟 掃描交易紀錄，計算每檔股票的資金加權平均持有天數
             const holdingDaysMap = {};
             const today = new Date();
             transactions.value.forEach(tx => {
@@ -348,7 +348,7 @@ createApp({
                 const cumulativeReturn = h.totalCostTwd ? (mvTwd - h.totalCostTwd) / h.totalCostTwd : 0;
                 
                 // 🌟 核心計算：資金加權年化報酬率 (CAGR)
-                let annualizedReturn = cumulativeReturn * 100; // 預設先給累積報酬
+                let annualizedReturn = cumulativeReturn; 
                 let avgDaysHeld = 0;
                 
                 if (holdingDaysMap[h.ticker] && holdingDaysMap[h.ticker].totalInvested > 0) {
@@ -356,13 +356,13 @@ createApp({
                     // 如果平均持有超過 7 天才算年化，避免剛買一兩天報酬率被放大到宇宙去
                     if (avgDaysHeld > 7) {
                         const yearsHeld = avgDaysHeld / 365;
-                        annualizedReturn = (Math.pow(1 + cumulativeReturn, 1 / yearsHeld) - 1) * 100;
+                        annualizedReturn = Math.pow(1 + cumulativeReturn, 1 / yearsHeld) - 1;
                     }
                 }
                 
                 // 防呆：避免極端數字破壞圖表
-                if (annualizedReturn > 500) annualizedReturn = 500;
-                if (annualizedReturn < -100) annualizedReturn = -100;
+                if (annualizedReturn > 5) annualizedReturn = 5;
+                if (annualizedReturn < -1) annualizedReturn = -1;
 
                 const item = { 
                     ...h, isUSD, 
@@ -374,8 +374,8 @@ createApp({
                     currentPriceTwd: currentPriceTwd,
                     marketValueTwd: mvTwd, 
                     unrealizedPLTwd: mvTwd - h.totalCostTwd, 
-                    returnRate: cumulativeReturn * 100, // 介面上依然顯示累積報酬 (給人看的)
-                    annualizedReturnRate: annualizedReturn // 畫 SML 圖專用的年化報酬 (給機器看的)
+                    returnRate: cumulativeReturn * 100, // 累積報酬 (介面用)
+                    annualizedReturnRate: annualizedReturn * 100 // 畫 SML 圖專用的年化報酬 (給機器看的)
                 };
                 
                groups[h.category].items.push(item);
@@ -441,7 +441,6 @@ createApp({
 
         // ==========================================
         // 🌟 升級版 1: 機構級 TWR 現金流精算引擎
-        // 徹底解決因花費/出金導致的績效失真斷層
         // ==========================================
         const enrichedHistory = computed(() => {
             const sorted = [...filteredHistory.value].sort((a,b) => new Date(a.date) - new Date(b.date));
@@ -452,18 +451,14 @@ createApp({
                     let injection = 0;
                     let hasTx = false;
                     
-                    // 精確掃描快照期間的所有交易，計算真實資金進出
                     transactions.value.forEach(tx => {
                         const txDate = new Date(tx.date);
                         if (txDate > new Date(prev.date) && txDate <= new Date(item.date)) {
-                            // 買入股票 = 外部資金注入系統 (-cashFlow)
-                            // 賣出股票 = 資金抽出系統供日常花費 (+cashFlow)
                             injection += -tx.totalCashFlow;
                             hasTx = true;
                         }
                     });
                     
-                    // 💡 物理隔離：4/11 以前的合成數據強制使用粗算，避免歷史流水帳衝突
                     const netFlow = (new Date(item.date) <= new Date('2026-04-11')) 
                         ? (item.cost - prev.cost) 
                         : (hasTx ? injection : (item.cost - prev.cost));
@@ -501,17 +496,14 @@ createApp({
 
         // ==========================================
         // 🌟 升級版 2: 獨立 HWM (High Water Mark) 引擎
-        // 解決 MDD 因為出金而被無意義放大的致命問題
         // ==========================================
         watch([enrichedHistory, riskParams, dataFrequency], () => {
              const empty = { annRet:'-', annVol:'-', sharpe:'-', sortino:'-', treynor:'-', alpha:'-', var95:'-', cvar95:'-', mdd:'-', calmar:'-', skew:'-', kurt:'-' };
-             const h = [...enrichedHistory.value].reverse(); // 轉回時間正序
+             const h = [...enrichedHistory.value].reverse(); 
              if (h.length < 3) { stats.value = empty; return; }
 
-             // 直接取用精算過、已剝離現金干擾的純淨報酬率
              const returns = h.slice(1).map(item => item.dailyReturn);
 
-             // HWM 累積淨值指數 (起始為 1.0)
              let cumIndex = 1.0;
              let peakIndex = 1.0;
              let maxDrawdown = 0;
@@ -520,7 +512,7 @@ createApp({
                  cumIndex = cumIndex * (1 + r);
                  if (cumIndex > peakIndex) peakIndex = cumIndex;
                  const dd = peakIndex > 0 ? (cumIndex - peakIndex) / peakIndex : 0;
-                 if (dd < maxDrawdown) maxDrawdown = dd; // 這裡算出的 MDD 絕對純淨
+                 if (dd < maxDrawdown) maxDrawdown = dd; 
              });
 
              const cumTwr = returns.reduce((acc, r) => acc * (1 + r), 1) - 1;
@@ -819,6 +811,7 @@ createApp({
         const macroRegime = ref('Normal'); 
         const enableBlackSwan = ref(false); 
         const enableInflation = ref(false);
+        
         function calculateBlackLitterman(assets, rm, rf, sm, views = []) {
             const n = assets.length;
             const math = window.math;
@@ -1063,6 +1056,9 @@ createApp({
 
         let chartSML, chartCML, chartAlloc, chartHist, chartRolling, chartMC, chartFire;
 
+        // ==========================================
+        // 🌟 核心修復：SML / CML 初始化維度校正
+        // ==========================================
         function initCharts() {
             Chart.defaults.color = '#94a3b8'; Chart.defaults.borderColor = '#334155';
 
@@ -1076,25 +1072,50 @@ createApp({
                 chartHist = new Chart(histCtx, { type: 'line', data: { labels: [], datasets: [{data:[]},{data:[]}] }, options: { responsive: true, maintainAspectRatio: false } });
             }
 
+            // 👇 SML 初始化修復
             const smlCtx = document.getElementById('smlChart');
             if(smlCtx && !chartSML) {
                 chartSML = new Chart(smlCtx, {
                     type: 'scatter', data: { datasets: [] },
                     options: { 
                         responsive: true, maintainAspectRatio: false,
-                        scales: { x: { title: {display:true, text:'Beta (β)'}, min: 0, max: 2 }, y: { title: {display:true, text:'Expected Return (%)'} } },
-                        plugins: { tooltip: { callbacks: { label: (ctx) => `${ctx.raw.name}: (${ctx.raw.x}, ${ctx.raw.y}%)` } } }
+                        scales: { 
+                            x: { title: {display:true, text:'Beta (β)'}, min: 0, max: 2 }, 
+                            // 🌟 Y軸標題改為年化報酬
+                            y: { title: {display:true, text:'Annualized Return (%)'} } 
+                        },
+                        plugins: { 
+                            tooltip: { 
+                                callbacks: { 
+                                    // 🌟 強制收斂浮點數
+                                    label: (ctx) => `${ctx.raw.name}: (${ctx.raw.x.toFixed(2)}, ${ctx.raw.y.toFixed(2)}%)` 
+                                } 
+                            } 
+                        }
                     }
                 });
             }
 
+            // 👇 CML 初始化修復
             const cmlCtx = document.getElementById('cmlChart');
             if(cmlCtx && !chartCML) {
                 chartCML = new Chart(cmlCtx, {
                     type: 'scatter', data: { datasets: [] },
                     options: { 
                         responsive: true, maintainAspectRatio: false,
-                        scales: { x: { title: {display:true, text:'StdDev (σ)'}, min: 0 }, y: { title: {display:true, text:'Expected Return (%)'} } }
+                        scales: { 
+                            x: { title: {display:true, text:'StdDev (σ%)'}, min: 0 }, 
+                            // 🌟 Y軸標題改為年化報酬
+                            y: { title: {display:true, text:'Annualized Return (%)'} } 
+                        },
+                        plugins: { 
+                            tooltip: { 
+                                callbacks: { 
+                                    // 🌟 強制收斂浮點數
+                                    label: (ctx) => `${ctx.raw.name}: (${ctx.raw.x.toFixed(2)}%, ${ctx.raw.y.toFixed(2)}%)` 
+                                } 
+                            } 
+                        }
                     }
                 });
             }
@@ -1193,13 +1214,16 @@ createApp({
                     chartFire.update();
                 }
 
+                // ==========================================
+                // 🌟 核心修復：SML / CML 更新時的資料綁定
+                // ==========================================
                 if (chartSML && chartCML) {
                     const rf = riskParams.value.rf;
                     const rm = riskParams.value.rm;
                     const sm = riskParams.value.sm;
                     
                     const smlLine = [ {x:0, y:rf}, {x:2, y: rf + 2*(rm-rf)} ];
-                    const slope = (rm - rf) / sm;
+                    const slope = sm > 0 ? (rm - rf) / sm : 0; // 防呆除以零
                     const maxX = sm * 2.5; 
                     const cmlLine = [ { x: 0, y: rf }, { x: sm, y: rm }, { x: maxX, y: rf + slope * maxX } ];
 
@@ -1212,32 +1236,33 @@ createApp({
                     const marketPoint = { x: sm, y: rm, name: 'Market Index' };
 
                     const assetPoints = [];
+                    const assetPointsCML = [];
                     for(const cat in groupedHoldings.value) {
                        groupedHoldings.value[cat].items.forEach(i => {
-                            assetPoints.push({ x: i.beta, y: parseFloat(i.annualizedReturnRate), name: i.ticker });
+                            // 🌟 這裡確保 SML 與 CML 都精準吃到你後台計算的 annualizedReturnRate
+                            assetPoints.push({ x: i.beta, y: parseFloat(i.annualizedReturnRate || 0), name: i.ticker });
+                            assetPointsCML.push({ x: i.stdDev, y: parseFloat(i.annualizedReturnRate || 0), name: i.ticker });
                         });
                     }
 
                     chartSML.data.datasets = [
-                        { type: 'line', label: 'SML', data: smlLine, borderColor: '#94a3b8', borderWidth: 2, pointRadius: 0 },
-                        { type: 'scatter', label: 'Holdings', data: assetPoints, backgroundColor: '#f59e0b' },
-                        { type: 'scatter', label: 'Portfolio', data: [portPoint], backgroundColor: '#ef4444', pointRadius: 8 }
+                        { type: 'line', label: 'SML', data: smlLine, borderColor: '#94a3b8', borderWidth: 2, pointRadius: 0, fill: false, borderDash: [5,5] },
+                        { type: 'scatter', label: 'Holdings', data: assetPoints, backgroundColor: '#f59e0b', pointRadius: 5, pointHoverRadius: 8 },
+                        { type: 'scatter', label: 'Portfolio', data: [portPoint], backgroundColor: '#ef4444', pointRadius: 10, pointStyle: 'circle' }
                     ];
                     chartSML.update();
 
                     chartCML.data.datasets = [
-                        { type: 'line', label: 'CML', data: cmlLine, borderColor: '#94a3b8', borderWidth: 2, pointRadius: 0 },
-                        { type: 'scatter', label: 'Market', data: [marketPoint], backgroundColor: '#10b981', pointRadius: 6 },
-                        { type: 'scatter', label: 'Portfolio', data: [portPointCML], backgroundColor: '#ef4444', pointRadius: 8 }
+                        { type: 'line', label: 'CML', data: cmlLine, borderColor: '#94a3b8', borderWidth: 2, pointRadius: 0, fill: false, borderDash: [5,5] },
+                        { type: 'scatter', label: 'Holdings', data: assetPointsCML, backgroundColor: '#3b82f6', pointRadius: 5, pointHoverRadius: 8 },
+                        { type: 'scatter', label: 'Market', data: [marketPoint], backgroundColor: '#10b981', pointRadius: 6, pointStyle: 'triangle' },
+                        { type: 'scatter', label: 'Portfolio', data: [portPointCML], backgroundColor: '#ef4444', pointRadius: 10, pointStyle: 'circle' }
                     ];
                     chartCML.update();
                 }
 
-                // ==========================================
-                // 🌟 升級版 3: 滾動圖表掛載純淨報酬率
-                // ==========================================
                 if (chartRolling) {
-                    const h = [...enrichedHistory.value].reverse(); // 轉回正序
+                    const h = [...enrichedHistory.value].reverse(); 
                     const periodReturns = [];
                     const dates = [];
                     
