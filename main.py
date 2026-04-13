@@ -81,12 +81,13 @@ try:
     print(f"📈 計算完成 -> Rf: {macro_payload['market_rf']}%, Rm: {macro_payload['market_rm']}%, σm: {macro_payload['market_sm']}%", flush=True)
 
     # ==========================================
-    # 🧠 F. Gemini AI 總經深度解析
+    # 🧠 F. Gemini AI 總經深度解析 (切換 2.5 Lite + 重試裝甲)
     # ==========================================
     print("🤖 喚醒 Gemini AI 進行總經與風險診斷...", flush=True)
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
     
     if GEMINI_API_KEY:
+        import time # 確保引入時間模組
         try:
             client = genai.Client(api_key=GEMINI_API_KEY)
             prompt = f"""
@@ -113,19 +114,32 @@ try:
             }}
             """
             
-            # 使用高穩定度的 flash 模型
-            response = client.models.generate_content(model='gemini-2.0-flash', contents=prompt)
-            
-            text = response.text.strip().strip('`')
-            if text.lower().startswith('json'):
-                text = text[4:].strip()
-            
-            ai_insights = json.loads(text)
-            print("✅ AI 診斷報告生成成功！", flush=True)
-            macro_payload['ai_analysis'] = ai_insights
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    # 🌟 強制使用 2.5 世代的極速版，避開 2.0 限制與 2.5 主力的塞車潮
+                    response = client.models.generate_content(model='gemini-2.5-flash-lite', contents=prompt)
+                    
+                    text = response.text.strip().strip('`')
+                    if text.lower().startswith('json'):
+                        text = text[4:].strip()
+                    
+                    ai_insights = json.loads(text)
+                    print("✅ AI 診斷報告生成成功！", flush=True)
+                    macro_payload['ai_analysis'] = ai_insights
+                    break  # 成功寫入就跳出迴圈
+                    
+                except Exception as e:
+                    if "503" in str(e) or "429" in str(e):
+                        wait_time = 5 * (attempt + 1) # 等待 5秒, 10秒, 15秒
+                        print(f"⚠️ 伺服器忙碌中 (503/429)，{wait_time} 秒後進行第 {attempt + 1} 次重試...", flush=True)
+                        time.sleep(wait_time)
+                    else:
+                        print(f"⚠️ AI 發生語法或未知錯誤，放棄重試: {e}", flush=True)
+                        break
 
         except Exception as e:
-            print(f"⚠️ AI 診斷生成失敗 (將略過此步驟繼續): {e}", flush=True)
+            print(f"⚠️ AI 客戶端初始化失敗: {e}", flush=True)
     else:
         print("⚠️ 未偵測到 GEMINI_API_KEY，跳過 AI 診斷。", flush=True)
 
