@@ -399,15 +399,35 @@ createApp({
             return data.filter(h => new Date(h.date) >= new Date(quantStartDate.value));
         });
 
-       const enrichedHistory = computed(() => {
+        // ==========================================
+        // 🌟 升級版 1: 機構級 TWR 現金流精算引擎
+        // 徹底解決因花費/出金導致的績效失真斷層
+        // ==========================================
+        const enrichedHistory = computed(() => {
             const sorted = [...filteredHistory.value].sort((a,b) => new Date(a.date) - new Date(b.date));
             return sorted.map((item, index) => {
                 let dailyReturn = null;
                 if (index > 0) {
                     const prev = sorted[index - 1];
-                    const netFlow = item.cost - prev.cost;
+                    let injection = 0;
+                    let hasTx = false;
+                    
+                    // 精確掃描快照期間的所有交易，計算真實資金進出
+                    transactions.value.forEach(tx => {
+                        const txDate = new Date(tx.date);
+                        if (txDate > new Date(prev.date) && txDate <= new Date(item.date)) {
+                            // 買入股票 = 外部資金注入系統 (-cashFlow)
+                            // 賣出股票 = 資金抽出系統供日常花費 (+cashFlow)
+                            injection += -tx.totalCashFlow;
+                            hasTx = true;
+                        }
+                    });
+                    
+                    const netFlow = hasTx ? injection : (item.cost - prev.cost);
                     const denom = prev.assets + (netFlow / 2);
+                    
                     if (denom > 0) dailyReturn = (item.assets - prev.assets - netFlow) / denom;
+                    else dailyReturn = 0;
                 }
                 return { ...item, dailyReturn };
             }).reverse();
@@ -415,14 +435,8 @@ createApp({
 
         const stats = ref({ annRet:'-', annVol:'-', sharpe:'-', sortino:'-', treynor:'-', alpha:'-', var95:'-', cvar95:'-', mdd:'-', calmar:'-', skew:'-', kurt:'-' });
 
-        // ==========================================
-        // ☢️ 歷史極端情境壓力測試 (Historical Stress Testing)
-        // ==========================================
         const stressTestResults = computed(() => {
-            // 取用你當前真實持股算出的加權 Beta
             const currentBeta = parseFloat(portfolioStats.value.beta) || 1.0;
-            
-            // 華爾街四大經典崩盤 (SPY 基準 MDD)
             const historicalScenarios = [
                 { name: '2008 金融海嘯 (Lehman)', desc: '次貸風暴，系統性流動性枯竭', benchDrop: -50.9 },
                 { name: '2000 達康泡沫 (Dot-com)', desc: '網路科技股本夢比估值破滅', benchDrop: -49.1 },
@@ -431,11 +445,7 @@ createApp({
             ];
 
             return historicalScenarios.map(scenario => {
-                // 預期跌幅 = 大盤跌幅 * 投資組合 Beta
-                // (若未來引入非線性 Copula 模型，此處跌幅會更深，目前以線性 Beta 作為基準底線)
                 let expectedDrop = scenario.benchDrop * currentBeta;
-                
-                // 防呆：如果是極度深度的做空組合 (Beta < 0)，遇到股災會漲，做上限控管
                 if (expectedDrop > 100) expectedDrop = 100;
 
                 return {
@@ -445,34 +455,32 @@ createApp({
                 };
             });
         });
-        watch([filteredHistory, riskParams, dataFrequency], () => {
+
+        // ==========================================
+        // 🌟 升級版 2: 獨立 HWM (High Water Mark) 引擎
+        // 解決 MDD 因為出金而被無意義放大的致命問題
+        // ==========================================
+        watch([enrichedHistory, riskParams, dataFrequency], () => {
              const empty = { annRet:'-', annVol:'-', sharpe:'-', sortino:'-', treynor:'-', alpha:'-', var95:'-', cvar95:'-', mdd:'-', calmar:'-', skew:'-', kurt:'-' };
-             const h = filteredHistory.value;
+             const h = [...enrichedHistory.value].reverse(); // 轉回時間正序
              if (h.length < 3) { stats.value = empty; return; }
 
-             const sorted = [...h].sort((a,b) => new Date(a.date) - new Date(b.date));
-             const returns = [];
-             
-             let peak = 0;
+             // 直接取用精算過、已剝離現金干擾的純淨報酬率
+             const returns = h.slice(1).map(item => item.dailyReturn);
+
+             // HWM 累積淨值指數 (起始為 1.0)
+             let cumIndex = 1.0;
+             let peakIndex = 1.0;
              let maxDrawdown = 0;
-             let runningAsset = sorted[0].assets;
 
-             for(let i=1; i<sorted.length; i++) {
-                 const prev = sorted[i-1];
-                 const curr = sorted[i];
-                 const netFlow = curr.cost - prev.cost;
-                 const denom = prev.assets + (netFlow / 2); 
-                 if (denom > 0) returns.push((curr.assets - prev.assets - netFlow) / denom);
-
-                 runningAsset = curr.assets - netFlow; 
-                 if (runningAsset > peak) peak = runningAsset;
-                 const dd = peak > 0 ? (runningAsset - peak) / peak : 0;
-                 if (dd < maxDrawdown) maxDrawdown = dd;
-             }
-             if (returns.length < 2) { stats.value = empty; return; }
+             returns.forEach(r => {
+                 cumIndex = cumIndex * (1 + r);
+                 if (cumIndex > peakIndex) peakIndex = cumIndex;
+                 const dd = peakIndex > 0 ? (cumIndex - peakIndex) / peakIndex : 0;
+                 if (dd < maxDrawdown) maxDrawdown = dd; // 這裡算出的 MDD 絕對純淨
+             });
 
              const cumTwr = returns.reduce((acc, r) => acc * (1 + r), 1) - 1;
-             // 切換為週資料頻率 (一年 52 週)
              const factor = dataFrequency.value === 'Weekly' ? Math.sqrt(52) : Math.sqrt(252);
              const years = returns.length / (dataFrequency.value === 'Weekly' ? 52 : 252);
              const annRet = years > 0 ? (Math.pow(1 + cumTwr, 1 / years) - 1) : 0;
@@ -1182,19 +1190,19 @@ createApp({
                     chartCML.update();
                 }
 
+                // ==========================================
+                // 🌟 升級版 3: 滾動圖表掛載純淨報酬率
+                // ==========================================
                 if (chartRolling) {
-                    const h = [...filteredHistory.value].sort((a,b) => new Date(a.date) - new Date(b.date));
+                    const h = [...enrichedHistory.value].reverse(); // 轉回正序
                     const periodReturns = [];
                     const dates = [];
                     
                     for(let i=1; i<h.length; i++) {
-                        const netFlow = h[i].cost - h[i-1].cost;
-                        const denom = h[i-1].assets + (netFlow / 2);
-                        if(denom > 0) periodReturns.push((h[i].assets - h[i-1].assets - netFlow) / denom);
+                        periodReturns.push(h[i].dailyReturn);
                         dates.push(h[i].date);
                     }
 
-                    // 🌟 滾動窗格改為 52 期 (代表滾動檢視過去 1 年的夏普值)
                     const windowSize = 52; 
                     const factor = Math.sqrt(52);
                     const rf = riskParams.value.rf / 100;
@@ -1254,7 +1262,7 @@ createApp({
             fireTargets, activeFireStageIndex, activeFireTarget, isLoggedIn, loginEmail, loginPassword, loginError, 
             isAuthenticating, handleLogin, handleLogout, checkAuth, fireProgress, 
             updateCharts, addFireTarget, macroRegime, enableBlackSwan, mcRisk, blViews, mcAvailableAssets, addBlView, enableInflation,
-            generateAutoViews, runMonteCarlo, generateAutoViews, runMonteCarlo, stressTestResults
+            generateAutoViews, runMonteCarlo, stressTestResults
         };
     }
 }).mount('#app');
