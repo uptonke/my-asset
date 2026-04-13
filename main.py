@@ -10,6 +10,8 @@ from supabase import create_client, Client
 import re
 import warnings
 import urllib.parse  # 💡 升級：引入網址解析庫，準備建立代理隧道
+import json
+from google import genai
 
 warnings.filterwarnings('ignore')
 
@@ -62,6 +64,65 @@ try:
     
     spy_cagr = ((spy.dropna().iloc[-1] / spy.dropna().iloc[0]) ** (1/10)) - 1
     spy_vol = spy.dropna().tail(252).pct_change().std() * np.sqrt(252)
+    # ==========================================
+    # 🧠 插入階段：Gemini AI 總經深度解析
+    # ==========================================
+    print("🤖 喚醒 Gemini AI 進行總經與風險診斷...", flush=True)
+    ai_insights = {}
+    GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+    
+    if GEMINI_API_KEY:
+        try:
+            client = genai.Client(api_key=GEMINI_API_KEY)
+            
+            # 建立給 AI 的 System Prompt，要求它扮演量化經理人
+            prompt = f"""
+            你是一位華爾街頂級的量化避險基金經理人。請根據以下最新的市場參數，給出嚴格、客觀的市場診斷。
+            切勿迎合，直接指出潛在風險或機會。
+            
+            【當前市場數據】
+            - 10年期無風險利率 (Rf): {macro_payload['market_rf']}%
+            - 標普500預期報酬 (Rm): {macro_payload['market_rm']}%
+            - 標普500波動率 (σm): {macro_payload['market_sm']}%
+            - 10Y-3M 利差 (衰退指標): {macro_payload['yield_curve']}%
+            - 高收益債信用利差 (恐慌指標): {macro_payload['hy_spread']}%
+            - 比特幣近一月動能: {macro_payload['btc_1m_mom']}%
+            
+            【輸出要求】
+            請必須且只能回傳一個 JSON 格式，不要包含任何 Markdown 標籤 (例如 ```json)，結構如下：
+            {{
+                "summary": "一句話總結目前總經環境與資金流向 (30字內)",
+                "details": [
+                    {{"icon": "⚖️", "color": "text-blue-400", "title": "資金成本分析", "desc": "對無風險利率與期望報酬的解讀"}},
+                    {{"icon": "⚠️", "color": "text-red-400", "title": "尾部風險警示", "desc": "針對利差與波動率的隱憂分析"}},
+                    {{"icon": "💡", "color": "text-yellow-400", "title": "配置建議", "desc": "給予當下的資產配置戰略建議"}}
+                ]
+            }}
+            """
+            
+            response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
+            
+            # 清理並解析 JSON (完美融入你的錯誤處理架構)
+            text = response.text.strip().strip('`')
+            if text.lower().startswith('json'):
+                text = text[4:].strip()
+            
+            ai_insights = json.loads(text)
+            print("✅ AI 診斷報告生成成功！", flush=True)
+            
+            # 將 AI 生成的見解打包進要上傳的總經數據中
+            macro_payload['ai_analysis'] = ai_insights
+
+        except Exception as e:
+            print(f"⚠️ AI 診斷生成失敗 (將略過此步驟繼續): {e}", flush=True)
+    else:
+        print("⚠️ 未偵測到 GEMINI_API_KEY，跳過 AI 診斷。")
+
+    # ==========================================
+    # E. 寫入 Supabase (維持你原來的動態尋標邏輯)
+    # ==========================================
+    print("🚀 正在同步至 Supabase...", flush=True)
+    # ... 下面接著你原本的 existing = supabase.table("portfolio_db").select("id").limit(1).execute() ...
 
     # E. 封裝最終數據 (強制 float)
     macro_payload = {
