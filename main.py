@@ -100,6 +100,36 @@ except Exception as e:
 # ==========================================
 # 🧠 3. 股票多因子管線 (往下維持原邏輯不變)
 # ==========================================
+def get_sheet_prices(url_str):
+    print("📊 正在從 Google Sheet 抓取自訂報價...", flush=True)
+    if not url_str:
+        return {}
+    try:
+        match = re.search(r'/d/([a-zA-Z0-9-_]+)', url_str)
+        gid_match = re.search(r'[#&?]gid=([0-9]+)', url_str)
+        if not match:
+            return {}
+        sheet_id = match.group(1)
+        gid = gid_match.group(1) if gid_match else '0'
+        csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&gid={gid}"
+        
+        df = pd.read_csv(csv_url, header=None)
+        price_map = {}
+        for _, row in df.iterrows():
+            if len(row) >= 2 and pd.notna(row[0]) and pd.notna(row[1]):
+                ticker = str(row[0]).strip().upper()
+                try:
+                    price = float(row[1])
+                    price_map[ticker] = price
+                    if ':' in ticker:
+                        price_map[ticker.split(':')[1].strip()] = price
+                except:
+                    pass
+        print(f"✅ 成功抓取 {len(price_map)} 筆自訂報價！", flush=True)
+        return price_map
+    except Exception as e:
+        print(f"⚠️ Sheet 報價讀取失敗，將使用預設報價: {e}", flush=True)
+        return {}
 print("\n⏳ 接著開始執行股票多因子管線...")
 response = supabase.table("portfolio_db").select("*").eq("id", 1).execute()
 data = response.data
