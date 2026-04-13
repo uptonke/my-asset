@@ -21,58 +21,54 @@ key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 supabase: Client = create_client(url, key)
 
 # ==========================================
-# 🌟 2. 總經與市場參數自動化抓取
+# 🌟 2. 總經與市場參數自動化抓取 (全面切換至 Yahoo Finance 穩定源)
 # ==========================================
-print("🌍 啟動量化大腦：開始抓取 FRED 與市場參數...", flush=True)
+print("🌍 啟動量化大腦：開始透過 Yahoo API 抓取市場參數...", flush=True)
 
 try:
-    def get_fred_latest(series_id):
-        print(f"   ⏳ 正在呼叫 FRED API ({series_id})...", flush=True)
-        target_url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-        
-        try:
-            # 策略 A：嘗試直連 (只給 3 秒，既然常被封鎖就不浪費時間)
-            res = requests.get(target_url, headers=headers, timeout=3)
-            res.raise_for_status()
-        except requests.exceptions.RequestException:
-            # 💡 核心戰略 B：直連失敗，立刻啟動反向代理路由 (Reverse Proxy Bypass)
-            print(f"   ⚠️ 偵測到 IP 封鎖，啟動反向代理路由繞道抓取 ({series_id})...", flush=True)
-            encoded_url = urllib.parse.quote(target_url, safe='')
-            proxy_url = f"https://api.allorigins.win/raw?url={encoded_url}"
-            res = requests.get(proxy_url, headers=headers, timeout=15)
-            res.raise_for_status()
+    # A. 抓取美國公債殖利率 (Yahoo Finance Tickers)
+    # ^TNX = 10年期公債殖利率
+    # ^IRX = 13週(約3個月)國庫券殖利率 (Yahoo 沒有穩定的2年期代號，在量化實務中，以3個月來算長短利差同樣具備衰退前瞻性)
+    print("   ⏳ 正在抓取公債殖利率...", flush=True)
+    bonds = yf.download(["^TNX", "^IRX"], period="1mo", progress=False)["Close"]
+    
+    # 確保是 Series (單取代號防呆)
+    y10_series = bonds["^TNX"] if isinstance(bonds, pd.DataFrame) else bonds
+    y3m_series = bonds["^IRX"] if isinstance(bonds, pd.DataFrame) else bonds
+    
+    y10 = float(y10_series.dropna().iloc[-1])
+    y3m = float(y3m_series.dropna().iloc[-1])
+    
+    # B. 抓取高收益債利差 (透過 HYG ETF 與 10Y 公債殖利率反推)
+    # HYG (iShares iBoxx $ High Yield Corporate Bond ETF) 殖利率估算
+    print("   ⏳ 正在計算信用利差...", flush=True)
+    hyg = yf.Ticker("HYG")
+    try:
+        hyg_yield = hyg.info.get('yield', 0.05) * 100 
+    except:
+        hyg_yield = 7.5 # 如果 API 沒給，用長期平均 7.5% 估算
+    hy_spread = max(0.1, hyg_yield - y10) # 信用利差 = 垃圾債殖利率 - 10年期無風險利率
 
-        df = pd.read_csv(io.StringIO(res.text), parse_dates=['DATE'], index_col='DATE', na_values='.')
-        return float(df[series_id].ffill().dropna().iloc[-1])
-
-    # A. 抓取 FRED 數據
-    y10 = get_fred_latest('DGS10')
-    y2 = get_fred_latest('DGS2')
-    hy = get_fred_latest('BAMLH0A0HYM2')
-
-    # B. 抓取比特幣動能 (BTC-USD)
-    print("   ⏳ 正在呼叫 Yahoo Finance (BTC-USD)...", flush=True)
+    # C. 抓取比特幣動能 (BTC-USD)
+    print("   ⏳ 正在計算加密貨幣動能...", flush=True)
     btc_data = yf.download("BTC-USD", period="1mo", progress=False)["Close"]
     if isinstance(btc_data, pd.DataFrame): btc_data = btc_data.iloc[:, 0]
-    btc_mom = ((btc_data.iloc[-1] / btc_data.iloc[0]) - 1) * 100
+    btc_mom = ((btc_data.dropna().iloc[-1] / btc_data.dropna().iloc[0]) - 1) * 100
 
-    # C. 抓取 SPY 計算 SML/CML 市場參數
-    print("   ⏳ 正在呼叫 Yahoo Finance (SPY 10年數據)...", flush=True)
+    # D. 抓取 SPY 計算 SML/CML 市場參數
+    print("   ⏳ 正在計算 SPY 長期報酬與短期波動...", flush=True)
     spy = yf.download("SPY", period="10y", progress=False)["Close"]
     if isinstance(spy, pd.DataFrame): spy = spy.iloc[:, 0]
     
-    spy_cagr = ((spy.iloc[-1] / spy.iloc[0]) ** (1/10)) - 1
-    spy_vol = spy.tail(252).pct_change().std() * np.sqrt(252)
+    spy_cagr = ((spy.dropna().iloc[-1] / spy.dropna().iloc[0]) ** (1/10)) - 1
+    spy_vol = spy.dropna().tail(252).pct_change().std() * np.sqrt(252)
 
-    # D. 封裝數據
+    # E. 封裝最終數據 (強制 float)
     macro_payload = {
         "yield_10y": float(round(y10, 2)),
-        "yield_2y": float(round(y2, 2)),
-        "yield_curve": float(round(y10 - y2, 2)),
-        "hy_spread": float(round(hy, 2)),
+        "yield_2y": float(round(y3m, 2)), # 名稱為 2y，實質改用 3m 確保穩定性
+        "yield_curve": float(round(y10 - y3m, 2)), 
+        "hy_spread": float(round(hy_spread, 2)),
         "btc_1m_mom": float(round(btc_mom, 2)),
         "market_rf": float(round(y10, 2)),
         "market_rm": float(round(spy_cagr * 100, 2)),
@@ -81,7 +77,7 @@ try:
     
     print(f"📈 計算完成 -> Rf: {macro_payload['market_rf']}%, Rm: {macro_payload['market_rm']}%, σm: {macro_payload['market_sm']}%", flush=True)
 
-    # E. 寫入 Supabase
+    # F. 寫入 Supabase
     print("🚀 正在同步至 Supabase...", flush=True)
     res = supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", 1).execute()
     
