@@ -149,21 +149,29 @@ def get_sheet_prices(url_str):
     if not url_str:
         return {}
     try:
+        # 1. 解析 Google Sheet 網址
         match = re.search(r'/d/([a-zA-Z0-9-_]+)', url_str)
         gid_match = re.search(r'[#&?]gid=([0-9]+)', url_str)
         if not match:
             return {}
         sheet_id = match.group(1)
         gid = gid_match.group(1) if gid_match else '0'
-        csv_url = f"[https://docs.google.com/spreadsheets/d/](https://docs.google.com/spreadsheets/d/){sheet_id}/gviz/tq?tqx=out:csv&gid={gid}"
+        csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&gid={gid}"
         
-        df = pd.read_csv(csv_url, header=None)
+        # 2. 🌟 終極讀取法：使用 requests 先抓取內容，再給 pandas
+        response = requests.get(csv_url, timeout=10)
+        response.raise_for_status()  # 檢查是否 200 OK
+        csv_content = response.text
+        
+        df = pd.read_csv(io.StringIO(csv_content), header=None)
         price_map = {}
         for _, row in df.iterrows():
             if len(row) >= 2 and pd.notna(row[0]) and pd.notna(row[1]):
                 ticker = str(row[0]).strip().upper()
                 try:
-                    price = float(row[1])
+                    # 清除數字中的逗號
+                    price_str = str(row[1]).replace(',', '')
+                    price = float(price_str)
                     price_map[ticker] = price
                     if ':' in ticker:
                         price_map[ticker.split(':')[1].strip()] = price
@@ -195,8 +203,22 @@ else:
         tw_bench = "^TWII"  
         us_bench = "SPY"    
         
-        yf_tickers = [f"{t}.TW" if re.match(r'^\d+[A-Za-z]?$', t) else t for t in tickers]
-        download_list = yf_tickers + [tw_bench, us_bench]
+        # 🌟 過濾邏輯：如果 Ticker 包含中文，就不送給 Yahoo API
+        def contains_chinese(text):
+            return bool(re.search(r'[\u4e00-\u9fff]', text))
+
+        yf_tickers = []
+        for t in tickers:
+            if contains_chinese(t):
+                # 如果是中文基金，保留原本代號，但不加 .TW
+                yf_tickers.append(t) 
+            elif re.match(r'^\d+[A-Za-z]?$', t):
+                yf_tickers.append(f"{t}.TW")
+            else:
+                yf_tickers.append(t)
+                
+        # 只把非中文的代號丟給 Yahoo 下載
+        download_list = [t for t in yf_tickers if not contains_chinese(t)] + [tw_bench, us_bench]
 
         print(f"⏳ 正在向 Yahoo Finance 請求歷史資料...", flush=True)
         prices = yf.download(download_list, period="1y")["Close"]
@@ -210,10 +232,13 @@ else:
         for i, original_ticker in enumerate(tickers):
             yf_ticker = yf_tickers[i]
 
+            # 🌟 優先塞入 Google Sheet 的自訂報價
             if original_ticker in sheet_prices:
                 stock_meta[original_ticker]["last_price"] = float(sheet_prices[original_ticker])
 
-            if yf_ticker not in returns.columns:
+            # 如果是中文基金，或者在 Yahoo 抓不到，直接跳過量化參數運算
+            if contains_chinese(original_ticker) or yf_ticker not in returns.columns:
+                print(f"⚠️ [{original_ticker}] 為自訂/無報價資產，保留現有風險參數。")
                 continue
 
             stock_close = prices[yf_ticker].dropna()
