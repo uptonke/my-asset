@@ -835,6 +835,29 @@ createApp({
         function openMonteCarlo() {
             showMCModal.value = true;
             mcOptimal.value = null; 
+
+            // 🌟 終極整合：讓蒙地卡羅引擎「閱讀」AI 診斷報告
+            if (cloudAiAnalysis.value) {
+                // 將 AI 的所有文字轉成小寫字串，方便捕捉關鍵字
+                const fullAiText = JSON.stringify(cloudAiAnalysis.value).toLowerCase();
+                
+                // 1. AI 判讀通膨風險 -> 自動開啟通膨壓力測試
+                if (fullAiText.includes('通膨') || fullAiText.includes('inflation') || fullAiText.includes('升息') || fullAiText.includes('cpi')) {
+                    enableInflation.value = true;
+                    console.log("🤖 AI 偵測到通膨關鍵字，已自動開啟【通膨侵蝕模型】");
+                } else {
+                    enableInflation.value = false;
+                }
+
+                // 2. AI 判讀尾部風險 -> 自動開啟黑天鵝跳躍機制
+                if (fullAiText.includes('尾部風險') || fullAiText.includes('衰退') || fullAiText.includes('黑天鵝') || fullAiText.includes('恐慌') || fullAiText.includes('利差擴大')) {
+                    enableBlackSwan.value = true;
+                    console.log("🤖 AI 偵測到極端風險關鍵字，已自動開啟【黑天鵝跳躍模型】");
+                } else {
+                    enableBlackSwan.value = false;
+                }
+            }
+
             nextTick(() => {
                 runMonteCarlo();
             });
@@ -932,14 +955,20 @@ createApp({
             const remainingWeight = 1.0 - (n_assets * minWeight);
             const n_portfolios = 5000;
 
+            // 🌟 將基礎參數錨定為 AI 抓取的「當下真實總經數據」
+            const baseRm = riskParams.value.rm / 100;
+            const baseSm = riskParams.value.sm / 100;
+            const baseRf = riskParams.value.rf / 100;
+
+            // 讓所有情境都隨著真實世界的總經數據進行浮動
             const regimeParams = {
-                Normal: { rm: riskParams.value.rm / 100, sm: riskParams.value.sm / 100, rf: riskParams.value.rf / 100, stressCorr: 0, m_skew: -0.5, m_kurt_ex: 1.0 },
-                Bull:   { rm: 0.15,  sm: 0.12, rf: 0.02,  stressCorr: 0,   m_skew: 0.2,  m_kurt_ex: 0.5 },
-                Bear:   { rm: -0.10, sm: 0.25, rf: 0.01,  stressCorr: 0.5, m_skew: -1.0, m_kurt_ex: 2.0 },
-                Crisis: { rm: -0.25, sm: 0.40, rf: 0.001, stressCorr: 1.0, m_skew: -2.5, m_kurt_ex: 5.0 }
+                Normal: { rm: baseRm, sm: baseSm, rf: baseRf, stressCorr: 0, m_skew: -0.5, m_kurt_ex: 1.0 },
+                Bull:   { rm: baseRm + 0.05, sm: baseSm * 0.8, rf: baseRf, stressCorr: 0, m_skew: 0.2, m_kurt_ex: 0.5 },
+                Bear:   { rm: baseRm - 0.10, sm: baseSm * 1.5, rf: baseRf * 0.5, stressCorr: 0.5, m_skew: -1.0, m_kurt_ex: 2.0 },
+                Crisis: { rm: baseRm - 0.20, sm: baseSm * 2.0, rf: 0.001, stressCorr: 1.0, m_skew: -2.5, m_kurt_ex: 5.0 }
             };
             const { rm, sm, rf, stressCorr, m_skew, m_kurt_ex } = regimeParams[macroRegime.value];
-
+            
             const bl_expected_returns = calculateBlackLitterman(assets, rm, rf, sm, blViews.value);
 
             const mcPoints = [];
