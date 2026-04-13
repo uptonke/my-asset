@@ -9,78 +9,70 @@ import io
 from supabase import create_client, Client
 import re
 import warnings
+
 warnings.filterwarnings('ignore')
 
 # ==========================================
-# 1. 安全地讀取 GitHub Secrets
+# 1. 讀取環境變數與初始化
 # ==========================================
 url = os.environ.get("SUPABASE_URL")
 key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-
-if not url or not key:
-    raise ValueError("❌ 找不到環境變數！請確認 GitHub Secrets 設定。")
-
 supabase: Client = create_client(url, key)
 
-# 🛠️ 輔助函數：從 Google Sheet 抓取自訂價格
-def get_sheet_prices(sheet_url):
-    if not sheet_url:
-        return {}
-    try:
-        sheet_id = sheet_url.split('/d/')[1].split('/')[0]
-        csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv"
-        response = requests.get(csv_url)
-        df = pd.read_csv(io.StringIO(response.text), header=None)
-        return dict(zip(df[0].astype(str).str.upper().str.strip(), df[1]))
-    except Exception as e:
-        print(f"⚠️ 讀取 Sheet 失敗: {e}")
-        return {}
+# ==========================================
+# 🌟 2. 總經與市場參數自動化抓取
+# ==========================================
+print("🌍 啟動量化大腦：開始抓取 FRED 與市場參數...")
 
-# ==========================================
-# 🌟 2. 總經與另類數據抓取 (Macro & Alternative Data)
-# ==========================================
-print("🌍 開始抓取 FRED 總經數據與市場參數...")
 try:
     def get_fred_latest(series_id):
         url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
         df = pd.read_csv(url, parse_dates=['DATE'], index_col='DATE', na_values='.')
         return float(df[series_id].ffill().dropna().iloc[-1])
 
-    # 數據抓取
+    # A. 抓取 FRED 數據
     y10 = get_fred_latest('DGS10')
     y2 = get_fred_latest('DGS2')
     hy = get_fred_latest('BAMLH0A0HYM2')
-    
-    spy = yf.download("SPY", period="10y", progress=False)["Close"]
-    spy_10y_cagr = ((spy.iloc[-1] / spy.iloc[0]) ** (1/10)) - 1
-    spy_1y_vol = spy.tail(252).pct_change().std() * np.sqrt(252)
 
-    # 💡 核心升級：使用標準 Python float 徹底隔絕 Numpy 型別
-    # 這是解決 NULL 欄位的終極關鍵
+    # B. 抓取比特幣動能 (BTC-USD)
+    btc_data = yf.download("BTC-USD", period="1mo", progress=False)["Close"]
+    if isinstance(btc_data, pd.DataFrame): btc_data = btc_data.iloc[:, 0]
+    btc_mom = ((btc_data.iloc[-1] / btc_data.iloc[0]) - 1) * 100
+
+    # C. 抓取 SPY 計算 SML/CML 市場參數 (10年長期與1年短期波動)
+    spy = yf.download("SPY", period="10y", progress=False)["Close"]
+    if isinstance(spy, pd.DataFrame): spy = spy.iloc[:, 0]
+    
+    spy_cagr = ((spy.iloc[-1] / spy.iloc[0]) ** (1/10)) - 1
+    spy_vol = spy.tail(252).pct_change().std() * np.sqrt(252)
+
+    # D. 封裝數據 (強制轉型 float 以確保 JSON 序列化成功)
     macro_payload = {
         "yield_10y": float(round(y10, 2)),
+        "yield_2y": float(round(y2, 2)),
         "yield_curve": float(round(y10 - y2, 2)),
         "hy_spread": float(round(hy, 2)),
+        "btc_1m_mom": float(round(btc_mom, 2)),
         "market_rf": float(round(y10, 2)),
-        "market_rm": float(round(spy_10y_cagr * 100, 2)),
-        "market_sm": float(round(spy_1y_vol * 100, 2)),
-        "btc_1m_mom": 0.0 # 暫時佔位
+        "market_rm": float(round(spy_cagr * 100, 2)),
+        "market_sm": float(round(spy_vol * 100, 2))
     }
     
-    print(f"🚀 準備寫入 Supabase: {macro_payload}")
+    print(f"📈 計算完成 -> Rf: {macro_payload['market_rf']}%, Rm: {macro_payload['market_rm']}%, σm: {macro_payload['market_sm']}%")
 
-    # 執行更新並捕捉回傳結果
-    result = supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", 1).execute()
+    # E. 寫入 Supabase
+    print("🚀 正在同步至 Supabase...")
+    res = supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", 1).execute()
     
-    if not result.data:
-        print("❌ 更新失敗：找不到 id=1 的列，或是資料庫無回應。")
+    if len(res.data) > 0:
+        print("✅ 數據同步完成！")
     else:
-        print("✅ 雲端同步成功！")
+        raise Exception("❌ 資料庫更新失敗：找不到對應的 id=1 紀錄。")
 
 except Exception as e:
-    print(f"🔥 發生致命錯誤: {str(e)}")
-    raise e # 強制 Actions 報紅燈，不准裝死
-
+    print(f"🔥 發生錯誤: {str(e)}")
+    raise e
 
 # ==========================================
 # 🧠 3. 股票多因子運算與 Google Sheet 價格同步 (雙基準大腦)
