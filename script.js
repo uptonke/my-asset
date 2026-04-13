@@ -1222,44 +1222,27 @@ createApp({
                     const rm = riskParams.value.rm;
                     const sm = riskParams.value.sm;
                     
-                    const smlLine = [ {x:0, y:rf}, {x:2, y: rf + 2*(rm-rf)} ];
-                    const slope = sm > 0 ? (rm - rf) / sm : 0; // 防呆除以零
-                    const maxX = sm * 2.5; 
-                    const cmlLine = [ { x: 0, y: rf }, { x: sm, y: rm }, { x: maxX, y: rf + slope * maxX } ];
+                    // SML 線段計算 (X 軸通常是 Beta，延伸到 2.5 夠用了)
+                    const smlLine = [ {x:0, y:rf}, {x:2.5, y: rf + 2.5*(rm-rf)} ];
 
-                    const portRet = parseFloat(stats.value.annRet) || 0;
-                    const portVol = parseFloat(stats.value.annVol) || 0;
-                    const portBeta = parseFloat(riskParams.value.beta) || 0;
-
-                    const portPoint = { x: portBeta, y: portRet, name: 'Portfolio' };
-                    const portPointCML = { x: portVol, y: portRet, name: 'Portfolio' };
-                    const marketPoint = { x: sm, y: rm, name: 'Market Index' };
-
-                    const assetPoints = [];
-                    const assetPointsCML = [];
+                    // 🌟 CML 線段計算 (動態延伸版)
+                    // 先找出所有庫存中最大的標準差 (X軸)
+                    let maxAssetStd = 0;
                     for(const cat in groupedHoldings.value) {
                        groupedHoldings.value[cat].items.forEach(i => {
-                            // 🌟 這裡確保 SML 與 CML 都精準吃到你後台計算的 annualizedReturnRate
-                            assetPoints.push({ x: i.beta, y: parseFloat(i.annualizedReturnRate || 0), name: i.ticker });
-                            assetPointsCML.push({ x: i.stdDev, y: parseFloat(i.annualizedReturnRate || 0), name: i.ticker });
+                            if(i.stdDev > maxAssetStd) maxAssetStd = i.stdDev;
                         });
                     }
-
-                    chartSML.data.datasets = [
-                        { type: 'line', label: 'SML', data: smlLine, borderColor: '#94a3b8', borderWidth: 2, pointRadius: 0, fill: false, borderDash: [5,5] },
-                        { type: 'scatter', label: 'Holdings', data: assetPoints, backgroundColor: '#f59e0b', pointRadius: 5, pointHoverRadius: 8 },
-                        { type: 'scatter', label: 'Portfolio', data: [portPoint], backgroundColor: '#ef4444', pointRadius: 10, pointStyle: 'circle' }
+                    
+                    // 為了圖表美觀，CML 線的終點設為 (最大標準差 * 1.2) 或至少 (市場標準差 * 3)
+                    const cmlMaxX = Math.max(maxAssetStd * 1.2, sm * 3); 
+                    const slope = sm > 0 ? (rm - rf) / sm : 0; 
+                    
+                    const cmlLine = [ 
+                        { x: 0, y: rf }, 
+                        { x: sm, y: rm }, // 通過市場點
+                        { x: cmlMaxX, y: rf + slope * cmlMaxX } // 延伸到畫布盡頭
                     ];
-                    chartSML.update();
-
-                    chartCML.data.datasets = [
-                        { type: 'line', label: 'CML', data: cmlLine, borderColor: '#94a3b8', borderWidth: 2, pointRadius: 0, fill: false, borderDash: [5,5] },
-                        { type: 'scatter', label: 'Holdings', data: assetPointsCML, backgroundColor: '#3b82f6', pointRadius: 5, pointHoverRadius: 8 },
-                        { type: 'scatter', label: 'Market', data: [marketPoint], backgroundColor: '#10b981', pointRadius: 6, pointStyle: 'triangle' },
-                        { type: 'scatter', label: 'Portfolio', data: [portPointCML], backgroundColor: '#ef4444', pointRadius: 10, pointStyle: 'circle' }
-                    ];
-                    chartCML.update();
-                }
 
                 if (chartRolling) {
                     const h = [...enrichedHistory.value].reverse(); 
