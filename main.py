@@ -46,50 +46,40 @@ try:
         df = pd.read_csv(url, parse_dates=['DATE'], index_col='DATE', na_values='.')
         return float(df[series_id].ffill().dropna().iloc[-1])
 
-    yield_10y = get_fred_latest('DGS10')
-    yield_2y = get_fred_latest('DGS2')
-    hy_spread = get_fred_latest('BAMLH0A0HYM2')
-    yield_curve = yield_10y - yield_2y 
+    # 數據抓取
+    y10 = get_fred_latest('DGS10')
+    y2 = get_fred_latest('DGS2')
+    hy = get_fred_latest('BAMLH0A0HYM2')
     
-    btc = yf.download("BTC-USD", period="1mo", progress=False)["Close"]
-    if isinstance(btc, pd.DataFrame): 
-        btc = btc.iloc[:, 0]
-    btc_1m_mom = ((btc.iloc[-1] / btc.iloc[0]) - 1) * 100
+    spy = yf.download("SPY", period="10y", progress=False)["Close"]
+    spy_10y_cagr = ((spy.iloc[-1] / spy.iloc[0]) ** (1/10)) - 1
+    spy_1y_vol = spy.tail(252).pct_change().std() * np.sqrt(252)
 
-    market_rf = round(yield_10y, 2)
-    
-    spy_data = yf.download("SPY", period="10y", progress=False)["Close"]
-    if isinstance(spy_data, pd.DataFrame): 
-        spy_data = spy_data.iloc[:, 0]
-        
-    spy_10y_cagr = ((spy_data.iloc[-1] / spy_data.iloc[0]) ** (1/10)) - 1
-    market_rm = round(spy_10y_cagr * 100, 2)
-    
-    spy_1y = spy_data.tail(252) 
-    market_sm = round(spy_1y.pct_change().dropna().std() * np.sqrt(252) * 100, 2)
-
-    # 💡 核心修復：強制轉型為原生 float()，徹底消滅 JSON 序列化崩潰
-    macro_meta = {
-        "yield_10y": float(yield_10y),
-        "yield_2y": float(yield_2y),
-        "yield_curve": float(round(yield_curve, 2)),
-        "hy_spread": float(hy_spread),
-        "btc_1m_mom": float(round(btc_1m_mom, 2)),
-        "market_rf": float(market_rf),
-        "market_rm": float(market_rm),
-        "market_sm": float(market_sm)
+    # 💡 核心升級：使用標準 Python float 徹底隔絕 Numpy 型別
+    # 這是解決 NULL 欄位的終極關鍵
+    macro_payload = {
+        "yield_10y": float(round(y10, 2)),
+        "yield_curve": float(round(y10 - y2, 2)),
+        "hy_spread": float(round(hy, 2)),
+        "market_rf": float(round(y10, 2)),
+        "market_rm": float(round(spy_10y_cagr * 100, 2)),
+        "market_sm": float(round(spy_1y_vol * 100, 2)),
+        "btc_1m_mom": 0.0 # 暫時佔位
     }
     
-    print(f"📊 總經狀態 -> 10Y-2Y利差: {yield_curve:.2f}%, 垃圾債利差: {hy_spread:.2f}%")
-    print(f"📈 SML市場參數 -> Rf: {market_rf}%, Rm: {market_rm}%, σm: {market_sm}%")
+    print(f"🚀 準備寫入 Supabase: {macro_payload}")
+
+    # 執行更新並捕捉回傳結果
+    result = supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", 1).execute()
     
-    supabase.table("portfolio_db").update({"macro_meta": macro_meta}).eq("id", 1).execute()
-    print("✅ 總經與市場參數已上傳至雲端大腦！")
+    if not result.data:
+        print("❌ 更新失敗：找不到 id=1 的列，或是資料庫無回應。")
+    else:
+        print("✅ 雲端同步成功！")
 
 except Exception as e:
-    print(f"⚠️ 總經數據抓取失敗，錯誤訊息：{e}")
-    # 💡 核心修復：嚴格模式，遇到錯誤強制拋出，讓 GitHub Actions 亮紅燈！
-    raise e
+    print(f"🔥 發生致命錯誤: {str(e)}")
+    raise e # 強制 Actions 報紅燈，不准裝死
 
 
 # ==========================================
