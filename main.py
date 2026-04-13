@@ -9,7 +9,7 @@ import io
 from supabase import create_client, Client
 import re
 import warnings
-import urllib.parse  # 💡 升級：引入網址解析庫，準備建立代理隧道
+import urllib.parse
 import json
 from google import genai
 
@@ -23,59 +23,66 @@ key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 supabase: Client = create_client(url, key)
 
 # ==========================================
-# 🌟 2. 總經與市場參數自動化抓取 (全面切換至 Yahoo Finance 穩定源)
+# 🌟 2. 總經與市場參數自動化抓取
 # ==========================================
 print("🌍 啟動量化大腦：開始透過 Yahoo API 抓取市場參數...", flush=True)
 
 try:
-    # A. 抓取美國公債殖利率 (Yahoo Finance Tickers)
-    # ^TNX = 10年期公債殖利率
-    # ^IRX = 13週(約3個月)國庫券殖利率 (Yahoo 沒有穩定的2年期代號，在量化實務中，以3個月來算長短利差同樣具備衰退前瞻性)
+    # A. 抓取公債殖利率
     print("   ⏳ 正在抓取公債殖利率...", flush=True)
     bonds = yf.download(["^TNX", "^IRX"], period="1mo", progress=False)["Close"]
     
-    # 確保是 Series (單取代號防呆)
     y10_series = bonds["^TNX"] if isinstance(bonds, pd.DataFrame) else bonds
     y3m_series = bonds["^IRX"] if isinstance(bonds, pd.DataFrame) else bonds
     
     y10 = float(y10_series.dropna().iloc[-1])
     y3m = float(y3m_series.dropna().iloc[-1])
     
-    # B. 抓取高收益債利差 (透過 HYG ETF 與 10Y 公債殖利率反推)
-    # HYG (iShares iBoxx $ High Yield Corporate Bond ETF) 殖利率估算
+    # B. 抓取高收益債利差
     print("   ⏳ 正在計算信用利差...", flush=True)
     hyg = yf.Ticker("HYG")
     try:
         hyg_yield = hyg.info.get('yield', 0.05) * 100 
     except:
-        hyg_yield = 7.5 # 如果 API 沒給，用長期平均 7.5% 估算
-    hy_spread = max(0.1, hyg_yield - y10) # 信用利差 = 垃圾債殖利率 - 10年期無風險利率
+        hyg_yield = 7.5
+    hy_spread = max(0.1, hyg_yield - y10)
 
-    # C. 抓取比特幣動能 (BTC-USD)
+    # C. 抓取比特幣動能
     print("   ⏳ 正在計算加密貨幣動能...", flush=True)
     btc_data = yf.download("BTC-USD", period="1mo", progress=False)["Close"]
     if isinstance(btc_data, pd.DataFrame): btc_data = btc_data.iloc[:, 0]
     btc_mom = ((btc_data.dropna().iloc[-1] / btc_data.dropna().iloc[0]) - 1) * 100
 
-    # D. 抓取 SPY 計算 SML/CML 市場參數
+    # D. 抓取 SPY 長期報酬與波動
     print("   ⏳ 正在計算 SPY 長期報酬與短期波動...", flush=True)
     spy = yf.download("SPY", period="10y", progress=False)["Close"]
     if isinstance(spy, pd.DataFrame): spy = spy.iloc[:, 0]
     
     spy_cagr = ((spy.dropna().iloc[-1] / spy.dropna().iloc[0]) ** (1/10)) - 1
     spy_vol = spy.dropna().tail(252).pct_change().std() * np.sqrt(252)
+
+    # E. 🌟 關鍵修正：先封裝好數據，才能餵給 AI
+    macro_payload = {
+        "yield_10y": float(round(y10, 2)),
+        "yield_2y": float(round(y3m, 2)),
+        "yield_curve": float(round(y10 - y3m, 2)), 
+        "hy_spread": float(round(hy_spread, 2)),
+        "btc_1m_mom": float(round(btc_mom, 2)),
+        "market_rf": float(round(y10, 2)),
+        "market_rm": float(round(spy_cagr * 100, 2)),
+        "market_sm": float(round(spy_vol * 100, 2))
+    }
+    print(f"📈 計算完成 -> Rf: {macro_payload['market_rf']}%, Rm: {macro_payload['market_rm']}%, σm: {macro_payload['market_sm']}%", flush=True)
+
     # ==========================================
-    # 🧠 插入階段：Gemini AI 總經深度解析
+    # 🧠 F. Gemini AI 總經深度解析
     # ==========================================
     print("🤖 喚醒 Gemini AI 進行總經與風險診斷...", flush=True)
-    ai_insights = {}
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
     
     if GEMINI_API_KEY:
         try:
             client = genai.Client(api_key=GEMINI_API_KEY)
-            
-            # 建立給 AI 的 System Prompt，要求它扮演量化經理人
             prompt = f"""
             你是一位華爾街頂級的量化避險基金經理人。請根據以下最新的市場參數，給出嚴格、客觀的市場診斷。
             切勿迎合，直接指出潛在風險或機會。
@@ -102,46 +109,21 @@ try:
             
             response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
             
-            # 清理並解析 JSON (完美融入你的錯誤處理架構)
             text = response.text.strip().strip('`')
             if text.lower().startswith('json'):
                 text = text[4:].strip()
             
             ai_insights = json.loads(text)
             print("✅ AI 診斷報告生成成功！", flush=True)
-            
-            # 將 AI 生成的見解打包進要上傳的總經數據中
             macro_payload['ai_analysis'] = ai_insights
 
         except Exception as e:
             print(f"⚠️ AI 診斷生成失敗 (將略過此步驟繼續): {e}", flush=True)
     else:
-        print("⚠️ 未偵測到 GEMINI_API_KEY，跳過 AI 診斷。")
+        print("⚠️ 未偵測到 GEMINI_API_KEY，跳過 AI 診斷。", flush=True)
 
-    # ==========================================
-    # E. 寫入 Supabase (維持你原來的動態尋標邏輯)
-    # ==========================================
+    # G. 寫入 Supabase (動態尋標防彈邏輯)
     print("🚀 正在同步至 Supabase...", flush=True)
-    # ... 下面接著你原本的 existing = supabase.table("portfolio_db").select("id").limit(1).execute() ...
-
-    # E. 封裝最終數據 (強制 float)
-    macro_payload = {
-        "yield_10y": float(round(y10, 2)),
-        "yield_2y": float(round(y3m, 2)), # 名稱為 2y，實質改用 3m 確保穩定性
-        "yield_curve": float(round(y10 - y3m, 2)), 
-        "hy_spread": float(round(hy_spread, 2)),
-        "btc_1m_mom": float(round(btc_mom, 2)),
-        "market_rf": float(round(y10, 2)),
-        "market_rm": float(round(spy_cagr * 100, 2)),
-        "market_sm": float(round(spy_vol * 100, 2))
-    }
-    
-    print(f"📈 計算完成 -> Rf: {macro_payload['market_rf']}%, Rm: {macro_payload['market_rm']}%, σm: {macro_payload['market_sm']}%", flush=True)
-
-    # E. 寫入 Supabase (動態尋標防彈邏輯)
-    print("🚀 正在同步至 Supabase...", flush=True)
-    
-    # 💡 升級：不盲目猜測 id=1，直接去資料庫找「目前唯一活著的紀錄」
     existing = supabase.table("portfolio_db").select("id").limit(1).execute()
     
     if len(existing.data) > 0:
@@ -149,18 +131,19 @@ try:
         supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
         print(f"✅ 數據同步完成！(已精準寫入至紀錄 id={target_id})", flush=True)
     else:
-        # 如果資料庫被清空了，就自動幫你建一筆最乾淨的初始資料
         print("⚠️ 偵測到空資料庫，正在建立全新量化設定檔...", flush=True)
         supabase.table("portfolio_db").insert({"id": 1, "macro_meta": macro_payload}).execute()
         print("✅ 數據初始化並同步完成！", flush=True)
 
 except Exception as e:
-    print(f"🔥 發生錯誤: {str(e)}", flush=True)
+    print(f"🔥 總經數據處理發生錯誤: {str(e)}", flush=True)
     raise e
 
 # ==========================================
-# 🧠 3. 股票多因子管線 (往下維持原邏輯不變)
+# 🧠 3. 股票多因子管線
 # ==========================================
+print("\n⏳ 接著開始執行股票多因子管線...", flush=True)
+
 def get_sheet_prices(url_str):
     print("📊 正在從 Google Sheet 抓取自訂報價...", flush=True)
     if not url_str:
@@ -172,7 +155,7 @@ def get_sheet_prices(url_str):
             return {}
         sheet_id = match.group(1)
         gid = gid_match.group(1) if gid_match else '0'
-        csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&gid={gid}"
+        csv_url = f"[https://docs.google.com/spreadsheets/d/](https://docs.google.com/spreadsheets/d/){sheet_id}/gviz/tq?tqx=out:csv&gid={gid}"
         
         df = pd.read_csv(csv_url, header=None)
         price_map = {}
@@ -191,14 +174,15 @@ def get_sheet_prices(url_str):
     except Exception as e:
         print(f"⚠️ Sheet 報價讀取失敗，將使用預設報價: {e}", flush=True)
         return {}
-print("\n⏳ 接著開始執行股票多因子管線...")
-response = supabase.table("portfolio_db").select("*").eq("id", 1).execute()
+
+response = supabase.table("portfolio_db").select("*").limit(1).execute()
 data = response.data
 
 if not data:
     print("❌ 資料庫沒東西或連線失敗！")
 else:
     db_record = data[0]
+    target_id = db_record['id']
     stock_meta = db_record.get("stock_meta", {})
     settings = db_record.get("settings", {})
     
@@ -214,7 +198,7 @@ else:
         yf_tickers = [f"{t}.TW" if re.match(r'^\d+[A-Za-z]?$', t) else t for t in tickers]
         download_list = yf_tickers + [tw_bench, us_bench]
 
-        print(f"⏳ 正在向 Yahoo Finance 請求歷史資料...")
+        print(f"⏳ 正在向 Yahoo Finance 請求歷史資料...", flush=True)
         prices = yf.download(download_list, period="1y")["Close"]
         
         if isinstance(prices, pd.Series):
@@ -222,7 +206,7 @@ else:
 
         returns = prices.pct_change()
 
-        print("🧠 開始計算 多因子 風險與動能參數...")
+        print("🧠 開始計算 多因子 風險與動能參數...", flush=True)
         for i, original_ticker in enumerate(tickers):
             yf_ticker = yf_tickers[i]
 
@@ -273,6 +257,6 @@ else:
 
             print(f"✅ [{original_ticker}] 更新 -> 基準:{bench_ticker}, Beta:{beta:.2f}, Std:{ann_std:.1f}%, RSI:{rsi_14:.1f}")
 
-        print("🚀 正在將多因子參數與最新估值打回 Supabase...")
-        supabase.table("portfolio_db").update({"stock_meta": stock_meta}).eq("id", 1).execute()
-        print("🎉 雲端自動化任務完成！")
+        print("🚀 正在將多因子參數與最新估值打回 Supabase...", flush=True)
+        supabase.table("portfolio_db").update({"stock_meta": stock_meta}).eq("id", target_id).execute()
+        print("🎉 雲端自動化任務完成！", flush=True)
