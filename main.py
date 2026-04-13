@@ -77,14 +77,21 @@ try:
     
     print(f"📈 計算完成 -> Rf: {macro_payload['market_rf']}%, Rm: {macro_payload['market_rm']}%, σm: {macro_payload['market_sm']}%", flush=True)
 
-    # F. 寫入 Supabase
+    # E. 寫入 Supabase (動態尋標防彈邏輯)
     print("🚀 正在同步至 Supabase...", flush=True)
-    res = supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", 1).execute()
     
-    if len(res.data) > 0:
-        print("✅ 數據同步完成！", flush=True)
+    # 💡 升級：不盲目猜測 id=1，直接去資料庫找「目前唯一活著的紀錄」
+    existing = supabase.table("portfolio_db").select("id").limit(1).execute()
+    
+    if len(existing.data) > 0:
+        target_id = existing.data[0]['id']
+        supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
+        print(f"✅ 數據同步完成！(已精準寫入至紀錄 id={target_id})", flush=True)
     else:
-        raise Exception("❌ 資料庫更新失敗：找不到對應的 id=1 紀錄。")
+        # 如果資料庫被清空了，就自動幫你建一筆最乾淨的初始資料
+        print("⚠️ 偵測到空資料庫，正在建立全新量化設定檔...", flush=True)
+        supabase.table("portfolio_db").insert({"id": 1, "macro_meta": macro_payload}).execute()
+        print("✅ 數據初始化並同步完成！", flush=True)
 
 except Exception as e:
     print(f"🔥 發生錯誤: {str(e)}", flush=True)
