@@ -317,6 +317,22 @@ createApp({
             const groups = {};
             let grandTotal = 0; 
 
+            // 🌟 新增：掃描交易紀錄，計算每檔股票的資金加權平均持有天數
+            const holdingDaysMap = {};
+            const today = new Date();
+            transactions.value.forEach(tx => {
+                if(!tx.ticker || tx.type !== 'Buy') return;
+                const t = tx.ticker.toUpperCase();
+                const txDate = new Date(tx.date);
+                const daysHeld = Math.max(1, (today - txDate) / (1000 * 60 * 60 * 24)); // 至少 1 天防呆
+                const investedAmount = Math.abs(tx.totalCashFlow);
+
+                if (!holdingDaysMap[t]) holdingDaysMap[t] = { totalInvested: 0, weightedDaysSum: 0 };
+                
+                holdingDaysMap[t].totalInvested += investedAmount;
+                holdingDaysMap[t].weightedDaysSum += (investedAmount * daysHeld);
+            });
+
             holdingsFlat.value.forEach(h => {
                 const rawPrice = priceMap.value[h.ticker];
                 const isUSD = (h.category === '美股');
@@ -329,7 +345,25 @@ createApp({
                 if (!groups[h.category]) groups[h.category] = { totalValue: 0, items: [] };
                 
                 const meta = stockMeta.value[h.ticker] || {};
+                const cumulativeReturn = h.totalCostTwd ? (mvTwd - h.totalCostTwd) / h.totalCostTwd : 0;
                 
+                // 🌟 核心計算：資金加權年化報酬率 (CAGR)
+                let annualizedReturn = cumulativeReturn * 100; // 預設先給累積報酬
+                let avgDaysHeld = 0;
+                
+                if (holdingDaysMap[h.ticker] && holdingDaysMap[h.ticker].totalInvested > 0) {
+                    avgDaysHeld = holdingDaysMap[h.ticker].weightedDaysSum / holdingDaysMap[h.ticker].totalInvested;
+                    // 如果平均持有超過 7 天才算年化，避免剛買一兩天報酬率被放大到宇宙去
+                    if (avgDaysHeld > 7) {
+                        const yearsHeld = avgDaysHeld / 365;
+                        annualizedReturn = (Math.pow(1 + cumulativeReturn, 1 / yearsHeld) - 1) * 100;
+                    }
+                }
+                
+                // 防呆：避免極端數字破壞圖表
+                if (annualizedReturn > 500) annualizedReturn = 500;
+                if (annualizedReturn < -100) annualizedReturn = -100;
+
                 const item = { 
                     ...h, isUSD, 
                     riskLevel: meta.risk || 'High',
@@ -340,7 +374,8 @@ createApp({
                     currentPriceTwd: currentPriceTwd,
                     marketValueTwd: mvTwd, 
                     unrealizedPLTwd: mvTwd - h.totalCostTwd, 
-                    returnRate: h.totalCostTwd ? (((mvTwd - h.totalCostTwd)/h.totalCostTwd)*100).toFixed(2) : 0 
+                    returnRate: cumulativeReturn * 100, // 介面上依然顯示累積報酬 (給人看的)
+                    annualizedReturnRate: annualizedReturn // 畫 SML 圖專用的年化報酬 (給機器看的)
                 };
                 
                groups[h.category].items.push(item);
@@ -1179,7 +1214,7 @@ createApp({
                     const assetPoints = [];
                     for(const cat in groupedHoldings.value) {
                        groupedHoldings.value[cat].items.forEach(i => {
-                            assetPoints.push({ x: i.beta, y: parseFloat(i.returnRate), name: i.ticker });
+                            assetPoints.push({ x: i.beta, y: parseFloat(i.annualizedReturnRate), name: i.ticker });
                         });
                     }
 
