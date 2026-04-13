@@ -1,9 +1,11 @@
 name: Daily Quant Pipeline
 
 on:
+  workflow_dispatch: # 保留手動按鈕，方便隨時測試
   schedule:
-    - cron: '0 21 * * 0'
-  workflow_dispatch: 
+    # 💡 設定在國際標準時 (UTC) 每週五晚上 16:00 執行
+    # 換算過來就是台灣時間 (UTC+8) 每週六早上 00:00
+    - cron: '0 16 * * 5'
 
 jobs:
   run-quant-engine:
@@ -11,12 +13,13 @@ jobs:
 
     steps:
       - name: 📥 下載程式碼
-        uses: actions/checkout@v4  # 🌟 升級到 v4
+        uses: actions/checkout@v4
 
       - name: 🐍 設定 Python 環境
-        uses: actions/setup-python@v5  # 🌟 升級到 v5
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: 'pip' # ⚡️ 關鍵升級：啟動 Pip 依賴快取，從此省下 1 分鐘安裝時間！
 
       - name: 📦 安裝套件
         run: |
