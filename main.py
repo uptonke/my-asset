@@ -22,22 +22,19 @@ supabase: Client = create_client(url, key)
 # ==========================================
 # 🌟 2. 總經與市場參數自動化抓取
 # ==========================================
-print("🌍 啟動量化大腦：開始抓取 FRED 與市場參數...")
+# 💡 升級 1：加入 flush=True，強迫 Python 瞬間把文字印到螢幕上，不准放緩衝區
+print("🌍 啟動量化大腦：開始抓取 FRED 與市場參數...", flush=True)
 
 try:
     def get_fred_latest(series_id):
+        print(f"   ⏳ 正在呼叫 FRED API ({series_id})...", flush=True)
         url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
-        
-        # 💡 核心升級：偽裝成正常的 Chrome 瀏覽器發出請求
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
-        res = requests.get(url, headers=headers)
-        
-        # 嚴格模式：如果真的遇到 404 或 403，直接噴出真實 HTTP 錯誤，不要再讓 Pandas 傻傻解析
+        # 💡 升級 2：加上 timeout=10，伺服器 10 秒不回覆就直接當作失敗，切斷連線！
+        res = requests.get(url, headers=headers, timeout=10)
         res.raise_for_status() 
-        
-        # 將真實的 CSV 文字檔轉交給 Pandas 處理
         df = pd.read_csv(io.StringIO(res.text), parse_dates=['DATE'], index_col='DATE', na_values='.')
         return float(df[series_id].ffill().dropna().iloc[-1])
 
@@ -47,18 +44,20 @@ try:
     hy = get_fred_latest('BAMLH0A0HYM2')
 
     # B. 抓取比特幣動能 (BTC-USD)
+    print("   ⏳ 正在呼叫 Yahoo Finance (BTC-USD)...", flush=True)
     btc_data = yf.download("BTC-USD", period="1mo", progress=False)["Close"]
     if isinstance(btc_data, pd.DataFrame): btc_data = btc_data.iloc[:, 0]
     btc_mom = ((btc_data.iloc[-1] / btc_data.iloc[0]) - 1) * 100
 
-    # C. 抓取 SPY 計算 SML/CML 市場參數 (10年長期與1年短期波動)
+    # C. 抓取 SPY 計算 SML/CML 市場參數
+    print("   ⏳ 正在呼叫 Yahoo Finance (SPY 10年數據)...", flush=True)
     spy = yf.download("SPY", period="10y", progress=False)["Close"]
     if isinstance(spy, pd.DataFrame): spy = spy.iloc[:, 0]
     
     spy_cagr = ((spy.iloc[-1] / spy.iloc[0]) ** (1/10)) - 1
     spy_vol = spy.tail(252).pct_change().std() * np.sqrt(252)
 
-    # D. 封裝數據 (強制轉型 float 以確保 JSON 序列化成功)
+    # D. 封裝數據
     macro_payload = {
         "yield_10y": float(round(y10, 2)),
         "yield_2y": float(round(y2, 2)),
@@ -70,19 +69,19 @@ try:
         "market_sm": float(round(spy_vol * 100, 2))
     }
     
-    print(f"📈 計算完成 -> Rf: {macro_payload['market_rf']}%, Rm: {macro_payload['market_rm']}%, σm: {macro_payload['market_sm']}%")
+    print(f"📈 計算完成 -> Rf: {macro_payload['market_rf']}%, Rm: {macro_payload['market_rm']}%, σm: {macro_payload['market_sm']}%", flush=True)
 
     # E. 寫入 Supabase
-    print("🚀 正在同步至 Supabase...")
+    print("🚀 正在同步至 Supabase...", flush=True)
     res = supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", 1).execute()
     
     if len(res.data) > 0:
-        print("✅ 數據同步完成！")
+        print("✅ 數據同步完成！", flush=True)
     else:
         raise Exception("❌ 資料庫更新失敗：找不到對應的 id=1 紀錄。")
 
 except Exception as e:
-    print(f"🔥 發生錯誤: {str(e)}")
+    print(f"🔥 發生錯誤: {str(e)}", flush=True)
     raise e
 
 # ==========================================
