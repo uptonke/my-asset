@@ -27,7 +27,18 @@ print("🌍 啟動量化大腦：開始抓取 FRED 與市場參數...")
 try:
     def get_fred_latest(series_id):
         url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
-        df = pd.read_csv(url, parse_dates=['DATE'], index_col='DATE', na_values='.')
+        
+        # 💡 核心升級：偽裝成正常的 Chrome 瀏覽器發出請求
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        res = requests.get(url, headers=headers)
+        
+        # 嚴格模式：如果真的遇到 404 或 403，直接噴出真實 HTTP 錯誤，不要再讓 Pandas 傻傻解析
+        res.raise_for_status() 
+        
+        # 將真實的 CSV 文字檔轉交給 Pandas 處理
+        df = pd.read_csv(io.StringIO(res.text), parse_dates=['DATE'], index_col='DATE', na_values='.')
         return float(df[series_id].ffill().dropna().iloc[-1])
 
     # A. 抓取 FRED 數據
