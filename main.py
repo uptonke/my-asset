@@ -207,18 +207,43 @@ else:
         def contains_chinese(text):
             return bool(re.search(r'[\u4e00-\u9fff]', text))
 
+        if tickers:
+        tw_bench = "^TWII"  
+        us_bench = "SPY"    
+        
+        # 🌟 1. 建立基金替身映射表 (Proxy Mapping)
+        # 用高度相關的 ETF 替代共同基金，計算出完美的 Beta 與標準差
+        proxy_map = {
+            "統一奔騰": "00981A.TW",      # 科技型基金 -> 富邦科技 ETF
+            "統一黑馬": "00981A.TW",      # 大型股基金 -> 元大台灣 50
+            "安聯台灣科技": "0052.TW.TW",  # 科技型基金 -> 富邦科技 ETF
+            "加密貨幣": "BTC-USD"       # 直接對應 Yahoo 的比特幣代號
+        }
+        
+        def contains_chinese(text):
+            return bool(re.search(r'[\u4e00-\u9fff]', text))
+
         yf_tickers = []
+        download_list = [tw_bench, us_bench]
+        
+        # 🌟 2. 智慧分類與替換
         for t in tickers:
-            if contains_chinese(t):
-                # 如果是中文基金，保留原本代號，但不加 .TW
-                yf_tickers.append(t) 
+            if t in proxy_map:
+                proxy_ticker = proxy_map[t]
+                yf_tickers.append(proxy_ticker) # 偷偷換成替身
+                if proxy_ticker not in download_list:
+                    download_list.append(proxy_ticker)
+            elif contains_chinese(t):
+                yf_tickers.append(t) # 沒有替身的中文，稍後略過
             elif re.match(r'^\d+[A-Za-z]?$', t):
-                yf_tickers.append(f"{t}.TW")
+                tw_ticker = f"{t}.TW"
+                yf_tickers.append(tw_ticker)
+                if tw_ticker not in download_list:
+                    download_list.append(tw_ticker)
             else:
                 yf_tickers.append(t)
-                
-        # 只把非中文的代號丟給 Yahoo 下載
-        download_list = [t for t in yf_tickers if not contains_chinese(t)] + [tw_bench, us_bench]
+                if t not in download_list:
+                    download_list.append(t)
 
         print(f"⏳ 正在向 Yahoo Finance 請求歷史資料...", flush=True)
         prices = yf.download(download_list, period="1y")["Close"]
@@ -230,15 +255,18 @@ else:
 
         print("🧠 開始計算 多因子 風險與動能參數...", flush=True)
         for i, original_ticker in enumerate(tickers):
-            yf_ticker = yf_tickers[i]
+            yf_ticker = yf_tickers[i] # 這裡可能已經被替換成了 0052.TW 等替身
 
-            # 🌟 優先塞入 Google Sheet 的自訂報價
+            # 🌟 最新價格：永遠優先相信 Google Sheet 抓回來的真實基金淨值
             if original_ticker in sheet_prices:
                 stock_meta[original_ticker]["last_price"] = float(sheet_prices[original_ticker])
 
-            # 如果是中文基金，或者在 Yahoo 抓不到，直接跳過量化參數運算
-            if contains_chinese(original_ticker) or yf_ticker not in returns.columns:
-                print(f"⚠️ [{original_ticker}] 為自訂/無報價資產，保留現有風險參數。")
+            # 如果沒有替身且是中文，就跳過風險計算
+            if contains_chinese(original_ticker) and original_ticker not in proxy_map:
+                print(f"⚠️ [{original_ticker}] 無替身標的，保留現有風險參數。")
+                continue
+                
+            if yf_ticker not in returns.columns:
                 continue
 
             stock_close = prices[yf_ticker].dropna()
@@ -246,6 +274,8 @@ else:
             
             if len(stock_ret) < 60: 
                 continue
+
+            # ... 下面接著你原本的計算邏輯 (is_tw_stock = ..., ewma_var = ... 一直到 print)
 
             is_tw_stock = yf_ticker.endswith(".TW")
             bench_ticker = tw_bench if is_tw_stock else us_bench
