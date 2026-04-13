@@ -39,12 +39,10 @@ def get_sheet_prices(sheet_url):
 # ==========================================
 # 🌟 2. 總經與另類數據抓取 (Macro & Alternative Data)
 # ==========================================
-print("🌍 開始抓取 FRED 總經數據與比特幣避險情緒...")
+print("🌍 開始抓取 FRED 總經數據與市場參數...")
 try:
-    # 💡 升級：自製 FRED 爬蟲，不再依賴年久失修的套件！
     def get_fred_latest(series_id):
         url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
-        # FRED 假日時會填入 '.'，必須視為 NaN 並向前填補
         df = pd.read_csv(url, parse_dates=['DATE'], index_col='DATE', na_values='.')
         return float(df[series_id].ffill().dropna().iloc[-1])
 
@@ -58,17 +56,38 @@ try:
         btc = btc.iloc[:, 0]
     btc_1m_mom = ((btc.iloc[-1] / btc.iloc[0]) - 1) * 100
 
+    # 💡 升級：自動計算 SML/CML 需要的市場參數
+    market_rf = round(yield_10y, 2)
+    
+    # 抓取 SPY 10年數據來算 Rm (長期預期報酬) 與 σm (近期波動度)
+    spy_data = yf.download("SPY", period="10y", progress=False)["Close"]
+    if isinstance(spy_data, pd.DataFrame): 
+        spy_data = spy_data.iloc[:, 0]
+        
+    # Rm: SPY 10年年化報酬率 (CAGR)
+    spy_10y_cagr = ((spy_data.iloc[-1] / spy_data.iloc[0]) ** (1/10)) - 1
+    market_rm = round(spy_10y_cagr * 100, 2)
+    
+    # σm: SPY 近1年年化標準差
+    spy_1y = spy_data.tail(252) # 抓最後 252 個交易日
+    market_sm = round(spy_1y.pct_change().dropna().std() * np.sqrt(252) * 100, 2)
+
     macro_meta = {
         "yield_10y": round(yield_10y, 2),
         "yield_2y": round(yield_2y, 2),
         "yield_curve": round(yield_curve, 2),
         "hy_spread": round(hy_spread, 2),
-        "btc_1m_mom": round(btc_1m_mom, 2)
+        "btc_1m_mom": round(btc_1m_mom, 2),
+        "market_rf": market_rf,
+        "market_rm": market_rm,
+        "market_sm": market_sm
     }
     
-    print(f"📊 總經狀態 -> 10Y-2Y利差: {yield_curve:.2f}%, 垃圾債利差: {hy_spread:.2f}%, BTC月動能: {btc_1m_mom:.1f}%")
+    print(f"📊 總經狀態 -> 10Y-2Y利差: {yield_curve:.2f}%, 垃圾債利差: {hy_spread:.2f}%")
+    print(f"📈 SML市場參數 -> Rf: {market_rf}%, Rm: {market_rm}%, σm: {market_sm}%")
+    
     supabase.table("portfolio_db").update({"macro_meta": macro_meta}).eq("id", 1).execute()
-    print("✅ 總經數據已上傳至雲端大腦！")
+    print("✅ 總經與市場參數已上傳至雲端大腦！")
 
 except Exception as e:
     print(f"⚠️ 總經數據抓取失敗，錯誤訊息：{e}")

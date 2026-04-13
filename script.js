@@ -184,6 +184,11 @@ createApp({
                             macroRegime.value = 'Normal';
                             console.log("⚖️ 判定結果：【正常 Normal】");
                         }
+                        // 👇 在總經大腦判定結束前，把參數塞給 Vue 變數
+                        if (macroData.market_rf) riskParams.value.rf = macroData.market_rf;
+                        if (macroData.market_rm) riskParams.value.rm = macroData.market_rm;
+                        if (macroData.market_sm) riskParams.value.sm = macroData.market_sm;
+                        
                         console.groupEnd();
                     }
                     // 👆👆👆 總經大腦結束 👆👆👆
