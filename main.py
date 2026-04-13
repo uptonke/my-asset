@@ -114,7 +114,7 @@ try:
             """
             
             # 使用高穩定度的 flash 模型
-            response = client.models.generate_content(model='gemini-1.5-flash', contents=prompt)
+            response = client.models.generate_content(model='gemini-1.5-flash-latest', contents=prompt)
             
             text = response.text.strip().strip('`')
             if text.lower().startswith('json'):
