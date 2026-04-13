@@ -81,13 +81,13 @@ try:
     print(f"📈 計算完成 -> Rf: {macro_payload['market_rf']}%, Rm: {macro_payload['market_rm']}%, σm: {macro_payload['market_sm']}%", flush=True)
 
     # ==========================================
-    # 🧠 F. Gemini AI 總經深度解析 (切換 2.5 Lite + 重試裝甲)
+    # 🧠 F. Gemini AI 雙模組備援診斷系統 (2.5 -> 2.5 Lite)
     # ==========================================
     print("🤖 喚醒 Gemini AI 進行總經與風險診斷...", flush=True)
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
     
     if GEMINI_API_KEY:
-        import time # 確保引入時間模組
+        import time
         try:
             client = genai.Client(api_key=GEMINI_API_KEY)
             prompt = f"""
@@ -114,29 +114,37 @@ try:
             }}
             """
             
-            max_retries = 3
-            for attempt in range(max_retries):
+            # 🌟 定義優先順序：2.5 Flash -> 2.5 Flash-Lite
+            model_pipeline = ["gemini-2.5-flash", "gemini-2.5-flash-lite"]
+            ai_success = False
+
+            for model_name in model_pipeline:
                 try:
-                    # 🌟 強制使用 2.5 世代的極速版，避開 2.0 限制與 2.5 主力的塞車潮
-                    response = client.models.generate_content(model='gemini-2.5-flash-lite', contents=prompt)
+                    print(f"   🚀 嘗試使用模型: {model_name}...", flush=True)
+                    response = client.models.generate_content(model=model_name, contents=prompt)
                     
                     text = response.text.strip().strip('`')
                     if text.lower().startswith('json'):
                         text = text[4:].strip()
                     
                     ai_insights = json.loads(text)
-                    print("✅ AI 診斷報告生成成功！", flush=True)
+                    print(f"✅ AI 診斷成功！(使用模型: {model_name})", flush=True)
                     macro_payload['ai_analysis'] = ai_insights
-                    break  # 成功寫入就跳出迴圈
+                    ai_success = True
+                    break  # 成功就立刻跳出，不執行備援
                     
                 except Exception as e:
-                    if "503" in str(e) or "429" in str(e):
-                        wait_time = 5 * (attempt + 1) # 等待 5秒, 10秒, 15秒
-                        print(f"⚠️ 伺服器忙碌中 (503/429)，{wait_time} 秒後進行第 {attempt + 1} 次重試...", flush=True)
-                        time.sleep(wait_time)
+                    # 判斷是否為伺服器忙碌、配額耗盡或 503 錯誤
+                    if "503" in str(e) or "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                        print(f"⚠️ 模型 {model_name} 暫時塞車或權限受限，啟動備援機制...", flush=True)
+                        time.sleep(1) # 短暫緩衝 1 秒後切換
+                        continue # 嘗試下一個模型
                     else:
-                        print(f"⚠️ AI 發生語法或未知錯誤，放棄重試: {e}", flush=True)
-                        break
+                        print(f"⚠️ 模型 {model_name} 發生非預期錯誤: {e}", flush=True)
+                        break # 非伺服器問題則不嘗試備援，直接跳出
+            
+            if not ai_success:
+                print("⚠️ 備援管線全部失敗，本次將跳過 AI 診斷報告。", flush=True)
 
         except Exception as e:
             print(f"⚠️ AI 客戶端初始化失敗: {e}", flush=True)
