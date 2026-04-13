@@ -1286,8 +1286,8 @@ createApp({
                     ];
                     chartRolling.update();
                 }
-            });
-        }
+            };
+        })
         
         onMounted(() => { 
             loadDataFromCloud(); 
