@@ -130,6 +130,9 @@ createApp({
         
         const exchangeRate = ref(32.5);
         const sheetUrl = ref('');
+        
+        // 🌟 存放從 Supabase 抓下來的 Gemini AI 報告
+        const cloudAiAnalysis = ref(null);
 
         const fireTargets = ref([
             { age: 28, year: 2032, amount: 5000000 },
@@ -184,10 +187,16 @@ createApp({
                             macroRegime.value = 'Normal';
                             console.log("⚖️ 判定結果：【正常 Normal】");
                         }
-                        // 👇 在總經大腦判定結束前，把參數塞給 Vue 變數
+                        
                         if (macroData.market_rf) riskParams.value.rf = macroData.market_rf;
                         if (macroData.market_rm) riskParams.value.rm = macroData.market_rm;
                         if (macroData.market_sm) riskParams.value.sm = macroData.market_sm;
+                        
+                        // 🌟 承接雲端 Gemini 的報告
+                        if (macroData.ai_analysis) {
+                            cloudAiAnalysis.value = macroData.ai_analysis;
+                            console.log("🤖 成功載入雲端 AI 報告！", cloudAiAnalysis.value);
+                        }
                         
                         console.groupEnd();
                     }
@@ -573,6 +582,9 @@ createApp({
              }; 
         }, { deep: true, immediate: true });
 
+        // ==========================================
+        // 🌟 終極升級：動態掛載雲端 Gemini 報告
+        // ==========================================
         const aiInsights = computed(() => {
             const val = totalStockValueTwd.value;
             const ret = parseFloat(totalStockReturnRate.value);
@@ -585,6 +597,28 @@ createApp({
             
             if (val === 0) return { summary: '尚無庫存資料，請先新增交易紀錄。', details: [] };
 
+            // 💡 如果資料庫已經有 Gemini 的報告，就直接拿出來用！
+            if (cloudAiAnalysis.value && cloudAiAnalysis.value.summary) {
+                // 為了保留投資組合的「本土」檢查，我們把過度集中的警告疊加在 AI 報告上面
+                const details = [...cloudAiAnalysis.value.details];
+                
+                let overweights = [];
+                for (const cat in groupedHoldings.value) {
+                    groupedHoldings.value[cat].items.forEach(item => {
+                        if (item.totalWeight > 0.15) overweights.push(item.ticker);
+                    });
+                }
+                if (overweights.length > 0) {
+                    details.push({ icon: '🎯', color: 'text-orange-400', title: '集中度警報 (系統本地偵測)', desc: `[ ${overweights.join(', ')} ] 佔總資產權重過高 (>15%)。請執行 MC 最佳化進行 Rebalance。` });
+                }
+
+                return {
+                    summary: `🤖 【AI 即時診斷】` + cloudAiAnalysis.value.summary,
+                    details: details
+                };
+            }
+
+            // ⚠️ 以下是備用方案：如果 Gemini 當機或還沒產出報告，退回原本的靜態引擎
             const details = [];
             let score = 100; 
 
@@ -632,9 +666,9 @@ createApp({
             }
 
             let summary = '';
-            if (score >= 95) summary = `狀態極佳 (評分: ${Math.min(score, 100)})：資產配置極度健康，資金效率與 Sharpe 表現卓越。`;
-            else if (score >= 75) summary = `狀態良好 (評分: ${score})：投組穩健，但可點此展開檢視 VaR 風險或部分部位之集中度。`;
-            else summary = `需要注意 (評分: ${score})：偵測到非系統性風險或低夏普值，強烈建議展開報告並執行 MC 最佳化。`;
+            if (score >= 95) summary = `狀態極佳 (靜態評分: ${Math.min(score, 100)})：資產配置健康。(等待下次雲端排程生成 AI 報告)`;
+            else if (score >= 75) summary = `狀態良好 (靜態評分: ${score})：投組穩健。(等待下次雲端排程生成 AI 報告)`;
+            else summary = `需要注意 (靜態評分: ${score})：偵測到非系統性風險或低夏普值。(等待下次雲端排程生成 AI 報告)`;
 
             return { summary, details };
         });
