@@ -203,20 +203,11 @@ else:
         tw_bench = "^TWII"  
         us_bench = "SPY"    
         
-        # 🌟 過濾邏輯：如果 Ticker 包含中文，就不送給 Yahoo API
-        def contains_chinese(text):
-            return bool(re.search(r'[\u4e00-\u9fff]', text))
-
-        if tickers:
-        tw_bench = "^TWII"  
-        us_bench = "SPY"    
-        
         # 🌟 1. 建立基金替身映射表 (Proxy Mapping)
         # 用高度相關的 ETF 替代共同基金，計算出完美的 Beta 與標準差
         proxy_map = {
             "統一奔騰": "00981A.TW",      # 科技型基金 -> 富邦科技 ETF
-            "統一黑馬": "00981A.TW",      # 大型股基金 -> 元大台灣 50
-            "安聯台灣科技": "0052.TW.TW",  # 科技型基金 -> 富邦科技 ETF
+            "安聯台灣科技": "0052.TW",  # 科技型基金 -> 富邦科技 ETF
             "加密貨幣": "BTC-USD"       # 直接對應 Yahoo 的比特幣代號
         }
         
