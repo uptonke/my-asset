@@ -423,7 +423,10 @@ createApp({
                         }
                     });
                     
-                    const netFlow = hasTx ? injection : (item.cost - prev.cost);
+                    // 💡 物理隔離：4/11 以前的合成數據強制使用粗算，避免歷史流水帳衝突
+                    const netFlow = (new Date(item.date) <= new Date('2026-04-11')) 
+                        ? (item.cost - prev.cost) 
+                        : (hasTx ? injection : (item.cost - prev.cost));
                     const denom = prev.assets + (netFlow / 2);
                     
                     if (denom > 0) dailyReturn = (item.assets - prev.assets - netFlow) / denom;
