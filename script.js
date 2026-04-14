@@ -131,6 +131,8 @@ createApp({
         const exchangeRate = ref(32.5);
         const sheetUrl = ref('');
         
+        // 🌟 新增：存放從 Supabase 抓下來的 Binance USDT 總餘額
+        const binanceUsdtValue = ref(0);
         // 🌟 存放從 Supabase 抓下來的 Gemini AI 報告
         const cloudAiAnalysis = ref(null);
 
@@ -192,6 +194,12 @@ createApp({
                         if (macroData.market_rm) riskParams.value.rm = macroData.market_rm;
                         if (macroData.market_sm) riskParams.value.sm = macroData.market_sm;
                         
+                        // 🌟 承接幣安總資產
+                        if (macroData.binance_usdt_value) {
+                            binanceUsdtValue.value = macroData.binance_usdt_value;
+                            console.log(`🪙 幣安雲端同步餘額: $${binanceUsdtValue.value} USDT`);
+                        }
+
                         // 🌟 承接雲端 Gemini 的報告
                         if (macroData.ai_analysis) {
                             cloudAiAnalysis.value = macroData.ai_analysis;
@@ -347,7 +355,12 @@ createApp({
                 const isUSD = (h.category === '美股');
                 const effectiveNativePrice = h.manualPrice || rawPrice || (h.totalCostTwd / h.shares / (isUSD ? exchangeRate.value : 1));
                 const currentPriceTwd = effectiveNativePrice * (isUSD ? exchangeRate.value : 1);
-                const mvTwd = h.shares * currentPriceTwd;
+                
+                // 🌟 核心：動態覆蓋加密貨幣市值
+                let mvTwd = h.shares * currentPriceTwd;
+                if (h.ticker === '加密貨幣' && binanceUsdtValue.value > 0) {
+                    mvTwd = binanceUsdtValue.value * exchangeRate.value;
+                }
 
                 grandTotal += mvTwd; 
 
@@ -372,22 +385,40 @@ createApp({
                 if (annualizedReturn > 5) annualizedReturn = 5;
                 if (annualizedReturn < -1) annualizedReturn = -1;
 
+                // 🌟 核心：技術面訊號轉換邏輯
+                const rsi = meta.rsi || 50;
+                const macdH = meta.macd_h || 0;
+
+                let rsiSignal = '⚖️ 中性';
+                let rsiColor = 'text-gray-400 border-gray-600';
+                if (rsi >= 70) { rsiSignal = '🔥 超買 (>70)'; rsiColor = 'text-red-400 border-red-900/50 bg-red-900/20'; }
+                else if (rsi <= 30) { rsiSignal = '🧊 超賣 (<30)'; rsiColor = 'text-green-400 border-green-900/50 bg-green-900/20'; }
+
+                let macdSignal = '無訊號';
+                let macdColor = 'text-gray-400 border-gray-600';
+                if (macdH > 0) { macdSignal = '🟢 黃金交叉 (多)'; macdColor = 'text-green-400 border-green-900/50 bg-green-900/20'; }
+                else if (macdH < 0) { macdSignal = '🔴 死亡交叉 (空)'; macdColor = 'text-red-400 border-red-900/50 bg-red-900/20'; }
+
                 const item = { 
                     ...h, isUSD, 
                     riskLevel: meta.risk || 'High',
                     beta: meta.beta || 1.0,
                     stdDev: meta.std || 20.0,
+                    techSignals: {
+                        rsiVal: rsi.toFixed(1), rsiText: rsiSignal, rsiColor: rsiColor,
+                        macdVal: macdH.toFixed(3), macdText: macdSignal, macdColor: macdColor
+                    },
                     fetchedPrice: rawPrice,
                     avgCostTwd: h.totalCostTwd / h.shares, 
                     currentPriceTwd: currentPriceTwd,
-                    marketValueTwd: mvTwd, 
-                    unrealizedPLTwd: mvTwd - h.totalCostTwd, 
-                    returnRate: cumulativeReturn * 100, // 累積報酬 (介面用)
-                    annualizedReturnRate: annualizedReturn * 100 // 畫 SML 圖專用的年化報酬 (給機器看的)
+                    marketValueTwd: mvTwd, // 🌟 確保吃到的是覆寫後的值
+                    unrealizedPLTwd: mvTwd - h.totalCostTwd, // 🌟 確保吃到的是覆寫後的值
+                    returnRate: cumulativeReturn * 100, 
+                    annualizedReturnRate: annualizedReturn * 100 
                 };
                 
-               groups[h.category].items.push(item);
-               groups[h.category].totalValue += mvTwd;
+                groups[h.category].items.push(item);
+                groups[h.category].totalValue += mvTwd; // 🌟 確保吃到的是覆寫後的值
             });
 
             for (const cat in groups) {
@@ -942,7 +973,7 @@ createApp({
             const assets = mcAvailableAssets.value;
             
             if(assets.length === 0) {
-                alert("請先在「庫存」分頁填寫標的的 Beta 與 標準差 (不能為0)");
+                alert("請先在「庫存」分頁填寫標的 Beta 與 標準差 (不能為0)");
                 showMCModal.value = false; return;
             }
 
@@ -978,7 +1009,7 @@ createApp({
             let bestPort = null;
 
             let riskAversionA = 0;
-            if (mcRisk.value === 'averse') riskAversionA = 10;      
+            if (mcRisk.value === 'averse') riskAversionA = 10;     
             else if (mcRisk.value === 'aggressive') riskAversionA = 1; 
 
             for (let p = 0; p < n_portfolios; p++) {
@@ -1291,7 +1322,7 @@ createApp({
                     // 先找出所有庫存中最大的標準差 (X軸)
                     let maxAssetStd = 0;
                     for(const cat in groupedHoldings.value) {
-                       groupedHoldings.value[cat].items.forEach(i => {
+                        groupedHoldings.value[cat].items.forEach(i => {
                             if(i.stdDev > maxAssetStd) maxAssetStd = i.stdDev;
                         });
                     }
@@ -1317,7 +1348,7 @@ createApp({
                     const assetPoints = [];
                     const assetPointsCML = [];
                     for(const cat in groupedHoldings.value) {
-                       groupedHoldings.value[cat].items.forEach(i => {
+                        groupedHoldings.value[cat].items.forEach(i => {
                             // 🌟 這裡確保 SML 與 CML 都精準吃到你後台計算的 annualizedReturnRate
                             assetPoints.push({ x: i.beta, y: parseFloat(i.annualizedReturnRate || 0), name: i.ticker });
                             assetPointsCML.push({ x: i.stdDev, y: parseFloat(i.annualizedReturnRate || 0), name: i.ticker });
@@ -1409,7 +1440,8 @@ createApp({
             fireTargets, activeFireStageIndex, activeFireTarget, isLoggedIn, loginEmail, loginPassword, loginError, 
             isAuthenticating, handleLogin, handleLogout, checkAuth, fireProgress, 
             updateCharts, addFireTarget, macroRegime, enableBlackSwan, mcRisk, blViews, mcAvailableAssets, addBlView, enableInflation,
-            generateAutoViews, runMonteCarlo, stressTestResults
+            generateAutoViews, runMonteCarlo, stressTestResults,
+            binanceUsdtValue // 🌟 記得匯出給 HTML 使用
         };
     }
 }).mount('#app');
