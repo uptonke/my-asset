@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>股票紀錄 v10 (Supabase Enterprise Edition)</title>
+    <title>股票紀錄 v11 (Supabase Enterprise Edition)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
@@ -102,6 +102,9 @@
                     <div class="glass p-6 rounded-2xl border-t-4 border-yellow-500">
                         <div class="text-xs text-gray-400 font-bold uppercase">投資總市值 (TWD)</div>
                         <div class="text-3xl font-bold text-white mt-2 font-mono">NT$ {{ formatNumber(totalStockValueTwd) }}</div>
+                        <div v-if="binanceUsdtValue && binanceUsdtValue > 0" class="mt-2 inline-flex items-center gap-1 text-[10px] bg-gray-800/80 text-yellow-500 font-bold px-2 py-1 rounded border border-gray-700">
+                            <i class="fab fa-btc"></i> 含 CeFi: <span class="text-white">{{ formatNumber(binanceUsdtValue) }} USDT</span>
+                        </div>
                     </div>
                     <div class="glass p-6 rounded-2xl border-t-4 border-emerald-500">
                         <div class="text-xs text-gray-400 font-bold uppercase">投資總成本 (TWD)</div>
@@ -253,9 +256,9 @@
                 <div class="glass rounded-xl overflow-hidden flex flex-col flex-1">
                     <div class="p-4 bg-gray-800/50 border-b border-gray-700 flex justify-between items-center">
                         <h3 class="font-bold text-white"><i class="fas fa-layer-group text-yellow-500 mr-2"></i>庫存明細 (Risk Monitor)</h3>
-                        <div class="text-xs text-gray-400">
-                             <span v-if="lastUpdate" class="text-green-400 mr-2">更新於: {{ lastUpdate }}</span>
-                             <span class="text-red-400 font-bold ml-2"><i class="fas fa-exclamation-triangle"></i> 警告: 單一標的佔總資產 > 15%</span>
+                        <div class="text-xs text-gray-400 flex items-center gap-4">
+                             <span v-if="lastUpdate" class="text-green-400">更新於: {{ lastUpdate }}</span>
+                             <span class="text-red-400 font-bold"><i class="fas fa-exclamation-triangle"></i> 警告: 單一標的 > 15%</span>
                         </div>
                     </div>
                     
@@ -271,6 +274,7 @@
                                     <th class="text-right">均價(TWD)</th>
                                     <th class="p-2 text-right">現值(TWD)</th>
                                     <th class="p-2 text-right">市值(TWD)</th>
+                                    <th class="p-2 text-center text-indigo-300" title="RSI & MACD">技術訊號</th>
                                     <th class="p-2 text-right text-gray-300">累積報酬</th>
                                     <th class="p-2 text-right text-purple-300" title="資金加權年化報酬率">年化 (CAGR)</th>
                                     <th class="p-2 text-right">權重%(總體)</th>
@@ -279,17 +283,18 @@
                             <tbody class="text-sm">
                                 <template v-for="(group, catName) in groupedHoldings" :key="catName">
                                     <tr class="group-header">
-                                        <td colspan="11" class="pl-6 py-2 border-t border-b border-gray-600">
-                                           <i class="fas fa-folder-open mr-2"></i> {{ catName }} 
+                                        <td colspan="12" class="pl-6 py-2 border-t border-b border-gray-600 bg-gray-800/30">
+                                           <i class="fas fa-folder-open mr-2 text-blue-400"></i> <span class="font-bold text-gray-200">{{ catName }}</span> 
                                            <span class="text-gray-400 text-xs font-normal ml-2">(Total: {{ formatNumber(group.totalValue) }})</span>
                                         </td>
                                     </tr>
                                     <tr v-for="stock in group.items" :key="stock.ticker" 
-                                        v-memo="[stock.shares, stock.currentPriceTwd, stock.beta, stock.stdDev, stock.riskLevel, stock.manualPrice]"
+                                        v-memo="[stock.shares, stock.currentPriceTwd, stock.beta, stock.stdDev, stock.riskLevel, stock.manualPrice, stock.techSignals]"
                                         class="hover:bg-white/5 transition-colors">
-                                        <td class="pl-6 font-bold text-white flex items-center gap-2">
+                                        
+                                        <td class="pl-6 font-bold text-white flex items-center gap-2 py-2">
                                             {{ stock.ticker }}
-                                           <span v-if="stock.isUSD" class="text-[9px] bg-gray-700 px-1 rounded text-gray-300">USD</span>
+                                            <span v-if="stock.isUSD" class="text-[9px] bg-gray-700 px-1 rounded text-gray-300">USD</span>
                                         </td>
                                         <td>
                                            <select v-model="stock.riskLevel" @change="updateMeta(stock)" class="risk-select" :class="stock.riskLevel === 'Low' ? 'risk-low' : 'risk-high'">
@@ -303,7 +308,7 @@
                                            <input v-model.number="stock.stdDev" @change="updateMeta(stock)" class="w-12 bg-transparent text-center border-b border-gray-600 focus:border-yellow-400 outline-none text-yellow-400" placeholder="20">
                                         </td>
 
-                                        <td class="text-right font-mono text-gray-300">{{ formatNumber(stock.shares) }}</td>
+                                        <td class="text-right font-mono text-gray-300">{{ stock.ticker === '加密貨幣' ? 'Auto' : formatNumber(stock.shares) }}</td>
                                         <td class="text-right font-mono text-gray-400">{{ formatNumber(stock.avgCostTwd) }}</td>
                                         <td class="text-right font-mono font-bold text-yellow-400">
                                            <div class="flex items-center justify-end gap-2">
@@ -314,6 +319,18 @@
                                         </td>
                                         <td class="text-right font-mono text-white font-bold">{{ formatNumber(stock.marketValueTwd) }}</td>
                                         
+                                        <td class="p-2 text-center text-xs">
+                                            <div class="flex flex-col gap-1 items-center justify-center" v-if="stock.techSignals">
+                                                <span :class="stock.techSignals.rsiColor" class="font-bold bg-gray-800 px-1.5 py-0.5 rounded border border-gray-700 whitespace-nowrap shadow-sm">
+                                                    RSI: {{ stock.techSignals.rsiVal }} ({{ stock.techSignals.rsiText }})
+                                                </span>
+                                                <span :class="stock.techSignals.macdColor" class="font-bold bg-gray-800 px-1.5 py-0.5 rounded border border-gray-700 whitespace-nowrap shadow-sm">
+                                                    {{ stock.techSignals.macdText }}
+                                                </span>
+                                            </div>
+                                            <div v-else class="text-gray-600">-</div>
+                                        </td>
+
                                         <td class="p-2 text-right font-medium" :class="stock.returnRate >= 0 ? 'text-red-400' : 'text-green-400'">
                                             {{ parseFloat(stock.returnRate).toFixed(2) }}%
                                         </td>
@@ -451,7 +468,9 @@
                     </div>
                 </div>
 
-            </div> <div v-show="currentTab === 'analytics'" class="flex flex-col h-full space-y-4 animate-fade-in">
+            </div> 
+
+            <div v-show="currentTab === 'analytics'" class="flex flex-col h-full space-y-4 animate-fade-in">
                 <div class="p-4 rounded-xl flex flex-wrap items-center justify-between gap-4 border transition-colors duration-500" :class="isSimMode ? 'glass-sim border-red-900/50' : 'glass border-white/5'">
                     <div class="flex flex-col md:flex-row gap-6 w-full md:w-auto">
                         <div>
