@@ -223,13 +223,17 @@ def get_sheet_prices(url_str):
     if not url_str:
         return {}
     try:
+        # 正則表達式抓取 ID 和 GID
         match = re.search(r'/d/([a-zA-Z0-9-_]+)', url_str)
         gid_match = re.search(r'[#&?]gid=([0-9]+)', url_str)
         if not match:
             return {}
+        
         sheet_id = match.group(1)
         gid = gid_match.group(1) if gid_match else '0'
-        csv_url = f"[https://docs.google.com/spreadsheets/d/](https://docs.google.com/spreadsheets/d/){sheet_id}/gviz/tq?tqx=out:csv&gid={gid}"
+        
+        # 🌟 確保這裡的 URL 是純文字網址，沒有括號
+        csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&gid={gid}"
         
         response = requests.get(csv_url, timeout=10)
         response.raise_for_status() 
@@ -251,7 +255,7 @@ def get_sheet_prices(url_str):
         print(f"✅ 成功抓取 {len(price_map)} 筆自訂報價！", flush=True)
         return price_map
     except Exception as e:
-        print(f"⚠️ Sheet 報價讀取失敗，將使用預設報價: {e}", flush=True)
+        print(f"⚠️ Sheet 報價讀取失敗: {e}", flush=True)
         return {}
 
 response = supabase.table("portfolio_db").select("*").limit(1).execute()
