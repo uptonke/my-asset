@@ -78,6 +78,16 @@ createApp({
         const showMCModal = ref(false); 
         const mcOptimal = ref(null); 
 
+        // 🌟 新增：控制手機版卡片展開的變數與函數
+        const expandedCardTicker = ref(null);
+        function toggleCard(ticker) {
+            if (expandedCardTicker.value === ticker) {
+                expandedCardTicker.value = null; // 再次點擊則收合
+            } else {
+                expandedCardTicker.value = ticker; // 展開被點擊的卡片
+            }
+        }
+
         // ==========================================
         // 🔒 Auth & Session Management (Vue 版)
         // ==========================================
@@ -1433,7 +1443,8 @@ createApp({
             fireTargets, activeFireStageIndex, activeFireTarget, isLoggedIn, loginEmail, loginPassword, loginError, 
             isAuthenticating, handleLogin, handleLogout, checkAuth, fireProgress, 
             updateCharts, addFireTarget, macroRegime, enableBlackSwan, mcRisk, blViews, mcAvailableAssets, addBlView, enableInflation,
-            generateAutoViews, runMonteCarlo, stressTestResults
+            generateAutoViews, runMonteCarlo, stressTestResults,
+            expandedCardTicker, toggleCard // 🌟 匯出供 HTML 模板使用
         };
     }
 }).mount('#app');
