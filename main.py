@@ -84,78 +84,89 @@ try:
     print(f"📈 參數計算完成 -> Rf: {macro_payload['market_rf']}%, Rm: {macro_payload['market_rm']}%, σm: {macro_payload['market_sm']}%", flush=True)
     
     # ==========================================
-    # 🧠 F. Gemini AI 雙模組備援診斷系統
+    # 🧠 F. Gemini AI 雙模組備援診斷系統 (動態抓取可用模型)
     # ==========================================
     print("🤖 喚醒 Gemini AI 進行總經與風險診斷...", flush=True)
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
     
     if GEMINI_API_KEY:
-        client = genai.Client(api_key=GEMINI_API_KEY)
-        prompt = f"""
-        你是一位量化避險基金經理。請診斷以下數據：
-        Rf: {macro_payload['market_rf']}%, Rm: {macro_payload['market_rm']}%, σm: {macro_payload['market_sm']}%
-        衰退指標 (10Y-3M): {macro_payload['yield_curve']}%
-        信用利差: {macro_payload['hy_spread']}%
-        BTC動能: {macro_payload['btc_1m_mom']}%
-        
-        請嚴格依照以下 JSON 結構回傳結果，絕對不要輸出 Markdown 標籤或其他廢話：
-        {{
-            "summary": "一句話總結當前總經環境與操作建議",
-            "details": [
-                {{
-                    "icon": "🌟(填入相關emoji)", 
-                    "color": "text-green-400 (或 text-red-400 / text-blue-400 等 Tailwind 顏色)", 
-                    "title": "指標名稱與狀態", 
-                    "desc": "詳細的量化解讀與資產配置建議"
-                }}
-            ]
-        }}
-        """
-        # 升級至 2.5 世代管線
-        # 使用官方最新的通用別名 (Alias) 或是實驗版全名
-        model_pipeline = [
-            "gemini-3.0-pro-exp",   # 3.0 Pro 實驗版 (如果權限有開)
-            "gemini-pro",           # 系統會自動導向最新版 Pro
-            "gemini-3.0-flash-exp", # 3.0 Flash 實驗版
-            "gemini-2.5-flash",     # 穩定版 2.5 Flash
-            "gemini-2.5-flash-lite" # 最終保底
-        ]
-        ai_success = False
+        try:
+            client = genai.Client(api_key=GEMINI_API_KEY)
+            
+            # 🚀 1. 動態抓取系統當前支援的模型清單
+            available_models = []
+            for m in client.models.list_models():
+                if "generateContent" in m.supported_actions:
+                    available_models.append(m.name)
+            
+            # 🚀 2. 依照我們想要的優先度 (Pro > Flash > 2.5) 篩選並排序
+            model_pipeline = []
+            
+            # 優先找 3.0 Pro
+            pro_3 = [m for m in available_models if "gemini-3" in m and "pro" in m]
+            # 再找 3.0 Flash
+            flash_3 = [m for m in available_models if "gemini-3" in m and "flash" in m]
+            # 備援 2.5 家族
+            flash_25 = [m for m in available_models if "gemini-2.5-flash" in m and "lite" not in m]
+            lite_25 = [m for m in available_models if "gemini-2.5-flash-lite" in m]
 
-        for model_name in model_pipeline:
-            try:
-                response = client.models.generate_content(model=model_name, contents=prompt)
+            # 依序加入管線 (同級別如果有多個，取第一個)
+            if pro_3: model_pipeline.append(pro_3[0])
+            if flash_3: model_pipeline.append(flash_3[0])
+            if flash_25: model_pipeline.append(flash_25[0])
+            if lite_25: model_pipeline.append(lite_25[0])
+            
+            # 如果上面都沒抓到，放一個絕對安全的保底
+            if not model_pipeline:
+                model_pipeline = ["models/gemini-2.5-flash"]
                 
-                # 🚀 強制 Regex JSON 淨化，無視所有前後廢話與 Markdown
-                json_match = re.search(r'\{.*\}', response.text, re.DOTALL)
-                if not json_match:
-                    raise ValueError("模型未回傳合法 JSON 結構")
-                
-                macro_payload['ai_analysis'] = json.loads(json_match.group(0))
-                print(f"✅ AI 診斷成功！(使用模型: {model_name})", flush=True)
-                ai_success = True
-                break
-            except Exception as ai_e:
-                print(f"⚠️ {model_name} 執行失敗: {ai_e}，準備切換備援...", flush=True)
-                continue
-        
-        if not ai_success:
-            print("❌ 所有 AI 模型皆無回應或解析失敗，跳過 AI 診斷。", flush=True)
+            print(f"📡 系統自動配置的 AI 備援管線: {model_pipeline}", flush=True)
 
-    # G. 寫入 Supabase 
-    print("🚀 正在同步至 Supabase...", flush=True)
-    existing = supabase.table("portfolio_db").select("id").limit(1).execute()
-    target_id = existing.data[0]['id'] if existing.data else 1
-    
-    if existing.data:
-        supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
-    else:
-        supabase.table("portfolio_db").insert({"id": target_id, "macro_meta": macro_payload}).execute()
+            prompt = f"""
+            你是一位量化避險基金經理。請診斷以下數據：
+            Rf: {macro_payload['market_rf']}%, Rm: {macro_payload['market_rm']}%, σm: {macro_payload['market_sm']}%
+            衰退指標 (10Y-3M): {macro_payload['yield_curve']}%
+            信用利差: {macro_payload['hy_spread']}%
+            BTC動能: {macro_payload['btc_1m_mom']}%
+            
+            請嚴格依照以下 JSON 結構回傳結果，絕對不要輸出 Markdown 標籤或其他廢話：
+            {{
+                "summary": "一句話總結當前總經環境與操作建議",
+                "details": [
+                    {{
+                        "icon": "🌟(填入相關emoji)", 
+                        "color": "text-green-400 (或 text-red-400 / text-blue-400 等 Tailwind 顏色)", 
+                        "title": "指標名稱與狀態", 
+                        "desc": "詳細的量化解讀與資產配置建議"
+                    }}
+                ]
+            }}
+            """
+            
+            ai_success = False
 
-except Exception as e:
-    # 真實報錯印出機制：直接把 Stack Trace 砸出來，方便 Debug
-    print(f"🔥 總經數據處理發生致命錯誤:\n{traceback.format_exc()}", flush=True)
-    raise e
+            for model_name in model_pipeline:
+                try:
+                    response = client.models.generate_content(model=model_name, contents=prompt)
+                    
+                    json_match = re.search(r'\{.*\}', response.text, re.DOTALL)
+                    if not json_match:
+                        raise ValueError("模型未回傳合法 JSON 結構")
+                    
+                    macro_payload['ai_analysis'] = json.loads(json_match.group(0))
+                    print(f"✅ AI 診斷成功！(使用模型: {model_name})", flush=True)
+                    ai_success = True
+                    break
+                except Exception as ai_e:
+                    print(f"⚠️ {model_name} 執行失敗: {ai_e}，準備切換備援...", flush=True)
+                    continue
+            
+            if not ai_success:
+                print("❌ 所有 AI 模型皆無回應或解析失敗，跳過 AI 診斷。", flush=True)
+
+        except Exception as e:
+            print(f"🔥 AI 初始化發生錯誤: {e}", flush=True)
+            # 這裡不 raise e，即使 AI 壞了也要讓前面的總經數據順利寫入 Supabase
 
 # ==========================================
 # 🧠 3. 股票多因子管線
