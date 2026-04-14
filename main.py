@@ -79,44 +79,50 @@ try:
         "market_sm": float(round(spy_vol * 100, 2))
     }
     print(f"📈 計算完成 -> Rf: {macro_payload['market_rf']}%, Rm: {macro_payload['market_rm']}%, σm: {macro_payload['market_sm']}%", flush=True)
+    
+    # ==========================================
+    # 🪙 CeFi 掃描器：連接幣安 API
+    # ==========================================
     print("🪙 啟動 CeFi 掃描器：連接幣安 API...", flush=True)
-binance_api = os.environ.get("BINANCE_API_KEY")
-binance_secret = os.environ.get("BINANCE_SECRET_KEY")
+    
+    binance_api = os.environ.get("BINANCE_API_KEY")
+    binance_secret = os.environ.get("BINANCE_SECRET_KEY")
 
-binance_total_usdt = 0.0
+    binance_total_usdt = 0.0
 
-if binance_api and binance_secret:
-    try:
-        # 初始化 ccxt 幣安實體
-        exchange = ccxt.binance({
-            'apiKey': binance_api,
-            'secret': binance_secret,
-            'enableRateLimit': True,
-        })
-        
-        # 抓取現貨錢包餘額
-        balance = exchange.fetch_balance()
-        tickers = exchange.fetch_tickers() # 抓取所有最新報價
-        
-        # 遍歷錢包，把非零資產全部折算成 USDT
-        for coin, amount in balance['total'].items():
-            if amount > 0:
-                if coin == 'USDT':
-                    binance_total_usdt += amount
-                elif f"{coin}/USDT" in tickers:
-                    last_price = tickers[f"{coin}/USDT"]['last']
-                    if last_price:
-                        binance_total_usdt += amount * last_price
-                        
-        print(f"✅ 幣安現貨錢包總值結算: {binance_total_usdt:.2f} USDT", flush=True)
-        
-        # 💡 把算出來的總價值塞進 macro_payload 裡，跟著總經數據一起上雲端！
-        macro_payload['binance_usdt_value'] = float(round(binance_total_usdt, 2))
+    if binance_api and binance_secret:
+        import ccxt
+        try:
+            # 初始化 ccxt 幣安實體
+            exchange = ccxt.binance({
+                'apiKey': binance_api,
+                'secret': binance_secret,
+                'enableRateLimit': True,
+            })
+            
+            # 抓取現貨錢包餘額
+            balance = exchange.fetch_balance()
+            tickers = exchange.fetch_tickers() # 抓取所有最新報價
+            
+            # 遍歷錢包，把非零資產全部折算成 USDT
+            for coin, amount in balance['total'].items():
+                if amount > 0:
+                    if coin == 'USDT':
+                        binance_total_usdt += amount
+                    elif f"{coin}/USDT" in tickers:
+                        last_price = tickers[f"{coin}/USDT"]['last']
+                        if last_price:
+                            binance_total_usdt += amount * last_price
+                            
+            print(f"✅ 幣安現貨錢包總值結算: {binance_total_usdt:.2f} USDT", flush=True)
+            
+            # 💡 把算出來的總價值塞進 macro_payload 裡，跟著總經數據一起上雲端！
+            macro_payload['binance_usdt_value'] = float(round(binance_total_usdt, 2))
 
-    except Exception as e:
-        print(f"⚠️ 幣安 API 讀取失敗，請檢查金鑰或網路: {e}", flush=True)
-else:
-    print("⚠️ 未偵測到幣安金鑰，跳過資產掃描。", flush=True)
+        except Exception as e:
+            print(f"⚠️ 幣安 API 讀取失敗，請檢查金鑰或網路: {e}", flush=True)
+    else:
+        print("⚠️ 未偵測到幣安金鑰，跳過資產掃描。", flush=True)
 
     # ==========================================
     # 🧠 F. Gemini AI 雙模組備援診斷系統 (2.5 -> 2.5 Lite)
