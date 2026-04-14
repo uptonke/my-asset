@@ -179,23 +179,15 @@ createApp({
                     // 👇👇👇 總經大腦模組 👇👇👇
                     if (data.macro_meta) {
                         const macroData = data.macro_meta;
-                        console.group("🌍 量化總經大腦判定中...");
-                        console.log(`10Y-2Y利差: ${macroData.yield_curve}%`);
-                        console.log(`高收益債利差 (恐慌指標): ${macroData.hy_spread}%`);
-                        console.log(`比特幣近期動能: ${macroData.btc_1m_mom}%`);
-
+                        
                         if (macroData.hy_spread > 5.0 && macroData.yield_curve < 0.5) {
                             macroRegime.value = 'Crisis';
-                            console.log("⚠️ 判定結果：【金融危機 Crisis】");
                         } else if (macroData.hy_spread > 4.0 || macroData.btc_1m_mom < -15) {
                             macroRegime.value = 'Bear';
-                            console.log("🐻 判定結果：【熊市 Bear】");
                         } else if (macroData.yield_curve > 0 && macroData.hy_spread < 3.5 && macroData.btc_1m_mom > 5) {
                             macroRegime.value = 'Bull';
-                            console.log("🐂 判定結果：【牛市 Bull】");
                         } else {
                             macroRegime.value = 'Normal';
-                            console.log("⚖️ 判定結果：【正常 Normal】");
                         }
                         
                         if (macroData.market_rf) riskParams.value.rf = macroData.market_rf;
@@ -205,10 +197,7 @@ createApp({
                         // 🌟 承接雲端 Gemini 的報告
                         if (macroData.ai_analysis) {
                             cloudAiAnalysis.value = macroData.ai_analysis;
-                            console.log("🤖 成功載入雲端 AI 報告！", cloudAiAnalysis.value);
                         }
-                        
-                        console.groupEnd();
                     }
                     // 👆👆👆 總經大腦結束 👆👆👆
 
@@ -336,14 +325,13 @@ createApp({
             const groups = {};
             let grandTotal = 0; 
 
-            // 🌟 掃描交易紀錄，計算每檔股票的資金加權平均持有天數
             const holdingDaysMap = {};
             const today = new Date();
             transactions.value.forEach(tx => {
                 if(!tx.ticker || tx.type !== 'Buy') return;
                 const t = tx.ticker.toUpperCase();
                 const txDate = new Date(tx.date);
-                const daysHeld = Math.max(1, (today - txDate) / (1000 * 60 * 60 * 24)); // 至少 1 天防呆
+                const daysHeld = Math.max(1, (today - txDate) / (1000 * 60 * 60 * 24)); 
                 const investedAmount = Math.abs(tx.totalCashFlow);
 
                 if (!holdingDaysMap[t]) holdingDaysMap[t] = { totalInvested: 0, weightedDaysSum: 0 };
@@ -354,14 +342,8 @@ createApp({
 
             holdingsFlat.value.forEach(h => {
                 const rawPrice = priceMap.value[h.ticker];
-                
-                // 💡 核心變更：現在加密貨幣（如 BTC-USD）也以美金計價，統一套用匯率轉換
                 let isUSD = (h.category === '美股' || h.category === '加密貨幣');
-                
-                // 1. 取得現價：優先吃 Google Sheet 抓來的 rawPrice
                 let effectiveNativePrice = h.manualPrice || rawPrice || (h.totalCostTwd / h.shares / (isUSD ? exchangeRate.value : 1));
-                
-                // 2. 計算市值
                 const currentPriceTwd = effectiveNativePrice * (isUSD ? exchangeRate.value : 1);
                 let mvTwd = h.shares * currentPriceTwd;
 
@@ -372,7 +354,6 @@ createApp({
                 const meta = stockMeta.value[h.ticker] || {};
                 const cumulativeReturn = h.totalCostTwd ? (mvTwd - h.totalCostTwd) / h.totalCostTwd : 0;
                 
-                // 🌟 核心計算：資金加權年化報酬率 (CAGR)
                 let annualizedReturn = cumulativeReturn; 
                 let avgDaysHeld = 0;
                 
@@ -384,11 +365,9 @@ createApp({
                     }
                 }
                 
-                // 防呆：避免極端數字破壞圖表
                 if (annualizedReturn > 5) annualizedReturn = 5;
                 if (annualizedReturn < -1) annualizedReturn = -1;
 
-                // 🌟 核心：技術面訊號轉換邏輯
                 const rsi = meta.rsi || 50;
                 const macdH = meta.macd_h || 0;
 
@@ -399,8 +378,8 @@ createApp({
 
                 let macdSignal = '無訊號';
                 let macdColor = 'text-gray-400 border-gray-600';
-                if (macdH > 0) { macdSignal = '🟢 黃金交叉 (多)'; macdColor = 'text-green-400 border-green-900/50 bg-green-900/20'; }
-                else if (macdH < 0) { macdSignal = '🔴 死亡交叉 (空)'; macdColor = 'text-red-400 border-red-900/50 bg-red-900/20'; }
+                if (macdH > 0) { macdSignal = '🟢 黃金交叉'; macdColor = 'text-green-400 border-green-900/50 bg-green-900/20'; }
+                else if (macdH < 0) { macdSignal = '🔴 死亡交叉'; macdColor = 'text-red-400 border-red-900/50 bg-red-900/20'; }
 
                 const item = { 
                     ...h, isUSD, 
@@ -631,9 +610,7 @@ createApp({
             
             if (val === 0) return { summary: '尚無庫存資料，請先新增交易紀錄。', details: [] };
 
-            // 💡 如果資料庫已經有 Gemini 的報告，就直接拿出來用！
             if (cloudAiAnalysis.value && cloudAiAnalysis.value.summary) {
-                // 為了保留投資組合的「本土」檢查，我們把過度集中的警告疊加在 AI 報告上面
                 const details = [...cloudAiAnalysis.value.details];
                 
                 let overweights = [];
@@ -652,7 +629,6 @@ createApp({
                 };
             }
 
-            // ⚠️ 以下是備用方案：如果 Gemini 當機或還沒產出報告，退回原本的靜態引擎
             const details = [];
             let score = 100; 
 
@@ -872,21 +848,16 @@ createApp({
 
             // 🌟 終極整合：讓蒙地卡羅引擎「閱讀」AI 診斷報告
             if (cloudAiAnalysis.value) {
-                // 將 AI 的所有文字轉成小寫字串，方便捕捉關鍵字
                 const fullAiText = JSON.stringify(cloudAiAnalysis.value).toLowerCase();
                 
-                // 1. AI 判讀通膨風險 -> 自動開啟通膨壓力測試
                 if (fullAiText.includes('通膨') || fullAiText.includes('inflation') || fullAiText.includes('升息') || fullAiText.includes('cpi')) {
                     enableInflation.value = true;
-                    console.log("🤖 AI 偵測到通膨關鍵字，已自動開啟【通膨侵蝕模型】");
                 } else {
                     enableInflation.value = false;
                 }
 
-                // 2. AI 判讀尾部風險 -> 自動開啟黑天鵝跳躍機制
                 if (fullAiText.includes('尾部風險') || fullAiText.includes('衰退') || fullAiText.includes('黑天鵝') || fullAiText.includes('恐慌') || fullAiText.includes('利差擴大')) {
                     enableBlackSwan.value = true;
-                    console.log("🤖 AI 偵測到極端風險關鍵字，已自動開啟【黑天鵝跳躍模型】");
                 } else {
                     enableBlackSwan.value = false;
                 }
@@ -975,8 +946,9 @@ createApp({
 
             const assets = mcAvailableAssets.value;
             
-            if(assets.length === 0) {
-                alert("請先在「庫存」分頁填寫標的 Beta 與 標準差 (不能為0)");
+            // 💡 終極防呆：確保有兩檔以上的標的才跑模擬，避免除以零產生 NaN 黑洞
+            if(assets.length < 2) {
+                alert("⚠️ 需要至少 2 檔合格標的 (Beta 與 SD 需大於 0) 才能進行蒙地卡羅多樣化模擬！\n請先到「庫存」分頁設定參數。");
                 showMCModal.value = false; return;
             }
 
@@ -989,12 +961,11 @@ createApp({
             const remainingWeight = 1.0 - (n_assets * minWeight);
             const n_portfolios = 5000;
 
-            // 🌟 將基礎參數錨定為 AI 抓取的「當下真實總經數據」
-            const baseRm = riskParams.value.rm / 100;
-            const baseSm = riskParams.value.sm / 100;
-            const baseRf = riskParams.value.rf / 100;
+            // 🌟 強制轉型，確保不會有字串混入數學運算
+            const baseRm = (parseFloat(riskParams.value.rm) || 10.0) / 100;
+            const baseSm = (parseFloat(riskParams.value.sm) || 15.0) / 100;
+            const baseRf = (parseFloat(riskParams.value.rf) || 1.5) / 100;
 
-            // 讓所有情境都隨著真實世界的總經數據進行浮動
             const regimeParams = {
                 Normal: { rm: baseRm, sm: baseSm, rf: baseRf, stressCorr: 0, m_skew: -0.5, m_kurt_ex: 1.0 },
                 Bull:   { rm: baseRm + 0.05, sm: baseSm * 0.8, rf: baseRf, stressCorr: 0, m_skew: 0.2, m_kurt_ex: 0.5 },
@@ -1027,15 +998,16 @@ createApp({
                 weights.forEach((w, i) => {
                     const e_r = bl_expected_returns[i]; 
                     p_ret += w * e_r;
-                    p_beta += w * assets[i].beta;
-                    weighted_vol_sum += w * (assets[i].stdDev / 100);
+                    p_beta += w * parseFloat(assets[i].beta);
+                    weighted_vol_sum += w * (parseFloat(assets[i].stdDev) / 100);
                 });
 
                 let sys_var = Math.pow(p_beta, 2) * Math.pow(sm, 2);
                 let idio_var = 0;
                 weights.forEach((w, i) => {
-                    const sig_i = assets[i].stdDev / 100;
-                    let idio_i = Math.pow(sig_i, 2) - Math.pow(assets[i].beta * sm, 2);
+                    const sig_i = parseFloat(assets[i].stdDev) / 100;
+                    const beta_i = parseFloat(assets[i].beta);
+                    let idio_i = Math.pow(sig_i, 2) - Math.pow(beta_i * sm, 2);
                     if(idio_i < 0) idio_i = 0; 
                     idio_var += Math.pow(w, 2) * idio_i;
                 });
@@ -1081,8 +1053,10 @@ createApp({
 
                 mcPoints.push({ x: p_vol * 100, y: p_ret * 100, sharpe: p_asr, score: currentScore, weights });
 
-                if (currentScore > maxScoreForColor) maxScoreForColor = currentScore;
-                if (currentScore < minScoreForColor) minScoreForColor = currentScore;
+                if (!isNaN(currentScore)) {
+                    if (currentScore > maxScoreForColor) maxScoreForColor = currentScore;
+                    if (currentScore < minScoreForColor) minScoreForColor = currentScore;
+                }
 
                 if (currentScore > bestScore) {
                     bestScore = currentScore;
@@ -1124,8 +1098,13 @@ createApp({
                             data: mcPoints,
                             backgroundColor: (context) => {
                                 const val = context.raw?.score;
-                                if (val === undefined) return '#3b82f6';
-                                const ratio = Math.max(0, Math.min(1, (val - minScoreForColor) / (maxScoreForColor - minScoreForColor))); 
+                                // 💡 終極修復：防止 NaN 顏色導致 Chart.js 崩潰消失
+                                if (val === undefined || isNaN(val)) return '#3b82f6';
+                                if (maxScoreForColor <= minScoreForColor) return 'rgba(59, 130, 246, 0.4)'; 
+                                
+                                let ratio = (val - minScoreForColor) / (maxScoreForColor - minScoreForColor);
+                                if (isNaN(ratio) || ratio < 0 || ratio > 1) ratio = 0.5;
+                                
                                 return `rgba(${Math.round(255*ratio)}, ${Math.round(150*ratio)}, 200, 0.4)`;
                             },
                             pointRadius: 2
@@ -1152,9 +1131,6 @@ createApp({
 
         let chartSML, chartCML, chartAlloc, chartHist, chartRolling, chartMC, chartFire;
 
-        // ==========================================
-        // 🌟 核心修復：SML / CML 初始化維度校正
-        // ==========================================
         function initCharts() {
             Chart.defaults.color = '#94a3b8'; Chart.defaults.borderColor = '#334155';
 
@@ -1168,7 +1144,6 @@ createApp({
                 chartHist = new Chart(histCtx, { type: 'line', data: { labels: [], datasets: [{data:[]},{data:[]}] }, options: { responsive: true, maintainAspectRatio: false } });
             }
 
-            // 👇 SML 初始化修復
             const smlCtx = document.getElementById('smlChart');
             if(smlCtx && !chartSML) {
                 chartSML = new Chart(smlCtx, {
@@ -1177,13 +1152,11 @@ createApp({
                         responsive: true, maintainAspectRatio: false,
                         scales: { 
                             x: { title: {display:true, text:'Beta (β)'}, min: 0, max: 2 }, 
-                            // 🌟 Y軸標題改為年化報酬
                             y: { title: {display:true, text:'Annualized Return (%)'} } 
                         },
                         plugins: { 
                             tooltip: { 
                                 callbacks: { 
-                                    // 🌟 強制收斂浮點數
                                     label: (ctx) => `${ctx.raw.name}: (${ctx.raw.x.toFixed(2)}, ${ctx.raw.y.toFixed(2)}%)` 
                                 } 
                             } 
@@ -1192,7 +1165,6 @@ createApp({
                 });
             }
 
-            // 👇 CML 初始化修復
             const cmlCtx = document.getElementById('cmlChart');
             if(cmlCtx && !chartCML) {
                 chartCML = new Chart(cmlCtx, {
@@ -1201,13 +1173,11 @@ createApp({
                         responsive: true, maintainAspectRatio: false,
                         scales: { 
                             x: { title: {display:true, text:'StdDev (σ%)'}, min: 0 }, 
-                            // 🌟 Y軸標題改為年化報酬
                             y: { title: {display:true, text:'Annualized Return (%)'} } 
                         },
                         plugins: { 
                             tooltip: { 
                                 callbacks: { 
-                                    // 🌟 強制收斂浮點數
                                     label: (ctx) => `${ctx.raw.name}: (${ctx.raw.x.toFixed(2)}%, ${ctx.raw.y.toFixed(2)}%)` 
                                 } 
                             } 
@@ -1310,19 +1280,13 @@ createApp({
                     chartFire.update();
                 }
 
-                // ==========================================
-                // 🌟 核心修復：SML / CML 更新時的資料綁定
-                // ==========================================
                 if (chartSML && chartCML) {
                     const rf = riskParams.value.rf;
                     const rm = riskParams.value.rm;
                     const sm = riskParams.value.sm;
                     
-                    // SML 線段計算 (X 軸通常是 Beta，延伸到 2.5 夠用了)
                     const smlLine = [ {x:0, y:rf}, {x:2.5, y: rf + 2.5*(rm-rf)} ];
 
-                    // 🌟 CML 線段計算 (動態延伸版)
-                    // 先找出所有庫存中最大的標準差 (X軸)
                     let maxAssetStd = 0;
                     for(const cat in groupedHoldings.value) {
                         groupedHoldings.value[cat].items.forEach(i => {
@@ -1330,14 +1294,13 @@ createApp({
                         });
                     }
                     
-                    // 為了圖表美觀，CML 線的終點設為 (最大標準差 * 1.2) 或至少 (市場標準差 * 3)
                     const cmlMaxX = Math.max(maxAssetStd * 1.2, sm * 3); 
                     const slope = sm > 0 ? (rm - rf) / sm : 0; 
                     
                     const cmlLine = [ 
                         { x: 0, y: rf }, 
-                        { x: sm, y: rm }, // 通過市場點
-                        { x: cmlMaxX, y: rf + slope * cmlMaxX } // 延伸到畫布盡頭
+                        { x: sm, y: rm }, 
+                        { x: cmlMaxX, y: rf + slope * cmlMaxX } 
                     ];
 
                     const portRet = parseFloat(stats.value.annRet) || 0;
@@ -1352,7 +1315,6 @@ createApp({
                     const assetPointsCML = [];
                     for(const cat in groupedHoldings.value) {
                         groupedHoldings.value[cat].items.forEach(i => {
-                            // 🌟 這裡確保 SML 與 CML 都精準吃到你後台計算的 annualizedReturnRate
                             assetPoints.push({ x: i.beta, y: parseFloat(i.annualizedReturnRate || 0), name: i.ticker });
                             assetPointsCML.push({ x: i.stdDev, y: parseFloat(i.annualizedReturnRate || 0), name: i.ticker });
                         });
@@ -1444,7 +1406,7 @@ createApp({
             isAuthenticating, handleLogin, handleLogout, checkAuth, fireProgress, 
             updateCharts, addFireTarget, macroRegime, enableBlackSwan, mcRisk, blViews, mcAvailableAssets, addBlView, enableInflation,
             generateAutoViews, runMonteCarlo, stressTestResults,
-            expandedCardTicker, toggleCard // 🌟 匯出供 HTML 模板使用
+            expandedCardTicker, toggleCard // 🌟 匯出供 HTML 模板使用，卡片點擊展開的核心！
         };
     }
 }).mount('#app');
