@@ -352,15 +352,31 @@ createApp({
 
             holdingsFlat.value.forEach(h => {
                 const rawPrice = priceMap.value[h.ticker];
-                const isUSD = (h.category === '美股');
-                const effectiveNativePrice = h.manualPrice || rawPrice || (h.totalCostTwd / h.shares / (isUSD ? exchangeRate.value : 1));
-                const currentPriceTwd = effectiveNativePrice * (isUSD ? exchangeRate.value : 1);
+                let isUSD = (h.category === '美股');
                 
-                // 🌟 核心：動態覆蓋加密貨幣市值
-                let mvTwd = h.shares * currentPriceTwd;
+                // 1. 取得預設現價 (來自 Sheet 或 成本折算)
+                let effectiveNativePrice = h.manualPrice || rawPrice || (h.totalCostTwd / h.shares / (isUSD ? exchangeRate.value : 1));
+                
+                // --- 🌟 加密貨幣總額映射邏輯 ---
+                let mvTwd = 0;
+                let currentPriceTwd = 0;
+                
                 if (h.ticker === '加密貨幣' && binanceUsdtValue.value > 0) {
-                    mvTwd = binanceUsdtValue.value * exchangeRate.value;
+                    // 直接計算幣安台幣總市值
+                    const totalBinanceTwd = binanceUsdtValue.value * exchangeRate.value;
+                    
+                    // 強制將「現價」設定為「總市值」
+                    effectiveNativePrice = totalBinanceTwd; 
+                    currentPriceTwd = totalBinanceTwd;
+                    mvTwd = totalBinanceTwd;
+                    isUSD = false; // 已經算好台幣，關閉匯率轉換
+                    
+                } else {
+                    // 其他正常股票的市值計算
+                    currentPriceTwd = effectiveNativePrice * (isUSD ? exchangeRate.value : 1);
+                    mvTwd = h.shares * currentPriceTwd;
                 }
+                // --- 🌟 映射邏輯結束 ---
 
                 grandTotal += mvTwd; 
 
@@ -408,17 +424,17 @@ createApp({
                         rsiVal: rsi.toFixed(1), rsiText: rsiSignal, rsiColor: rsiColor,
                         macdVal: macdH.toFixed(3), macdText: macdSignal, macdColor: macdColor
                     },
-                    fetchedPrice: rawPrice,
+                    fetchedPrice: effectiveNativePrice,
                     avgCostTwd: h.totalCostTwd / h.shares, 
                     currentPriceTwd: currentPriceTwd,
-                    marketValueTwd: mvTwd, // 🌟 確保吃到的是覆寫後的值
-                    unrealizedPLTwd: mvTwd - h.totalCostTwd, // 🌟 確保吃到的是覆寫後的值
+                    marketValueTwd: mvTwd, 
+                    unrealizedPLTwd: mvTwd - h.totalCostTwd, 
                     returnRate: cumulativeReturn * 100, 
                     annualizedReturnRate: annualizedReturn * 100 
                 };
                 
                 groups[h.category].items.push(item);
-                groups[h.category].totalValue += mvTwd; // 🌟 確保吃到的是覆寫後的值
+                groups[h.category].totalValue += mvTwd; 
             });
 
             for (const cat in groups) {
