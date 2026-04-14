@@ -84,7 +84,7 @@ try:
     print(f"📈 參數計算完成 -> Rf: {macro_payload['market_rf']}%, Rm: {macro_payload['market_rm']}%, σm: {macro_payload['market_sm']}%", flush=True)
     
     # ==========================================
-    # 🧠 F. Gemini AI 雙模組備援診斷系統 (動態抓取)
+    # 🧠 F. Gemini AI 雙模組備援診斷系統 (靜態超強備援管線)
     # ==========================================
     print("🤖 喚醒 Gemini AI 進行總經與風險診斷...", flush=True)
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -93,28 +93,16 @@ try:
         try:
             client = genai.Client(api_key=GEMINI_API_KEY)
             
-            # 🚀 1. 動態抓取系統當前支援的模型清單
-            available_models = []
-            for m in client.models.list_models():
-                if "generateContent" in m.supported_actions:
-                    available_models.append(m.name)
-            
-            # 🚀 2. 組成多層備援管線 (優先 3.0 Pro -> 3.0 Flash -> 2.5 系列)
-            model_pipeline = []
-            pro_3 = [m for m in available_models if "gemini-3" in m and "pro" in m]
-            flash_3 = [m for m in available_models if "gemini-3" in m and "flash" in m]
-            flash_25 = [m for m in available_models if "gemini-2.5-flash" in m and "lite" not in m]
-            lite_25 = [m for m in available_models if "gemini-2.5-flash-lite" in m]
-
-            if pro_3: model_pipeline.append(pro_3[0])
-            if flash_3: model_pipeline.append(flash_3[0])
-            if flash_25: model_pipeline.append(flash_25[0])
-            if lite_25: model_pipeline.append(lite_25[0])
-            
-            if not model_pipeline:
-                model_pipeline = ["models/gemini-2.5-flash"]
+            # 🚀 捨棄容易報錯的動態抓取，直接部署「五重護城河」
+            model_pipeline = [
+                "gemini-3.0-pro",        # 夢幻頂規
+                "gemini-3.0-flash",      # 性價比之王
+                "gemini-2.5-pro",        # 高智商備援
+                "gemini-2.5-flash",      # 穩定主力
+                "gemini-2.0-flash"       # 絕對保底
+            ]
                 
-            print(f"📡 系統自動配置的 AI 備援管線: {model_pipeline}", flush=True)
+            print(f"📡 系統配置 AI 備援管線: {model_pipeline}", flush=True)
 
             # 🚀 3. 加入強制的 JSON Schema，預防 AI 亂輸出
             prompt = f"""
