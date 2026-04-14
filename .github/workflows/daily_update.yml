@@ -26,10 +26,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install google-genai # 🌟 整合在這裡，確保腳本執行前已安裝好 Gemini 大腦
+          pip install ccxt # 🌟 確保安裝幣安 API 套件
 
       - name: 🚀 執行量化分析腳本
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # 🌟 致命關鍵：把金鑰傳遞給 Python
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # 🌟 傳遞 Gemini 金鑰給 Python
+          BINANCE_API_KEY: ${{ secrets.BINANCE_API_KEY }} # 🌟 傳遞幣安 API 金鑰給 Python
+          BINANCE_SECRET_KEY: ${{ secrets.BINANCE_SECRET_KEY }} # 🌟 傳遞幣安 Secret 金鑰給 Python
         run: python main.py
