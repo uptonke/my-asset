@@ -16,9 +16,9 @@
     
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="h-screen flex flex-col overflow-hidden text-sm">
-
-<div id="app" class="h-full flex flex-col transition-colors duration-500" :class="isSimMode ? 'bg-[#1a0505]' : 'bg-[#0f172a]'">
+<body class="min-h-screen flex flex-col text-sm bg-[#0f172a]">
+    
+<div id="app" class="min-h-screen flex flex-col transition-colors duration-500" :class="isSimMode ? 'bg-[#1a0505]' : 'bg-[#0f172a]'">
     
     <div v-if="!isLoggedIn" class="fixed inset-0 z-[1000] bg-[#000] flex items-center justify-center p-4 transition-opacity duration-500">
         <div class="glass p-8 rounded-3xl w-full max-w-sm border border-white/20 shadow-2xl">
@@ -94,8 +94,8 @@
        </div>
     </header>
 
-    <main class="flex-1 overflow-y-auto p-4 md:p-6 transition-colors duration-500">
-        <div class="max-w-7xl mx-auto h-full space-y-6">
+    <main class="flex-1 p-4 md:p-6 transition-colors duration-500">
+        <div class="max-w-7xl mx-auto min-h-full space-y-6 pb-20">
 
             <div v-show="currentTab === 'summary'" class="animate-fade-in space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -193,7 +193,7 @@
                         </div>
                     </div>
 
-                    <div class="h-64 mt-6 relative border-t border-gray-700/50 pt-6">
+                    <div class="mt-6 relative border-t border-gray-700/50 pt-6 min-h-[300px] md:h-64">
                         <canvas id="fireChart"></canvas>
                     </div>
                 </div>
@@ -233,12 +233,12 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 h-96">
-                    <div class="glass p-5 rounded-2xl col-span-1 flex flex-col">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="glass p-5 rounded-2xl col-span-1 flex flex-col min-h-[300px] md:h-96">
                         <h4 class="text-white font-bold mb-4 border-l-4 border-yellow-500 pl-3">資產配置</h4>
                         <div class="flex-1 relative"><canvas id="allocationChart"></canvas></div>
                     </div>
-                    <div class="glass p-5 rounded-2xl col-span-2 flex flex-col">
+                    <div class="glass p-5 rounded-2xl col-span-2 flex flex-col min-h-[300px] md:h-96">
                         <div class="flex justify-between items-center mb-4 border-l-4 border-emerald-500 pl-3">
                             <h4 class="text-white font-bold">淨值成長趨勢 (NAV)</h4>
                         </div>
@@ -252,7 +252,7 @@
                 </div>
             </div>
 
-            <div v-show="currentTab === 'holdings'" class="flex flex-col h-full max-h-[85vh] space-y-4 animate-fade-in">
+            <div v-show="currentTab === 'holdings'" class="flex flex-col space-y-4 animate-fade-in">
                 <div class="glass rounded-xl overflow-hidden flex flex-col flex-1">
                     <div class="p-4 bg-gray-800/50 border-b border-gray-700 flex justify-between items-center">
                         <h3 class="font-bold text-white"><i class="fas fa-layer-group text-yellow-500 mr-2"></i>庫存明細 (Risk Monitor)</h3>
@@ -443,7 +443,7 @@
                 </div>
             </div>
 
-            <div v-show="currentTab === 'advanced'" class="flex flex-col h-full space-y-4 animate-fade-in">
+            <div v-show="currentTab === 'advanced'" class="flex flex-col space-y-6 animate-fade-in">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div class="glass p-5 rounded-2xl flex flex-col justify-center">
                         <h4 class="text-white font-bold mb-3 border-l-4 border-blue-500 pl-3">1. 風險屬性分佈</h4>
@@ -506,12 +506,12 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 h-96">
-                    <div class="glass p-5 rounded-2xl flex flex-col relative">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="glass p-5 rounded-2xl flex flex-col relative min-h-[300px] md:h-96">
                         <h4 class="text-white font-bold mb-2">證券市場線 (SML) - Beta vs Return</h4>
                         <div class="flex-1 relative"><canvas id="smlChart"></canvas></div>
                     </div>
-                    <div class="glass p-5 rounded-2xl flex flex-col relative">
+                    <div class="glass p-5 rounded-2xl flex flex-col relative min-h-[300px] md:h-96">
                         <h4 class="text-white font-bold mb-2">資本市場線 (CML) - StdDev vs Return</h4>
                         <div class="flex-1 relative"><canvas id="cmlChart"></canvas></div>
                     </div>
@@ -559,7 +559,7 @@
 
             </div> 
 
-            <div v-show="currentTab === 'analytics'" class="flex flex-col h-full space-y-4 animate-fade-in">
+            <div v-show="currentTab === 'analytics'" class="flex flex-col space-y-6 animate-fade-in">
                 <div class="p-4 rounded-xl flex flex-wrap items-center justify-between gap-4 border transition-colors duration-500" :class="isSimMode ? 'glass-sim border-red-900/50' : 'glass border-white/5'">
                     <div class="flex flex-col md:flex-row gap-6 w-full md:w-auto">
                         <div>
@@ -622,10 +622,10 @@
                     <div class="quant-card bg-white/5 border-yellow-400/30"><div class="quant-label text-yellow-400">峭度 (Kurtosis)</div><div class="quant-value text-white">{{ stats.kurt }}</div></div>
                 </div>
 
-                 <div class="flex-1 glass rounded-xl overflow-hidden flex flex-col mt-4">
-                    <div class="overflow-auto flex-1 h-64 md:h-auto">
+                 <div class="glass rounded-xl overflow-hidden flex flex-col mt-4">
+                    <div class="overflow-x-auto p-2 md:p-0">
                         <table class="w-full text-left whitespace-nowrap">
-                            <thead class="sticky top-0 bg-[#0f172a] text-xs text-gray-400 uppercase font-semibold">
+                            <thead class="bg-[#0f172a] text-xs text-gray-400 uppercase font-semibold border-b border-gray-700">
                                <tr><th class="p-3 pl-6">日期</th><th class="p-3 text-right">總資產 (NAV)</th><th class="p-3 text-right">總成本 (Cost)</th><th class="p-3 text-right">週期報酬 (Return)</th><th class="p-3 text-center" v-if="!isSimMode">動作</th></tr>
                             </thead>
                             <tbody class="text-sm divide-y divide-white/5">
@@ -641,13 +641,13 @@
                     </div>
                  </div>
 
-                 <div class="glass p-5 rounded-xl flex flex-col relative mt-6 h-72 md:h-64">
+                 <div class="glass p-5 rounded-xl flex flex-col relative mt-6 min-h-[300px] md:h-64">
                     <h4 class="text-white font-bold mb-2"><i class="fas fa-history text-blue-400 mr-2"></i>Rolling 12-Period (Sharpe & Volatility)</h4>
                     <div class="flex-1 relative"><canvas id="rollingChart"></canvas></div>
                 </div>
             </div>
 
-            <div v-show="currentTab === 'ledger'" class="flex flex-col md:flex-row gap-6 h-full max-h-[85vh]">
+            <div v-show="currentTab === 'ledger'" class="flex flex-col md:flex-row gap-6">
                  <div class="w-full md:w-80 glass p-5 rounded-xl h-fit space-y-4">
                     <h3 class="font-bold text-white text-lg border-b border-gray-700 pb-2">新增交易</h3>
                     <div><label class="text-xs text-gray-400 mb-1 block">1. 資產類別</label><div class="grid grid-cols-2 gap-2"><button @click="txForm.category='美股'" :class="txForm.category==='美股'?'bg-yellow-600 text-black font-bold':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs transition">美股</button><button @click="txForm.category='台股'" :class="txForm.category==='台股'?'bg-blue-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs transition">台股</button><button @click="txForm.category='基金'" :class="txForm.category==='基金'?'bg-green-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs transition">基金</button><button @click="txForm.category='加密貨幣'" :class="txForm.category==='加密貨幣'?'bg-purple-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs transition">加密貨幣</button></div></div>
@@ -658,9 +658,9 @@
                     <div class="p-4 bg-gray-800/50 border-b border-gray-700">
                         <h3 class="font-bold text-white">交易流水帳 (TWD)</h3>
                     </div>
-                    <div class="overflow-auto flex-1">
+                    <div class="overflow-x-auto p-2 md:p-0">
                         <table class="w-full text-left">
-                            <thead class="sticky top-0 bg-[#0f172a] text-xs text-gray-400 uppercase font-semibold"><tr><th class="p-3">日期</th><th class="p-3">類別</th><th class="p-3">名稱</th><th class="p-3 text-right">現金流 (TWD)</th><th class="p-3"></th></tr></thead>
+                            <thead class="bg-[#0f172a] text-xs text-gray-400 uppercase font-semibold border-b border-gray-700"><tr><th class="p-3">日期</th><th class="p-3">類別</th><th class="p-3">名稱</th><th class="p-3 text-right">現金流 (TWD)</th><th class="p-3"></th></tr></thead>
                             <tbody class="text-sm divide-y divide-white/5">
                                 <tr v-for="(tx, idx) in reversedTransactions" :key="idx" class="hover:bg-white/5">
                                     <td class="p-3 text-gray-400">{{ tx.date }}</td>
