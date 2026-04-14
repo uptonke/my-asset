@@ -146,7 +146,6 @@ def get_sheet_prices(url_str):
         sheet_id = match.group(1)
         gid = gid_match.group(1) if gid_match else '0'
         
-        # 🌟 這裡修正了網址格式，移除了所有括號
         csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&gid={gid}"
         
         response = requests.get(csv_url, timeout=10)
@@ -170,9 +169,23 @@ response = supabase.table("portfolio_db").select("*").limit(1).execute()
 if response.data:
     db_record = response.data[0]
     stock_meta = db_record.get("stock_meta", {})
-    sheet_prices = get_sheet_prices(db_record.get("settings", {}).get("sheetUrl", ""))
+    ledger_data = db_record.get("ledger_data", [])
     
-    tickers = list(stock_meta.keys())
+    # 💡 核心修復：從 Ledger 帳本中抽出所有存在庫存的 Tickers，並與舊的 stock_meta 合併
+    ledger_tickers = [str(tx["ticker"]).strip().upper() for tx in ledger_data if tx.get("ticker")]
+    all_tickers = list(set(list(stock_meta.keys()) + ledger_tickers))
+    
+    # 初始化剛買入的新標的，避免 KeyError
+    for t in all_tickers:
+        if t not in stock_meta:
+            stock_meta[t] = {}
+
+    settings = db_record.get("settings", {})
+    sheet_url = settings.get("sheetUrl", "")
+    sheet_prices = get_sheet_prices(sheet_url)
+    
+    tickers = all_tickers # 使用完整的標的清單
+    
     if tickers:
         tw_bench, us_bench = "^TWII", "SPY"
         proxy_map = {"統一奔騰": "00981A.TW", "統一黑馬": "0050.TW", "安聯台灣科技": "0052.TW"}
@@ -184,35 +197,59 @@ if response.data:
             elif bool(re.search(r'[\u4e00-\u9fff]', t)): target = t
             elif re.match(r'^\d+$', t): target = f"{t}.TW"
             else: target = t
+            
             yf_tickers.append(target)
             if target not in download_list: download_list.append(target)
 
-        print(f"⏳ 正在向 Yahoo Finance 請求資料...", flush=True)
-        prices_df = yf.download(download_list, period="1y")["Close"]
+        print(f"⏳ 正在向 Yahoo Finance 請求 {len(download_list)} 檔標的歷史資料...", flush=True)
+        prices_df = yf.download(download_list, period="1y", progress=False)["Close"]
+        
+        # 避免只下載一檔時回傳 Series 而報錯
+        if isinstance(prices_df, pd.Series):
+            prices_df = prices_df.to_frame(name=download_list[0])
+            
         returns = prices_df.pct_change()
 
+        print("🧠 開始計算 多因子 風險與動能參數...", flush=True)
         for i, original_ticker in enumerate(tickers):
             yf_ticker = yf_tickers[i]
+            
             if original_ticker in sheet_prices:
                 stock_meta[original_ticker]["last_price"] = sheet_prices[original_ticker]
             
             if yf_ticker in returns.columns:
                 stock_close = prices_df[yf_ticker].dropna()
-                if len(stock_close) < 60: continue
+                if len(stock_close) < 60: 
+                    print(f"⚠️ [{original_ticker}] 歷史數據不足 60 天，跳過計算。")
+                    continue
                 
                 bench = tw_bench if yf_ticker.endswith(".TW") else us_bench
+                # 對齊基準與個股的日期 (針對 BTC-USD 這種 365 天交易的特例作過濾)
                 aligned = pd.concat([returns[yf_ticker], returns[bench]], axis=1).dropna()
                 
-                beta = aligned.iloc[:,0].cov(aligned.iloc[:,1]) / aligned.iloc[:,1].var()
+                if len(aligned) < 30: continue
+                
+                bench_var = aligned.iloc[:,1].var()
+                beta = aligned.iloc[:,0].cov(aligned.iloc[:,1]) / bench_var if bench_var > 0 else 1.0
                 ann_std = np.sqrt(aligned.iloc[:,0].var() * 252) * 100
-                rsi = ta.rsi(stock_close).iloc[-1]
-                macd = ta.macd(stock_close).iloc[-1, 1]
+                
+                # 技術指標安全計算 (防呆空值)
+                rsi_series = ta.rsi(stock_close)
+                rsi = rsi_series.iloc[-1] if rsi_series is not None and not rsi_series.empty else 50.0
+                
+                macd_df = ta.macd(stock_close)
+                macd_h = macd_df.iloc[-1, 1] if macd_df is not None and not macd_df.empty else 0.0
                 
                 stock_meta[original_ticker].update({
-                    "beta": round(beta, 2), "std": round(ann_std, 2),
-                    "rsi": round(rsi, 2), "macd_h": round(macd, 4)
+                    "beta": round(beta, 2), 
+                    "std": round(ann_std, 2),
+                    "rsi": round(rsi, 2), 
+                    "macd_h": round(macd_h, 4)
                 })
-                print(f"✅ [{original_ticker}] 已更新。")
+                print(f"✅ [{original_ticker}] 已更新 -> Beta: {beta:.2f}, Std: {ann_std:.1f}%, RSI: {rsi:.1f}")
+            else:
+                if original_ticker not in proxy_map and not bool(re.search(r'[\u4e00-\u9fff]', original_ticker)):
+                    print(f"⚠️ [{original_ticker}] 在 Yahoo 找不到對應標的 ({yf_ticker})。")
 
         supabase.table("portfolio_db").update({"stock_meta": stock_meta}).eq("id", target_id).execute()
         print("🎉 雲端自動化任務完成！")
