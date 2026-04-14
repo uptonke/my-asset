@@ -131,8 +131,6 @@ createApp({
         const exchangeRate = ref(32.5);
         const sheetUrl = ref('');
         
-        // 🌟 新增：存放從 Supabase 抓下來的 Binance USDT 總餘額
-        const binanceUsdtValue = ref(0);
         // 🌟 存放從 Supabase 抓下來的 Gemini AI 報告
         const cloudAiAnalysis = ref(null);
 
@@ -194,12 +192,6 @@ createApp({
                         if (macroData.market_rm) riskParams.value.rm = macroData.market_rm;
                         if (macroData.market_sm) riskParams.value.sm = macroData.market_sm;
                         
-                        // 🌟 承接幣安總資產
-                        if (macroData.binance_usdt_value) {
-                            binanceUsdtValue.value = macroData.binance_usdt_value;
-                            console.log(`🪙 幣安雲端同步餘額: $${binanceUsdtValue.value} USDT`);
-                        }
-
                         // 🌟 承接雲端 Gemini 的報告
                         if (macroData.ai_analysis) {
                             cloudAiAnalysis.value = macroData.ai_analysis;
@@ -352,31 +344,16 @@ createApp({
 
             holdingsFlat.value.forEach(h => {
                 const rawPrice = priceMap.value[h.ticker];
-                let isUSD = (h.category === '美股');
                 
-                // 1. 取得預設現價 (來自 Sheet 或 成本折算)
+                // 💡 核心變更：現在加密貨幣（如 BTC-USD）也以美金計價，統一套用匯率轉換
+                let isUSD = (h.category === '美股' || h.category === '加密貨幣');
+                
+                // 1. 取得現價：優先吃 Google Sheet 抓來的 rawPrice
                 let effectiveNativePrice = h.manualPrice || rawPrice || (h.totalCostTwd / h.shares / (isUSD ? exchangeRate.value : 1));
                 
-                // --- 🌟 加密貨幣總額映射邏輯 ---
-                let mvTwd = 0;
-                let currentPriceTwd = 0;
-                
-                if (h.ticker === '加密貨幣' && binanceUsdtValue.value > 0) {
-                    // 直接計算幣安台幣總市值
-                    const totalBinanceTwd = binanceUsdtValue.value * exchangeRate.value;
-                    
-                    // 強制將「現價」設定為「總市值」
-                    effectiveNativePrice = totalBinanceTwd; 
-                    currentPriceTwd = totalBinanceTwd;
-                    mvTwd = totalBinanceTwd;
-                    isUSD = false; // 已經算好台幣，關閉匯率轉換
-                    
-                } else {
-                    // 其他正常股票的市值計算
-                    currentPriceTwd = effectiveNativePrice * (isUSD ? exchangeRate.value : 1);
-                    mvTwd = h.shares * currentPriceTwd;
-                }
-                // --- 🌟 映射邏輯結束 ---
+                // 2. 計算市值
+                const currentPriceTwd = effectiveNativePrice * (isUSD ? exchangeRate.value : 1);
+                let mvTwd = h.shares * currentPriceTwd;
 
                 grandTotal += mvTwd; 
 
@@ -1456,8 +1433,7 @@ createApp({
             fireTargets, activeFireStageIndex, activeFireTarget, isLoggedIn, loginEmail, loginPassword, loginError, 
             isAuthenticating, handleLogin, handleLogout, checkAuth, fireProgress, 
             updateCharts, addFireTarget, macroRegime, enableBlackSwan, mcRisk, blViews, mcAvailableAssets, addBlView, enableInflation,
-            generateAutoViews, runMonteCarlo, stressTestResults,
-            binanceUsdtValue // 🌟 記得匯出給 HTML 使用
+            generateAutoViews, runMonteCarlo, stressTestResults
         };
     }
 }).mount('#app');
