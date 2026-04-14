@@ -12,6 +12,8 @@ import warnings
 import urllib.parse
 import json
 from google import genai
+import ccxt  # 🌟 將 ccxt 統一移到開頭引入
+import time
 
 warnings.filterwarnings('ignore')
 
@@ -91,7 +93,6 @@ try:
     binance_total_usdt = 0.0
 
     if binance_api and binance_secret:
-        import ccxt
         try:
             # 初始化 ccxt 幣安實體
             exchange = ccxt.binance({
@@ -131,7 +132,6 @@ try:
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
     
     if GEMINI_API_KEY:
-        import time
         try:
             client = genai.Client(api_key=GEMINI_API_KEY)
             prompt = f"""
