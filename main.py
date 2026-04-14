@@ -84,7 +84,7 @@ try:
     print(f"📈 參數計算完成 -> Rf: {macro_payload['market_rf']}%, Rm: {macro_payload['market_rm']}%, σm: {macro_payload['market_sm']}%", flush=True)
     
     # ==========================================
-    # 🧠 F. Gemini AI 雙模組備援診斷系統 (動態抓取可用模型)
+    # 🧠 F. Gemini AI 雙模組備援診斷系統 (靜態超強備援管線)
     # ==========================================
     print("🤖 喚醒 Gemini AI 進行總經與風險診斷...", flush=True)
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -93,26 +93,17 @@ try:
         try:
             client = genai.Client(api_key=GEMINI_API_KEY)
             
-            available_models = []
-            for m in client.models.list_models():
-                if "generateContent" in m.supported_actions:
-                    available_models.append(m.name)
+            # 🚀 捨棄容易報錯的動態抓取，直接部署「五重護城河」
+            # 只要 3.0 一開放 API 權限，系統就會自動吃到；否則無縫降級 2.5
+            model_pipeline = [
+                "gemini-3.0-pro",        # 夢幻頂規
+                "gemini-3.0-flash",      # 性價比之王
+                "gemini-2.5-pro",        # 高智商備援
+                "gemini-2.5-flash",      # 穩定主力
+                "gemini-2.5-flash-lite"  # 絕對保底
+            ]
             
-            model_pipeline = []
-            pro_3 = [m for m in available_models if "gemini-3" in m and "pro" in m]
-            flash_3 = [m for m in available_models if "gemini-3" in m and "flash" in m]
-            flash_25 = [m for m in available_models if "gemini-2.5-flash" in m and "lite" not in m]
-            lite_25 = [m for m in available_models if "gemini-2.5-flash-lite" in m]
-
-            if pro_3: model_pipeline.append(pro_3[0])
-            if flash_3: model_pipeline.append(flash_3[0])
-            if flash_25: model_pipeline.append(flash_25[0])
-            if lite_25: model_pipeline.append(lite_25[0])
-            
-            if not model_pipeline:
-                model_pipeline = ["models/gemini-2.5-flash"]
-                
-            print(f"📡 系統自動配置的 AI 備援管線: {model_pipeline}", flush=True)
+            print(f"📡 系統配置 AI 備援管線: {model_pipeline}", flush=True)
 
             prompt = f"""
             你是一位量化避險基金經理。請診斷以下數據：
@@ -139,8 +130,12 @@ try:
 
             for model_name in model_pipeline:
                 try:
+                    # 嘗試呼叫模型
                     response = client.models.generate_content(model=model_name, contents=prompt)
                     
+                    # 暴力 Regex 洗掉 Markdown
+                    import re
+                    import json
                     json_match = re.search(r'\{.*\}', response.text, re.DOTALL)
                     if not json_match:
                         raise ValueError("模型未回傳合法 JSON 結構")
@@ -158,24 +153,6 @@ try:
 
         except Exception as e:
             print(f"🔥 AI 初始化發生錯誤: {e}", flush=True)
-
-    # ==========================================
-    # 💾 G. 寫入 Supabase (屬於總經管線)
-    # ==========================================
-    print("🚀 正在同步總經數據至 Supabase...", flush=True)
-    existing = supabase.table("portfolio_db").select("id").limit(1).execute()
-    target_id = existing.data[0]['id'] if existing.data else 1
-    
-    if existing.data:
-        supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
-    else:
-        supabase.table("portfolio_db").insert({"id": target_id, "macro_meta": macro_payload}).execute()
-
-# 👇 這是剛剛遺失的最關鍵的外層收尾，負責捕捉整個總經流程的錯誤！
-except Exception as e:
-    import traceback
-    print(f"🔥 總經數據處理發生致命錯誤:\n{traceback.format_exc()}", flush=True)
-    raise e
 
 # ==========================================
 # 📊 第二階段：股票多因子管線
