@@ -97,10 +97,22 @@ try:
         衰退指標 (10Y-3M): {macro_payload['yield_curve']}%
         信用利差: {macro_payload['hy_spread']}%
         BTC動能: {macro_payload['btc_1m_mom']}%
-        請回傳一個 JSON 格式，包含 summary 和 details 陣列。絕對不要輸出 Markdown 標籤。
+        
+        請嚴格依照以下 JSON 結構回傳結果，絕對不要輸出 Markdown 標籤或其他廢話：
+        {{
+            "summary": "一句話總結當前總經環境與操作建議",
+            "details": [
+                {{
+                    "icon": "🌟(填入相關emoji)", 
+                    "color": "text-green-400 (或 text-red-400 / text-blue-400 等 Tailwind 顏色)", 
+                    "title": "指標名稱與狀態", 
+                    "desc": "詳細的量化解讀與資產配置建議"
+                }}
+            ]
+        }}
         """
         # 升級至 2.5 世代管線
-        model_pipeline = ["gemini-2.5-flash", "gemini-2.5-flash-lite"]
+        model_pipeline = ["gemini-3.0-pro", "gemini-3.0-flash", "gemini-2.5-flash", "gemini-2.5-flash-lite"]
         ai_success = False
 
         for model_name in model_pipeline:
