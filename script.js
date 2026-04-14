@@ -946,22 +946,20 @@ createApp({
 
             const assets = mcAvailableAssets.value;
             
-            // 💡 終極防呆：確保有兩檔以上的標的才跑模擬，避免除以零產生 NaN 黑洞
+            // 💡 終極防呆：確保有兩檔以上的標的才跑模擬
             if(assets.length < 2) {
-                alert("⚠️ 需要至少 2 檔合格標的 (Beta 與 SD 需大於 0) 才能進行蒙地卡羅多樣化模擬！\n請先到「庫存」分頁設定參數。");
+                alert("⚠️ 需要至少 2 檔合格標的 (Beta 與 SD 需大於 0) 才能進行蒙地卡羅多樣化模擬！");
                 showMCModal.value = false; return;
             }
 
             const n_assets = assets.length;
-            const minWeight = 0.05; 
-            if (n_assets * minWeight > 1.0) {
-                alert(`標的數量 (${n_assets} 檔) 過多，無法滿足每檔最低 ${minWeight * 100}% 的限制！`);
-                showMCModal.value = false; return;
-            }
-            const remainingWeight = 1.0 - (n_assets * minWeight);
+            
+            // 🌟 破除「維度災難」：解除 5% 最低限制，允許探索極端邊界！
+            const minWeight = 0.0; 
+            const remainingWeight = 1.0;
             const n_portfolios = 5000;
 
-            // 🌟 強制轉型，確保不會有字串混入數學運算
+            // 強制轉型防呆，避免字串混入數學運算
             const baseRm = (parseFloat(riskParams.value.rm) || 10.0) / 100;
             const baseSm = (parseFloat(riskParams.value.sm) || 15.0) / 100;
             const baseRf = (parseFloat(riskParams.value.rf) || 1.5) / 100;
@@ -972,14 +970,14 @@ createApp({
                 Bear:   { rm: baseRm - 0.10, sm: baseSm * 1.5, rf: baseRf * 0.5, stressCorr: 0.5, m_skew: -1.0, m_kurt_ex: 2.0 },
                 Crisis: { rm: baseRm - 0.20, sm: baseSm * 2.0, rf: 0.001, stressCorr: 1.0, m_skew: -2.5, m_kurt_ex: 5.0 }
             };
-            const { rm, sm, rf, stressCorr, m_skew, m_kurt_ex } = regimeParams[macroRegime.value];
+            const { rm, sm, rf, stressCorr, m_skew, m_kurt_ex } = regimeParams[macroRegime.value] || regimeParams['Normal'];
             
             const bl_expected_returns = calculateBlackLitterman(assets, rm, rf, sm, blViews.value);
 
             const mcPoints = [];
-            let bestScore = -99999;
-            let maxScoreForColor = -99999;
-            let minScoreForColor = 99999;
+            let bestScore = -999999;
+            let maxScoreForColor = -999999;
+            let minScoreForColor = 999999;
             let bestPort = null;
 
             let riskAversionA = 0;
@@ -987,26 +985,29 @@ createApp({
             else if (mcRisk.value === 'aggressive') riskAversionA = 1; 
 
             for (let p = 0; p < n_portfolios; p++) {
-                let randWeights = Array.from({length: n_assets}, () => Math.random());
+                
+                // 🌟 核心引擎升級：使用四次方製造「稀疏權重 (Sparse Matrix)」
+                // 這樣才能強迫演算法去探索高風險高報酬、或極度保守的邊界，把雲團撐開！
+                let randWeights = Array.from({length: n_assets}, () => Math.pow(Math.random(), 4));
                 const sumRand = randWeights.reduce((a,b)=>a+b, 0);
-                let weights = randWeights.map(w => minWeight + (w / sumRand) * remainingWeight);
+                let weights = randWeights.map(w => w / sumRand);
 
                 let p_ret = 0;
                 let p_beta = 0;
                 let weighted_vol_sum = 0; 
 
                 weights.forEach((w, i) => {
-                    const e_r = bl_expected_returns[i]; 
+                    const e_r = bl_expected_returns[i] || 0; 
                     p_ret += w * e_r;
-                    p_beta += w * parseFloat(assets[i].beta);
-                    weighted_vol_sum += w * (parseFloat(assets[i].stdDev) / 100);
+                    p_beta += w * (parseFloat(assets[i].beta) || 1.0);
+                    weighted_vol_sum += w * ((parseFloat(assets[i].stdDev) || 20.0) / 100);
                 });
 
                 let sys_var = Math.pow(p_beta, 2) * Math.pow(sm, 2);
                 let idio_var = 0;
                 weights.forEach((w, i) => {
-                    const sig_i = parseFloat(assets[i].stdDev) / 100;
-                    const beta_i = parseFloat(assets[i].beta);
+                    const sig_i = (parseFloat(assets[i].stdDev) || 20.0) / 100;
+                    const beta_i = parseFloat(assets[i].beta) || 1.0;
                     let idio_i = Math.pow(sig_i, 2) - Math.pow(beta_i * sm, 2);
                     if(idio_i < 0) idio_i = 0; 
                     idio_var += Math.pow(w, 2) * idio_i;
@@ -1015,16 +1016,17 @@ createApp({
                 let standard_vol = Math.sqrt(sys_var + idio_var);
                 let p_vol = standard_vol * (1 - stressCorr) + weighted_vol_sum * stressCorr;
 
-                let p_skew = p_vol > 0 ? (Math.pow(p_beta, 3) * Math.pow(sm, 3) * m_skew) / Math.pow(p_vol, 3) : 0;
-                let p_kurt_ex = p_vol > 0 ? (Math.pow(p_beta, 4) * Math.pow(sm, 4) * m_kurt_ex) / Math.pow(p_vol, 4) : 0;
+                // 防呆：防止除以零的黑洞
+                if (p_vol === 0 || isNaN(p_vol)) continue;
+
+                let p_skew = (Math.pow(p_beta, 3) * Math.pow(sm, 3) * m_skew) / Math.pow(p_vol, 3);
+                let p_kurt_ex = (Math.pow(p_beta, 4) * Math.pow(sm, 4) * m_kurt_ex) / Math.pow(p_vol, 4);
 
                 if (enableBlackSwan.value) {
-                    const jump_prob_daily = 0.005;
-                    const expected_jumps_yr = jump_prob_daily * 252; 
+                    const expected_jumps_yr = 0.005 * 252; 
                     const jump_mean = -0.15; 
                     const jump_std = 0.05;   
-                    
-                    p_ret = p_ret + (expected_jumps_yr * jump_mean);
+                    p_ret += (expected_jumps_yr * jump_mean);
                     p_vol = Math.sqrt(Math.pow(p_vol, 2) + expected_jumps_yr * (Math.pow(jump_mean, 2) + Math.pow(jump_std, 2)));
                     p_skew -= 1.5; 
                     p_kurt_ex += 4.0;
@@ -1032,62 +1034,58 @@ createApp({
 
                 let rf_effective = rf; 
                 if (enableInflation.value) {
-                    const inf_mean = 0.025; 
-                    const inf_std = 0.015;  
-                    p_ret = p_ret - inf_mean; 
-                    p_vol = Math.sqrt(Math.pow(p_vol, 2) + Math.pow(inf_std, 2)); 
-                    rf_effective = rf - inf_mean; 
+                    p_ret -= 0.025; 
+                    p_vol = Math.sqrt(Math.pow(p_vol, 2) + Math.pow(0.015, 2)); 
+                    rf_effective = rf - 0.025; 
                 }
 
-                const p_sharpe = p_vol > 0 ? (p_ret - rf_effective) / p_vol : 0;
+                const p_sharpe = (p_ret - rf_effective) / p_vol;
                 const p_asr = p_sharpe * (1 + (p_skew / 6) * p_sharpe - (p_kurt_ex / 24) * Math.pow(p_sharpe, 2));
 
-                let currentScore = 0;
-                if (mcRisk.value === 'neutral') {
-                    currentScore = p_asr; 
-                } else if (mcRisk.value === 'averse') {
-                    currentScore = p_ret - (0.5 * riskAversionA * Math.pow(p_vol, 2)) + (0.05 * p_skew) - (0.02 * p_kurt_ex);
-                } else {
-                    currentScore = p_ret - (0.5 * riskAversionA * Math.pow(p_vol, 2)) + (0.02 * p_skew);
-                }
-
-                mcPoints.push({ x: p_vol * 100, y: p_ret * 100, sharpe: p_asr, score: currentScore, weights });
+                let currentScore = mcRisk.value === 'neutral' ? p_asr : 
+                                   mcRisk.value === 'averse' ? p_ret - (0.5 * riskAversionA * Math.pow(p_vol, 2)) + (0.05 * p_skew) - (0.02 * p_kurt_ex) : 
+                                   p_ret - (0.5 * riskAversionA * Math.pow(p_vol, 2)) + (0.02 * p_skew);
 
                 if (!isNaN(currentScore)) {
+                    mcPoints.push({ x: p_vol * 100, y: p_ret * 100, sharpe: p_asr, score: currentScore, weights });
+                    
                     if (currentScore > maxScoreForColor) maxScoreForColor = currentScore;
                     if (currentScore < minScoreForColor) minScoreForColor = currentScore;
-                }
 
-                if (currentScore > bestScore) {
-                    bestScore = currentScore;
-                    bestPort = { ret: p_ret, vol: p_vol, sharpe: p_asr, skew: p_skew, kurt: p_kurt_ex, weights };
+                    if (currentScore > bestScore) {
+                        bestScore = currentScore;
+                        bestPort = { ret: p_ret, vol: p_vol, sharpe: p_asr, skew: p_skew, kurt: p_kurt_ex, weights };
+                    }
                 }
             }
 
-            if(bestPort) {
-                const wList = [];
-                const totalVal = totalStockValueTwd.value; 
-                bestPort.weights.forEach((w, i) => { 
-                    const optW = w * 100;
-                    const curW = totalVal > 0 ? (assets[i].marketValueTwd / totalVal) * 100 : 0;
-                    wList.push({
-                        ticker: assets[i].ticker,
-                        opt: optW.toFixed(2),
-                        cur: curW.toFixed(2),
-                        diff: (optW - curW).toFixed(2)
-                    }); 
-                });
-                wList.sort((a,b) => parseFloat(b.opt) - parseFloat(a.opt));
-
-                mcOptimal.value = {
-                    ret: (bestPort.ret * 100).toFixed(2),
-                    vol: (bestPort.vol * 100).toFixed(2),
-                    sharpe: bestPort.sharpe.toFixed(3),
-                    skew: bestPort.skew.toFixed(2),
-                    kurt: bestPort.kurt.toFixed(2),
-                    weights: wList
-                };
+            if(!bestPort) {
+                alert("運算失敗，請檢查標的風險參數是否異常。");
+                return;
             }
+
+            const wList = [];
+            const totalVal = totalStockValueTwd.value; 
+            bestPort.weights.forEach((w, i) => { 
+                const optW = w * 100;
+                const curW = totalVal > 0 ? (assets[i].marketValueTwd / totalVal) * 100 : 0;
+                wList.push({
+                    ticker: assets[i].ticker,
+                    opt: optW.toFixed(2),
+                    cur: curW.toFixed(2),
+                    diff: (optW - curW).toFixed(2)
+                }); 
+            });
+            wList.sort((a,b) => parseFloat(b.opt) - parseFloat(a.opt));
+
+            mcOptimal.value = {
+                ret: (bestPort.ret * 100).toFixed(2),
+                vol: (bestPort.vol * 100).toFixed(2),
+                sharpe: bestPort.sharpe.toFixed(3),
+                skew: bestPort.skew.toFixed(2),
+                kurt: bestPort.kurt.toFixed(2),
+                weights: wList
+            };
 
             chartMC = new Chart(ctx, {
                 type: 'scatter',
@@ -1098,8 +1096,9 @@ createApp({
                             data: mcPoints,
                             backgroundColor: (context) => {
                                 const val = context.raw?.score;
-                                // 💡 終極修復：防止 NaN 顏色導致 Chart.js 崩潰消失
                                 if (val === undefined || isNaN(val)) return '#3b82f6';
+                                
+                                // 防止只有一個點時的除以零當機
                                 if (maxScoreForColor <= minScoreForColor) return 'rgba(59, 130, 246, 0.4)'; 
                                 
                                 let ratio = (val - minScoreForColor) / (maxScoreForColor - minScoreForColor);
@@ -1110,7 +1109,7 @@ createApp({
                             pointRadius: 2
                         },
                         {
-                            label: 'Optimal Portfolio (ASR)',
+                            label: 'Optimal Portfolio',
                             data: [{ x: bestPort.vol * 100, y: bestPort.ret * 100 }],
                             backgroundColor: '#fbbf24', pointRadius: 8, borderColor: '#fff', borderWidth: 2
                         }
