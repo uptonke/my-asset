@@ -93,30 +93,22 @@ try:
         try:
             client = genai.Client(api_key=GEMINI_API_KEY)
             
-            # 🚀 1. 動態抓取系統當前支援的模型清單
             available_models = []
             for m in client.models.list_models():
                 if "generateContent" in m.supported_actions:
                     available_models.append(m.name)
             
-            # 🚀 2. 依照我們想要的優先度 (Pro > Flash > 2.5) 篩選並排序
             model_pipeline = []
-            
-            # 優先找 3.0 Pro
             pro_3 = [m for m in available_models if "gemini-3" in m and "pro" in m]
-            # 再找 3.0 Flash
             flash_3 = [m for m in available_models if "gemini-3" in m and "flash" in m]
-            # 備援 2.5 家族
             flash_25 = [m for m in available_models if "gemini-2.5-flash" in m and "lite" not in m]
             lite_25 = [m for m in available_models if "gemini-2.5-flash-lite" in m]
 
-            # 依序加入管線 (同級別如果有多個，取第一個)
             if pro_3: model_pipeline.append(pro_3[0])
             if flash_3: model_pipeline.append(flash_3[0])
             if flash_25: model_pipeline.append(flash_25[0])
             if lite_25: model_pipeline.append(lite_25[0])
             
-            # 如果上面都沒抓到，放一個絕對安全的保底
             if not model_pipeline:
                 model_pipeline = ["models/gemini-2.5-flash"]
                 
@@ -166,10 +158,27 @@ try:
 
         except Exception as e:
             print(f"🔥 AI 初始化發生錯誤: {e}", flush=True)
-            # 這裡不 raise e，即使 AI 壞了也要讓前面的總經數據順利寫入 Supabase
+
+    # ==========================================
+    # 💾 G. 寫入 Supabase (屬於總經管線)
+    # ==========================================
+    print("🚀 正在同步總經數據至 Supabase...", flush=True)
+    existing = supabase.table("portfolio_db").select("id").limit(1).execute()
+    target_id = existing.data[0]['id'] if existing.data else 1
+    
+    if existing.data:
+        supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
+    else:
+        supabase.table("portfolio_db").insert({"id": target_id, "macro_meta": macro_payload}).execute()
+
+# 👇 這是剛剛遺失的最關鍵的外層收尾，負責捕捉整個總經流程的錯誤！
+except Exception as e:
+    import traceback
+    print(f"🔥 總經數據處理發生致命錯誤:\n{traceback.format_exc()}", flush=True)
+    raise e
 
 # ==========================================
-# 🧠 3. 股票多因子管線
+# 📊 第二階段：股票多因子管線
 # ==========================================
 print("\n⏳ 接著開始執行股票多因子管線...", flush=True)
 
