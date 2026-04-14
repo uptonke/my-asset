@@ -112,7 +112,14 @@ try:
         }}
         """
         # 升級至 2.5 世代管線
-        model_pipeline = ["gemini-3.0-pro", "gemini-3.0-flash", "gemini-2.5-flash", "gemini-2.5-flash-lite"]
+        # 使用官方最新的通用別名 (Alias) 或是實驗版全名
+        model_pipeline = [
+            "gemini-3.0-pro-exp",   # 3.0 Pro 實驗版 (如果權限有開)
+            "gemini-pro",           # 系統會自動導向最新版 Pro
+            "gemini-3.0-flash-exp", # 3.0 Flash 實驗版
+            "gemini-2.5-flash",     # 穩定版 2.5 Flash
+            "gemini-2.5-flash-lite" # 最終保底
+        ]
         ai_success = False
 
         for model_name in model_pipeline:
