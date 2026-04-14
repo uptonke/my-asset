@@ -82,7 +82,7 @@ try:
     print(f"📈 計算完成 -> Rf: {macro_payload['market_rf']}%, Rm: {macro_payload['market_rm']}%, σm: {macro_payload['market_sm']}%", flush=True)
     
     # ==========================================
-    # 🧠 F. Gemini AI 雙模組備援診斷系統 (2.5 -> 2.5 Lite)
+    # 🧠 F. Gemini AI 雙模組備援診斷系統
     # ==========================================
     print("🤖 喚醒 Gemini AI 進行總經與風險診斷...", flush=True)
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -91,79 +91,41 @@ try:
         try:
             client = genai.Client(api_key=GEMINI_API_KEY)
             prompt = f"""
-            你是一位華爾街頂級的量化避險基金經理人。請根據以下最新的市場參數，給出嚴格、客觀的市場診斷。
-            切勿迎合，直接指出潛在風險或機會。
-            
-            【當前市場數據】
-            - 10年期無風險利率 (Rf): {macro_payload['market_rf']}%
-            - 標普500預期報酬 (Rm): {macro_payload['market_rm']}%
-            - 標普500波動率 (σm): {macro_payload['market_sm']}%
-            - 10Y-3M 利差 (衰退指標): {macro_payload['yield_curve']}%
-            - 高收益債信用利差 (恐慌指標): {macro_payload['hy_spread']}%
-            - 比特幣近一月動能: {macro_payload['btc_1m_mom']}%
-            
-            【輸出要求】
-            請必須且只能回傳一個 JSON 格式，不要包含任何 Markdown 標籤 (例如 ```json)，結構如下：
-            {{
-                "summary": "一句話總結目前總經環境與資金流向 (30字內)",
-                "details": [
-                    {{"icon": "⚖️", "color": "text-blue-400", "title": "資金成本分析", "desc": "對無風險利率與期望報酬的解讀"}},
-                    {{"icon": "⚠️", "color": "text-red-400", "title": "尾部風險警示", "desc": "針對利差與波動率的隱憂分析"}},
-                    {{"icon": "💡", "color": "text-yellow-400", "title": "配置建議", "desc": "給予當下的資產配置戰略建議"}}
-                ]
-            }}
+            你是一位量化避險基金經理。請診斷以下數據：
+            Rf: {macro_payload['market_rf']}%, Rm: {macro_payload['market_rm']}%, σm: {macro_payload['market_sm']}%
+            衰退指標 (10Y-3M): {macro_payload['yield_curve']}%
+            信用利差: {macro_payload['hy_spread']}%
+            BTC動能: {macro_payload['btc_1m_mom']}%
+            請回傳一個 JSON 格式（不要 Markdown），包含 summary 和 details 陣列。
             """
-            
-            # 🌟 定義優先順序：2.5 Flash -> 2.5 Flash-Lite
-            model_pipeline = ["gemini-2.5-flash", "gemini-2.5-flash-lite"]
+            model_pipeline = ["gemini-2.0-flash", "gemini-1.5-flash"]
             ai_success = False
 
             for model_name in model_pipeline:
                 try:
-                    print(f"   🚀 嘗試使用模型: {model_name}...", flush=True)
                     response = client.models.generate_content(model=model_name, contents=prompt)
-                    
                     text = response.text.strip().strip('`')
-                    if text.lower().startswith('json'):
-                        text = text[4:].strip()
-                    
-                    ai_insights = json.loads(text)
-                    print(f"✅ AI 診斷成功！(使用模型: {model_name})", flush=True)
-                    macro_payload['ai_analysis'] = ai_insights
+                    if text.lower().startswith('json'): text = text[4:].strip()
+                    macro_payload['ai_analysis'] = json.loads(text)
+                    print(f"✅ AI 診斷成功！({model_name})", flush=True)
                     ai_success = True
-                    break  # 成功就立刻跳出，不執行備援
-                    
-                except Exception as e:
-                    # 判斷是否為伺服器忙碌、配額耗盡或 503 錯誤
-                    if "503" in str(e) or "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                        print(f"⚠️ 模型 {model_name} 暫時塞車或權限受限，啟動備援機制...", flush=True)
-                        time.sleep(1) # 短暫緩衝 1 秒後切換
-                        continue # 嘗試下一個模型
-                    else:
-                        print(f"⚠️ 模型 {model_name} 發生非預期錯誤: {e}", flush=True)
-                        break # 非伺服器問題則不嘗試備援，直接跳出
+                    break
+                except:
+                    continue
             
-            if not ai_success:
-                print("⚠️ 備援管線全部失敗，本次將跳過 AI 診斷報告。", flush=True)
-
+            if not ai_success: print("⚠️ AI 診斷暫時不可用。", flush=True)
         except Exception as e:
-            print(f"⚠️ AI 客戶端初始化失敗: {e}", flush=True)
-    else:
-        print("⚠️ 未偵測到 GEMINI_API_KEY，跳過 AI 診斷。", flush=True)
+            print(f"⚠️ AI 初始化失敗: {e}", flush=True)
 
     # G. 寫入 Supabase 
     print("🚀 正在同步至 Supabase...", flush=True)
     existing = supabase.table("portfolio_db").select("id").limit(1).execute()
-    
     if len(existing.data) > 0:
         target_id = existing.data[0]['id']
         supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
-        print(f"✅ 數據同步完成！(已精準寫入至紀錄 id={target_id})", flush=True)
     else:
-        print("⚠️ 偵測到空資料庫，正在建立全新量化設定檔...", flush=True)
         target_id = 1
         supabase.table("portfolio_db").insert({"id": target_id, "macro_meta": macro_payload}).execute()
-        print("✅ 數據初始化並同步完成！", flush=True)
 
 except Exception as e:
     print(f"🔥 總經數據處理發生錯誤: {str(e)}", flush=True)
@@ -176,158 +138,81 @@ print("\n⏳ 接著開始執行股票多因子管線...", flush=True)
 
 def get_sheet_prices(url_str):
     print("📊 正在從 Google Sheet 抓取自訂報價...", flush=True)
-    if not url_str:
-        return {}
+    if not url_str: return {}
     try:
-        # 正則表達式抓取 ID 和 GID
         match = re.search(r'/d/([a-zA-Z0-9-_]+)', url_str)
         gid_match = re.search(r'[#&?]gid=([0-9]+)', url_str)
-        if not match:
-            return {}
-        
+        if not match: return {}
         sheet_id = match.group(1)
         gid = gid_match.group(1) if gid_match else '0'
         
-        # 🌟 確保這裡的 URL 是純文字網址，沒有括號
-        csv_url = f"[https://docs.google.com/spreadsheets/d/](https://docs.google.com/spreadsheets/d/){sheet_id}/gviz/tq?tqx=out:csv&gid={gid}"
+        # 🌟 這裡修正了網址格式，移除了所有括號
+        csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&gid={gid}"
         
         response = requests.get(csv_url, timeout=10)
         response.raise_for_status() 
-        csv_content = response.text
-        
-        df = pd.read_csv(io.StringIO(csv_content), header=None)
+        df = pd.read_csv(io.StringIO(response.text), header=None)
         price_map = {}
         for _, row in df.iterrows():
             if len(row) >= 2 and pd.notna(row[0]) and pd.notna(row[1]):
                 ticker = str(row[0]).strip().upper()
                 try:
-                    price_str = str(row[1]).replace(',', '')
-                    price = float(price_str)
+                    price = float(str(row[1]).replace(',', ''))
                     price_map[ticker] = price
-                    if ':' in ticker:
-                        price_map[ticker.split(':')[1].strip()] = price
-                except:
-                    pass
-        print(f"✅ 成功抓取 {len(price_map)} 筆自訂報價！", flush=True)
+                    if ':' in ticker: price_map[ticker.split(':')[1].strip()] = price
+                except: pass
         return price_map
     except Exception as e:
         print(f"⚠️ Sheet 報價讀取失敗: {e}", flush=True)
         return {}
 
 response = supabase.table("portfolio_db").select("*").limit(1).execute()
-data = response.data
-
-if not data:
-    print("❌ 資料庫沒東西或連線失敗！")
-else:
-    db_record = data[0]
+if response.data:
+    db_record = response.data[0]
     stock_meta = db_record.get("stock_meta", {})
-    settings = db_record.get("settings", {})
-    
-    sheet_url = settings.get("sheetUrl", "")
-    sheet_prices = get_sheet_prices(sheet_url)
+    sheet_prices = get_sheet_prices(db_record.get("settings", {}).get("sheetUrl", ""))
     
     tickers = list(stock_meta.keys())
-    
     if tickers:
-        tw_bench = "^TWII"  
-        us_bench = "SPY"    
+        tw_bench, us_bench = "^TWII", "SPY"
+        proxy_map = {"統一奔騰": "00981A.TW", "統一黑馬": "0050.TW", "安聯台灣科技": "0052.TW"}
         
-        # 🌟 1. 建立基金替身映射表 (Proxy Mapping) - 已移除加密貨幣映射
-        proxy_map = {
-            "統一奔騰": "00981A.TW",      
-            "統一黑馬": "0050.TW",
-            "安聯台灣科技": "0052.TW"
-        }
-        
-        def contains_chinese(text):
-            return bool(re.search(r'[\u4e00-\u9fff]', text))
-
-        yf_tickers = []
         download_list = [tw_bench, us_bench]
-        
-        # 🌟 2. 智慧分類與替換
+        yf_tickers = []
         for t in tickers:
-            if t in proxy_map:
-                proxy_ticker = proxy_map[t]
-                yf_tickers.append(proxy_ticker) 
-                if proxy_ticker not in download_list:
-                    download_list.append(proxy_ticker)
-            elif contains_chinese(t):
-                yf_tickers.append(t) 
-            elif re.match(r'^\d+[A-Za-z]?$', t):
-                tw_ticker = f"{t}.TW"
-                yf_tickers.append(tw_ticker)
-                if tw_ticker not in download_list:
-                    download_list.append(tw_ticker)
-            else:
-                yf_tickers.append(t)
-                if t not in download_list:
-                    download_list.append(t)
+            if t in proxy_map: target = proxy_map[t]
+            elif bool(re.search(r'[\u4e00-\u9fff]', t)): target = t
+            elif re.match(r'^\d+$', t): target = f"{t}.TW"
+            else: target = t
+            yf_tickers.append(target)
+            if target not in download_list: download_list.append(target)
 
-        print(f"⏳ 正在向 Yahoo Finance 請求歷史資料...", flush=True)
-        prices = yf.download(download_list, period="1y")["Close"]
-        
-        if isinstance(prices, pd.Series):
-            prices = prices.to_frame(name=download_list[0])
+        print(f"⏳ 正在向 Yahoo Finance 請求資料...", flush=True)
+        prices_df = yf.download(download_list, period="1y")["Close"]
+        returns = prices_df.pct_change()
 
-        returns = prices.pct_change()
-
-        print("🧠 開始計算 多因子 風險與動能參數...", flush=True)
         for i, original_ticker in enumerate(tickers):
-            yf_ticker = yf_tickers[i] 
-
+            yf_ticker = yf_tickers[i]
             if original_ticker in sheet_prices:
-                stock_meta[original_ticker]["last_price"] = float(sheet_prices[original_ticker])
-
-            if contains_chinese(original_ticker) and original_ticker not in proxy_map:
-                print(f"⚠️ [{original_ticker}] 無替身標的，保留現有風險參數。")
-                continue
+                stock_meta[original_ticker]["last_price"] = sheet_prices[original_ticker]
+            
+            if yf_ticker in returns.columns:
+                stock_close = prices_df[yf_ticker].dropna()
+                if len(stock_close) < 60: continue
                 
-            if yf_ticker not in returns.columns:
-                continue
-
-            stock_close = prices[yf_ticker].dropna()
-            stock_ret = returns[yf_ticker].dropna()
-            
-            if len(stock_ret) < 60: 
-                continue
-
-            is_tw_stock = yf_ticker.endswith(".TW")
-            bench_ticker = tw_bench if is_tw_stock else us_bench
-            bench_ret = returns[bench_ticker].dropna()
-            
-            aligned_data = pd.concat([stock_ret, bench_ret], axis=1).dropna()
-            
-            if len(aligned_data) < 30:
-                continue
+                bench = tw_bench if yf_ticker.endswith(".TW") else us_bench
+                aligned = pd.concat([returns[yf_ticker], returns[bench]], axis=1).dropna()
                 
-            aligned_stock = aligned_data.iloc[:, 0]
-            aligned_bench = aligned_data.iloc[:, 1]
+                beta = aligned.iloc[:,0].cov(aligned.iloc[:,1]) / aligned.iloc[:,1].var()
+                ann_std = np.sqrt(aligned.iloc[:,0].var() * 252) * 100
+                rsi = ta.rsi(stock_close).iloc[-1]
+                macd = ta.macd(stock_close).iloc[-1, 1]
+                
+                stock_meta[original_ticker].update({
+                    "beta": round(beta, 2), "std": round(ann_std, 2),
+                    "rsi": round(rsi, 2), "macd_h": round(macd, 4)
+                })
+                print(f"✅ [{original_ticker}] 已更新。")
 
-            ewma_var = aligned_stock.ewm(alpha=0.06).var().iloc[-1]
-            ann_std = np.sqrt(ewma_var * 252) * 100
-
-            cov = aligned_stock.cov(aligned_bench)
-            bench_var = aligned_bench.var()
-            beta = cov / bench_var if bench_var > 0 else 1.0
-
-            rsi_series = ta.rsi(stock_close, length=14)
-            rsi_14 = rsi_series.iloc[-1] if rsi_series is not None and not rsi_series.empty else 50.0
-
-            macd_df = ta.macd(stock_close, fast=12, slow=26, signal=9)
-            macd_hist = macd_df.iloc[-1, 1] if macd_df is not None and not macd_df.empty else 0.0
-
-            mom_6m = stock_close.pct_change(periods=126).iloc[-1] * 100 if len(stock_close) > 126 else 0.0
-
-            stock_meta[original_ticker]["std"] = round(ann_std, 2)
-            stock_meta[original_ticker]["beta"] = round(beta, 2)
-            stock_meta[original_ticker]["rsi"] = round(rsi_14, 2) if pd.notna(rsi_14) else 50.0
-            stock_meta[original_ticker]["macd_h"] = round(macd_hist, 4) if pd.notna(macd_hist) else 0.0
-            stock_meta[original_ticker]["mom_6m"] = round(mom_6m, 2) if pd.notna(mom_6m) else 0.0
-
-            print(f"✅ [{original_ticker}] 更新 -> 基準:{bench_ticker}, Beta:{beta:.2f}, Std:{ann_std:.1f}%, RSI:{rsi_14:.1f}")
-
-        print("🚀 正在將多因子參數與最新估值打回 Supabase...", flush=True)
         supabase.table("portfolio_db").update({"stock_meta": stock_meta}).eq("id", target_id).execute()
-        print("🎉 雲端自動化任務完成！", flush=True)
+        print("🎉 雲端自動化任務完成！")
