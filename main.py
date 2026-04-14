@@ -12,7 +12,6 @@ import warnings
 import urllib.parse
 import json
 from google import genai
-import ccxt  # 🌟 將 ccxt 統一移到開頭引入
 import time
 
 warnings.filterwarnings('ignore')
@@ -82,49 +81,6 @@ try:
     }
     print(f"📈 計算完成 -> Rf: {macro_payload['market_rf']}%, Rm: {macro_payload['market_rm']}%, σm: {macro_payload['market_sm']}%", flush=True)
     
-    # ==========================================
-    # 🪙 CeFi 掃描器：連接幣安 API
-    # ==========================================
-    print("🪙 啟動 CeFi 掃描器：連接幣安 API...", flush=True)
-    
-    binance_api = os.environ.get("BINANCE_API_KEY")
-    binance_secret = os.environ.get("BINANCE_SECRET_KEY")
-
-    binance_total_usdt = 0.0
-
-    if binance_api and binance_secret:
-        try:
-            # 初始化 ccxt 幣安實體
-            exchange = ccxt.binance({
-                'apiKey': binance_api,
-                'secret': binance_secret,
-                'enableRateLimit': True,
-            })
-            
-            # 抓取現貨錢包餘額
-            balance = exchange.fetch_balance()
-            tickers = exchange.fetch_tickers() # 抓取所有最新報價
-            
-            # 遍歷錢包，把非零資產全部折算成 USDT
-            for coin, amount in balance['total'].items():
-                if amount > 0:
-                    if coin == 'USDT':
-                        binance_total_usdt += amount
-                    elif f"{coin}/USDT" in tickers:
-                        last_price = tickers[f"{coin}/USDT"]['last']
-                        if last_price:
-                            binance_total_usdt += amount * last_price
-                            
-            print(f"✅ 幣安現貨錢包總值結算: {binance_total_usdt:.2f} USDT", flush=True)
-            
-            # 💡 把算出來的總價值塞進 macro_payload 裡，跟著總經數據一起上雲端！
-            macro_payload['binance_usdt_value'] = float(round(binance_total_usdt, 2))
-
-        except Exception as e:
-            print(f"⚠️ 幣安 API 讀取失敗，請檢查金鑰或網路: {e}", flush=True)
-    else:
-        print("⚠️ 未偵測到幣安金鑰，跳過資產掃描。", flush=True)
-
     # ==========================================
     # 🧠 F. Gemini AI 雙模組備援診斷系統 (2.5 -> 2.5 Lite)
     # ==========================================
@@ -233,7 +189,7 @@ def get_sheet_prices(url_str):
         gid = gid_match.group(1) if gid_match else '0'
         
         # 🌟 確保這裡的 URL 是純文字網址，沒有括號
-        csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&gid={gid}"
+        csv_url = f"[https://docs.google.com/spreadsheets/d/](https://docs.google.com/spreadsheets/d/){sheet_id}/gviz/tq?tqx=out:csv&gid={gid}"
         
         response = requests.get(csv_url, timeout=10)
         response.raise_for_status() 
@@ -277,12 +233,11 @@ else:
         tw_bench = "^TWII"  
         us_bench = "SPY"    
         
-        # 🌟 1. 建立基金替身映射表 (Proxy Mapping)
+        # 🌟 1. 建立基金替身映射表 (Proxy Mapping) - 已移除加密貨幣映射
         proxy_map = {
             "統一奔騰": "00981A.TW",      
             "統一黑馬": "0050.TW",
-            "安聯台灣科技": "0052.TW",  
-            "加密貨幣": "BTC-USD"       
+            "安聯台灣科技": "0052.TW"
         }
         
         def contains_chinese(text):
