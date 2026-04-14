@@ -68,6 +68,7 @@ createApp({
 
         const currentTab = ref('summary');
         const isAiExpanded = ref(false); 
+        const isHistoryExpanded = ref(false);
         
         // 👉 初始化 Supabase 客戶端
         const supabaseUrl = 'https://yrccanqxzrcoknzabifz.supabase.co';
@@ -1405,7 +1406,7 @@ createApp({
             isAuthenticating, handleLogin, handleLogout, checkAuth, fireProgress, 
             updateCharts, addFireTarget, macroRegime, enableBlackSwan, mcRisk, blViews, mcAvailableAssets, addBlView, enableInflation,
             generateAutoViews, runMonteCarlo, stressTestResults,
-            expandedCardTicker, toggleCard // 🌟 匯出供 HTML 模板使用，卡片點擊展開的核心！
+            expandedCardTicker, toggleCard, isHistoryExpanded // 🌟 匯出供 HTML 模板使用，卡片點擊展開的核心！
         };
     }
 }).mount('#app');
