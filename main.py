@@ -298,42 +298,44 @@ try:
             ]
                 
             prompt = f"""
-            你是總經 regime 最終裁判，只根據 Python 已算好的結果輸出 JSON，不可重算分數，不可使用外部知識，不可輸出 JSON 以外文字。
+            [SYSTEM_DIRECTIVE]
+            Task: Transform deterministic macro signals into aggressive tactical trading metadata.
+            Tone: High-Alpha Quant, Contrarian, Extreme Aggressive (Risk = Opportunity).
+            Constraints: 
+            - ZERO conversational text.
+            - ZERO Markdown formatting (no ```json). 
+            - Output RAW JSON strictly matching [OUTPUT_SCHEMA].
+            - ZERO external data hallucination. MUST strictly ground logic in [INPUT_DATA].
 
-            規則：
-            1. 若訊號一致，沿用 stage_candidate；若明顯分裂，改為 mixed。
-            2. confidence 需保守，反映訊號一致性與資料完整度。
-            3. summary 只要一句話，必須包含階段與配置方向；若訊號混雜，需直接寫出「訊號混雜」或「方向不一致」。
-            4. portfolio_bias 以 hint 為主，僅在明顯不一致時微調。
-            5. details 沿用或微調文字即可，不可改 score。
-            6. risks 取最弱的 3 項。
-            7. 若 data_quality 為 partial，語氣要更保守。
-            8. 輸出格式必須相容於 Vue 前端。
+            [TRANSFORMATION_RULES]
+            1. STAGE: Inherit `stage_candidate`. If signals conflict heavily, override to "mixed".
+            2. SUMMARY: 1 sentence. Map the stage to a max-alpha allocation strategy.
+            3. DETAILS.DESC: Max 25 chars. 
+               *** CRITICAL DATA RULE ***: You MUST explicitly cite specific numeric values from `raw` in every description. Combine the number with an actionable contrarian trigger. 
+               (e.g., MUST output "VIX={macro_payload.get('vix')} 恐慌超跌，暴力反彈買點🔪", DO NOT output generic text like "VIX偏高，適合買進").
+            4. DETAILS.COLOR: "text-green-400" (momentum/buy/opportunity), "text-red-400" (tail-risk/hedge/sell), "text-gray-400" (neutral).
+            5. DETAILS.ICON: Single emoji (🔥, ⚡, 🚀, 🔪, 🛡️, 🩸).
 
-            輸入數據：
-            stage_candidate: {json.dumps(regime_packet["stage_candidate"], ensure_ascii=False)}
+            [INPUT_DATA]
+            stage_candidate: {regime_packet["stage_candidate"]}
             total_score: {regime_packet["total_score"]}
-            confidence_hint: {regime_packet["confidence_hint"]}
-            portfolio_bias_hint: {json.dumps(regime_packet["portfolio_bias"], ensure_ascii=False)}
-            data_quality: {json.dumps(regime_packet["data_quality"], ensure_ascii=False)}
+            confidence: {regime_packet["confidence_hint"]}
             scores: {json.dumps(regime_packet["scores"], ensure_ascii=False)}
             raw: {json.dumps(regime_packet["raw"], ensure_ascii=False)}
-            details_hint: {json.dumps(regime_packet["details"], ensure_ascii=False)}
-            risks_hint: {json.dumps(regime_packet["risks"], ensure_ascii=False)}
 
-            輸出格式：
+            [OUTPUT_SCHEMA]
             {{
-              "summary": "",
+              "summary": "<string>",
               "details": [
                 {{
-                  "icon": "🌟(填入相關emoji)",
-                  "color": "text-green-400 (或 text-red-400 / text-blue-400 / text-gray-400)",
-                  "title": "指標名稱",
-                  "desc": "簡短量化解讀"
+                  "icon": "<emoji>",
+                  "color": "<string_tailwind_class>",
+                  "title": "<string_metric_name>",
+                  "desc": "<string_data_driven_insight>"
                 }}
               ]
             }}
-
+            
             只回傳 JSON。
             """
             
