@@ -4,6 +4,7 @@ import re
 import json
 import warnings
 import traceback
+import math
 import requests
 import numpy as np
 import pandas as pd
@@ -30,12 +31,193 @@ except Exception as e:
     exit(1)
 
 # ==========================================
+# 🌟 1.5 總經規則引擎 (Rule-based Deterministic Engine)
+# ==========================================
+def _is_missing(x):
+    if x is None: return True
+    try:
+        if isinstance(x, str) and not x.strip(): return True
+        v = float(x)
+        return math.isnan(v)
+    except Exception: return True
+
+def _num(x, default=None):
+    if _is_missing(x): return default
+    try: return float(x)
+    except Exception: return default
+
+def score_yield_curve(v):
+    v = _num(v)
+    if v is None: return 0
+    if v <= -0.5: return -2
+    if v <= 0: return -1
+    if v <= 1: return 1
+    return 2
+
+def score_hy_spread(v):
+    v = _num(v)
+    if v is None: return 0
+    if v > 5: return -2
+    if v >= 3: return -1
+    if v >= 1.5: return 1
+    return 2
+
+def score_vix(v):
+    v = _num(v)
+    if v is None: return 0
+    if v > 30: return -2
+    if v >= 20: return -1
+    if v >= 12: return 1
+    return 2
+
+def score_dxy(v):
+    v = _num(v)
+    if v is None: return 0
+    if v > 105: return -1
+    if v < 95: return 1
+    return 0
+
+def score_btc_mom(v):
+    v = _num(v)
+    if v is None: return 0
+    if v > 10: return 2
+    if v >= 0: return 1
+    if v >= -10: return -1
+    return -2
+
+def score_oil(v):
+    v = _num(v)
+    if v is None: return 0
+    if v > 90: return -1
+    if v < 60: return 1
+    return 0
+
+def score_copper_gold_ratio(v):
+    v = _num(v)
+    if v is None: return 0
+    if v >= 0.25: return 1
+    if v >= 0.15: return 0
+    return -1
+
+def status_from_score(score):
+    if score > 0: return "bullish"
+    if score < 0: return "bearish"
+    return "neutral"
+
+def choose_stage(scores):
+    vals = list(scores.values())
+    pos = sum(1 for s in vals if s > 0)
+    neg = sum(1 for s in vals if s < 0)
+    total = sum(vals)
+
+    if pos >= 2 and neg >= 2: return "mixed"
+    if scores["yield_curve"] <= -1 and scores["hy_spread"] <= -1 and scores["vix"] <= -1: return "recession_risk"
+    if scores["dxy"] <= -1 and scores["hy_spread"] <= -1: return "tight_liquidity"
+    if scores["oil_price"] < 0 and (scores["yield_curve"] <= 0 or scores["vix"] <= 0): return "stagflation"
+    if scores["yield_curve"] > 0 and scores["hy_spread"] > 0 and scores["vix"] > 0 and scores["btc_1m_mom"] > 0: return "expansion"
+
+    if total >= 5: return "expansion"
+    if 1 <= total <= 4: return "neutral"
+    if -3 <= total <= 0: return "tight_liquidity"
+    if -6 <= total <= -4: return "recession_risk"
+    if total <= -7: return "stagflation"
+    return "mixed"
+
+def build_regime_packet(macro_payload):
+    raw = {
+        "yield_curve": macro_payload.get("yield_curve"),
+        "hy_spread": macro_payload.get("hy_spread"),
+        "vix": macro_payload.get("vix"),
+        "dxy": macro_payload.get("dxy"),
+        "btc_1m_mom": macro_payload.get("btc_1m_mom"),
+        "oil_price": macro_payload.get("oil_price"),
+        "copper_gold_ratio": macro_payload.get("copper_gold_ratio"),
+        "gold_price": macro_payload.get("gold_price"),
+        "market_rf": macro_payload.get("market_rf"),
+        "market_rm": macro_payload.get("market_rm"),
+        "market_sm": macro_payload.get("market_sm"),
+        "yield_10y": macro_payload.get("yield_10y"),
+        "yield_short_rate": macro_payload.get("yield_2y"),
+    }
+
+    scores = {
+        "yield_curve": score_yield_curve(raw["yield_curve"]),
+        "hy_spread": score_hy_spread(raw["hy_spread"]),
+        "vix": score_vix(raw["vix"]),
+        "dxy": score_dxy(raw["dxy"]),
+        "btc_1m_mom": score_btc_mom(raw["btc_1m_mom"]),
+        "oil_price": score_oil(raw["oil_price"]),
+        "copper_gold_ratio": score_copper_gold_ratio(raw["copper_gold_ratio"]),
+    }
+
+    stage = choose_stage(scores)
+    total_score = sum(scores.values())
+
+    used_fields = ["yield_curve", "hy_spread", "vix", "dxy", "btc_1m_mom", "oil_price", "copper_gold_ratio"]
+    valid_count = sum(1 for k in used_fields if not _is_missing(raw[k]) and not (raw[k] == 0.0 and k in ["hy_spread", "vix", "dxy", "oil_price", "copper_gold_ratio"]))
+    completeness = valid_count / len(used_fields)
+    confidence = min(1.0, abs(total_score) / 8.0) * (0.6 + 0.4 * completeness)
+    confidence = round(float(confidence), 3)
+
+    details = []
+    for key in used_fields:
+        val = raw[key]
+        sc = scores[key]
+        if _is_missing(val):
+            status = "insufficient_data"
+            desc = "資料缺失，無法判讀。"
+            display_val = None
+        else:
+            status = status_from_score(sc)
+            display_val = round(float(val), 4) if isinstance(val, (int, float)) else val
+            desc = f"數值 {display_val}，判定為 {status}，對市場為 {'正向' if sc > 0 else '負向' if sc < 0 else '中性'}。"
+
+        details.append({
+            "name": key,
+            "value": display_val,
+            "score": sc,
+            "status": status,
+            "desc": desc
+        })
+
+    risk_items = sorted([(k, v) for k, v in scores.items()], key=lambda x: x[1])[:3]
+    risks = [f"{k} 偏弱" for k, _ in risk_items]
+
+    if stage == "expansion":
+        portfolio_bias = {"risk_assets": "overweight", "defensive_assets": "underweight", "cash": "underweight", "commodities": "neutral"}
+    elif stage == "recession_risk":
+        portfolio_bias = {"risk_assets": "underweight", "defensive_assets": "overweight", "cash": "overweight", "commodities": "neutral"}
+    elif stage == "stagflation":
+        portfolio_bias = {"risk_assets": "underweight", "defensive_assets": "neutral", "cash": "overweight", "commodities": "overweight"}
+    elif stage == "tight_liquidity":
+        portfolio_bias = {"risk_assets": "underweight", "defensive_assets": "neutral", "cash": "overweight", "commodities": "underweight"}
+    else:
+        portfolio_bias = {"risk_assets": "neutral", "defensive_assets": "neutral", "cash": "neutral", "commodities": "neutral"}
+
+    data_quality = {"overall": "complete" if completeness >= 0.9 else "partial", "notes": []}
+    for k in ["yield_short_rate", "hy_spread", "vix", "dxy", "gold_price", "oil_price", "copper_gold_ratio"]:
+        if raw.get(k) == 0.0: data_quality["notes"].append(f"{k} 可能使用 fallback 值。")
+    data_quality["notes"] = " ".join(data_quality["notes"]) if data_quality["notes"] else "資料正常。"
+
+    return {
+        "raw": raw,
+        "scores": scores,
+        "stage_candidate": stage,
+        "total_score": total_score,
+        "confidence_hint": confidence,
+        "details": details,
+        "risks": risks,
+        "portfolio_bias": portfolio_bias,
+        "data_quality": data_quality,
+    }
+
+
+# ==========================================
 # 🌟 2. 第一階段：總經與市場參數自動化抓取
 # ==========================================
 print("🌍 啟動量化大腦：開始透過 Yahoo API 抓取市場參數...", flush=True)
 
 try:
-    # A. 抓取公債殖利率 (加上防呆機制)
     print("   ⏳ 正在抓取公債殖利率...", flush=True)
     try:
         bonds = yf.download(["^TNX", "^IRX"], period="1mo", progress=False)["Close"]
@@ -43,23 +225,19 @@ try:
         y3m_series = bonds["^IRX"] if isinstance(bonds, pd.DataFrame) else bonds
         
         y10_clean = y10_series.dropna()
-        y10 = float(y10_clean.iloc[-1]) if not y10_clean.empty else 4.2 # 預設值 4.2%
+        y10 = float(y10_clean.iloc[-1]) if not y10_clean.empty else 4.2 
         
         y3m_clean = y3m_series.dropna()
-        y3m = float(y3m_clean.iloc[-1]) if not y3m_clean.empty else 5.0 # 預設值 5.0%
+        y3m = float(y3m_clean.iloc[-1]) if not y3m_clean.empty else 5.0 
     except Exception as e:
         print(f"⚠️ 公債殖利率抓取失敗，使用預設值: {e}")
         y10, y3m = 4.2, 5.0
 
-    # B. 抓取高收益債利差
     print("   ⏳ 正在計算信用利差...", flush=True)
-    try:
-        hyg_yield = yf.Ticker("HYG").info.get('yield', 0.05) * 100 
-    except:
-        hyg_yield = 7.5
+    try: hyg_yield = yf.Ticker("HYG").info.get('yield', 0.05) * 100 
+    except: hyg_yield = 7.5
     hy_spread = max(0.1, hyg_yield - y10)
 
-    # C. 抓取比特幣動能
     print("   ⏳ 正在計算加密貨幣動能...", flush=True)
     try:
         btc_data = yf.download("BTC-USD", period="1mo", progress=False)["Close"]
@@ -70,7 +248,6 @@ try:
         print(f"⚠️ BTC抓取失敗: {e}")
         btc_mom = 0.0
 
-    # D. 抓取 SPY 長期報酬與波動
     print("   ⏳ 正在計算 SPY 長期報酬與短期波動...", flush=True)
     try:
         spy = yf.download("SPY", period="10y", progress=False)["Close"]
@@ -82,99 +259,94 @@ try:
         print(f"⚠️ SPY抓取失敗: {e}")
         spy_cagr, spy_vol = 0.10, 0.15
 
-    # 🌟 NEW: E. 抓取機構級情緒、通膨與實體經濟指標 (VIX, DXY, Gold, Copper, Oil)
     print("   ⏳ 正在抓取跨資產期貨與情緒指標...", flush=True)
     try:
         vix = float(yf.Ticker("^VIX").history(period="5d")['Close'].dropna().iloc[-1])
         dxy = float(yf.Ticker("DX-Y.NYB").history(period="5d")['Close'].dropna().iloc[-1])
         gold = float(yf.Ticker("GC=F").history(period="5d")['Close'].dropna().iloc[-1])
-        copper = float(yf.Ticker("HG=F").history(period="5d")['Close'].dropna().iloc[-1]) # 銅博士
-        oil = float(yf.Ticker("CL=F").history(period="5d")['Close'].dropna().iloc[-1])    # WTI原油
-        
-        # 計算銅金比 (實體經濟擴張指標)
+        copper = float(yf.Ticker("HG=F").history(period="5d")['Close'].dropna().iloc[-1]) 
+        oil = float(yf.Ticker("CL=F").history(period="5d")['Close'].dropna().iloc[-1])    
         copper_gold_ratio = (copper / gold) * 100 
     except Exception as e:
         print(f"⚠️ 額外期貨指標抓取失敗，使用預設值: {e}")
         vix, dxy, gold, copper, oil, copper_gold_ratio = 20.0, 100.0, 2000.0, 4.0, 75.0, 0.2
 
-    # F. 🌟 封裝數據 (終極全天候矩陣)
     macro_payload = {
-        "yield_10y": float(round(y10, 2)),
-        "yield_2y": float(round(y3m, 2)),
-        "yield_curve": float(round(y10 - y3m, 2)), 
-        "hy_spread": float(round(hy_spread, 2)),
-        "btc_1m_mom": float(round(btc_mom, 2)),
-        "market_rf": float(round(y10, 2)),
-        "market_rm": float(round(spy_cagr * 100, 2)),
-        "market_sm": float(round(spy_vol * 100, 2)),
-        "vix": float(round(vix, 2)),
-        "dxy": float(round(dxy, 2)),
-        "gold_price": float(round(gold, 2)),
-        "oil_price": float(round(oil, 2)),
-        "copper_gold_ratio": float(round(copper_gold_ratio, 4))
+        "yield_10y": float(round(y10, 2)), "yield_2y": float(round(y3m, 2)), "yield_curve": float(round(y10 - y3m, 2)), 
+        "hy_spread": float(round(hy_spread, 2)), "btc_1m_mom": float(round(btc_mom, 2)), "market_rf": float(round(y10, 2)),
+        "market_rm": float(round(spy_cagr * 100, 2)), "market_sm": float(round(spy_vol * 100, 2)),
+        "vix": float(round(vix, 2)), "dxy": float(round(dxy, 2)), "gold_price": float(round(gold, 2)),
+        "oil_price": float(round(oil, 2)), "copper_gold_ratio": float(round(copper_gold_ratio, 4))
     }
     print(f"📈 參數計算完成 -> VIX: {macro_payload['vix']}, 銅金比: {macro_payload['copper_gold_ratio']}, 油價: {macro_payload['oil_price']}", flush=True)
     
     # ==========================================
-    # 🧠 Gemini AI 雙模組備援診斷系統
+    # 🧠 Gemini AI 總結與前端格式化轉換
     # ==========================================
-    print("🤖 喚醒 Gemini AI 進行總經與風險診斷...", flush=True)
-    GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+    regime_packet = build_regime_packet(macro_payload)
+    print(f"🤖 喚醒 Gemini AI 進行格式化 (內部判定階段: {regime_packet['stage_candidate']})...", flush=True)
     
+    GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
     if GEMINI_API_KEY:
         try:
             client = genai.Client(api_key=GEMINI_API_KEY)
             
             model_pipeline = [
                 "gemini-3-flash-preview", 
-                "gemini-2.5-flash",
+                "gemini-2.5-flash", 
                 "gemini-2.5-flash-lite"
             ]
                 
             prompt = f"""
-            你是一位頂尖的量化避險基金經理。請基於以下總經、情緒與大宗商品指標，進行交叉診斷：
-            
-            【資金面與流動性 (Financial Conditions)】
-            - Rf (無風險利率): {macro_payload['market_rf']}%
-            - 衰退指標 (10Y-3M利差): {macro_payload['yield_curve']}% (負值為倒掛)
-            - 美元指數 (DXY): {macro_payload['dxy']} (全球流動性)
-            - 信用利差 (HY-10Y): {macro_payload['hy_spread']}% (企業融資壓力)
-            
-            【實體經濟與通膨 (Growth & Inflation)】
-            - 銅金比 (Copper/Gold Ratio): {macro_payload['copper_gold_ratio']} (衡量景氣復甦動能)
-            - WTI 原油價格: {macro_payload['oil_price']} (通膨預期)
-            
-            【風險與情緒指標 (Sentiment)】
-            - 恐慌指數 (VIX): {macro_payload['vix']}
-            - BTC 近一月動能: {macro_payload['btc_1m_mom']}% (高風險偏好)
-            - 黃金期貨價格: {macro_payload['gold_price']} (避險需求)
-            
-            請嚴格依照以下 JSON 結構回傳結果，絕對不要輸出 Markdown 標籤或其他廢話：
+            你是總經 regime 最終裁判，只根據 Python 已算好的結果輸出 JSON，不可重算分數，不可使用外部知識，不可輸出 JSON 以外文字。
+
+            規則：
+            1. 若訊號一致，沿用 stage_candidate；若明顯分裂，改為 mixed。
+            2. confidence 需保守，反映訊號一致性與資料完整度。
+            3. summary 只要一句話，必須包含階段與配置方向；若訊號混雜，需直接寫出「訊號混雜」或「方向不一致」。
+            4. portfolio_bias 以 hint 為主，僅在明顯不一致時微調。
+            5. details 沿用或微調文字即可，不可改 score。
+            6. risks 取最弱的 3 項。
+            7. 若 data_quality 為 partial，語氣要更保守。
+            8. 輸出格式必須相容於 Vue 前端。
+
+            輸入數據：
+            stage_candidate: {json.dumps(regime_packet["stage_candidate"], ensure_ascii=False)}
+            total_score: {regime_packet["total_score"]}
+            confidence_hint: {regime_packet["confidence_hint"]}
+            portfolio_bias_hint: {json.dumps(regime_packet["portfolio_bias"], ensure_ascii=False)}
+            data_quality: {json.dumps(regime_packet["data_quality"], ensure_ascii=False)}
+            scores: {json.dumps(regime_packet["scores"], ensure_ascii=False)}
+            raw: {json.dumps(regime_packet["raw"], ensure_ascii=False)}
+            details_hint: {json.dumps(regime_packet["details"], ensure_ascii=False)}
+            risks_hint: {json.dumps(regime_packet["risks"], ensure_ascii=False)}
+
+            輸出格式：
             {{
-                "summary": "結合 VIX、銅金比與利差，用一句話判斷目前處於經濟週期的哪個階段 (如：擴張、滯脹、衰退)，並給出資產配置方向",
-                "details": [
-                    {{
-                        "icon": "🌟(填入相關emoji)", 
-                        "color": "text-green-400 (或 text-red-400 / text-blue-400 等 Tailwind 顏色)", 
-                        "title": "指標名稱與狀態", 
-                        "desc": "詳細的量化解讀與資產配置建議"
-                    }}
-                ]
+              "summary": "",
+              "details": [
+                {{
+                  "icon": "🌟(填入相關emoji)",
+                  "color": "text-green-400 (或 text-red-400 / text-blue-400 / text-gray-400)",
+                  "title": "指標名稱",
+                  "desc": "簡短量化解讀"
+                }}
+              ]
             }}
+
+            只回傳 JSON。
             """
             
             ai_success = False
-
             for model_name in model_pipeline:
                 try:
                     response = client.models.generate_content(model=model_name, contents=prompt)
-                    
                     json_match = re.search(r'\{.*\}', response.text, re.DOTALL)
-                    if not json_match:
-                        raise ValueError("模型未回傳合法 JSON 結構")
+                    if not json_match: raise ValueError("模型未回傳合法 JSON 結構")
                     
                     macro_payload['ai_analysis'] = json.loads(json_match.group(0))
-                    print(f"✅ AI 診斷成功！(使用模型: {model_name})", flush=True)
+                    macro_payload['ai_analysis']['calculated_stage'] = regime_packet["stage_candidate"]
+                    print(f"✅ AI 格式轉換成功！(使用模型: {model_name})", flush=True)
                     ai_success = True
                     break
                 except Exception as ai_e:
@@ -215,9 +387,7 @@ def get_sheet_prices(url_str):
         match = re.search(r'/d/([a-zA-Z0-9-_]+)', url_str)
         gid_match = re.search(r'[#&?]gid=([0-9]+)', url_str)
         if not match: return {}
-        
         csv_url = f"https://docs.google.com/spreadsheets/d/{match.group(1)}/gviz/tq?tqx=out:csv&gid={gid_match.group(1) if gid_match else '0'}"
-        
         response = requests.get(csv_url, timeout=10)
         response.raise_for_status() 
         df = pd.read_csv(io.StringIO(response.text), header=None)
@@ -237,16 +407,11 @@ def get_sheet_prices(url_str):
         return {}
 
 def get_optimal_weights(returns_df, stock_meta, min_wt=0.03, max_wt=0.20):
-    """
-    防彈版機構級最佳化引擎：支援病態矩陣平滑與動態群組約束
-    """
     num_assets = len(returns_df.columns)
     if num_assets == 0: return {}
     
     mean_returns = returns_df.mean() * 252
     cov_matrix = returns_df.cov() * 252
-    
-    # 🌟 防彈處理 1：矩陣正定化 (Ridge Penalty)，防止高度相關資產導致矩陣無解
     cov_matrix = cov_matrix + np.eye(num_assets) * 1e-6 
     risk_free_rate = 0.02 
     
@@ -254,10 +419,8 @@ def get_optimal_weights(returns_df, stock_meta, min_wt=0.03, max_wt=0.20):
         print("⚠️ 警告：最低權重總和超過 100%，將自動等權重分配")
         return {col: 1.0/num_assets for col in returns_df.columns}
 
-    # 1. 找出群組索引
     crypto_indices = []
     low_risk_indices = []
-    
     for i, ticker in enumerate(returns_df.columns):
         meta = stock_meta.get(ticker, {})
         category = str(meta.get("category", "")).lower()
@@ -268,7 +431,6 @@ def get_optimal_weights(returns_df, stock_meta, min_wt=0.03, max_wt=0.20):
         if risk == "low" or "低風險" in risk:
             low_risk_indices.append(i)
 
-    # 2. 定義目標函數 (增加 L2 懲罰項幫助收斂)
     def neg_sharpe_ratio(weights):
         p_ret = np.sum(mean_returns * weights)
         p_var = np.dot(weights.T, np.dot(cov_matrix, weights))
@@ -276,13 +438,9 @@ def get_optimal_weights(returns_df, stock_meta, min_wt=0.03, max_wt=0.20):
         l2_penalty = 1e-4 * np.sum(weights**2)
         return -(p_ret - risk_free_rate) / p_vol + l2_penalty
 
-    # 3. 定義約束條件
     constraints = [{'type': 'eq', 'fun': lambda x: np.sum(x) - 1}]
-    
-    # 動態群組約束防呆：如果剩下的標的無法吃滿剩下的權重，則不啟動群組限制
     if crypto_indices and (num_assets - len(crypto_indices)) * max_wt >= 0.80:
         constraints.append({'type': 'ineq', 'fun': lambda x: 0.20 - np.sum(x[crypto_indices])})
-    
     if low_risk_indices and (num_assets - len(low_risk_indices)) * max_wt >= 0.85:
         constraints.append({'type': 'ineq', 'fun': lambda x: 0.15 - np.sum(x[low_risk_indices])})
 
@@ -290,17 +448,10 @@ def get_optimal_weights(returns_df, stock_meta, min_wt=0.03, max_wt=0.20):
     init_guess = np.array(num_assets * [1. / num_assets])
     opts = {'ftol': 1e-6, 'disp': False, 'maxiter': 1000}
 
-    # 4. 啟動最佳化求解器 (SLSQP)
     optimized_result = sco.minimize(
-        neg_sharpe_ratio, 
-        init_guess, 
-        method='SLSQP', 
-        bounds=bounds, 
-        constraints=constraints,
-        options=opts
+        neg_sharpe_ratio, init_guess, method='SLSQP', bounds=bounds, constraints=constraints, options=opts
     )
 
-    # 🌟 防彈處理 2：雙引擎備援 (降級至 trust-constr)
     if not optimized_result.success:
         print(f"⚠️ SLSQP 最佳化失敗 ({optimized_result.message})，自動降級至 trust-constr 演算法...")
         from scipy.optimize import LinearConstraint
@@ -318,17 +469,12 @@ def get_optimal_weights(returns_df, stock_meta, min_wt=0.03, max_wt=0.20):
             tc_constraints.append(LinearConstraint(A_low, [-np.inf], [0.15]))
 
         optimized_result = sco.minimize(
-            neg_sharpe_ratio, 
-            init_guess, 
-            method='trust-constr', 
-            bounds=bounds, 
-            constraints=tc_constraints
+            neg_sharpe_ratio, init_guess, method='trust-constr', bounds=bounds, constraints=tc_constraints
         )
 
     if optimized_result.success:
         return dict(zip(returns_df.columns, np.round(optimized_result.x, 4)))
     else:
-        # 🌟 終極退路：給出等權重，絕對不報錯崩潰
         print(f"❌ 雙重最佳化皆失敗: {optimized_result.message}。套用等權重備援方案。")
         fallback_w = np.round(init_guess, 4)
         return dict(zip(returns_df.columns, fallback_w))
@@ -350,11 +496,7 @@ try:
         
         if all_tickers:
             tw_bench, us_bench = "^TWII", "SPY"
-            proxy_map = {
-                "統一奔騰": "00981A.TW", 
-                "安聯台灣科技": "0052.TW",
-                "加密貨幣": "BTC-USD"
-            }
+            proxy_map = {"統一奔騰": "00981A.TW", "安聯台灣科技": "0052.TW", "加密貨幣": "BTC-USD"}
             
             download_list = [tw_bench, us_bench]
             yf_tickers = []
@@ -362,42 +504,30 @@ try:
             for t in all_tickers:
                 t_clean = str(t).strip().upper()
                 target = t_clean 
-                
-                if t_clean in proxy_map: 
-                    target = proxy_map[t_clean]
-                elif bool(re.search(r'[\u4e00-\u9fff]', t_clean)): 
-                    target = tw_bench 
-                elif re.match(r'^\d+[a-zA-Z]*$', t_clean): 
-                    target = f"{t_clean}.TW"
+                if t_clean in proxy_map: target = proxy_map[t_clean]
+                elif bool(re.search(r'[\u4e00-\u9fff]', t_clean)): target = tw_bench 
+                elif re.match(r'^\d+[a-zA-Z]*$', t_clean): target = f"{t_clean}.TW"
                 
                 yf_tickers.append(target)
-                if target not in download_list: 
-                    download_list.append(target)
+                if target not in download_list: download_list.append(target)
                     
             print(f"⏳ 正在向 Yahoo Finance 請求 {len(download_list)} 檔標的歷史資料...", flush=True)
             prices_df = yf.download(download_list, period="1y", progress=False)["Close"]
             
-            if isinstance(prices_df, pd.Series):
-                prices_df = prices_df.to_frame(name=download_list[0])
-                
+            if isinstance(prices_df, pd.Series): prices_df = prices_df.to_frame(name=download_list[0])
             returns = prices_df.pct_change().dropna()
 
             print("🧠 啟動機構級最佳化引擎 (限制 3%~20%)...", flush=True)
             print("⚖️ 正在過濾真實庫存標的...", flush=True)
-            # 1. 先計算目前真實持有的股數
             current_shares = {}
             for tx in ledger_data:
                 t = str(tx.get("ticker", "")).strip().upper()
                 if not t: continue
                 s = float(tx.get("shares", 0))
-                if str(tx.get("type", "buy")).lower() in ["sell", "賣出"]:
-                    s = -s
+                if str(tx.get("type", "buy")).lower() in ["sell", "賣出"]: s = -s
                 current_shares[t] = current_shares.get(t, 0) + s
 
-            # 2. 只保留股數 > 0 的標的進入最佳化清單
             active_tickers = [t for t, s in current_shares.items() if s > 0.0001]
-            
-            # 3. 轉換成 yfinance 相容的代號 (yf_tickers 映射)
             ticker_to_yf = dict(zip(all_tickers, yf_tickers))
             
             valid_investable = []
@@ -411,7 +541,6 @@ try:
             target_weights = {}
             if valid_investable:
                 investable_returns = returns[valid_investable]
-                
                 num_assets = len(valid_investable)
                 if num_assets < 5:
                     dynamic_min = 0.0
@@ -420,12 +549,7 @@ try:
                     dynamic_min = min(0.03, 0.9 / num_assets) if num_assets > 0 else 0.0
                     dynamic_max = 0.20
                     
-                target_weights = get_optimal_weights(
-                    investable_returns, 
-                    stock_meta, 
-                    min_wt=dynamic_min, 
-                    max_wt=dynamic_max
-                )
+                target_weights = get_optimal_weights(investable_returns, stock_meta, min_wt=dynamic_min, max_wt=dynamic_max)
 
             print("🧠 開始計算多因子風險參數並寫入資料庫...", flush=True)
             for i, original_ticker in enumerate(all_tickers):
@@ -455,47 +579,31 @@ try:
                     target_w = target_weights.get(yf_ticker, 0.0)
                     
                     stock_meta[original_ticker].update({
-                        "beta": round(beta, 2), 
-                        "std": round(ann_std, 2),
-                        "rsi": round(rsi, 2), 
-                        "macd_h": round(macd_h, 4),
-                        "target_weight": float(target_w)
+                        "beta": round(beta, 2), "std": round(ann_std, 2), "rsi": round(rsi, 2), 
+                        "macd_h": round(macd_h, 4), "target_weight": float(target_w)
                     })
-                    print(f"✅ [{original_ticker}] 更新 -> Beta: {beta:.2f}, Std: {ann_std:.1f}%, RSI: {rsi:.1f}, 目標權重: {target_w*100:.2f}%")
+                    print(f"✅ [{original_ticker}] 更新 -> Beta: {beta:.2f}, Std: {ann_std:.1f}%, 目標權重: {target_w*100:.2f}%")
                 else:
                     if original_ticker not in proxy_map and not bool(re.search(r'[\u4e00-\u9fff]', original_ticker)):
                         print(f"⚠️ [{original_ticker}] 在 Yahoo 找不到對應標的 ({yf_ticker})。")
 
             supabase.table("portfolio_db").update({"stock_meta": stock_meta}).eq("id", target_id).execute()
-            print("🎉 股票元資料與權重任務完成！")
 
             # ==========================================
             # ⚖️ 4. 第三階段：自動化再平衡與交易訊號生成
             # ==========================================
             print("\n⚖️ 啟動再平衡引擎：計算目標權重落差與交易訊號...", flush=True)
             
-            current_holdings = {}
-            for tx in ledger_data:
-                t = str(tx.get("ticker", "")).strip().upper()
-                if not t: continue
-                shares = float(tx.get("shares", 0))
-                tx_type = str(tx.get("type", "buy")).lower()
-                if tx_type in ["sell", "賣出"]:
-                    shares = -shares
-                current_holdings[t] = current_holdings.get(t, 0) + shares
-
             portfolio_value = 0.0
             asset_values = {}
             
             for t in all_tickers:
-                shares = current_holdings.get(t, 0)
+                shares = current_shares.get(t, 0)
                 last_price = stock_meta.get(t, {}).get("last_price", 0.0)
-                
                 if last_price == 0.0 and yf_tickers:
                     idx = all_tickers.index(t)
                     yt = yf_tickers[idx]
-                    if yt in prices_df.columns:
-                        last_price = float(prices_df[yt].dropna().iloc[-1])
+                    if yt in prices_df.columns: last_price = float(prices_df[yt].dropna().iloc[-1])
                 
                 value = max(0, shares * last_price)
                 asset_values[t] = value
@@ -516,14 +624,11 @@ try:
                     if abs(delta_w) > 0.01:
                         action = "BUY (加碼)" if delta_w > 0 else "SELL (減碼)"
                         rebalance_signals.append({
-                            "ticker": t,
-                            "action": action,
-                            "current_weight": f"{current_w*100:.2f}%",
-                            "target_weight": f"{target_w*100:.2f}%",
-                            "delta_weight": f"{delta_w*100:.2f}%",
+                            "ticker": t, "action": action, "current_weight": f"{current_w*100:.2f}%",
+                            "target_weight": f"{target_w*100:.2f}%", "delta_weight": f"{delta_w*100:.2f}%",
                             "trade_amount": round(delta_value, 2)
                         })
-                        print(f"   [{t}] {action} -> 目標: {target_w*100:.1f}%, 當前: {current_w*100:.1f}%, 需調整金額: {delta_value:,.2f}")
+                        print(f"   [{t}] {action} -> 目標: {target_w*100:.1f}%, 當前: {current_w*100:.1f}%")
 
             if rebalance_signals and GEMINI_API_KEY:
                 print("🤖 喚醒 AI 撰寫再平衡交易執行報告...", flush=True)
