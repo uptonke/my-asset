@@ -701,6 +701,30 @@
                         <div class="quant-value text-white" :class="stats.skew < 0 ? 'text-red-400' : 'text-green-400'">{{ stats.skew }}</div>
                     </div>
                 </div>
+                <div class="mt-6 glass p-5 rounded-2xl border-l-4 border-blue-500 relative transition-all duration-300" :class="isCroThinking ? 'animate-pulse bg-blue-900/20' : ''">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h4 class="text-white font-bold flex items-center gap-2 text-lg">
+                                <i class="fas fa-user-tie text-blue-400"></i> AI 量化風險總監 (CRO) 深度洞察
+                            </h4>
+                            <p class="text-xs text-gray-400 mt-1">基於高階動差 (Skew, Kurt) 與資金加權 (MWR) 進行實戰解讀</p>
+                        </div>
+                        <button @click="generateQuantInsight" :disabled="isCroThinking" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg shadow-[0_0_10px_rgba(37,99,235,0.4)] transition-all flex items-center gap-2">
+                            <i v-if="isCroThinking" class="fas fa-spinner fa-spin"></i>
+                            <i v-else class="fas fa-bolt text-yellow-300"></i>
+                            {{ isCroThinking ? '運算中...' : '生成洞察報告' }}
+                        </button>
+                    </div>
+
+                    <div v-if="croInsight" class="bg-gray-900/60 rounded-xl p-4 border border-gray-700/50">
+                        <ul class="space-y-3">
+                            <li v-for="(insight, idx) in croInsight" :key="idx" class="flex items-start gap-3 text-sm">
+                                <i class="fas fa-caret-right text-blue-400 mt-1"></i>
+                                <span class="text-gray-200 leading-relaxed">{{ insight }}</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
 
                  <div class="glass rounded-xl flex flex-col mt-4 transition-all duration-300 border border-gray-700/50 hover:border-gray-500/50">
                     
