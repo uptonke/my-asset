@@ -109,7 +109,6 @@ try:
         try:
             client = genai.Client(api_key=GEMINI_API_KEY)
             
-            # 使用 2026 最新的 API 命名
             model_pipeline = [
                 "gemini-3.1-pro-preview", 
                 "gemini-3-flash-preview", 
@@ -118,7 +117,6 @@ try:
                 "gemini-2.0-flash"
             ]
                 
-            # 🌟 NEW: 更新 Prompt，強迫 AI 進行跨資產邏輯推演
             prompt = f"""
             你是一位頂尖的量化避險基金經理。請基於以下總經、情緒與大宗商品指標，進行交叉診斷：
             
@@ -225,60 +223,101 @@ def get_sheet_prices(url_str):
         return {}
 
 def get_optimal_weights(returns_df, stock_meta, min_wt=0.03, max_wt=0.20):
+    """
+    防彈版機構級最佳化引擎：支援病態矩陣平滑與動態群組約束
+    """
     num_assets = len(returns_df.columns)
     if num_assets == 0: return {}
     
     mean_returns = returns_df.mean() * 252
     cov_matrix = returns_df.cov() * 252
+    
+    # 🌟 防彈處理 1：矩陣正定化 (Ridge Penalty)，防止高度相關資產導致矩陣無解
+    cov_matrix = cov_matrix + np.eye(num_assets) * 1e-6 
     risk_free_rate = 0.02 
     
-    # 1. 找出哪些資產屬於加密貨幣，哪些屬於低風險資產
+    if min_wt * num_assets > 1.0:
+        print("⚠️ 警告：最低權重總和超過 100%，將自動等權重分配")
+        return {col: 1.0/num_assets for col in returns_df.columns}
+
+    # 1. 找出群組索引
     crypto_indices = []
     low_risk_indices = []
     
     for i, ticker in enumerate(returns_df.columns):
-        # 這裡從你之前傳入的 stock_meta 或 ticker 名稱判斷
-        # 假設 stock_meta[ticker] 裡有 'category' 和 'risk'
         meta = stock_meta.get(ticker, {})
         category = str(meta.get("category", "")).lower()
-        risk = str(meta.get("risk", "")).lower() # 你手動定義的 'low'
+        risk = str(meta.get("risk", "")).lower()
         
         if "加密" in category or "btc" in ticker.lower() or "eth" in ticker.lower():
             crypto_indices.append(i)
         if risk == "low" or "低風險" in risk:
             low_risk_indices.append(i)
 
+    # 2. 定義目標函數 (增加 L2 懲罰項幫助收斂)
     def neg_sharpe_ratio(weights):
         p_ret = np.sum(mean_returns * weights)
         p_var = np.dot(weights.T, np.dot(cov_matrix, weights))
         p_vol = np.sqrt(p_var)
-        return -(p_ret - risk_free_rate) / p_vol
+        l2_penalty = 1e-4 * np.sum(weights**2)
+        return -(p_ret - risk_free_rate) / p_vol + l2_penalty
 
-    # 2. 定義約束條件
-    constraints = [
-        {'type': 'eq', 'fun': lambda x: np.sum(x) - 1}, # 總和 = 100%
-        # 🌟 群組約束 1：加密貨幣總和 <= 20% (即 0.20 - sum >= 0)
-        {'type': 'ineq', 'fun': lambda x: 0.20 - np.sum(x[crypto_indices]) if crypto_indices else 1},
-        # 🌟 群組約束 2：低風險資產總和 <= 15% (即 0.15 - sum >= 0)
-        {'type': 'ineq', 'fun': lambda x: 0.15 - np.sum(x[low_risk_indices]) if low_risk_indices else 1}
-    ]
+    # 3. 定義約束條件
+    constraints = [{'type': 'eq', 'fun': lambda x: np.sum(x) - 1}]
     
-    bounds = tuple((min_wt, max_wt) for _ in range(num_assets))
-    init_guess = num_assets * [1. / num_assets]
+    # 動態群組約束防呆：如果剩下的標的無法吃滿剩下的權重，則不啟動群組限制
+    if crypto_indices and (num_assets - len(crypto_indices)) * max_wt >= 0.80:
+        constraints.append({'type': 'ineq', 'fun': lambda x: 0.20 - np.sum(x[crypto_indices])})
+    
+    if low_risk_indices and (num_assets - len(low_risk_indices)) * max_wt >= 0.85:
+        constraints.append({'type': 'ineq', 'fun': lambda x: 0.15 - np.sum(x[low_risk_indices])})
 
+    bounds = tuple((min_wt, max_wt) for _ in range(num_assets))
+    init_guess = np.array(num_assets * [1. / num_assets])
+    opts = {'ftol': 1e-6, 'disp': False, 'maxiter': 1000}
+
+    # 4. 啟動最佳化求解器 (SLSQP)
     optimized_result = sco.minimize(
         neg_sharpe_ratio, 
         init_guess, 
         method='SLSQP', 
         bounds=bounds, 
-        constraints=constraints
+        constraints=constraints,
+        options=opts
     )
+
+    # 🌟 防彈處理 2：雙引擎備援 (降級至 trust-constr)
+    if not optimized_result.success:
+        print(f"⚠️ SLSQP 最佳化失敗 ({optimized_result.message})，自動降級至 trust-constr 演算法...")
+        from scipy.optimize import LinearConstraint
+        A_eq = np.ones((1, num_assets))
+        tc_constraints = [LinearConstraint(A_eq, [1], [1])] 
+        
+        if crypto_indices and (num_assets - len(crypto_indices)) * max_wt >= 0.80:
+            A_crypto = np.zeros((1, num_assets))
+            for idx in crypto_indices: A_crypto[0, idx] = 1
+            tc_constraints.append(LinearConstraint(A_crypto, [-np.inf], [0.20]))
+            
+        if low_risk_indices and (num_assets - len(low_risk_indices)) * max_wt >= 0.85:
+            A_low = np.zeros((1, num_assets))
+            for idx in low_risk_indices: A_low[0, idx] = 1
+            tc_constraints.append(LinearConstraint(A_low, [-np.inf], [0.15]))
+
+        optimized_result = sco.minimize(
+            neg_sharpe_ratio, 
+            init_guess, 
+            method='trust-constr', 
+            bounds=bounds, 
+            constraints=tc_constraints
+        )
 
     if optimized_result.success:
         return dict(zip(returns_df.columns, np.round(optimized_result.x, 4)))
     else:
-        print(f"⚠️ 最佳化失敗: {optimized_result.message}")
-        return {col: 1.0/num_assets for col in returns_df.columns}
+        # 🌟 終極退路：給出等權重，絕對不報錯崩潰
+        print(f"❌ 雙重最佳化皆失敗: {optimized_result.message}。套用等權重備援方案。")
+        fallback_w = np.round(init_guess, 4)
+        return dict(zip(returns_df.columns, fallback_w))
 
 try:
     response = supabase.table("portfolio_db").select("*").limit(1).execute()
@@ -287,7 +326,6 @@ try:
         stock_meta = db_record.get("stock_meta", {})
         ledger_data = db_record.get("ledger_data", [])
         
-        # 從 Ledger 帳本中抽出所有標的
         ledger_tickers = [str(tx["ticker"]).strip().upper() for tx in ledger_data if tx.get("ticker")]
         all_tickers = list(set(list(stock_meta.keys()) + ledger_tickers))
         
@@ -298,7 +336,6 @@ try:
         
         if all_tickers:
             tw_bench, us_bench = "^TWII", "SPY"
-            # 建立代號映射表 (處理自訂基金和特殊標的)
             proxy_map = {
                 "統一奔騰": "00981A.TW", 
                 "安聯台灣科技": "0052.TW",
@@ -332,24 +369,18 @@ try:
             returns = prices_df.pct_change().dropna()
 
             print("🧠 啟動機構級最佳化引擎 (限制 3%~20%)...", flush=True)
-            # 準備計算最佳權重 (排除大盤指標)
             investable_tickers = [t for t in yf_tickers if t not in [tw_bench, us_bench]]
-            # 確保欄位存在
             valid_investable = [t for t in investable_tickers if t in returns.columns]
             
             target_weights = {}
             if valid_investable:
                 investable_returns = returns[valid_investable]
                 
-                # 🌟 動態放寬權重邊界防呆機制
                 num_assets = len(valid_investable)
                 if num_assets < 5:
-                    # 如果庫存標的少於 5 檔，強迫每檔最高 20% 會導致總和永遠達不到 100%
-                    # 因此放寬為：不限制最高權重 (1.0)，最低 0%
                     dynamic_min = 0.0
                     dynamic_max = 1.0
                 else:
-                    # 標的數量充足時，嚴格執行機構級紀律
                     dynamic_min = 0.03
                     dynamic_max = 0.20
                     
@@ -385,7 +416,6 @@ try:
                     macd_df = ta.macd(stock_close)
                     macd_h = macd_df.iloc[-1, 1] if macd_df is not None and not macd_df.empty else 0.0
                     
-                    # 抓取剛算好的目標權重
                     target_w = target_weights.get(yf_ticker, 0.0)
                     
                     stock_meta[original_ticker].update({
@@ -425,7 +455,6 @@ try:
                 shares = current_holdings.get(t, 0)
                 last_price = stock_meta.get(t, {}).get("last_price", 0.0)
                 
-                # 如果庫存沒紀錄最新價格，從 yfinance 的 dataframe 抓
                 if last_price == 0.0 and yf_tickers:
                     idx = all_tickers.index(t)
                     yt = yf_tickers[idx]
@@ -448,7 +477,6 @@ try:
                     target_value = portfolio_value * target_w
                     delta_value = target_value - asset_values.get(t, 0.0)
                     
-                    # 變動超過 1% NAV 才發出交易訊號
                     if abs(delta_w) > 0.01:
                         action = "BUY (加碼)" if delta_w > 0 else "SELL (減碼)"
                         rebalance_signals.append({
@@ -483,7 +511,6 @@ try:
                 }}
                 """
                 
-                # 直接用主力引擎產生報告
                 rebalance_res = client.models.generate_content(model="gemini-3.1-pro-preview", contents=rebalance_prompt)
                 
                 try:
