@@ -198,12 +198,10 @@ createApp({
                         if (macroData.market_rm) riskParams.value.rm = macroData.market_rm;
                         if (macroData.market_sm) riskParams.value.sm = macroData.market_sm;
                         
-                        // 🌟 承接雲端 Gemini 的報告
                         if (macroData.ai_analysis) {
                             cloudAiAnalysis.value = macroData.ai_analysis;
                         }
                         
-                        // 🌟 NEW: 承接相關係數矩陣資料
                         if (macroData.corr_matrix) {
                             correlationMatrix.value = macroData.corr_matrix;
                         }
@@ -524,7 +522,7 @@ createApp({
             }).reverse();
         });
 
-        const stats = ref({ annRet:'-', annVol:'-', sharpe:'-', sortino:'-', treynor:'-', alpha:'-', var95:'-', cvar95:'-', mdd:'-', calmar:'-', skew:'-', kurt:'-' });
+        const stats = ref({ annRet:'-', annLogRet:'-', mwr:'-', annVol:'-', sharpe:'-', sortino:'-', treynor:'-', alpha:'-', var95:'-', cvar95:'-', mdd:'-', calmar:'-', skew:'-', kurt:'-' });
 
         const stressTestResults = computed(() => {
             const currentBeta = parseFloat(portfolioStats.value.beta) || 1.0;
@@ -547,8 +545,15 @@ createApp({
             });
         });
 
+        // ==========================================
+        // 🌟 升級版 2: 獨立 HWM 引擎 + MWR 計算
+        // ==========================================
         watch([enrichedHistory, riskParams, dataFrequency], () => {
-             const empty = { annRet:'-', annVol:'-', sharpe:'-', sortino:'-', treynor:'-', alpha:'-', var95:'-', cvar95:'-', mdd:'-', calmar:'-', skew:'-', kurt:'-' };
+             const empty = { 
+                 annRet:'-', annLogRet:'-', mwr:'-', annVol:'-', sharpe:'-', 
+                 sortino:'-', treynor:'-', alpha:'-', var95:'-', cvar95:'-', 
+                 mdd:'-', calmar:'-', skew:'-', kurt:'-' 
+             };
              const h = [...enrichedHistory.value].reverse(); 
              if (h.length < 3) { stats.value = empty; return; }
 
@@ -568,7 +573,40 @@ createApp({
              const cumTwr = returns.reduce((acc, r) => acc * (1 + r), 1) - 1;
              const factor = dataFrequency.value === 'Weekly' ? Math.sqrt(52) : Math.sqrt(252);
              const years = returns.length / (dataFrequency.value === 'Weekly' ? 52 : 252);
+             
+             // 1. TWR (時間加權報酬率)
              const annRet = years > 0 ? (Math.pow(1 + cumTwr, 1 / years) - 1) : 0;
+             
+             // 2. 連續複利 Log Return = LN(1 + TWR)
+             const annLogRet = Math.log(1 + annRet);
+
+             // 3. MWR (資金加權報酬率 / 簡單 IRR 近似值)
+             let mwr = 0;
+             const beginVal = h[0].assets;
+             const endVal = h[h.length - 1].assets;
+             let netCashFlow = 0;
+             let timeWeightedCashFlow = 0;
+             
+             const totalDays = (new Date(h[h.length - 1].date) - new Date(h[0].date)) / (1000 * 60 * 60 * 24);
+             
+             if (totalDays > 0) {
+                 for (let i = 1; i < h.length; i++) {
+                     const prev = h[i-1];
+                     const curr = h[i];
+                     const daysFromStart = (new Date(curr.date) - new Date(h[0].date)) / (1000 * 60 * 60 * 24);
+                     const weight = (totalDays - daysFromStart) / totalDays;
+                     
+                     let flow = curr.cost - prev.cost; 
+                     netCashFlow += flow;
+                     timeWeightedCashFlow += flow * weight;
+                 }
+                 
+                 const dietzDenom = beginVal + timeWeightedCashFlow;
+                 if (dietzDenom > 0) {
+                     const totalMWR = (endVal - beginVal - netCashFlow) / dietzDenom;
+                     mwr = years > 0 ? (Math.pow(1 + totalMWR, 1 / years) - 1) : 0;
+                 }
+             }
 
              const avgR = returns.reduce((a,b)=>a+b,0)/returns.length;
              const stdSample = Math.sqrt(returns.reduce((a,b) => a + Math.pow(b-avgR, 2), 0) / (returns.length - 1));
@@ -579,6 +617,8 @@ createApp({
              const beta = riskParams.value.beta || 1;
 
              const sharpe = annVol > 0 ? (annRet - rf) / annVol : 0;
+             
+             // 4. Treynor Ratio (崔納指標)
              const treynor = beta !== 0 ? (annRet - rf) / beta : 0;
              
              const downsideReturns = returns.filter(r => r < 0);
@@ -610,10 +650,12 @@ createApp({
 
              stats.value = { 
                  annRet: (annRet*100).toFixed(2), 
+                 annLogRet: (annLogRet*100).toFixed(2), 
+                 mwr: (mwr*100).toFixed(2),             
                  annVol: (annVol*100).toFixed(2), 
                  sharpe: sharpe.toFixed(2), 
                  sortino: sortino.toFixed(2), 
-                 treynor: (treynor * 100).toFixed(2),
+                 treynor: treynor.toFixed(4),           
                  alpha: (alpha * 100).toFixed(2),
                  var95: (var95 * 100).toFixed(2),
                  cvar95: (cvar95 * 100).toFixed(2), 
@@ -1160,8 +1202,8 @@ createApp({
                 for (let j = 0; j < tickers.length; j++) {
                     const val = matrixObj[tickers[i]][tickers[j]];
                     dataPoints.push({
-                        x: j, // 列 (X軸)
-                        y: i, // 行 (Y軸，在 Chart.js Matrix 中 Y 是從下到上的，我們待會靠 scale 設定反轉)
+                        x: j, 
+                        y: i, 
                         v: val
                     });
                 }
@@ -1175,10 +1217,10 @@ createApp({
                         data: dataPoints,
                         backgroundColor: (context) => {
                             const val = context.raw.v;
-                            if (val === 1) return 'rgba(16, 185, 129, 0.9)'; // 完美正相關 (深綠)
-                            if (val > 0) return `rgba(16, 185, 129, ${val * 0.8})`; // 正相關 (綠)
-                            if (val < 0) return `rgba(239, 68, 68, ${Math.abs(val) * 0.8})`; // 負相關 (紅)
-                            return 'rgba(30, 41, 59, 1)'; // 0 相關 (深灰)
+                            if (val === 1) return 'rgba(16, 185, 129, 0.9)'; 
+                            if (val > 0) return `rgba(16, 185, 129, ${val * 0.8})`; 
+                            if (val < 0) return `rgba(239, 68, 68, ${Math.abs(val) * 0.8})`; 
+                            return 'rgba(30, 41, 59, 1)'; 
                         },
                         borderColor: '#1e293b',
                         borderWidth: 1,
@@ -1215,7 +1257,7 @@ createApp({
                             labels: tickers,
                             ticks: { color: '#94a3b8', font: { size: 10 } },
                             grid: { display: false },
-                            reverse: true // 讓 Y 軸標籤從上往下排
+                            reverse: true 
                         }
                     }
                 }
@@ -1309,7 +1351,6 @@ createApp({
                 });
             }
             
-            // 🌟 初始化熱力圖
             drawCorrelationMatrix();
         }
 
@@ -1500,7 +1541,7 @@ createApp({
             isAuthenticating, handleLogin, handleLogout, checkAuth, fireProgress, 
             updateCharts, addFireTarget, macroRegime, enableBlackSwan, mcRisk, blViews, mcAvailableAssets, addBlView, enableInflation,
             generateAutoViews, runMonteCarlo, stressTestResults,
-            expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr // 🌟 匯出 sysCorr 供 HTML 使用
+            expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr
         };
     }
 }).mount('#app');
