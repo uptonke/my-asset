@@ -859,7 +859,8 @@ createApp({
                     enableInflation.value = false;
                 }
 
-                if (fullAiText.includes('尾部風險') || fullAiText.includes('衰退') || fullAiText.includes('黑天鵝') || fullAiText.includes('恐慌') || fullAiText.includes('利差擴大')) {
+                if (fullAiText.includes('尾部風險') || fullAiText.includes('衰退') || fullAiText.includes('黑天鵝') || fullAiText.includes('恐慌') || fullAiText.includes('利差擴大') ||
+                fullAiText.includes('衰退風險') || fullAiText.includes('滯脹期')){
                     enableBlackSwan.value = true;
                 } else {
                     enableBlackSwan.value = false;
