@@ -56,7 +56,6 @@ createApp({
                 systemic_correlation: sysCorr.value
             };
 
-            // 🌟 改變 Prompt: 要求逐一解析各數據，語氣保持銳利客觀
             const promptText = `
             [SYSTEM_DIRECTIVE]
             Task: Act as an aggressive, high-alpha Quant Chief Risk Officer (CRO).
@@ -79,7 +78,6 @@ createApp({
             ${JSON.stringify(payload, null, 2)}
             `;
 
-            // 🌟 加入模型備援管線 (Model Pipeline)
             const model_pipeline = ["gemini-3.1-pro-preview", "gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"];
             let success = false;
             let resultText = "";
@@ -92,22 +90,33 @@ createApp({
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             contents: [{ parts: [{ text: promptText }] }],
-                            generationConfig: { temperature: 0.2 } // 保持冷靜客觀
+                            generationConfig: { temperature: 0.2 } 
                         })
                     });
 
                     const data = await response.json();
                     
-                    if (data.error) {
-                        throw new Error(data.error.message);
-                    }
-
-                    // 確保回應格式正確
+                    if (data.error) throw new Error(data.error.message);
+                    
                     if (data.candidates && data.candidates[0] && data.candidates[0].content) {
                         resultText = data.candidates[0].content.parts[0].text;
                         success = true;
                         console.log(`✅ CRO 成功使用模型: ${model_name}`);
-                        break; // 成功就跳出迴圈
+                        
+                        const parsedInsight = resultText.split('\n')
+                            .filter(line => line.trim().length > 0)
+                            .map(line => line.replace(/^[\*\-]\s*/, '').replace(/\*\*/g, ''));
+                        
+                        croInsight.value = parsedInsight;
+                        
+                        // 🌟 將產生的報告同步回 Supabase
+                        await supabase.from('portfolio_db').update({ 
+                            cro_insight: parsedInsight,
+                            cro_last_update: new Date().toISOString()
+                        }).eq('id', 1);
+
+                        console.log("✅ AI 報告已成功同步至 Supabase 雲端");
+                        break; 
                     } else {
                         throw new Error("回傳格式異常");
                     }
@@ -119,16 +128,10 @@ createApp({
                         isCroThinking.value = false;
                         return;
                     }
-                    // 繼續嘗試下一個模型
                 }
             }
 
-            if (success) {
-                // 簡單把 markdown 的 bullet points 轉成陣列
-                croInsight.value = resultText.split('\n')
-                                             .filter(line => line.trim().length > 0)
-                                             .map(line => line.replace(/^[\*\-]\s*/, '').replace(/\*\*/g, ''));
-            } else {
+            if (!success) {
                 alert('所有 AI 模型皆無回應或發生錯誤，請稍後再試。');
             }
             
@@ -319,6 +322,12 @@ createApp({
                     
                     if (data.rebalance_meta) {
                         cloudRebalanceMeta.value = data.rebalance_meta;
+                    }
+
+                    // 🌟 讀取雲端儲存的 AI CRO 報告 (確保跨裝置同步)
+                    if (data.cro_insight) {
+                        croInsight.value = data.cro_insight;
+                        console.log("📅 已成功載入雲端存檔的 AI CRO 報告");
                     }
 
                     if (data.settings) {
@@ -1649,7 +1658,7 @@ createApp({
             updateCharts, addFireTarget, macroRegime, enableBlackSwan, mcRisk, blViews, mcAvailableAssets, addBlView, enableInflation,
             generateAutoViews, runMonteCarlo, stressTestResults,
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr,
-            croInsight, isCroThinking, generateQuantInsight // 🌟 Ensure these are returned
+            croInsight, isCroThinking, generateQuantInsight
         };
     }
 }).mount('#app');
