@@ -171,37 +171,36 @@ def score_liquidity(v):
     if v > -0.1: return 1
     return 2 
 
-# 🌟 NEW: 新增衍生指標評分
 def score_rsp_spy(v):
     v = _num(v)
     if v is None: return 0
-    if v > 2: return 2  # 市場廣度極佳
+    if v > 2: return 2  
     if v > 0: return 1
     if v > -2: return -1
-    return -2 # 漲幅極度集中化 (拉積盤/科技巨頭獨走)
+    return -2 
 
 def score_kre_spy(v):
     v = _num(v)
     if v is None: return 0
-    if v > 1: return 1  # 區域銀行健康
-    if v < -5: return -2 # 系統性金融風險爆發
+    if v > 1: return 1  
+    if v < -5: return -2 
     if v < -2: return -1
     return 0
 
 def score_aud_jpy(v):
     v = _num(v)
     if v is None: return 0
-    if v > 3: return 2  # 狂暴 Risk-On (套利交易盛行)
+    if v > 3: return 2  
     if v > 0: return 1
-    if v < -3: return -2 # 避險情緒高漲 (平倉潮)
+    if v < -3: return -2 
     return -1
 
 def score_pcr(v):
     v = _num(v)
     if v is None: return 0
-    if v > 1.2: return -2 # 極端恐慌 (Put 買爆)
+    if v > 1.2: return -2 
     if v > 1.0: return -1
-    if v < 0.8: return 2  # 極端貪婪
+    if v < 0.8: return 2  
     return 1
 
 def choose_stage(scores):
@@ -219,7 +218,6 @@ def choose_stage(scores):
         
     if scores["yield_curve"] > 0 and scores["hy_spread"] > 0 and scores["vix"] > 0 and scores["btc_1m_mom"] > 0: return "expansion"
 
-    # 因應指標擴充至 20 個，重新調平總分門檻
     if total >= 10: return "expansion"
     if 3 <= total <= 9: return "neutral"
     if -5 <= total <= 2: return "tight_liquidity"
@@ -352,7 +350,7 @@ try:
         print(f"⚠️ 情緒指標抓取失敗，使用預設值: {e}")
         vix, vxn, vvix, dxy, gold, copper, oil, copper_gold_ratio = 20.0, 22.0, 90.0, 100.0, 2000.0, 4.0, 75.0, 0.2
 
-    # 獨立沙盒處理 Put/Call Ratio (yfinance的^PCR容易失效)
+    # 獨立沙盒處理 Put/Call Ratio
     try:
         pcr_data = yf.Ticker("^PCR").history(period="5d")['Close']
         pcr = float(pcr_data.dropna().iloc[-1]) if not pcr_data.dropna().empty else 1.0
@@ -381,12 +379,10 @@ try:
             if isinstance(tlt, pd.DataFrame): tlt = tlt.iloc[:, 0]
             move_idx = float(tlt.pct_change().std() * np.sqrt(252) * 100) * 5 
 
-        # ETF 輪動指標抓取 (加入 RSP, KRE)
         target_etfs = ["IWM", "SPY", "XLU", "XLY", "HYG", "TLT", "DBC", "SOXX", "BIL", "SHY", "RSP", "KRE"]
         etfs = yf.download(target_etfs, period="1mo", progress=False)["Close"]
         if isinstance(etfs, pd.Series): etfs = etfs.to_frame()
         
-        # 🛡️ 升級版防呆 safe_mom: 嚴格檢查欄位是否存在且有值
         def safe_mom(ticker1, ticker2=None):
             try:
                 if ticker1 not in etfs.columns or etfs[ticker1].dropna().empty: 
@@ -414,8 +410,8 @@ try:
         soxx_spy_mom = safe_mom("SOXX", "SPY")
         dbc_mom = safe_mom("DBC")
         liquidity_spread = safe_mom("BIL", "SHY") 
-        rsp_spy_mom = safe_mom("RSP", "SPY") # 市場廣度
-        kre_spy_mom = safe_mom("KRE", "SPY") # 區域銀行健康度
+        rsp_spy_mom = safe_mom("RSP", "SPY") 
+        kre_spy_mom = safe_mom("KRE", "SPY") 
 
     except Exception as e:
         print(f"⚠️ 進階輪動指標抓取發生意外: {e}")
@@ -447,7 +443,6 @@ try:
         try:
             client = genai.Client(api_key=GEMINI_API_KEY)
             
-            # 優先使用 flash 模型
             model_pipeline = ["gemini-3-flash-preview", "gemini-2.5-flash", "gemini-3.1-pro-preview", "gemini-2.5-pro", "gemini-2.0-flash"]
                 
             prompt = f"""
@@ -581,6 +576,8 @@ def get_optimal_weights(returns_df, stock_meta, min_wt=0.03, max_wt=0.20):
 
     crypto_indices = []
     low_risk_indices = []
+    tw_and_fund_indices = [] # 🌟 記錄台股與基金的 indices
+
     for i, ticker in enumerate(returns_df.columns):
         meta = stock_meta.get(ticker, {})
         category = str(meta.get("category", "")).lower()
@@ -590,6 +587,9 @@ def get_optimal_weights(returns_df, stock_meta, min_wt=0.03, max_wt=0.20):
             crypto_indices.append(i)
         if risk == "low" or "低風險" in risk:
             low_risk_indices.append(i)
+        
+        if "台股" in category or "基金" in category:
+            tw_and_fund_indices.append(i)
 
     def neg_sharpe_ratio(weights):
         p_ret = np.sum(mean_returns * weights)
@@ -599,10 +599,16 @@ def get_optimal_weights(returns_df, stock_meta, min_wt=0.03, max_wt=0.20):
         return -(p_ret - risk_free_rate) / p_vol + l2_penalty
 
     constraints = [{'type': 'eq', 'fun': lambda x: np.sum(x) - 1}]
+    
     if crypto_indices and (num_assets - len(crypto_indices)) * max_wt >= 0.80:
         constraints.append({'type': 'ineq', 'fun': lambda x: 0.20 - np.sum(x[crypto_indices])})
+        
     if low_risk_indices and (num_assets - len(low_risk_indices)) * max_wt >= 0.85:
         constraints.append({'type': 'ineq', 'fun': lambda x: 0.15 - np.sum(x[low_risk_indices])})
+        
+    # 🌟 NEW: 台股 + 基金合計 <= 15%
+    if tw_and_fund_indices and (num_assets - len(tw_and_fund_indices)) * max_wt >= 0.85:
+        constraints.append({'type': 'ineq', 'fun': lambda x: 0.15 - np.sum(x[tw_and_fund_indices])})
 
     bounds = tuple((min_wt, max_wt) for _ in range(num_assets))
     init_guess = np.array(num_assets * [1. / num_assets])
@@ -627,6 +633,12 @@ def get_optimal_weights(returns_df, stock_meta, min_wt=0.03, max_wt=0.20):
             A_low = np.zeros((1, num_assets))
             for idx in low_risk_indices: A_low[0, idx] = 1
             tc_constraints.append(LinearConstraint(A_low, [-np.inf], [0.15]))
+
+        # 🌟 NEW: 備援演算法也加上台股/基金限制
+        if tw_and_fund_indices and (num_assets - len(tw_and_fund_indices)) * max_wt >= 0.85:
+            A_tw_fund = np.zeros((1, num_assets))
+            for idx in tw_and_fund_indices: A_tw_fund[0, idx] = 1
+            tc_constraints.append(LinearConstraint(A_tw_fund, [-np.inf], [0.15]))
 
         optimized_result = sco.minimize(
             neg_sharpe_ratio, init_guess, method='trust-constr', bounds=bounds, constraints=tc_constraints
