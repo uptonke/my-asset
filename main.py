@@ -62,11 +62,13 @@ def score_hy_spread(v):
     if v >= 1.5: return 1
     return 2
 
-def score_vix(v):
+def score_vix(v, z_score=0):
     v = _num(v)
+    z = _num(z_score, 0)
     if v is None: return 0
-    if v > 30: return -2
-    if v >= 20: return -1
+    # 🌟 NEW: 加入 Z-Score 判斷，若極度偏離常態，加重扣分
+    if v > 30 or z > 2.5: return -2
+    if v >= 20 or z > 1.5: return -1
     if v >= 12: return 1
     return 2
 
@@ -99,11 +101,12 @@ def score_copper_gold_ratio(v):
     if v >= 0.15: return 0
     return -1
 
-def score_move(v):
+def score_move(v, z_score=0):
     v = _num(v)
+    z = _num(z_score, 0)
     if v is None: return 0
-    if v > 120: return -2 
-    if v >= 100: return -1 
+    if v > 120 or z > 2.5: return -2 
+    if v >= 100 or z > 1.5: return -1 
     if v >= 80: return 1  
     return 2 
 
@@ -123,19 +126,21 @@ def score_xlu_xly(v):
     if v >= -3: return 1  
     return 2 
 
-def score_vxn(v):
+def score_vxn(v, z_score=0):
     v = _num(v)
+    z = _num(z_score, 0)
     if v is None: return 0
-    if v > 35: return -2 
-    if v >= 25: return -1
+    if v > 35 or z > 2.5: return -2 
+    if v >= 25 or z > 1.5: return -1
     if v >= 15: return 1
     return 2
 
-def score_vvix(v):
+def score_vvix(v, z_score=0):
     v = _num(v)
+    z = _num(z_score, 0)
     if v is None: return 0
-    if v > 115: return -2 
-    if v >= 100: return -1
+    if v > 115 or z > 2.5: return -2 
+    if v >= 100 or z > 1.5: return -1
     if v >= 80: return 1
     return 2
 
@@ -195,13 +200,23 @@ def score_aud_jpy(v):
     if v < -3: return -2 
     return -1
 
-def score_pcr(v):
+def score_pcr(v, z_score=0):
     v = _num(v)
+    z = _num(z_score, 0)
     if v is None: return 0
-    if v > 1.2: return -2 
-    if v > 1.0: return -1
+    if v > 1.2 or z > 2.0: return -2 
+    if v > 1.0 or z > 1.0: return -1
     if v < 0.8: return 2  
     return 1
+
+# 🌟 NEW: 加入系統性風險評分 (平均相關係數)
+def score_sys_corr(v):
+    v = _num(v)
+    if v is None: return 0
+    if v > 0.85: return -3 # 雷曼時刻，分散投資失效
+    if v > 0.70: return -1 # 齊漲齊跌，風險升高
+    if v < 0.30: return 2  # 板塊輪動健康
+    return 0
 
 def choose_stage(scores):
     vals = list(scores.values())
@@ -218,6 +233,7 @@ def choose_stage(scores):
         
     if scores["yield_curve"] > 0 and scores["hy_spread"] > 0 and scores["vix"] > 0 and scores["btc_1m_mom"] > 0: return "expansion"
 
+    # 因應指標擴充，重新調平總分門檻
     if total >= 10: return "expansion"
     if 3 <= total <= 9: return "neutral"
     if -5 <= total <= 2: return "tight_liquidity"
@@ -230,15 +246,19 @@ def build_regime_packet(macro_payload):
         "yield_curve": macro_payload.get("yield_curve"),
         "hy_spread": macro_payload.get("hy_spread"),
         "vix": macro_payload.get("vix"),
+        "vix_z": macro_payload.get("vix_z"), # 🌟 加入 Z-Score
         "dxy": macro_payload.get("dxy"),
         "btc_1m_mom": macro_payload.get("btc_1m_mom"),
         "oil_price": macro_payload.get("oil_price"),
         "copper_gold_ratio": macro_payload.get("copper_gold_ratio"),
         "move_index": macro_payload.get("move_index"),
+        "move_z": macro_payload.get("move_z"), # 🌟 加入 Z-Score
         "iwm_spy_mom": macro_payload.get("iwm_spy_mom"),
         "xlu_xly_mom": macro_payload.get("xlu_xly_mom"),
         "vxn": macro_payload.get("vxn"),
+        "vxn_z": macro_payload.get("vxn_z"), # 🌟 加入 Z-Score
         "vvix": macro_payload.get("vvix"),
+        "vvix_z": macro_payload.get("vvix_z"), # 🌟 加入 Z-Score
         "hyg_tlt_mom": macro_payload.get("hyg_tlt_mom"),
         "dbc_mom": macro_payload.get("dbc_mom"),
         "soxx_spy_mom": macro_payload.get("soxx_spy_mom"),
@@ -246,22 +266,24 @@ def build_regime_packet(macro_payload):
         "rsp_spy_mom": macro_payload.get("rsp_spy_mom"),
         "kre_spy_mom": macro_payload.get("kre_spy_mom"),
         "aud_jpy_mom": macro_payload.get("aud_jpy_mom"),
-        "put_call_ratio": macro_payload.get("put_call_ratio")
+        "put_call_ratio": macro_payload.get("put_call_ratio"),
+        "pcr_z": macro_payload.get("pcr_z"), # 🌟 加入 Z-Score
+        "sys_corr": macro_payload.get("sys_corr") # 🌟 加入平均相關係數
     }
 
     scores = {
         "yield_curve": score_yield_curve(raw["yield_curve"]),
         "hy_spread": score_hy_spread(raw["hy_spread"]),
-        "vix": score_vix(raw["vix"]),
+        "vix": score_vix(raw["vix"], raw["vix_z"]),
         "dxy": score_dxy(raw["dxy"]),
         "btc_1m_mom": score_btc_mom(raw["btc_1m_mom"]),
         "oil_price": score_oil(raw["oil_price"]),
         "copper_gold_ratio": score_copper_gold_ratio(raw["copper_gold_ratio"]),
-        "move_index": score_move(raw["move_index"]),
+        "move_index": score_move(raw["move_index"], raw["move_z"]),
         "iwm_spy_mom": score_iwm_spy(raw["iwm_spy_mom"]),
         "xlu_xly_mom": score_xlu_xly(raw["xlu_xly_mom"]),
-        "vxn": score_vxn(raw["vxn"]),
-        "vvix": score_vvix(raw["vvix"]),
+        "vxn": score_vxn(raw["vxn"], raw["vxn_z"]),
+        "vvix": score_vvix(raw["vvix"], raw["vvix_z"]),
         "hyg_tlt_mom": score_hyg_tlt(raw["hyg_tlt_mom"]),
         "dbc_mom": score_dbc_mom(raw["dbc_mom"]),
         "soxx_spy_mom": score_soxx_spy(raw["soxx_spy_mom"]),
@@ -269,7 +291,8 @@ def build_regime_packet(macro_payload):
         "rsp_spy_mom": score_rsp_spy(raw["rsp_spy_mom"]),
         "kre_spy_mom": score_kre_spy(raw["kre_spy_mom"]),
         "aud_jpy_mom": score_aud_jpy(raw["aud_jpy_mom"]),
-        "put_call_ratio": score_pcr(raw["put_call_ratio"])
+        "put_call_ratio": score_pcr(raw["put_call_ratio"], raw["pcr_z"]),
+        "sys_corr": score_sys_corr(raw["sys_corr"])
     }
 
     stage = choose_stage(scores)
@@ -293,6 +316,14 @@ def build_regime_packet(macro_payload):
 # 🌟 2. 第一階段：總經與市場參數自動化抓取
 # ==========================================
 print("🌍 啟動量化大腦：開始透過 Yahoo API 抓取市場參數...", flush=True)
+
+# 🌟 NEW: 計算 Z-Score 的輔助函數
+def calc_z_score(series):
+    if series.empty or len(series) < 20: return 0.0
+    mean = series.mean()
+    std = series.std()
+    if std == 0: return 0.0
+    return (series.iloc[-1] - mean) / std
 
 try:
     print("   ⏳ 正在抓取公債殖利率...", flush=True)
@@ -332,14 +363,19 @@ try:
         spy_vol = spy_clean.tail(252).pct_change().std() * np.sqrt(252) if len(spy_clean) > 10 else 0.15
     except: spy_cagr, spy_vol = 0.10, 0.15
 
-    print("   ⏳ 正在抓取跨資產期貨、情緒指標、PCR與AUD/JPY...", flush=True)
+    print("   ⏳ 正在抓取跨資產期貨、情緒指標、PCR與AUD/JPY (1年期歷史計算Z-Score)...", flush=True)
     try:
-        vix_family = yf.download(["^VIX", "^VXN", "^VVIX"], period="5d", progress=False)["Close"]
+        # 🌟 改抓 1 年期資料來算 Z-Score
+        vix_family = yf.download(["^VIX", "^VXN", "^VVIX"], period="1y", progress=False)["Close"]
         if isinstance(vix_family, pd.Series): vix_family = vix_family.to_frame()
         
-        vix = float(vix_family["^VIX"].dropna().iloc[-1]) if "^VIX" in vix_family.columns else 20.0
-        vxn = float(vix_family["^VXN"].dropna().iloc[-1]) if "^VXN" in vix_family.columns else 22.0
-        vvix = float(vix_family["^VVIX"].dropna().iloc[-1]) if "^VVIX" in vix_family.columns else 90.0
+        vix_s = vix_family["^VIX"].dropna() if "^VIX" in vix_family.columns else pd.Series([20.0])
+        vxn_s = vix_family["^VXN"].dropna() if "^VXN" in vix_family.columns else pd.Series([22.0])
+        vvix_s = vix_family["^VVIX"].dropna() if "^VVIX" in vix_family.columns else pd.Series([90.0])
+        
+        vix, vix_z = float(vix_s.iloc[-1]), float(calc_z_score(vix_s))
+        vxn, vxn_z = float(vxn_s.iloc[-1]), float(calc_z_score(vxn_s))
+        vvix, vvix_z = float(vvix_s.iloc[-1]), float(calc_z_score(vvix_s))
         
         dxy = float(yf.Ticker("DX-Y.NYB").history(period="5d")['Close'].dropna().iloc[-1])
         gold = float(yf.Ticker("GC=F").history(period="5d")['Close'].dropna().iloc[-1])
@@ -349,14 +385,16 @@ try:
     except Exception as e:
         print(f"⚠️ 情緒指標抓取失敗，使用預設值: {e}")
         vix, vxn, vvix, dxy, gold, copper, oil, copper_gold_ratio = 20.0, 22.0, 90.0, 100.0, 2000.0, 4.0, 75.0, 0.2
+        vix_z, vxn_z, vvix_z = 0.0, 0.0, 0.0
 
     # 獨立沙盒處理 Put/Call Ratio
     try:
-        pcr_data = yf.Ticker("^PCR").history(period="5d")['Close']
-        pcr = float(pcr_data.dropna().iloc[-1]) if not pcr_data.dropna().empty else 1.0
+        pcr_data = yf.Ticker("^PCR").history(period="1y")['Close'].dropna()
+        pcr = float(pcr_data.iloc[-1]) if not pcr_data.empty else 1.0
+        pcr_z = float(calc_z_score(pcr_data))
     except:
         print("⚠️ Put/Call Ratio (^PCR) 讀取失敗或無資料，預設為中性值 1.0")
-        pcr = 1.0
+        pcr, pcr_z = 1.0, 0.0
 
     # 獨立沙盒處理 AUD/JPY
     try:
@@ -371,13 +409,17 @@ try:
     print("   ⏳ 正在抓取 MOVE 指數與板塊輪動指標...", flush=True)
     try:
         try:
-            move_data = yf.Ticker("^MOVE").history(period="5d")['Close']
+            move_data = yf.Ticker("^MOVE").history(period="1y")['Close'].dropna()
             if move_data.empty: raise ValueError
-            move_idx = float(move_data.dropna().iloc[-1])
+            move_idx = float(move_data.iloc[-1])
+            move_z = float(calc_z_score(move_data))
         except:
-            tlt = yf.download("TLT", period="1mo", progress=False)["Close"]
+            tlt = yf.download("TLT", period="1y", progress=False)["Close"]
             if isinstance(tlt, pd.DataFrame): tlt = tlt.iloc[:, 0]
-            move_idx = float(tlt.pct_change().std() * np.sqrt(252) * 100) * 5 
+            tlt_vol = tlt.pct_change().rolling(20).std() * np.sqrt(252) * 100 * 5
+            move_data = tlt_vol.dropna()
+            move_idx = float(move_data.iloc[-1]) if not move_data.empty else 100.0
+            move_z = float(calc_z_score(move_data))
 
         target_etfs = ["IWM", "SPY", "XLU", "XLY", "HYG", "TLT", "DBC", "SOXX", "BIL", "SHY", "RSP", "KRE"]
         etfs = yf.download(target_etfs, period="1mo", progress=False)["Close"]
@@ -415,21 +457,66 @@ try:
 
     except Exception as e:
         print(f"⚠️ 進階輪動指標抓取發生意外: {e}")
-        move_idx, iwm_spy_mom, xlu_xly_mom, hyg_tlt_mom = 100.0, 0.0, 0.0, 0.0
+        move_idx, move_z, iwm_spy_mom, xlu_xly_mom, hyg_tlt_mom = 100.0, 0.0, 0.0, 0.0, 0.0
         dbc_mom, soxx_spy_mom, liquidity_spread, rsp_spy_mom, kre_spy_mom = 0.0, 0.0, 0.0, 0.0, 0.0
+
+    # 🌟 NEW: 從 Supabase 取得庫存標的，計算平均相關係數 (Systemic Risk)
+    print("   ⏳ 正在計算投資組合平均相關係數 (系統性風險)...", flush=True)
+    try:
+        response = supabase.table("portfolio_db").select("*").limit(1).execute()
+        sys_corr = 0.3 # 預設值
+        corr_matrix = {}
+        
+        if response.data:
+            db_record = response.data[0]
+            ledger_data = db_record.get("ledger_data", [])
+            current_shares = {}
+            for tx in ledger_data:
+                t = str(tx.get("ticker", "")).strip().upper()
+                if not t: continue
+                s = float(tx.get("shares", 0))
+                if str(tx.get("type", "buy")).lower() in ["sell", "賣出"]: s = -s
+                current_shares[t] = current_shares.get(t, 0) + s
+                
+            active_tickers = [t for t, s in current_shares.items() if s > 0.0001]
+            
+            if len(active_tickers) > 1:
+                # 取得庫存標的歷史資料
+                port_df = yf.download(active_tickers, period="3mo", progress=False)["Close"]
+                if isinstance(port_df, pd.Series): port_df = port_df.to_frame(name=active_tickers[0])
+                
+                port_returns = port_df.pct_change().dropna()
+                corr_df = port_returns.corr()
+                
+                # 計算上三角矩陣的平均值
+                mask = np.triu(np.ones_like(corr_df, dtype=bool), k=1)
+                sys_corr = float(corr_df.where(mask).mean().mean())
+                
+                # 將 NaN 轉為 0 以確保 JSON 可序列化
+                corr_matrix = corr_df.fillna(0).to_dict()
+    except Exception as e:
+        print(f"⚠️ 相關係數計算失敗: {e}")
+        sys_corr = 0.3
+        corr_matrix = {}
 
     macro_payload = {
         "yield_10y": float(round(y10, 2)), "yield_2y": float(round(y3m, 2)), "yield_curve": float(round(y10 - y3m, 2)), 
         "hy_spread": float(round(hy_spread, 2)), "btc_1m_mom": float(round(btc_mom, 2)), "market_rf": float(round(y10, 2)),
         "market_rm": float(round(spy_cagr * 100, 2)), "market_sm": float(round(spy_vol * 100, 2)),
-        "vix": float(round(vix, 2)), "vxn": float(round(vxn, 2)), "vvix": float(round(vvix, 2)),
+        "vix": float(round(vix, 2)), "vix_z": float(round(vix_z, 2)),
+        "vxn": float(round(vxn, 2)), "vxn_z": float(round(vxn_z, 2)),
+        "vvix": float(round(vvix, 2)), "vvix_z": float(round(vvix_z, 2)),
         "dxy": float(round(dxy, 2)), "gold_price": float(round(gold, 2)), "oil_price": float(round(oil, 2)), 
-        "copper_gold_ratio": float(round(copper_gold_ratio, 4)), "move_index": float(round(move_idx, 2)), 
+        "copper_gold_ratio": float(round(copper_gold_ratio, 4)), 
+        "move_index": float(round(move_idx, 2)), "move_z": float(round(move_z, 2)),
         "iwm_spy_mom": float(round(iwm_spy_mom, 2)), "xlu_xly_mom": float(round(xlu_xly_mom, 2)),
         "hyg_tlt_mom": float(round(hyg_tlt_mom, 2)), "dbc_mom": float(round(dbc_mom, 2)),
         "soxx_spy_mom": float(round(soxx_spy_mom, 2)), "liquidity_spread": float(round(liquidity_spread, 2)),
         "rsp_spy_mom": float(round(rsp_spy_mom, 2)), "kre_spy_mom": float(round(kre_spy_mom, 2)),
-        "aud_jpy_mom": float(round(aud_jpy_mom, 2)), "put_call_ratio": float(round(pcr, 2))
+        "aud_jpy_mom": float(round(aud_jpy_mom, 2)), 
+        "put_call_ratio": float(round(pcr, 2)), "pcr_z": float(round(pcr_z, 2)),
+        "sys_corr": float(round(sys_corr, 2)),
+        "corr_matrix": corr_matrix # 傳給前端畫 Heatmap
     }
     
     # ==========================================
@@ -445,10 +532,11 @@ try:
             
             model_pipeline = ["gemini-3-flash-preview", "gemini-2.5-flash", "gemini-3.1-pro-preview", "gemini-2.5-pro", "gemini-2.0-flash"]
                 
+            # 🌟 NEW: 在 Prompt 中要求 AI 注意 Z-Score 與系統相關性
             prompt = f"""
             [SYSTEM_DIRECTIVE]
             Task: Transform deterministic macro signals into aggressive tactical trading metadata.
-            Tone: High-Alpha Quant, Contrarian, Extreme Aggressive (Risk = Opportunity). Focus deeply on Smart Money rotations (MOVE, VVIX, HYG/TLT, SOXX/SPY, liquidity, RSP/SPY breadth, KRE risk, AUD/JPY carry).
+            Tone: High-Alpha Quant, Contrarian, Extreme Aggressive (Risk = Opportunity). Focus deeply on Z-Scores (statistical extremes) and `sys_corr` (systemic liquidation risk).
             Language: MUST strictly output all text values in TRADITIONAL CHINESE (繁體中文).
             Constraints: 
             - ZERO conversational text.
@@ -463,12 +551,13 @@ try:
                stagflation -> "滯脹期"
                tight_liquidity -> "流動性緊縮"
                mixed -> "混合/震盪期"
-            2. SUMMARY: 1 sentence. **MUST START WITH "[目前總經形勢: 翻譯後的STAGE]"**. Map the stage and Smart Money signals to a max-alpha allocation strategy in Traditional Chinese.
-            3. DETAILS.TITLE: Translate the metric name to Traditional Chinese (e.g., "科技股恐慌 (VXN)", "黑天鵝預警 (VVIX)", "商品通膨 (DBC)", "半導體動能 (SOXX/SPY)", "市場廣度 (RSP/SPY)", "區域銀行風險 (KRE/SPY)", "套利情緒 (AUD/JPY)", "選擇權情緒 (PCR)").
-            4. DETAILS.DESC: Max 25 chars in Traditional Chinese. 
-               *** CRITICAL DATA RULE ***: You MUST explicitly cite specific numeric values from `raw` in every description. Combine the number with an actionable contrarian trigger. 
-               (e.g., MUST output "VVIX={macro_payload.get('vvix')} 聰明錢瘋狂避險，準備啟動尾部對沖🩸").
-            5. DETAILS.COLOR: "text-green-400" (momentum/buy/opportunity), "text-red-400" (tail-risk/hedge/sell), "text-gray-400" (neutral).
+            2. SUMMARY: 1 sentence. **MUST START WITH "[目前總經形勢: 翻譯後的STAGE]"**. Map the stage and extreme Z-scores to a max-alpha allocation strategy.
+               *CRITICAL*: If `sys_corr` > 0.8, you MUST declare a systemic liquidation event (e.g., 雷曼時刻降臨，分散投資失效).
+            3. DETAILS.TITLE: Translate the metric name to Traditional Chinese (e.g., "科技恐慌 (VXN Z-Score)", "系統性風險 (平均相關性)").
+            4. DETAILS.DESC: Max 35 chars in Traditional Chinese. 
+               *** CRITICAL DATA RULE ***: You MUST explicitly cite specific numeric values (especially Z-Scores if > 2.0 or < -2.0) from `raw` in every description. Combine the number with an actionable contrarian trigger. 
+               (e.g., MUST output "VIX Z-Score={macro_payload.get('vix_z')} 極端異常，準備暴力反彈買點🔪").
+            5. DETAILS.COLOR: "text-green-400" (momentum/buy/opportunity), "text-red-400" (tail-risk/hedge/sell/high correlation), "text-gray-400" (neutral).
             6. DETAILS.ICON: Single emoji (🔥, ⚡, 🚀, 🔪, 🛡️, 🩸, 🦅, 🐻).
 
             [INPUT_DATA]
@@ -576,7 +665,7 @@ def get_optimal_weights(returns_df, stock_meta, min_wt=0.03, max_wt=0.20):
 
     crypto_indices = []
     low_risk_indices = []
-    tw_and_fund_indices = [] # 🌟 記錄台股與基金的 indices
+    tw_and_fund_indices = []
 
     for i, ticker in enumerate(returns_df.columns):
         meta = stock_meta.get(ticker, {})
@@ -606,7 +695,6 @@ def get_optimal_weights(returns_df, stock_meta, min_wt=0.03, max_wt=0.20):
     if low_risk_indices and (num_assets - len(low_risk_indices)) * max_wt >= 0.85:
         constraints.append({'type': 'ineq', 'fun': lambda x: 0.15 - np.sum(x[low_risk_indices])})
         
-    # 🌟 NEW: 台股 + 基金合計 <= 15%
     if tw_and_fund_indices and (num_assets - len(tw_and_fund_indices)) * max_wt >= 0.85:
         constraints.append({'type': 'ineq', 'fun': lambda x: 0.15 - np.sum(x[tw_and_fund_indices])})
 
@@ -634,7 +722,6 @@ def get_optimal_weights(returns_df, stock_meta, min_wt=0.03, max_wt=0.20):
             for idx in low_risk_indices: A_low[0, idx] = 1
             tc_constraints.append(LinearConstraint(A_low, [-np.inf], [0.15]))
 
-        # 🌟 NEW: 備援演算法也加上台股/基金限制
         if tw_and_fund_indices and (num_assets - len(tw_and_fund_indices)) * max_wt >= 0.85:
             A_tw_fund = np.zeros((1, num_assets))
             for idx in tw_and_fund_indices: A_tw_fund[0, idx] = 1
