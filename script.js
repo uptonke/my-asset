@@ -34,6 +34,12 @@ createApp({
         const croInsight = ref(null);
         const isCroThinking = ref(false);
 
+        // ==========================================
+        // 🤖 專屬 AI 量化風險總監 (CRO)
+        // ==========================================
+        const croInsight = ref(null);
+        const isCroThinking = ref(false);
+
         async function generateQuantInsight() {
             const apiKey = localStorage.getItem('GEMINI_API_KEY') || prompt('首次使用請輸入您的 Gemini API Key (將安全儲存於瀏覽器):');
             if (!apiKey) return;
@@ -56,43 +62,83 @@ createApp({
                 systemic_correlation: sysCorr.value
             };
 
+            // 🌟 改變 Prompt: 要求逐一解析各數據，語氣保持銳利客觀
             const promptText = `
             [SYSTEM_DIRECTIVE]
             Task: Act as an aggressive, high-alpha Quant Chief Risk Officer (CRO).
             Input: Real-time portfolio performance metrics.
-            Constraint: Output strictly in Traditional Chinese. Keep it extremely concise, punchy, and actionable. No pleasantries. Max 3 bullet points.
+            Constraint: Output strictly in Traditional Chinese. Keep it concise, punchy, and actionable.
 
             [ANALYSIS_RULES]
-            1. TWR vs MWR: Compare them. If MWR > TWR, praise the market timing (cash flow injections). If TWR > MWR, criticize the timing (buying at the top).
-            2. Tail Risk: Look at Skewness (偏度) and Kurtosis (峭度). If Skewness is highly negative or Kurtosis > 3, explicitly warn about "Black Swan / Fat Tail risks" and suggest hedging (e.g., Options, VIX, TLT).
-            3. Efficiency: Evaluate Treynor and Sharpe. Is the return worth the Beta taken?
-            4. Correlation: If Systemic Correlation > 0.7, warn that diversification is failing.
+            You MUST evaluate each key metric below and provide a 1-sentence diagnostic:
+            1. **TWR vs MWR**: Explain the difference. If MWR > TWR, the market timing (cash flow injections) is creating positive alpha. If TWR > MWR, cash drags are hurting performance.
+            2. **Risk-Adjusted Return (Sharpe & Treynor)**: Diagnose if the returns justify the volatility and beta taken.
+            3. **Tail Risk (Skewness & Kurtosis)**: Analyze the asymmetry. Is it negatively skewed (crash risk)? Is it leptokurtic (fat tails)? Suggest specific hedges if risky.
+            4. **Systemic Risk (Correlation)**: Evaluate if the portfolio is too concentrated. High correlation means diversification is failing.
+            5. **Drawdown Risk (MDD & CVaR)**: Assess the catastrophic potential.
+
+            [OUTPUT_FORMAT]
+            Provide a bulleted list analyzing the data point by point. Example format:
+            - **[指標名稱]**: [一針見血的解讀與建議]
 
             [INPUT_DATA]
             ${JSON.stringify(payload, null, 2)}
             `;
 
-            try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: promptText }] }],
-                        generationConfig: { temperature: 0.2 } 
-                    })
-                });
+            // 🌟 加入模型備援管線 (Model Pipeline)
+            const model_pipeline = ["gemini-3.1-pro-preview", "gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"];
+            let success = false;
+            let resultText = "";
 
-                const data = await response.json();
-                if (data.error) throw new Error(data.error.message);
-                
-                let text = data.candidates[0].content.parts[0].text;
-                croInsight.value = text.split('\n').filter(line => line.trim().length > 0).map(line => line.replace(/^[\*\-]\s*/, '').replace(/\*\*/g, ''));
-            } catch (e) {
-                alert('AI 分析失敗: ' + e.message);
-                if(e.message.includes('API key not valid')) localStorage.removeItem('GEMINI_API_KEY');
-            } finally {
-                isCroThinking.value = false;
+            for (const model_name of model_pipeline) {
+                try {
+                    console.log(`🤖 CRO 嘗試使用模型: ${model_name}...`);
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model_name}:generateContent?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: promptText }] }],
+                            generationConfig: { temperature: 0.2 } // 保持冷靜客觀
+                        })
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        throw new Error(data.error.message);
+                    }
+
+                    // 確保回應格式正確
+                    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+                        resultText = data.candidates[0].content.parts[0].text;
+                        success = true;
+                        console.log(`✅ CRO 成功使用模型: ${model_name}`);
+                        break; // 成功就跳出迴圈
+                    } else {
+                        throw new Error("回傳格式異常");
+                    }
+                } catch (e) {
+                    console.warn(`⚠️ 模型 ${model_name} 失敗: ${e.message}`);
+                    if (e.message.includes('API key not valid')) {
+                        localStorage.removeItem('GEMINI_API_KEY');
+                        alert('API Key 無效，請重新整理網頁後再次輸入。');
+                        isCroThinking.value = false;
+                        return;
+                    }
+                    // 繼續嘗試下一個模型
+                }
             }
+
+            if (success) {
+                // 簡單把 markdown 的 bullet points 轉成陣列
+                croInsight.value = resultText.split('\n')
+                                             .filter(line => line.trim().length > 0)
+                                             .map(line => line.replace(/^[\*\-]\s*/, '').replace(/\*\*/g, ''));
+            } else {
+                alert('所有 AI 模型皆無回應或發生錯誤，請稍後再試。');
+            }
+            
+            isCroThinking.value = false;
         }
         
         // ==========================================
