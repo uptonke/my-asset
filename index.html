@@ -8,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@1.2.0/dist/chartjs-chart-matrix.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
@@ -102,9 +103,6 @@
                     <div class="glass p-6 rounded-2xl border-t-4 border-yellow-500">
                         <div class="text-xs text-gray-400 font-bold uppercase">投資總市值 (TWD)</div>
                         <div class="text-3xl font-bold text-white mt-2 font-mono">NT$ {{ formatNumber(totalStockValueTwd) }}</div>
-                        <div v-if="binanceUsdtValue && binanceUsdtValue > 0" class="mt-2 inline-flex items-center gap-1 text-[10px] bg-gray-800/80 text-yellow-500 font-bold px-2 py-1 rounded border border-gray-700">
-                            <i class="fab fa-btc"></i> 含 CeFi: <span class="text-white">{{ formatNumber(binanceUsdtValue) }} USDT</span>
-                        </div>
                     </div>
                     <div class="glass p-6 rounded-2xl border-t-4 border-emerald-500">
                         <div class="text-xs text-gray-400 font-bold uppercase">投資總成本 (TWD)</div>
@@ -231,6 +229,26 @@
                             </ul>
                         </div>
                     </div>
+                </div>
+
+                <div class="glass p-5 rounded-2xl relative min-h-[300px] md:h-[450px] flex flex-col border-t-4 transition-colors duration-500" 
+                     :class="sysCorr > 0.85 ? 'border-red-600 bg-red-900/10' : 'border-gray-500'">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <h4 class="text-white font-bold mb-1 flex items-center gap-2">
+                                <i class="fas fa-th text-blue-400"></i> 資產相關性矩陣 (Systemic Risk)
+                            </h4>
+                            <p class="text-xs text-gray-400">衡量庫存標的齊漲齊跌程度。深綠代表正相關，深紅代表負相關（具避險效果）。</p>
+                        </div>
+                        
+                        <div v-if="sysCorr > 0.85" class="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full animate-pulse flex items-center gap-1 shadow-[0_0_15px_rgba(220,38,38,0.5)]">
+                            <i class="fas fa-skull-crossbones"></i> 雷曼時刻 (系統風險極高)
+                        </div>
+                        <div v-else class="bg-gray-800 text-gray-300 text-xs font-bold px-3 py-1 rounded border border-gray-700">
+                            平均相關性: <span :class="sysCorr > 0.7 ? 'text-red-400' : 'text-green-400'">{{ sysCorr.toFixed(2) }}</span>
+                        </div>
+                    </div>
+                    <div class="flex-1 relative mt-2"><canvas id="corrChart"></canvas></div>
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -630,19 +648,58 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mt-4">
-                    <div class="quant-card"><div class="quant-label text-blue-400">年化報酬 (TWR)</div><div class="quant-value text-white">{{ stats.annRet }}%</div></div>
-                    <div class="quant-card"><div class="quant-label text-gray-400">年化標準差 (Vol)</div><div class="quant-value text-white">{{ stats.annVol }}%</div></div>
-                    <div class="quant-card"><div class="quant-label text-yellow-400">夏普 (Sharpe)</div><div class="quant-value text-white">{{ stats.sharpe }}</div></div>
-                    <div class="quant-card"><div class="quant-label text-yellow-400">索提諾 (Sortino)</div><div class="quant-value text-white">{{ stats.sortino }}</div></div>
-                    <div class="quant-card"><div class="quant-label text-yellow-400">卡瑪 (Calmar)</div><div class="quant-value text-white">{{ stats.calmar }}</div></div>
-                    <div class="quant-card"><div class="quant-label text-purple-400">Beta (β)</div><div class="quant-value text-white">{{ riskParams.beta }}</div></div>
+                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mt-4">
+                    <div class="quant-card">
+                        <div class="quant-label text-blue-400" title="時間加權報酬 (評估選股能力)">年化 TWR</div>
+                        <div class="quant-value text-white">{{ stats.annRet }}%</div>
+                    </div>
+                    <div class="quant-card border-blue-900/30 bg-blue-900/10">
+                        <div class="quant-label text-blue-300" title="資金加權報酬 (評估擇時進出能力)">年化 MWR</div>
+                        <div class="quant-value text-white">{{ stats.mwr }}%</div>
+                    </div>
+                    <div class="quant-card border-blue-900/30 bg-blue-900/10">
+                        <div class="quant-label text-blue-300" title="連續複利 LN(1+TWR)">Log Return</div>
+                        <div class="quant-value text-white">{{ stats.annLogRet }}%</div>
+                    </div>
+                    <div class="quant-card">
+                        <div class="quant-label text-gray-400">年化標準差 (Vol)</div>
+                        <div class="quant-value text-white">{{ stats.annVol }}%</div>
+                    </div>
+                    <div class="quant-card">
+                        <div class="quant-label text-yellow-400">夏普 (Sharpe)</div>
+                        <div class="quant-value text-white">{{ stats.sharpe }}</div>
+                    </div>
+                    <div class="quant-card border-yellow-900/30 bg-yellow-900/10">
+                        <div class="quant-label text-yellow-300" title="每承擔1單位系統風險(Beta)的超額報酬">崔納 (Treynor)</div>
+                        <div class="quant-value text-white">{{ stats.treynor }}</div>
+                    </div>
+                    <div class="quant-card">
+                        <div class="quant-label text-yellow-400">索提諾 (Sortino)</div>
+                        <div class="quant-value text-white">{{ stats.sortino }}</div>
+                    </div>
+                    
+                    <div class="quant-card">
+                        <div class="quant-label text-purple-400">組合 Beta (β)</div>
+                        <div class="quant-value text-white">{{ riskParams.beta }}</div>
+                    </div>
+                    <div class="quant-card">
+                        <div class="quant-label text-green-400">Alpha (Jensen)</div>
+                        <div class="quant-value text-white">{{ stats.alpha }}%</div>
+                    </div>
+                    <div class="quant-card bg-red-900/20 border-red-500/30">
+                        <div class="quant-label text-red-400">最大回撤 (MDD)</div>
+                        <div class="quant-value text-white">{{ stats.mdd }}%</div>
+                    </div>
+                    <div class="quant-card">
+                        <div class="quant-label text-yellow-400">卡瑪 (Calmar)</div>
+                        <div class="quant-value text-white">{{ stats.calmar }}</div>
+                    </div>
                     <div class="quant-card"><div class="quant-label text-red-400">VaR (95%)</div><div class="quant-value text-white">{{ stats.var95 }}%</div></div>
                     <div class="quant-card bg-red-900/20 border-red-500/30"><div class="quant-label text-red-400">預期短缺 CVaR</div><div class="quant-value text-white">{{ stats.cvar95 }}%</div></div>
-                    <div class="quant-card bg-red-900/20 border-red-500/30"><div class="quant-label text-red-400">最大回撤 (MDD)</div><div class="quant-value text-white">{{ stats.mdd }}%</div></div>
-                    <div class="quant-card"><div class="quant-label text-green-400">Alpha (Jensen)</div><div class="quant-value text-white">{{ stats.alpha }}%</div></div>
-                    <div class="quant-card bg-white/5 border-yellow-400/30"><div class="quant-label text-yellow-400">偏度 (Skewness)</div><div class="quant-value text-white">{{ stats.skew }}</div></div>
-                    <div class="quant-card bg-white/5 border-yellow-400/30"><div class="quant-label text-yellow-400">峭度 (Kurtosis)</div><div class="quant-value text-white">{{ stats.kurt }}</div></div>
+                    <div class="quant-card bg-white/5 border-yellow-400/30">
+                        <div class="quant-label text-yellow-400">偏度 (Skewness)</div>
+                        <div class="quant-value text-white" :class="stats.skew < 0 ? 'text-red-400' : 'text-green-400'">{{ stats.skew }}</div>
+                    </div>
                 </div>
 
                  <div class="glass rounded-xl flex flex-col mt-4 transition-all duration-300 border border-gray-700/50 hover:border-gray-500/50">
