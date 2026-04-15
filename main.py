@@ -303,6 +303,7 @@ try:
             [SYSTEM_DIRECTIVE]
             Task: Transform deterministic macro signals into aggressive tactical trading metadata.
             Tone: High-Alpha Quant, Contrarian, Extreme Aggressive (Risk = Opportunity). Focus deeply on Smart Money rotations (MOVE, IWM/SPY, XLU/XLY).
+            Language: MUST strictly output all text values in TRADITIONAL CHINESE (繁體中文).
             Constraints: 
             - ZERO conversational text.
             - ZERO Markdown formatting (no ```json). 
@@ -316,12 +317,13 @@ try:
                stagflation -> "滯脹期"
                tight_liquidity -> "流動性緊縮"
                mixed -> "混合/震盪期"
-            2. SUMMARY: 1 sentence. **MUST START WITH "[目前總經形勢: 翻譯後的STAGE]"**. Map the stage and Smart Money signals to a max-alpha allocation strategy.
-            3. DETAILS.DESC: Max 25 chars. 
+            2. SUMMARY: 1 sentence. **MUST START WITH "[目前總經形勢: 翻譯後的STAGE]"**. Map the stage and Smart Money signals to a max-alpha allocation strategy in Traditional Chinese.
+            3. DETAILS.TITLE: Translate the metric name to Traditional Chinese (e.g., "殖利率曲線", "MOVE 指數", "銅金比").
+            4. DETAILS.DESC: Max 25 chars in Traditional Chinese. 
                *** CRITICAL DATA RULE ***: You MUST explicitly cite specific numeric values from `raw` in every description. Combine the number with an actionable contrarian trigger. 
-               (e.g., MUST output "MOVE={macro_payload.get('move_index')} 債市資金枯竭，伺機撿屍🔪", DO NOT output generic text like "流動性差適合買").
-            4. DETAILS.COLOR: "text-green-400" (momentum/buy/opportunity), "text-red-400" (tail-risk/hedge/sell), "text-gray-400" (neutral).
-            5. DETAILS.ICON: Single emoji (🔥, ⚡, 🚀, 🔪, 🛡️, 🩸, 🦅, 🐻).
+               (e.g., MUST output "MOVE={macro_payload.get('move_index')} 債市資金枯竭，伺機撿屍🔪").
+            5. DETAILS.COLOR: "text-green-400" (momentum/buy/opportunity), "text-red-400" (tail-risk/hedge/sell), "text-gray-400" (neutral).
+            6. DETAILS.ICON: Single emoji (🔥, ⚡, 🚀, 🔪, 🛡️, 🩸, 🦅, 🐻).
 
             [INPUT_DATA]
             stage_candidate: {regime_packet["stage_candidate"]}
@@ -332,17 +334,16 @@ try:
 
             [OUTPUT_SCHEMA]
             {{
-              "summary": "<string>",
+              "summary": "<string_in_traditional_chinese>",
               "details": [
                 {{
                   "icon": "<emoji>",
                   "color": "<string_tailwind_class>",
-                  "title": "<string_metric_name>",
-                  "desc": "<string_data_driven_insight>"
+                  "title": "<string_metric_name_in_traditional_chinese>",
+                  "desc": "<string_data_driven_insight_in_traditional_chinese>"
                 }}
               ]
             }}
-            """
             
             ai_success = False
             for model_name in model_pipeline:
@@ -643,6 +644,7 @@ try:
                 [SYSTEM_DIRECTIVE]
                 Task: Generate a high-conviction rebalance execution plan.
                 Tone: Institutional Trader, Aggressive, Data-driven.
+                Language: MUST strictly output all text values in TRADITIONAL CHINESE (繁體中文).
                 Constraints: Output ONLY JSON. No conversational filler.
 
                 [INPUT_DATA]
@@ -651,11 +653,11 @@ try:
 
                 [OUTPUT_SCHEMA]
                 {{
-                    "execution_summary": "<string_1_sentence_rationale_linking_macro_to_trades>",
+                    "execution_summary": "<string_1_sentence_rationale_linking_macro_to_trades_in_traditional_chinese>",
                     "priority_trades": [
                         {{
                             "ticker": "<string>",
-                            "reason": "<string_short_rationale_combining_macro_and_target_weight>"
+                            "reason": "<string_short_rationale_combining_macro_and_target_weight_in_traditional_chinese>"
                         }}
                     ]
                 }}
