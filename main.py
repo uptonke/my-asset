@@ -340,7 +340,7 @@ try:
             target_weights = {}
             if valid_investable:
                 investable_returns = returns[valid_investable]
-                target_weights = get_optimal_weights(investable_returns, min_wt=0.03, max_wt=0.20)
+                target_weights = get_optimal_weights(investable_returns, stock_meta, min_wt=0.03, max_wt=0.20)
 
             print("🧠 開始計算多因子風險參數並寫入資料庫...", flush=True)
             for i, original_ticker in enumerate(all_tickers):
