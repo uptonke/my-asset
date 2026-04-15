@@ -34,12 +34,6 @@ createApp({
         const croInsight = ref(null);
         const isCroThinking = ref(false);
 
-        // ==========================================
-        // 🤖 專屬 AI 量化風險總監 (CRO)
-        // ==========================================
-        const croInsight = ref(null);
-        const isCroThinking = ref(false);
-
         async function generateQuantInsight() {
             const apiKey = localStorage.getItem('GEMINI_API_KEY') || prompt('首次使用請輸入您的 Gemini API Key (將安全儲存於瀏覽器):');
             if (!apiKey) return;
