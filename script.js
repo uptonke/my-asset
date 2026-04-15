@@ -399,6 +399,13 @@ createApp({
                     if (match) mcWeight = parseFloat(match.opt);
                 }
 
+                // 🚀 NEW: 計算「模型集成」的綜合目標權重 (50% 雲端 + 50% 蒙地卡羅)
+                // 如果還沒跑 MC (mcOptimal 為 null)，就 100% 採用雲端權重
+                let finalBlendedWeight = cloudTargetWeight;
+                if (mcOptimal.value) {
+                    finalBlendedWeight = (cloudTargetWeight * 0.5) + (mcWeight * 0.5);
+                }
+
                 const item = { 
                     ...h, isUSD, 
                     riskLevel: meta.risk || 'High',
@@ -418,7 +425,8 @@ createApp({
                     
                     // 🌟 新增：權重屬性
                     targetWeight: cloudTargetWeight,
-                    mcWeight: mcWeight
+                    mcWeight: mcWeight,
+                    blendedWeight: finalBlendedWeight // 新增綜合權重
                 };
                 
                 groups[h.category].items.push(item);
@@ -430,12 +438,8 @@ createApp({
                     item.totalWeight = grandTotal > 0 ? (item.marketValueTwd / grandTotal) : 0;
                     item.isOverweight = item.totalWeight > 0.20; 
                     
-                    // 🌟 新增：權重落差 (實際權重與雲端紀律權重的差距)
-                    // 若大於 0 代表持有過多 (需要減碼)，若小於 0 代表持有過少 (需要加碼)
-                    item.weightGap = item.targetWeight - (item.totalWeight * 100); 
-                });
-                groups[cat].items.sort((a,b) => b.marketValueTwd - a.marketValueTwd);
-            }
+                    // ✅ 將落差標準改為：綜合目標 - 現有權重
+                    item.weightGap = item.blendedWeight - (item.totalWeight * 100); 
                 });
                 groups[cat].items.sort((a,b) => b.marketValueTwd - a.marketValueTwd);
             }
