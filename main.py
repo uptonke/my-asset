@@ -369,7 +369,47 @@ try:
             returns = prices_df.pct_change().dropna()
 
             print("🧠 啟動機構級最佳化引擎 (限制 3%~20%)...", flush=True)
-            investable_tickers = [t for t in yf_tickers if t not in [tw_bench, us_bench]]
+            print("⚖️ 正在過濾真實庫存標的...", flush=True)
+            # 1. 先計算目前真實持有的股數
+            current_shares = {}
+            for tx in ledger_data:
+                t = str(tx.get("ticker", "")).strip().upper()
+                if not t: continue
+                s = float(tx.get("shares", 0))
+                if str(tx.get("type", "buy")).lower() in ["sell", "賣出"]:
+                    s = -s
+                current_shares[t] = current_shares.get(t, 0) + s
+
+            # 2. 只保留股數 > 0 的標的進入最佳化清單
+            active_tickers = [t for t, s in current_shares.items() if s > 0.0001]
+            
+            # 3. 轉換成 yfinance 相容的代號 (yf_tickers 映射)
+            # 我們建立一個對照表
+            ticker_to_yf = dict(zip(all_tickers, yf_tickers))
+            
+            valid_investable = []
+            for t in active_tickers:
+                yf_t = ticker_to_yf.get(t)
+                if yf_t and yf_t in returns.columns and yf_t not in [tw_bench, us_bench]:
+                    valid_investable.append(yf_t)
+
+            print(f"✅ 篩選完成：庫存共有 {len(valid_investable)} 檔標的進入最佳化引擎。", flush=True)
+
+            target_weights = {}
+            if valid_investable:
+                investable_returns = returns[valid_investable]
+                
+                # 這裡保留動態邊界，但因為標的變回 20 檔，它會正確執行 3%-20% 限制
+                num_assets = len(valid_investable)
+                dynamic_min = min(0.03, 0.9 / num_assets) if num_assets > 0 else 0.0
+                dynamic_max = 0.20
+                    
+                target_weights = get_optimal_weights(
+                    investable_returns, 
+                    stock_meta, 
+                    min_wt=dynamic_min, 
+                    max_wt=dynamic_max
+                )
             valid_investable = [t for t in investable_tickers if t in returns.columns]
             
             target_weights = {}
