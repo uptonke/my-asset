@@ -26,7 +26,9 @@ createApp({
             } else {
                 alert('庫存中沒有合格的標的 (需設定 Beta 與 StdDev)');
             }
-            // ==========================================
+        }
+
+        // ==========================================
         // 🤖 專屬 AI 量化風險總監 (CRO)
         // ==========================================
         const croInsight = ref(null);
@@ -76,16 +78,14 @@ createApp({
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         contents: [{ parts: [{ text: promptText }] }],
-                        generationConfig: { temperature: 0.2 } // 保持冷靜客觀
+                        generationConfig: { temperature: 0.2 } 
                     })
                 });
 
                 const data = await response.json();
                 if (data.error) throw new Error(data.error.message);
                 
-                // 解析 Markdown 格式的文字
                 let text = data.candidates[0].content.parts[0].text;
-                // 簡單把 markdown 的 bullet points 轉成陣列
                 croInsight.value = text.split('\n').filter(line => line.trim().length > 0).map(line => line.replace(/^[\*\-]\s*/, '').replace(/\*\*/g, ''));
             } catch (e) {
                 alert('AI 分析失敗: ' + e.message);
@@ -93,7 +93,6 @@ createApp({
             } finally {
                 isCroThinking.value = false;
             }
-        }
         }
         
         // ==========================================
@@ -1609,7 +1608,8 @@ createApp({
             isAuthenticating, handleLogin, handleLogout, checkAuth, fireProgress, 
             updateCharts, addFireTarget, macroRegime, enableBlackSwan, mcRisk, blViews, mcAvailableAssets, addBlView, enableInflation,
             generateAutoViews, runMonteCarlo, stressTestResults,
-            expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr
+            expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr,
+            croInsight, isCroThinking, generateQuantInsight // 🌟 Ensure these are returned
         };
     }
 }).mount('#app');
