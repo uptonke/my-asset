@@ -224,10 +224,7 @@ def get_sheet_prices(url_str):
         print(f"⚠️ Sheet 報價讀取失敗:\n{traceback.format_exc()}", flush=True)
         return {}
 
-def get_optimal_weights(returns_df, min_wt=0.03, max_wt=0.20):
-    """
-    使用 SciPy 進行約束條件最佳化 (最大化夏普值)
-    """
+def get_optimal_weights(returns_df, stock_meta, min_wt=0.03, max_wt=0.20):
     num_assets = len(returns_df.columns)
     if num_assets == 0: return {}
     
@@ -235,9 +232,21 @@ def get_optimal_weights(returns_df, min_wt=0.03, max_wt=0.20):
     cov_matrix = returns_df.cov() * 252
     risk_free_rate = 0.02 
     
-    if min_wt * num_assets > 1.0:
-        print("⚠️ 警告：最低權重總和超過 100%，將自動等權重分配")
-        return {col: 1.0/num_assets for col in returns_df.columns}
+    # 1. 找出哪些資產屬於加密貨幣，哪些屬於低風險資產
+    crypto_indices = []
+    low_risk_indices = []
+    
+    for i, ticker in enumerate(returns_df.columns):
+        # 這裡從你之前傳入的 stock_meta 或 ticker 名稱判斷
+        # 假設 stock_meta[ticker] 裡有 'category' 和 'risk'
+        meta = stock_meta.get(ticker, {})
+        category = str(meta.get("category", "")).lower()
+        risk = str(meta.get("risk", "")).lower() # 你手動定義的 'low'
+        
+        if "加密" in category or "btc" in ticker.lower() or "eth" in ticker.lower():
+            crypto_indices.append(i)
+        if risk == "low" or "低風險" in risk:
+            low_risk_indices.append(i)
 
     def neg_sharpe_ratio(weights):
         p_ret = np.sum(mean_returns * weights)
@@ -245,7 +254,15 @@ def get_optimal_weights(returns_df, min_wt=0.03, max_wt=0.20):
         p_vol = np.sqrt(p_var)
         return -(p_ret - risk_free_rate) / p_vol
 
-    constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
+    # 2. 定義約束條件
+    constraints = [
+        {'type': 'eq', 'fun': lambda x: np.sum(x) - 1}, # 總和 = 100%
+        # 🌟 群組約束 1：加密貨幣總和 <= 20% (即 0.20 - sum >= 0)
+        {'type': 'ineq', 'fun': lambda x: 0.20 - np.sum(x[crypto_indices]) if crypto_indices else 1},
+        # 🌟 群組約束 2：低風險資產總和 <= 15% (即 0.15 - sum >= 0)
+        {'type': 'ineq', 'fun': lambda x: 0.15 - np.sum(x[low_risk_indices]) if low_risk_indices else 1}
+    ]
+    
     bounds = tuple((min_wt, max_wt) for _ in range(num_assets))
     init_guess = num_assets * [1. / num_assets]
 
@@ -258,10 +275,9 @@ def get_optimal_weights(returns_df, min_wt=0.03, max_wt=0.20):
     )
 
     if optimized_result.success:
-        optimal_weights = np.round(optimized_result.x, 4)
-        return dict(zip(returns_df.columns, optimal_weights))
+        return dict(zip(returns_df.columns, np.round(optimized_result.x, 4)))
     else:
-        print(f"⚠️ 最佳化求解失敗: {optimized_result.message}")
+        print(f"⚠️ 最佳化失敗: {optimized_result.message}")
         return {col: 1.0/num_assets for col in returns_df.columns}
 
 try:
