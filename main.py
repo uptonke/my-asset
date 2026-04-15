@@ -340,7 +340,25 @@ try:
             target_weights = {}
             if valid_investable:
                 investable_returns = returns[valid_investable]
-                target_weights = get_optimal_weights(investable_returns, stock_meta, min_wt=0.03, max_wt=0.20)
+                
+                # 🌟 動態放寬權重邊界防呆機制
+                num_assets = len(valid_investable)
+                if num_assets < 5:
+                    # 如果庫存標的少於 5 檔，強迫每檔最高 20% 會導致總和永遠達不到 100%
+                    # 因此放寬為：不限制最高權重 (1.0)，最低 0%
+                    dynamic_min = 0.0
+                    dynamic_max = 1.0
+                else:
+                    # 標的數量充足時，嚴格執行機構級紀律
+                    dynamic_min = 0.03
+                    dynamic_max = 0.20
+                    
+                target_weights = get_optimal_weights(
+                    investable_returns, 
+                    stock_meta, 
+                    min_wt=dynamic_min, 
+                    max_wt=dynamic_max
+                )
 
             print("🧠 開始計算多因子風險參數並寫入資料庫...", flush=True)
             for i, original_ticker in enumerate(all_tickers):
