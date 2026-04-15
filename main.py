@@ -394,7 +394,7 @@ def get_sheet_prices(url_str):
         match = re.search(r'/d/([a-zA-Z0-9-_]+)', url_str)
         gid_match = re.search(r'[#&?]gid=([0-9]+)', url_str)
         if not match: return {}
-        csv_url = f"[https://docs.google.com/spreadsheets/d/](https://docs.google.com/spreadsheets/d/){match.group(1)}/gviz/tq?tqx=out:csv&gid={gid_match.group(1) if gid_match else '0'}"
+        csv_url = f"https://docs.google.com/spreadsheets/d/{match.group(1)}/gviz/tq?tqx=out:csv&gid={gid_match.group(1) if gid_match else '0'}"
         response = requests.get(csv_url, timeout=10)
         response.raise_for_status() 
         df = pd.read_csv(io.StringIO(response.text), header=None)
