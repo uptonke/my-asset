@@ -99,35 +99,110 @@ def score_copper_gold_ratio(v):
     if v >= 0.15: return 0
     return -1
 
-# 🌟 NEW: 進階機構因子評分
 def score_move(v):
     v = _num(v)
     if v is None: return 0
-    if v > 120: return -2 # 債市流動性枯竭
-    if v >= 100: return -1 # 警戒
-    if v >= 80: return 1  # 正常
-    return 2 # 資金極度氾濫
+    if v > 120: return -2 
+    if v >= 100: return -1 
+    if v >= 80: return 1  
+    return 2 
 
 def score_iwm_spy(v):
     v = _num(v)
     if v is None: return 0
-    if v > 3: return 2   # 小盤領漲，極度風險偏好
-    if v >= 0: return 1  # 廣度健康
-    if v >= -3: return -1 # 大型股抱團避險
-    return -2 # 中小盤崩潰，衰退前兆
+    if v > 3: return 2   
+    if v >= 0: return 1  
+    if v >= -3: return -1 
+    return -2 
 
 def score_xlu_xly(v):
     v = _num(v)
     if v is None: return 0
-    if v > 3: return -2   # 資金瘋狂湧入公用事業避險
-    if v >= 0: return -1  # 防禦偏好
-    if v >= -3: return 1  # 正常擴張 (消費領先)
-    return 2 # 消費極度強勁
+    if v > 3: return -2   
+    if v >= 0: return -1  
+    if v >= -3: return 1  
+    return 2 
 
-def status_from_score(score):
-    if score > 0: return "bullish"
-    if score < 0: return "bearish"
-    return "neutral"
+def score_vxn(v):
+    v = _num(v)
+    if v is None: return 0
+    if v > 35: return -2 
+    if v >= 25: return -1
+    if v >= 15: return 1
+    return 2
+
+def score_vvix(v):
+    v = _num(v)
+    if v is None: return 0
+    if v > 115: return -2 
+    if v >= 100: return -1
+    if v >= 80: return 1
+    return 2
+
+def score_hyg_tlt(v):
+    v = _num(v)
+    if v is None: return 0
+    if v < -3: return -2 
+    if v < 0: return -1
+    if v < 3: return 1
+    return 2 
+
+def score_dbc_mom(v):
+    v = _num(v)
+    if v is None: return 0
+    if v > 8: return -2 
+    if v > 3: return -1
+    if v > -5: return 1 
+    return 2
+
+def score_soxx_spy(v):
+    v = _num(v)
+    if v is None: return 0
+    if v > 5: return 2 
+    if v > 0: return 1
+    if v > -3: return -1
+    return -2 
+
+def score_liquidity(v):
+    v = _num(v)
+    if v is None: return 0
+    if v > 0.5: return -2 
+    if v > 0.2: return -1
+    if v > -0.1: return 1
+    return 2 
+
+# 🌟 NEW: 新增衍生指標評分
+def score_rsp_spy(v):
+    v = _num(v)
+    if v is None: return 0
+    if v > 2: return 2  # 市場廣度極佳
+    if v > 0: return 1
+    if v > -2: return -1
+    return -2 # 漲幅極度集中化 (拉積盤/科技巨頭獨走)
+
+def score_kre_spy(v):
+    v = _num(v)
+    if v is None: return 0
+    if v > 1: return 1  # 區域銀行健康
+    if v < -5: return -2 # 系統性金融風險爆發
+    if v < -2: return -1
+    return 0
+
+def score_aud_jpy(v):
+    v = _num(v)
+    if v is None: return 0
+    if v > 3: return 2  # 狂暴 Risk-On (套利交易盛行)
+    if v > 0: return 1
+    if v < -3: return -2 # 避險情緒高漲 (平倉潮)
+    return -1
+
+def score_pcr(v):
+    v = _num(v)
+    if v is None: return 0
+    if v > 1.2: return -2 # 極端恐慌 (Put 買爆)
+    if v > 1.0: return -1
+    if v < 0.8: return 2  # 極端貪婪
+    return 1
 
 def choose_stage(scores):
     vals = list(scores.values())
@@ -135,17 +210,21 @@ def choose_stage(scores):
     neg = sum(1 for s in vals if s < 0)
     total = sum(vals)
 
-    if pos >= 2 and neg >= 2: return "mixed"
+    if pos >= 3 and neg >= 3: return "mixed"
     if scores["yield_curve"] <= -1 and scores["hy_spread"] <= -1 and scores["vix"] <= -1: return "recession_risk"
     if scores["dxy"] <= -1 and scores["hy_spread"] <= -1: return "tight_liquidity"
-    if scores["oil_price"] < 0 and (scores["yield_curve"] <= 0 or scores["vix"] <= 0): return "stagflation"
+    
+    if (scores.get("oil_price", 0) < 0 or scores.get("dbc_mom", 0) < 0) and (scores["yield_curve"] <= 0 or scores["vix"] <= 0): 
+        return "stagflation"
+        
     if scores["yield_curve"] > 0 and scores["hy_spread"] > 0 and scores["vix"] > 0 and scores["btc_1m_mom"] > 0: return "expansion"
 
-    if total >= 6: return "expansion"
-    if 2 <= total <= 5: return "neutral"
-    if -3 <= total <= 1: return "tight_liquidity"
-    if -7 <= total <= -4: return "recession_risk"
-    if total <= -8: return "stagflation"
+    # 因應指標擴充至 20 個，重新調平總分門檻
+    if total >= 10: return "expansion"
+    if 3 <= total <= 9: return "neutral"
+    if -5 <= total <= 2: return "tight_liquidity"
+    if -12 <= total <= -6: return "recession_risk"
+    if total <= -13: return "stagflation"
     return "mixed"
 
 def build_regime_packet(macro_payload):
@@ -160,6 +239,16 @@ def build_regime_packet(macro_payload):
         "move_index": macro_payload.get("move_index"),
         "iwm_spy_mom": macro_payload.get("iwm_spy_mom"),
         "xlu_xly_mom": macro_payload.get("xlu_xly_mom"),
+        "vxn": macro_payload.get("vxn"),
+        "vvix": macro_payload.get("vvix"),
+        "hyg_tlt_mom": macro_payload.get("hyg_tlt_mom"),
+        "dbc_mom": macro_payload.get("dbc_mom"),
+        "soxx_spy_mom": macro_payload.get("soxx_spy_mom"),
+        "liquidity_spread": macro_payload.get("liquidity_spread"),
+        "rsp_spy_mom": macro_payload.get("rsp_spy_mom"),
+        "kre_spy_mom": macro_payload.get("kre_spy_mom"),
+        "aud_jpy_mom": macro_payload.get("aud_jpy_mom"),
+        "put_call_ratio": macro_payload.get("put_call_ratio")
     }
 
     scores = {
@@ -173,15 +262,25 @@ def build_regime_packet(macro_payload):
         "move_index": score_move(raw["move_index"]),
         "iwm_spy_mom": score_iwm_spy(raw["iwm_spy_mom"]),
         "xlu_xly_mom": score_xlu_xly(raw["xlu_xly_mom"]),
+        "vxn": score_vxn(raw["vxn"]),
+        "vvix": score_vvix(raw["vvix"]),
+        "hyg_tlt_mom": score_hyg_tlt(raw["hyg_tlt_mom"]),
+        "dbc_mom": score_dbc_mom(raw["dbc_mom"]),
+        "soxx_spy_mom": score_soxx_spy(raw["soxx_spy_mom"]),
+        "liquidity_spread": score_liquidity(raw["liquidity_spread"]),
+        "rsp_spy_mom": score_rsp_spy(raw["rsp_spy_mom"]),
+        "kre_spy_mom": score_kre_spy(raw["kre_spy_mom"]),
+        "aud_jpy_mom": score_aud_jpy(raw["aud_jpy_mom"]),
+        "put_call_ratio": score_pcr(raw["put_call_ratio"])
     }
 
     stage = choose_stage(scores)
     total_score = sum(scores.values())
 
-    used_fields = ["yield_curve", "hy_spread", "vix", "move_index", "iwm_spy_mom", "xlu_xly_mom", "copper_gold_ratio", "btc_1m_mom", "dxy"]
-    valid_count = sum(1 for k in used_fields if not _is_missing(raw[k]) and not (raw[k] == 0.0 and k in ["hy_spread", "vix", "move_index", "iwm_spy_mom", "xlu_xly_mom"]))
+    used_fields = list(scores.keys())
+    valid_count = sum(1 for k in used_fields if not _is_missing(raw[k]))
     completeness = valid_count / len(used_fields)
-    confidence = min(1.0, abs(total_score) / 10.0) * (0.6 + 0.4 * completeness)
+    confidence = min(1.0, abs(total_score) / 20.0) * (0.6 + 0.4 * completeness)
     confidence = round(float(confidence), 3)
 
     return {
@@ -235,20 +334,44 @@ try:
         spy_vol = spy_clean.tail(252).pct_change().std() * np.sqrt(252) if len(spy_clean) > 10 else 0.15
     except: spy_cagr, spy_vol = 0.10, 0.15
 
-    print("   ⏳ 正在抓取跨資產期貨與情緒指標...", flush=True)
+    print("   ⏳ 正在抓取跨資產期貨、情緒指標、PCR與AUD/JPY...", flush=True)
     try:
-        vix = float(yf.Ticker("^VIX").history(period="5d")['Close'].dropna().iloc[-1])
+        vix_family = yf.download(["^VIX", "^VXN", "^VVIX"], period="5d", progress=False)["Close"]
+        if isinstance(vix_family, pd.Series): vix_family = vix_family.to_frame()
+        
+        vix = float(vix_family["^VIX"].dropna().iloc[-1]) if "^VIX" in vix_family.columns else 20.0
+        vxn = float(vix_family["^VXN"].dropna().iloc[-1]) if "^VXN" in vix_family.columns else 22.0
+        vvix = float(vix_family["^VVIX"].dropna().iloc[-1]) if "^VVIX" in vix_family.columns else 90.0
+        
         dxy = float(yf.Ticker("DX-Y.NYB").history(period="5d")['Close'].dropna().iloc[-1])
         gold = float(yf.Ticker("GC=F").history(period="5d")['Close'].dropna().iloc[-1])
         copper = float(yf.Ticker("HG=F").history(period="5d")['Close'].dropna().iloc[-1]) 
         oil = float(yf.Ticker("CL=F").history(period="5d")['Close'].dropna().iloc[-1])    
         copper_gold_ratio = (copper / gold) * 100 
-    except: vix, dxy, gold, copper, oil, copper_gold_ratio = 20.0, 100.0, 2000.0, 4.0, 75.0, 0.2
+    except Exception as e:
+        print(f"⚠️ 情緒指標抓取失敗，使用預設值: {e}")
+        vix, vxn, vvix, dxy, gold, copper, oil, copper_gold_ratio = 20.0, 22.0, 90.0, 100.0, 2000.0, 4.0, 75.0, 0.2
 
-    # 🌟 NEW: 進階 Smart Money 指標抓取
+    # 獨立沙盒處理 Put/Call Ratio (yfinance的^PCR容易失效)
+    try:
+        pcr_data = yf.Ticker("^PCR").history(period="5d")['Close']
+        pcr = float(pcr_data.dropna().iloc[-1]) if not pcr_data.dropna().empty else 1.0
+    except:
+        print("⚠️ Put/Call Ratio (^PCR) 讀取失敗或無資料，預設為中性值 1.0")
+        pcr = 1.0
+
+    # 獨立沙盒處理 AUD/JPY
+    try:
+        aud_jpy_data = yf.download("AUDJPY=X", period="1mo", progress=False)["Close"]
+        if isinstance(aud_jpy_data, pd.DataFrame): aud_jpy_data = aud_jpy_data.iloc[:, 0]
+        aud_jpy_clean = aud_jpy_data.dropna()
+        aud_jpy_mom = float(((aud_jpy_clean.iloc[-1] / aud_jpy_clean.iloc[0]) - 1) * 100) if len(aud_jpy_clean) > 1 else 0.0
+    except:
+        print("⚠️ AUD/JPY 抓取失敗，預設動能為 0.0")
+        aud_jpy_mom = 0.0
+
     print("   ⏳ 正在抓取 MOVE 指數與板塊輪動指標...", flush=True)
     try:
-        # MOVE 指數 (若 YF 沒資料，用 TLT 20日波動率 * 10 模擬)
         try:
             move_data = yf.Ticker("^MOVE").history(period="5d")['Close']
             if move_data.empty: raise ValueError
@@ -258,31 +381,59 @@ try:
             if isinstance(tlt, pd.DataFrame): tlt = tlt.iloc[:, 0]
             move_idx = float(tlt.pct_change().std() * np.sqrt(252) * 100) * 5 
 
-        # IWM/SPY & XLU/XLY 輪動
-        sectors = yf.download(["IWM", "SPY", "XLU", "XLY"], period="1mo", progress=False)["Close"]
-        if isinstance(sectors, pd.Series): sectors = sectors.to_frame()
+        # ETF 輪動指標抓取 (加入 RSP, KRE)
+        target_etfs = ["IWM", "SPY", "XLU", "XLY", "HYG", "TLT", "DBC", "SOXX", "BIL", "SHY", "RSP", "KRE"]
+        etfs = yf.download(target_etfs, period="1mo", progress=False)["Close"]
+        if isinstance(etfs, pd.Series): etfs = etfs.to_frame()
         
-        sectors = sectors.dropna()
-        if len(sectors) > 5:
-            iwm_ret = (sectors["IWM"].iloc[-1] / sectors["IWM"].iloc[0]) - 1
-            spy_ret = (sectors["SPY"].iloc[-1] / sectors["SPY"].iloc[0]) - 1
-            iwm_spy_mom = float((iwm_ret - spy_ret) * 100)
-            
-            xlu_ret = (sectors["XLU"].iloc[-1] / sectors["XLU"].iloc[0]) - 1
-            xly_ret = (sectors["XLY"].iloc[-1] / sectors["XLY"].iloc[0]) - 1
-            xlu_xly_mom = float((xlu_ret - xly_ret) * 100)
-        else: raise ValueError
+        # 🛡️ 升級版防呆 safe_mom: 嚴格檢查欄位是否存在且有值
+        def safe_mom(ticker1, ticker2=None):
+            try:
+                if ticker1 not in etfs.columns or etfs[ticker1].dropna().empty: 
+                    return 0.0
+                s1 = etfs[ticker1].dropna()
+                if len(s1) < 2: return 0.0
+                ret1 = (s1.iloc[-1] / s1.iloc[0]) - 1
+                
+                if ticker2:
+                    if ticker2 not in etfs.columns or etfs[ticker2].dropna().empty: 
+                        return 0.0
+                    s2 = etfs[ticker2].dropna()
+                    if len(s2) < 2: return 0.0
+                    ret2 = (s2.iloc[-1] / s2.iloc[0]) - 1
+                    return float((ret1 - ret2) * 100)
+                else:
+                    return float(ret1 * 100)
+            except Exception as e:
+                print(f"⚠️ {ticker1} 或 {ticker2} 動能計算錯誤: {e}")
+                return 0.0
+
+        iwm_spy_mom = safe_mom("IWM", "SPY")
+        xlu_xly_mom = safe_mom("XLU", "XLY")
+        hyg_tlt_mom = safe_mom("HYG", "TLT")
+        soxx_spy_mom = safe_mom("SOXX", "SPY")
+        dbc_mom = safe_mom("DBC")
+        liquidity_spread = safe_mom("BIL", "SHY") 
+        rsp_spy_mom = safe_mom("RSP", "SPY") # 市場廣度
+        kre_spy_mom = safe_mom("KRE", "SPY") # 區域銀行健康度
+
     except Exception as e:
-        print(f"⚠️ 進階指標抓取失敗，使用預設值: {e}")
-        move_idx, iwm_spy_mom, xlu_xly_mom = 100.0, 0.0, 0.0
+        print(f"⚠️ 進階輪動指標抓取發生意外: {e}")
+        move_idx, iwm_spy_mom, xlu_xly_mom, hyg_tlt_mom = 100.0, 0.0, 0.0, 0.0
+        dbc_mom, soxx_spy_mom, liquidity_spread, rsp_spy_mom, kre_spy_mom = 0.0, 0.0, 0.0, 0.0, 0.0
 
     macro_payload = {
         "yield_10y": float(round(y10, 2)), "yield_2y": float(round(y3m, 2)), "yield_curve": float(round(y10 - y3m, 2)), 
         "hy_spread": float(round(hy_spread, 2)), "btc_1m_mom": float(round(btc_mom, 2)), "market_rf": float(round(y10, 2)),
         "market_rm": float(round(spy_cagr * 100, 2)), "market_sm": float(round(spy_vol * 100, 2)),
-        "vix": float(round(vix, 2)), "dxy": float(round(dxy, 2)), "gold_price": float(round(gold, 2)),
-        "oil_price": float(round(oil, 2)), "copper_gold_ratio": float(round(copper_gold_ratio, 4)),
-        "move_index": float(round(move_idx, 2)), "iwm_spy_mom": float(round(iwm_spy_mom, 2)), "xlu_xly_mom": float(round(xlu_xly_mom, 2))
+        "vix": float(round(vix, 2)), "vxn": float(round(vxn, 2)), "vvix": float(round(vvix, 2)),
+        "dxy": float(round(dxy, 2)), "gold_price": float(round(gold, 2)), "oil_price": float(round(oil, 2)), 
+        "copper_gold_ratio": float(round(copper_gold_ratio, 4)), "move_index": float(round(move_idx, 2)), 
+        "iwm_spy_mom": float(round(iwm_spy_mom, 2)), "xlu_xly_mom": float(round(xlu_xly_mom, 2)),
+        "hyg_tlt_mom": float(round(hyg_tlt_mom, 2)), "dbc_mom": float(round(dbc_mom, 2)),
+        "soxx_spy_mom": float(round(soxx_spy_mom, 2)), "liquidity_spread": float(round(liquidity_spread, 2)),
+        "rsp_spy_mom": float(round(rsp_spy_mom, 2)), "kre_spy_mom": float(round(kre_spy_mom, 2)),
+        "aud_jpy_mom": float(round(aud_jpy_mom, 2)), "put_call_ratio": float(round(pcr, 2))
     }
     
     # ==========================================
@@ -302,7 +453,7 @@ try:
             prompt = f"""
             [SYSTEM_DIRECTIVE]
             Task: Transform deterministic macro signals into aggressive tactical trading metadata.
-            Tone: High-Alpha Quant, Contrarian, Extreme Aggressive (Risk = Opportunity). Focus deeply on Smart Money rotations (MOVE, IWM/SPY, XLU/XLY).
+            Tone: High-Alpha Quant, Contrarian, Extreme Aggressive (Risk = Opportunity). Focus deeply on Smart Money rotations (MOVE, VVIX, HYG/TLT, SOXX/SPY, liquidity, RSP/SPY breadth, KRE risk, AUD/JPY carry).
             Language: MUST strictly output all text values in TRADITIONAL CHINESE (繁體中文).
             Constraints: 
             - ZERO conversational text.
@@ -318,10 +469,10 @@ try:
                tight_liquidity -> "流動性緊縮"
                mixed -> "混合/震盪期"
             2. SUMMARY: 1 sentence. **MUST START WITH "[目前總經形勢: 翻譯後的STAGE]"**. Map the stage and Smart Money signals to a max-alpha allocation strategy in Traditional Chinese.
-            3. DETAILS.TITLE: Translate the metric name to Traditional Chinese (e.g., "殖利率曲線", "MOVE 指數", "銅金比").
+            3. DETAILS.TITLE: Translate the metric name to Traditional Chinese (e.g., "科技股恐慌 (VXN)", "黑天鵝預警 (VVIX)", "商品通膨 (DBC)", "半導體動能 (SOXX/SPY)", "市場廣度 (RSP/SPY)", "區域銀行風險 (KRE/SPY)", "套利情緒 (AUD/JPY)", "選擇權情緒 (PCR)").
             4. DETAILS.DESC: Max 25 chars in Traditional Chinese. 
                *** CRITICAL DATA RULE ***: You MUST explicitly cite specific numeric values from `raw` in every description. Combine the number with an actionable contrarian trigger. 
-               (e.g., MUST output "MOVE={macro_payload.get('move_index')} 債市資金枯竭，伺機撿屍🔪").
+               (e.g., MUST output "VVIX={macro_payload.get('vvix')} 聰明錢瘋狂避險，準備啟動尾部對沖🩸").
             5. DETAILS.COLOR: "text-green-400" (momentum/buy/opportunity), "text-red-400" (tail-risk/hedge/sell), "text-gray-400" (neutral).
             6. DETAILS.ICON: Single emoji (🔥, ⚡, 🚀, 🔪, 🛡️, 🩸, 🦅, 🐻).
 
@@ -344,6 +495,7 @@ try:
                 }}
               ]
             }}
+            """
             
             ai_success = False
             for model_name in model_pipeline:
@@ -395,7 +547,7 @@ def get_sheet_prices(url_str):
         match = re.search(r'/d/([a-zA-Z0-9-_]+)', url_str)
         gid_match = re.search(r'[#&?]gid=([0-9]+)', url_str)
         if not match: return {}
-        csv_url = f"https://docs.google.com/spreadsheets/d/{match.group(1)}/gviz/tq?tqx=out:csv&gid={gid_match.group(1) if gid_match else '0'}"
+        csv_url = f"[https://docs.google.com/spreadsheets/d/](https://docs.google.com/spreadsheets/d/){match.group(1)}/gviz/tq?tqx=out:csv&gid={gid_match.group(1) if gid_match else '0'}"
         response = requests.get(csv_url, timeout=10)
         response.raise_for_status() 
         df = pd.read_csv(io.StringIO(response.text), header=None)
