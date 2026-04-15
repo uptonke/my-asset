@@ -37,17 +37,13 @@ try:
     # A. 抓取公債殖利率
     print("   ⏳ 正在抓取公債殖利率...", flush=True)
     bonds = yf.download(["^TNX", "^IRX"], period="1mo", progress=False)["Close"]
-    
     y10_series = bonds["^TNX"] if isinstance(bonds, pd.DataFrame) else bonds
     y3m_series = bonds["^IRX"] if isinstance(bonds, pd.DataFrame) else bonds
     
     y10 = float(y10_series.dropna().iloc[-1])
-    
     y3m_clean = y3m_series.dropna()
     y3m = float(y3m_clean.iloc[-1]) if not y3m_clean.empty else 0.0
-    if y3m_clean.empty:
-        print("⚠️ 警告：無法獲取 ^IRX 數據，已 fallback 至 0.0")
-    
+
     # B. 抓取高收益債利差
     print("   ⏳ 正在計算信用利差...", flush=True)
     try:
@@ -66,11 +62,25 @@ try:
     print("   ⏳ 正在計算 SPY 長期報酬與短期波動...", flush=True)
     spy = yf.download("SPY", period="10y", progress=False)["Close"]
     if isinstance(spy, pd.DataFrame): spy = spy.iloc[:, 0]
-    
     spy_cagr = ((spy.dropna().iloc[-1] / spy.dropna().iloc[0]) ** (1/10)) - 1
     spy_vol = spy.dropna().tail(252).pct_change().std() * np.sqrt(252)
 
-    # E. 🌟 封裝數據
+    # 🌟 NEW: E. 抓取機構級情緒、通膨與實體經濟指標 (VIX, DXY, Gold, Copper, Oil)
+    print("   ⏳ 正在抓取跨資產期貨與情緒指標...", flush=True)
+    try:
+        vix = float(yf.Ticker("^VIX").history(period="5d")['Close'].iloc[-1])
+        dxy = float(yf.Ticker("DX-Y.NYB").history(period="5d")['Close'].iloc[-1])
+        gold = float(yf.Ticker("GC=F").history(period="5d")['Close'].iloc[-1])
+        copper = float(yf.Ticker("HG=F").history(period="5d")['Close'].iloc[-1]) # 銅博士
+        oil = float(yf.Ticker("CL=F").history(period="5d")['Close'].iloc[-1])    # WTI原油
+        
+        # 計算銅金比 (實體經濟擴張指標)
+        copper_gold_ratio = (copper / gold) * 100 
+    except Exception as e:
+        print(f"⚠️ 額外期貨指標抓取失敗，使用預設值: {e}")
+        vix, dxy, gold, copper, oil, copper_gold_ratio = 20.0, 100.0, 2000.0, 4.0, 75.0, 0.2
+
+    # F. 🌟 封裝數據 (終極全天候矩陣)
     macro_payload = {
         "yield_10y": float(round(y10, 2)),
         "yield_2y": float(round(y3m, 2)),
@@ -79,12 +89,17 @@ try:
         "btc_1m_mom": float(round(btc_mom, 2)),
         "market_rf": float(round(y10, 2)),
         "market_rm": float(round(spy_cagr * 100, 2)),
-        "market_sm": float(round(spy_vol * 100, 2))
+        "market_sm": float(round(spy_vol * 100, 2)),
+        "vix": float(round(vix, 2)),
+        "dxy": float(round(dxy, 2)),
+        "gold_price": float(round(gold, 2)),
+        "oil_price": float(round(oil, 2)),
+        "copper_gold_ratio": float(round(copper_gold_ratio, 4))
     }
-    print(f"📈 參數計算完成 -> Rf: {macro_payload['market_rf']}%, Rm: {macro_payload['market_rm']}%, σm: {macro_payload['market_sm']}%", flush=True)
+    print(f"📈 參數計算完成 -> VIX: {macro_payload['vix']}, 銅金比: {macro_payload['copper_gold_ratio']}, 油價: {macro_payload['oil_price']}", flush=True)
     
     # ==========================================
-    # 🧠 F. Gemini AI 雙模組備援診斷系統 (靜態超強備援管線)
+    # 🧠 Gemini AI 雙模組備援診斷系統
     # ==========================================
     print("🤖 喚醒 Gemini AI 進行總經與風險診斷...", flush=True)
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -93,28 +108,37 @@ try:
         try:
             client = genai.Client(api_key=GEMINI_API_KEY)
             
-            # 🚀 捨棄容易報錯的動態抓取，直接部署「五重護城河」
+            # 使用 2026 最新的 API 命名
             model_pipeline = [
-                "gemini-3.0-pro",        # 夢幻頂規
-                "gemini-3.0-flash",      # 性價比之王
-                "gemini-2.5-pro",        # 高智商備援
-                "gemini-2.5-flash",      # 穩定主力
-                "gemini-2.0-flash"       # 絕對保底
+                "gemini-3.1-pro-preview", 
+                "gemini-3-flash-preview", 
+                "gemini-2.5-pro", 
+                "gemini-2.5-flash", 
+                "gemini-2.0-flash"
             ]
                 
-            print(f"📡 系統配置 AI 備援管線: {model_pipeline}", flush=True)
-
-            # 🚀 3. 加入強制的 JSON Schema，預防 AI 亂輸出
+            # 🌟 NEW: 更新 Prompt，強迫 AI 進行跨資產邏輯推演
             prompt = f"""
-            你是一位量化避險基金經理。請診斷以下數據：
-            Rf: {macro_payload['market_rf']}%, Rm: {macro_payload['market_rm']}%, σm: {macro_payload['market_sm']}%
-            衰退指標 (10Y-3M): {macro_payload['yield_curve']}%
-            信用利差: {macro_payload['hy_spread']}%
-            BTC動能: {macro_payload['btc_1m_mom']}%
+            你是一位頂尖的量化避險基金經理。請基於以下總經、情緒與大宗商品指標，進行交叉診斷：
+            
+            【資金面與流動性 (Financial Conditions)】
+            - Rf (無風險利率): {macro_payload['market_rf']}%
+            - 衰退指標 (10Y-3M利差): {macro_payload['yield_curve']}% (負值為倒掛)
+            - 美元指數 (DXY): {macro_payload['dxy']} (全球流動性)
+            - 信用利差 (HY-10Y): {macro_payload['hy_spread']}% (企業融資壓力)
+            
+            【實體經濟與通膨 (Growth & Inflation)】
+            - 銅金比 (Copper/Gold Ratio): {macro_payload['copper_gold_ratio']} (衡量景氣復甦動能)
+            - WTI 原油價格: {macro_payload['oil_price']} (通膨預期)
+            
+            【風險與情緒指標 (Sentiment)】
+            - 恐慌指數 (VIX): {macro_payload['vix']}
+            - BTC 近一月動能: {macro_payload['btc_1m_mom']}% (高風險偏好)
+            - 黃金期貨價格: {macro_payload['gold_price']} (避險需求)
             
             請嚴格依照以下 JSON 結構回傳結果，絕對不要輸出 Markdown 標籤或其他廢話：
             {{
-                "summary": "一句話總結當前總經環境與操作建議",
+                "summary": "結合 VIX、銅金比與利差，用一句話判斷目前處於經濟週期的哪個階段 (如：擴張、滯脹、衰退)，並給出資產配置方向",
                 "details": [
                     {{
                         "icon": "🌟(填入相關emoji)", 
