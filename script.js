@@ -3,7 +3,7 @@ const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
 createApp({
     setup() {
         const blViews = ref([]); 
-        const cloudRebalanceMeta = ref(null); // 🌟 接收雲端傳來的再平衡報告
+        const cloudRebalanceMeta = ref(null); 
         
         const mcAvailableAssets = computed(() => {
             const list = [];
@@ -80,18 +80,18 @@ createApp({
         const showMCModal = ref(false); 
         const mcOptimal = ref(null); 
 
-        // 🌟 新增：控制手機版卡片展開的變數與函數
+        // 🌟 控制手機版卡片展開
         const expandedCardTicker = ref(null);
         function toggleCard(ticker) {
             if (expandedCardTicker.value === ticker) {
-                expandedCardTicker.value = null; // 再次點擊則收合
+                expandedCardTicker.value = null;
             } else {
-                expandedCardTicker.value = ticker; // 展開被點擊的卡片
+                expandedCardTicker.value = ticker; 
             }
         }
 
         // ==========================================
-        // 🔒 Auth & Session Management (Vue 版)
+        // 🔒 Auth & Session Management
         // ==========================================
         const isLoggedIn = ref(false);
         const loginEmail = ref('');
@@ -143,8 +143,10 @@ createApp({
         const exchangeRate = ref(32.5);
         const sheetUrl = ref('');
         
-        // 🌟 存放從 Supabase 抓下來的 Gemini AI 報告
+        // 🌟 存放從 Supabase 抓下來的 Gemini AI 報告與關聯矩陣
         const cloudAiAnalysis = ref(null);
+        const correlationMatrix = ref(null);
+        const sysCorr = ref(0);
 
         const fireTargets = ref([
             { age: 28, year: 2032, amount: 5000000 },
@@ -200,9 +202,16 @@ createApp({
                         if (macroData.ai_analysis) {
                             cloudAiAnalysis.value = macroData.ai_analysis;
                         }
+                        
+                        // 🌟 NEW: 承接相關係數矩陣資料
+                        if (macroData.corr_matrix) {
+                            correlationMatrix.value = macroData.corr_matrix;
+                        }
+                        if (macroData.sys_corr) {
+                            sysCorr.value = macroData.sys_corr;
+                        }
                     }
                     
-                    // 🌟 承接雲端的交易再平衡報告
                     if (data.rebalance_meta) {
                         cloudRebalanceMeta.value = data.rebalance_meta;
                     }
@@ -390,7 +399,6 @@ createApp({
                 if (macdH > 0) { macdSignal = '🟢 黃金交叉'; macdColor = 'text-green-400 border-green-900/50 bg-green-900/20'; }
                 else if (macdH < 0) { macdSignal = '🔴 死亡交叉'; macdColor = 'text-red-400 border-red-900/50 bg-red-900/20'; }
 
-                // 🌟 新增：讀取雙重目標權重
                 const cloudTargetWeight = meta.target_weight ? (meta.target_weight * 100) : 0;
                 
                 let mcWeight = 0;
@@ -399,8 +407,6 @@ createApp({
                     if (match) mcWeight = parseFloat(match.opt);
                 }
 
-                // 🚀 NEW: 計算「模型集成」的綜合目標權重 (50% 雲端 + 50% 蒙地卡羅)
-                // 如果還沒跑 MC (mcOptimal 為 null)，就 100% 採用雲端權重
                 let finalBlendedWeight = cloudTargetWeight;
                 if (mcOptimal.value) {
                     finalBlendedWeight = (cloudTargetWeight * 0.5) + (mcWeight * 0.5);
@@ -422,11 +428,9 @@ createApp({
                     unrealizedPLTwd: mvTwd - h.totalCostTwd, 
                     returnRate: cumulativeReturn * 100, 
                     annualizedReturnRate: annualizedReturn * 100,
-                    
-                    // 🌟 新增：權重屬性
                     targetWeight: cloudTargetWeight,
                     mcWeight: mcWeight,
-                    blendedWeight: finalBlendedWeight // 新增綜合權重
+                    blendedWeight: finalBlendedWeight
                 };
                 
                 groups[h.category].items.push(item);
@@ -437,8 +441,6 @@ createApp({
                 groups[cat].items.forEach(item => {
                     item.totalWeight = grandTotal > 0 ? (item.marketValueTwd / grandTotal) : 0;
                     item.isOverweight = item.totalWeight > 0.20; 
-                    
-                    // ✅ 將落差標準改為：綜合目標 - 現有權重
                     item.weightGap = item.blendedWeight - (item.totalWeight * 100); 
                 });
                 groups[cat].items.sort((a,b) => b.marketValueTwd - a.marketValueTwd);
@@ -493,9 +495,6 @@ createApp({
             return data.filter(h => new Date(h.date) >= new Date(quantStartDate.value));
         });
 
-        // ==========================================
-        // 🌟 升級版 1: 機構級 TWR 現金流精算引擎
-        // ==========================================
         const enrichedHistory = computed(() => {
             const sorted = [...filteredHistory.value].sort((a,b) => new Date(a.date) - new Date(b.date));
             return sorted.map((item, index) => {
@@ -548,9 +547,6 @@ createApp({
             });
         });
 
-        // ==========================================
-        // 🌟 升級版 2: 獨立 HWM (High Water Mark) 引擎
-        // ==========================================
         watch([enrichedHistory, riskParams, dataFrequency], () => {
              const empty = { annRet:'-', annVol:'-', sharpe:'-', sortino:'-', treynor:'-', alpha:'-', var95:'-', cvar95:'-', mdd:'-', calmar:'-', skew:'-', kurt:'-' };
              const h = [...enrichedHistory.value].reverse(); 
@@ -628,33 +624,23 @@ createApp({
              }; 
         }, { deep: true, immediate: true });
 
-        // ==========================================
-        // 🌟 終極升級：動態掛載雲端 Gemini 報告與再平衡清單
-        // ==========================================
         const aiInsights = computed(() => {
             const val = totalStockValueTwd.value;
-            const ret = parseFloat(totalStockReturnRate.value);
-            const beta = parseFloat(portfolioStats.value.beta);
-            const sharpe = parseFloat(stats.value.sharpe);
-            
             if (val === 0) return { summary: '尚無庫存資料，請先新增交易紀錄。', details: [] };
 
             let finalSummary = "";
             const finalDetails = [];
 
-            // 1. 掛載雲端總經 AI 診斷
             if (cloudAiAnalysis.value && cloudAiAnalysis.value.summary) {
                 finalSummary = `🤖 【宏觀診斷】` + cloudAiAnalysis.value.summary;
                 cloudAiAnalysis.value.details.forEach(d => finalDetails.push(d));
             }
 
-            // 2. 🌟 NEW: 掛載雲端 AI 交易執行計畫 (Rebalance)
             if (cloudRebalanceMeta.value && cloudRebalanceMeta.value.ai_execution_plan) {
                 const plan = cloudRebalanceMeta.value.ai_execution_plan;
                 finalSummary += `\n⚖️ 【交易策略】` + plan.execution_summary;
                 
                 plan.priority_trades.forEach(trade => {
-                    // 去 stockMeta 找我們在 Python 算好的目標權重
                     const meta = stockMeta.value[trade.ticker] || {};
                     const targetW = meta.target_weight ? (meta.target_weight * 100).toFixed(1) + '%' : 'N/A';
                     
@@ -667,15 +653,14 @@ createApp({
                 });
             }
 
-            // 3. 系統本地的靜態防呆警告
             let overweights = [];
             for (const cat in groupedHoldings.value) {
                 groupedHoldings.value[cat].items.forEach(item => {
-                    if (item.totalWeight > 0.20) overweights.push(item.ticker); // 改為 >20% 才警告
+                    if (item.totalWeight > 0.20) overweights.push(item.ticker);
                 });
             }
             if (overweights.length > 0) {
-                finalDetails.push({ icon: '🎯', color: 'text-orange-400', title: '集中度警報 (系統本地偵測)', desc: `[ ${overweights.join(', ')} ] 佔總資產權重過高 (>20%)。請盡速執行 Rebalance。` });
+                finalDetails.push({ icon: '🎯', color: 'text-orange-400', title: '集中度警報', desc: `[ ${overweights.join(', ')} ] 佔總資產權重過高 (>20%)。請盡速執行 Rebalance。` });
             }
 
             if (!cloudAiAnalysis.value) {
@@ -849,7 +834,6 @@ createApp({
             showMCModal.value = true;
             mcOptimal.value = null; 
 
-            // 🌟 終極整合：讓蒙地卡羅引擎「閱讀」AI 診斷報告
             if (cloudAiAnalysis.value) {
                 const fullAiText = JSON.stringify(cloudAiAnalysis.value).toLowerCase();
                 
@@ -957,7 +941,6 @@ createApp({
 
             const n_assets = assets.length;
             
-            // 🌟 核心升級：導入機構級上下界約束 (3% - 20%)
             const minWeight = 0.03; 
             const maxWeight = 0.20; 
             const n_portfolios = 5000;
@@ -988,21 +971,18 @@ createApp({
 
             for (let p = 0; p < n_portfolios; p++) {
                 
-                // 🌟 前端升級：支援上下限約束的權重生成演算法
-                let weights = Array(n_assets).fill(minWeight); // 先鋪底薪 3%
+                let weights = Array(n_assets).fill(minWeight);
                 let remaining = 1.0 - (minWeight * n_assets);
                 
                 if (remaining > 0) {
                     let randValues = Array.from({length: n_assets}, () => Math.pow(Math.random(), 3));
                     let sumRand = randValues.reduce((a,b)=>a+b, 0);
                     
-                    // 按比例分配剩餘權重
                     for(let i=0; i<n_assets; i++) {
                         let add_w = (randValues[i] / sumRand) * remaining;
                         weights[i] += add_w;
                     }
                     
-                    // 執行最高 20% 截斷重分配 (Clip and Redistribute)
                     let needsRebalance = true;
                     let iterations = 0;
                     while(needsRebalance && iterations < 5) {
@@ -1133,7 +1113,6 @@ createApp({
                                 const val = context.raw?.score;
                                 if (val === undefined || isNaN(val)) return '#3b82f6';
                                 
-                                // 防止只有一個點時的除以零當機
                                 if (maxScoreForColor <= minScoreForColor) return 'rgba(59, 130, 246, 0.4)'; 
                                 
                                 let ratio = (val - minScoreForColor) / (maxScoreForColor - minScoreForColor);
@@ -1163,7 +1142,85 @@ createApp({
         function formatNumber(n) { return new Intl.NumberFormat('zh-TW', {maximumFractionDigits:0}).format(n||0); }
         function formatPercent(n) { return ((n||0)*100).toFixed(1) + '%'; }
 
-        let chartSML, chartCML, chartAlloc, chartHist, chartRolling, chartMC, chartFire;
+        let chartSML, chartCML, chartAlloc, chartHist, chartRolling, chartMC, chartFire, chartCorr;
+
+        // 🌟 繪製相關係數熱力圖函數
+        function drawCorrelationMatrix() {
+            const ctx = document.getElementById('corrChart');
+            if(!ctx || !correlationMatrix.value) return;
+            
+            if(chartCorr) chartCorr.destroy();
+
+            const matrixObj = correlationMatrix.value;
+            const tickers = Object.keys(matrixObj);
+            if(tickers.length === 0) return;
+
+            const dataPoints = [];
+            for (let i = 0; i < tickers.length; i++) {
+                for (let j = 0; j < tickers.length; j++) {
+                    const val = matrixObj[tickers[i]][tickers[j]];
+                    dataPoints.push({
+                        x: j, // 列 (X軸)
+                        y: i, // 行 (Y軸，在 Chart.js Matrix 中 Y 是從下到上的，我們待會靠 scale 設定反轉)
+                        v: val
+                    });
+                }
+            }
+
+            chartCorr = new Chart(ctx, {
+                type: 'matrix',
+                data: {
+                    datasets: [{
+                        label: 'Correlation',
+                        data: dataPoints,
+                        backgroundColor: (context) => {
+                            const val = context.raw.v;
+                            if (val === 1) return 'rgba(16, 185, 129, 0.9)'; // 完美正相關 (深綠)
+                            if (val > 0) return `rgba(16, 185, 129, ${val * 0.8})`; // 正相關 (綠)
+                            if (val < 0) return `rgba(239, 68, 68, ${Math.abs(val) * 0.8})`; // 負相關 (紅)
+                            return 'rgba(30, 41, 59, 1)'; // 0 相關 (深灰)
+                        },
+                        borderColor: '#1e293b',
+                        borderWidth: 1,
+                        width: (ctx) => ctx.chart.chartArea.width / tickers.length - 2,
+                        height: (ctx) => ctx.chart.chartArea.height / tickers.length - 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                title: () => null,
+                                label: (context) => {
+                                    const v = context.raw.v;
+                                    const t1 = tickers[context.raw.y];
+                                    const t2 = tickers[context.raw.x];
+                                    return `${t1} & ${t2}: ${v.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'category',
+                            labels: tickers,
+                            ticks: { color: '#94a3b8', font: { size: 10 } },
+                            grid: { display: false }
+                        },
+                        y: {
+                            type: 'category',
+                            labels: tickers,
+                            ticks: { color: '#94a3b8', font: { size: 10 } },
+                            grid: { display: false },
+                            reverse: true // 讓 Y 軸標籤從上往下排
+                        }
+                    }
+                }
+            });
+        }
 
         function initCharts() {
             Chart.defaults.color = '#94a3b8'; Chart.defaults.borderColor = '#334155';
@@ -1251,6 +1308,9 @@ createApp({
                     }
                 });
             }
+            
+            // 🌟 初始化熱力圖
+            drawCorrelationMatrix();
         }
 
         function updateCharts() {
@@ -1423,7 +1483,7 @@ createApp({
             nextTick(() => { updateCharts(); });
         });
 
-        watch([exchangeRate, sheetUrl, isSimMode, riskParams, quantStartDate, dataFrequency, fireTargets], () => updateCharts(), {deep:true});
+        watch([exchangeRate, sheetUrl, isSimMode, riskParams, quantStartDate, dataFrequency, fireTargets, correlationMatrix], () => updateCharts(), {deep:true});
 
         return { 
             currentTab, showHistoryModal, isUpdating, isSimMode, toggleSimMode, 
@@ -1440,7 +1500,7 @@ createApp({
             isAuthenticating, handleLogin, handleLogout, checkAuth, fireProgress, 
             updateCharts, addFireTarget, macroRegime, enableBlackSwan, mcRisk, blViews, mcAvailableAssets, addBlView, enableInflation,
             generateAutoViews, runMonteCarlo, stressTestResults,
-            expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta // 🌟 匯出供 HTML 模板使用
+            expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr // 🌟 匯出 sysCorr 供 HTML 使用
         };
     }
 }).mount('#app');
