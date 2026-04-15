@@ -30,53 +30,29 @@ except Exception as e:
     exit(1)
 
 # ==========================================
-# 🌟 2. 第一階段：總經與市場參數自動化抓取 (防彈版)
+# 🌟 2. 第一階段：總經與市場參數自動化抓取
 # ==========================================
 print("🌍 啟動量化大腦：開始透過 Yahoo API 抓取市場參數...", flush=True)
 
-# 解決 yfinance cache 鎖定問題：直接禁用或重新指定路徑
-import requests_cache
-session = None # 或者你可以不使用 session 以避開快取
-
 try:
-    # A. 抓取公債殖利率 (加入重試與空值判定)
+    # A. 抓取公債殖利率
     print("   ⏳ 正在抓取公債殖利率...", flush=True)
-    # 增加 threads=False 減少 SQLite 競爭風險
-    bonds = yf.download(["^TNX", "^IRX"], period="1mo", progress=False, threads=False)["Close"]
+    bonds = yf.download(["^TNX", "^IRX"], period="1mo", progress=False)["Close"]
+    y10_series = bonds["^TNX"] if isinstance(bonds, pd.DataFrame) else bonds
+    y3m_series = bonds["^IRX"] if isinstance(bonds, pd.DataFrame) else bonds
     
-    # 初始化預設值 (避免後續計算出錯)
-    y10, y3m = 4.2, 5.2 # 這是 2024-2025 常態參考值
+    y10 = float(y10_series.dropna().iloc[-1])
+    y3m_clean = y3m_series.dropna()
+    y3m = float(y3m_clean.iloc[-1]) if not y3m_clean.empty else 0.0
 
-    if not bonds.empty:
-        # 處理多標的下載時可能是 DataFrame 或 Series 的情況
-        y10_series = bonds["^TNX"] if "^TNX" in bonds.columns else pd.Series()
-        y3m_series = bonds["^IRX"] if "^IRX" in bonds.columns else pd.Series()
-        
-        y10_clean = y10_series.dropna()
-        if not y10_clean.empty:
-            y10 = float(y10_clean.iloc[-1])
-        else:
-            print("⚠️ ^TNX 數據為空，使用預設值 4.2%")
-
-        y3m_clean = y3m_series.dropna()
-        if not y3m_clean.empty:
-            y3m = float(y3m_clean.iloc[-1])
-        else:
-            print("⚠️ ^IRX 數據為空，使用預設值 5.2%")
-    else:
-        print("❌ 無法從 Yahoo 取得債券數據，全面啟動預設參數模式。")
-
-    # B. 抓取高收益債利差 (一樣要防呆)
+    # B. 抓取高收益債利差
     print("   ⏳ 正在計算信用利差...", flush=True)
     try:
-        hyg_ticker = yf.Ticker("HYG")
-        hyg_yield = hyg_ticker.info.get('yield', 0.075) * 100 
-        if hyg_yield == 0: hyg_yield = 7.5
+        hyg_yield = yf.Ticker("HYG").info.get('yield', 0.05) * 100 
     except:
         hyg_yield = 7.5
     hy_spread = max(0.1, hyg_yield - y10)
 
-    # ... [後續 BTC、SPY 邏輯比照辦理，加入 .empty 檢查] ...
     # C. 抓取比特幣動能
     print("   ⏳ 正在計算加密貨幣動能...", flush=True)
     btc_data = yf.download("BTC-USD", period="1mo", progress=False)["Close"]
