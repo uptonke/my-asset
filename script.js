@@ -3,6 +3,7 @@ const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
 createApp({
     setup() {
         const blViews = ref([]); 
+        const cloudRebalanceMeta = ref(null); // 🌟 接收雲端傳來的再平衡報告
         
         const mcAvailableAssets = computed(() => {
             const list = [];
@@ -200,7 +201,11 @@ createApp({
                             cloudAiAnalysis.value = macroData.ai_analysis;
                         }
                     }
-                    // 👆👆👆 總經大腦結束 👆👆👆
+                    
+                    // 🌟 承接雲端的交易再平衡報告
+                    if (data.rebalance_meta) {
+                        cloudRebalanceMeta.value = data.rebalance_meta;
+                    }
 
                     if (data.settings) {
                         if (data.settings.exchangeRate) exchangeRate.value = parseFloat(data.settings.exchangeRate);
@@ -407,7 +412,7 @@ createApp({
             for (const cat in groups) {
                 groups[cat].items.forEach(item => {
                     item.totalWeight = grandTotal > 0 ? (item.marketValueTwd / grandTotal) : 0;
-                    item.isOverweight = item.totalWeight > 0.15; 
+                    item.isOverweight = item.totalWeight > 0.20; 
                 });
                 groups[cat].items.sort((a,b) => b.marketValueTwd - a.marketValueTwd);
             }
@@ -597,91 +602,61 @@ createApp({
         }, { deep: true, immediate: true });
 
         // ==========================================
-        // 🌟 終極升級：動態掛載雲端 Gemini 報告
+        // 🌟 終極升級：動態掛載雲端 Gemini 報告與再平衡清單
         // ==========================================
         const aiInsights = computed(() => {
             const val = totalStockValueTwd.value;
             const ret = parseFloat(totalStockReturnRate.value);
             const beta = parseFloat(portfolioStats.value.beta);
-            
             const sharpe = parseFloat(stats.value.sharpe);
-            const annRet = parseFloat(stats.value.annRet);
-            const annVol = parseFloat(stats.value.annVol);
-            const var95 = parseFloat(stats.value.var95);
             
             if (val === 0) return { summary: '尚無庫存資料，請先新增交易紀錄。', details: [] };
 
+            let finalSummary = "";
+            const finalDetails = [];
+
+            // 1. 掛載雲端總經 AI 診斷
             if (cloudAiAnalysis.value && cloudAiAnalysis.value.summary) {
-                const details = [...cloudAiAnalysis.value.details];
+                finalSummary = `🤖 【宏觀診斷】` + cloudAiAnalysis.value.summary;
+                cloudAiAnalysis.value.details.forEach(d => finalDetails.push(d));
+            }
+
+            // 2. 🌟 NEW: 掛載雲端 AI 交易執行計畫 (Rebalance)
+            if (cloudRebalanceMeta.value && cloudRebalanceMeta.value.ai_execution_plan) {
+                const plan = cloudRebalanceMeta.value.ai_execution_plan;
+                finalSummary += `\n⚖️ 【交易策略】` + plan.execution_summary;
                 
-                let overweights = [];
-                for (const cat in groupedHoldings.value) {
-                    groupedHoldings.value[cat].items.forEach(item => {
-                        if (item.totalWeight > 0.15) overweights.push(item.ticker);
+                plan.priority_trades.forEach(trade => {
+                    // 去 stockMeta 找我們在 Python 算好的目標權重
+                    const meta = stockMeta.value[trade.ticker] || {};
+                    const targetW = meta.target_weight ? (meta.target_weight * 100).toFixed(1) + '%' : 'N/A';
+                    
+                    finalDetails.push({ 
+                        icon: '⚡', 
+                        color: 'text-purple-400', 
+                        title: `建議交易: ${trade.ticker} (目標權重: ${targetW})`, 
+                        desc: trade.reason 
                     });
-                }
-                if (overweights.length > 0) {
-                    details.push({ icon: '🎯', color: 'text-orange-400', title: '集中度警報 (系統本地偵測)', desc: `[ ${overweights.join(', ')} ] 佔總資產權重過高 (>15%)。請執行 MC 最佳化進行 Rebalance。` });
-                }
-
-                return {
-                    summary: `🤖 【AI 即時診斷】` + cloudAiAnalysis.value.summary,
-                    details: details
-                };
+                });
             }
 
-            const details = [];
-            let score = 100; 
-
-            if (!isNaN(annRet) && !isNaN(annVol)) {
-                details.push({ icon: '📊', color: 'text-blue-400', title: '量化表現總結', desc: `目前投組年化報酬率約 ${annRet.toFixed(2)}%，年化波動度 ${annVol.toFixed(2)}%。在 95% 信心水準下，單期最大潛在損失 (VaR) 約為 ${Math.abs(var95).toFixed(2)}%。` });
-            }
-
-            if (ret >= 20) {
-                details.push({ icon: '🎉', color: 'text-green-400', title: '獲利豐厚', desc: `未實現報酬達 ${ret}%。建議可評估啟動動態停利 (Trailing Stop)，或將部分資金轉入低波動資產鎖住 Alpha。` });
-            } else if (ret <= -15) {
-                score -= 15;
-                details.push({ icon: '⚠️', color: 'text-red-400', title: '回撤警戒', desc: `目前虧損 ${ret}%，請嚴格執行停損紀律，確認是否跌破原始投資 Due Diligence 的護城河。` });
-            }
-
+            // 3. 系統本地的靜態防呆警告
             let overweights = [];
             for (const cat in groupedHoldings.value) {
                 groupedHoldings.value[cat].items.forEach(item => {
-                    if (item.totalWeight > 0.15) overweights.push(item.ticker);
+                    if (item.totalWeight > 0.20) overweights.push(item.ticker); // 改為 >20% 才警告
                 });
             }
             if (overweights.length > 0) {
-                score -= 20;
-                details.push({ icon: '🎯', color: 'text-orange-400', title: '集中度風險過高', desc: `[ ${overweights.join(', ')} ] 佔總資產權重過高 (>15%)。強烈建議點擊下方【MC 最佳化】，透過蒙地卡羅模擬找出最大夏普權重並進行 Rebalance。` });
+                finalDetails.push({ icon: '🎯', color: 'text-orange-400', title: '集中度警報 (系統本地偵測)', desc: `[ ${overweights.join(', ')} ] 佔總資產權重過高 (>20%)。請盡速執行 Rebalance。` });
             }
 
-            if (beta > 1.2) {
-                score -= 5;
-                details.push({ icon: '🔥', color: 'text-red-400', title: '攻擊型配置 (High Beta)', desc: `組合 Beta 達 ${beta}。大盤多頭時具備強大爆發力，但總經下行時回撤極深，請確保 Dry Powder 充足。` });
-            } else if (beta > 0 && beta < 0.8) {
-                details.push({ icon: '🛡️', color: 'text-blue-400', title: '防禦型配置 (Low Beta)', desc: `組合 Beta 僅 ${beta}。抗跌能力極佳，但可能會錯失牛市行情。` });
+            if (!cloudAiAnalysis.value) {
+                 finalSummary = "等待雲端排程生成 AI 報告中...";
+                 finalDetails.push({ icon: '📊', color: 'text-gray-400', title: '系統提示', desc: '目前的 AI 診斷與最佳權重正在背景運算中，請稍候。' });
             }
 
-            if (!isNaN(sharpe)) {
-                if (sharpe < 0.8 && sharpe > 0) {
-                    score -= 15;
-                    details.push({ icon: '📉', color: 'text-yellow-400', title: '風險報酬比偏低', desc: `夏普值 ${sharpe} 偏低。你承擔了過多波動，卻沒換來對應的超額報酬。建議立刻跑一次 Monte Carlo 模型優化資產比例。` });
-                } else if (sharpe >= 1.5) {
-                    score += 10;
-                    details.push({ icon: '🌟', color: 'text-yellow-400', title: '卓越的資金效率', desc: `夏普值高達 ${sharpe}！投組完美平衡了波動風險與超額報酬，請繼續保持。` });
-                }
-            }
-
-            if (details.length === 1 && score === 100) {
-                 details.push({ icon: '✅', color: 'text-green-400', title: '配置極度健康', desc: `目前的投資組合沒有觸發任何集中度與風險警報！波動度適中，資產分散且無明顯死角。` });
-            }
-
-            let summary = '';
-            if (score >= 95) summary = `狀態極佳 (靜態評分: ${Math.min(score, 100)})：資產配置健康。(等待下次雲端排程生成 AI 報告)`;
-            else if (score >= 75) summary = `狀態良好 (靜態評分: ${score})：投組穩健。(等待下次雲端排程生成 AI 報告)`;
-            else summary = `需要注意 (靜態評分: ${score})：偵測到非系統性風險或低夏普值。(等待下次雲端排程生成 AI 報告)`;
-
-            return { summary, details };
+            return { summary: finalSummary, details: finalDetails };
         });
 
         function addFireTarget() {
@@ -947,7 +922,6 @@ createApp({
 
             const assets = mcAvailableAssets.value;
             
-            // 💡 終極防呆：確保有兩檔以上的標的才跑模擬
             if(assets.length < 2) {
                 alert("⚠️ 需要至少 2 檔合格標的 (Beta 與 SD 需大於 0) 才能進行蒙地卡羅多樣化模擬！");
                 showMCModal.value = false; return;
@@ -955,12 +929,11 @@ createApp({
 
             const n_assets = assets.length;
             
-            // 🌟 破除「維度災難」：解除 5% 最低限制，允許探索極端邊界！
-            const minWeight = 0.0; 
-            const remainingWeight = 1.0;
+            // 🌟 核心升級：導入機構級上下界約束 (3% - 20%)
+            const minWeight = 0.03; 
+            const maxWeight = 0.20; 
             const n_portfolios = 5000;
 
-            // 強制轉型防呆，避免字串混入數學運算
             const baseRm = (parseFloat(riskParams.value.rm) || 10.0) / 100;
             const baseSm = (parseFloat(riskParams.value.sm) || 15.0) / 100;
             const baseRf = (parseFloat(riskParams.value.rf) || 1.5) / 100;
@@ -987,11 +960,45 @@ createApp({
 
             for (let p = 0; p < n_portfolios; p++) {
                 
-                // 🌟 核心引擎升級：使用四次方製造「稀疏權重 (Sparse Matrix)」
-                // 這樣才能強迫演算法去探索高風險高報酬、或極度保守的邊界，把雲團撐開！
-                let randWeights = Array.from({length: n_assets}, () => Math.pow(Math.random(), 4));
-                const sumRand = randWeights.reduce((a,b)=>a+b, 0);
-                let weights = randWeights.map(w => w / sumRand);
+                // 🌟 前端升級：支援上下限約束的權重生成演算法
+                let weights = Array(n_assets).fill(minWeight); // 先鋪底薪 3%
+                let remaining = 1.0 - (minWeight * n_assets);
+                
+                if (remaining > 0) {
+                    let randValues = Array.from({length: n_assets}, () => Math.pow(Math.random(), 3));
+                    let sumRand = randValues.reduce((a,b)=>a+b, 0);
+                    
+                    // 按比例分配剩餘權重
+                    for(let i=0; i<n_assets; i++) {
+                        let add_w = (randValues[i] / sumRand) * remaining;
+                        weights[i] += add_w;
+                    }
+                    
+                    // 執行最高 20% 截斷重分配 (Clip and Redistribute)
+                    let needsRebalance = true;
+                    let iterations = 0;
+                    while(needsRebalance && iterations < 5) {
+                        needsRebalance = false;
+                        let excess = 0;
+                        let validReceivers = [];
+                        
+                        for(let i=0; i<n_assets; i++) {
+                            if(weights[i] > maxWeight) {
+                                excess += (weights[i] - maxWeight);
+                                weights[i] = maxWeight;
+                                needsRebalance = true;
+                            } else if (weights[i] < maxWeight - 0.001) {
+                                validReceivers.push(i);
+                            }
+                        }
+                        
+                        if(excess > 0 && validReceivers.length > 0) {
+                            let share = excess / validReceivers.length;
+                            validReceivers.forEach(i => weights[i] += share);
+                        }
+                        iterations++;
+                    }
+                }
 
                 let p_ret = 0;
                 let p_beta = 0;
@@ -1017,7 +1024,6 @@ createApp({
                 let standard_vol = Math.sqrt(sys_var + idio_var);
                 let p_vol = standard_vol * (1 - stressCorr) + weighted_vol_sum * stressCorr;
 
-                // 防呆：防止除以零的黑洞
                 if (p_vol === 0 || isNaN(p_vol)) continue;
 
                 let p_skew = (Math.pow(p_beta, 3) * Math.pow(sm, 3) * m_skew) / Math.pow(p_vol, 3);
@@ -1406,7 +1412,7 @@ createApp({
             isAuthenticating, handleLogin, handleLogout, checkAuth, fireProgress, 
             updateCharts, addFireTarget, macroRegime, enableBlackSwan, mcRisk, blViews, mcAvailableAssets, addBlView, enableInflation,
             generateAutoViews, runMonteCarlo, stressTestResults,
-            expandedCardTicker, toggleCard, isHistoryExpanded // 🌟 匯出供 HTML 模板使用，卡片點擊展開的核心！
+            expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta // 🌟 匯出供 HTML 模板使用
         };
     }
 }).mount('#app');
