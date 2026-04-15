@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 import pandas_ta as ta
+import scipy.optimize as sco
 from supabase import create_client, Client
 from google import genai
 
@@ -191,9 +192,9 @@ except Exception as e:
     raise e
 
 # ==========================================
-# 📊 3. 第二階段：股票多因子管線
+# 📊 3. 第二階段：股票多因子管線與最佳化
 # ==========================================
-print("\n⏳ 接著開始執行股票多因子管線...", flush=True)
+print("\n⏳ 接著開始執行股票多因子管線與最佳化...", flush=True)
 
 def get_sheet_prices(url_str):
     if not url_str: return {}
@@ -223,6 +224,46 @@ def get_sheet_prices(url_str):
         print(f"⚠️ Sheet 報價讀取失敗:\n{traceback.format_exc()}", flush=True)
         return {}
 
+def get_optimal_weights(returns_df, min_wt=0.03, max_wt=0.20):
+    """
+    使用 SciPy 進行約束條件最佳化 (最大化夏普值)
+    """
+    num_assets = len(returns_df.columns)
+    if num_assets == 0: return {}
+    
+    mean_returns = returns_df.mean() * 252
+    cov_matrix = returns_df.cov() * 252
+    risk_free_rate = 0.02 
+    
+    if min_wt * num_assets > 1.0:
+        print("⚠️ 警告：最低權重總和超過 100%，將自動等權重分配")
+        return {col: 1.0/num_assets for col in returns_df.columns}
+
+    def neg_sharpe_ratio(weights):
+        p_ret = np.sum(mean_returns * weights)
+        p_var = np.dot(weights.T, np.dot(cov_matrix, weights))
+        p_vol = np.sqrt(p_var)
+        return -(p_ret - risk_free_rate) / p_vol
+
+    constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
+    bounds = tuple((min_wt, max_wt) for _ in range(num_assets))
+    init_guess = num_assets * [1. / num_assets]
+
+    optimized_result = sco.minimize(
+        neg_sharpe_ratio, 
+        init_guess, 
+        method='SLSQP', 
+        bounds=bounds, 
+        constraints=constraints
+    )
+
+    if optimized_result.success:
+        optimal_weights = np.round(optimized_result.x, 4)
+        return dict(zip(returns_df.columns, optimal_weights))
+    else:
+        print(f"⚠️ 最佳化求解失敗: {optimized_result.message}")
+        return {col: 1.0/num_assets for col in returns_df.columns}
+
 try:
     response = supabase.table("portfolio_db").select("*").limit(1).execute()
     if response.data:
@@ -230,7 +271,7 @@ try:
         stock_meta = db_record.get("stock_meta", {})
         ledger_data = db_record.get("ledger_data", [])
         
-        # 💡 從 Ledger 帳本中抽出所有標的，與舊的 stock_meta 合併防呆
+        # 從 Ledger 帳本中抽出所有標的
         ledger_tickers = [str(tx["ticker"]).strip().upper() for tx in ledger_data if tx.get("ticker")]
         all_tickers = list(set(list(stock_meta.keys()) + ledger_tickers))
         
@@ -241,11 +282,11 @@ try:
         
         if all_tickers:
             tw_bench, us_bench = "^TWII", "SPY"
-            # 建立代號映射表 (處理你的自訂基金和特殊標的)
+            # 建立代號映射表 (處理自訂基金和特殊標的)
             proxy_map = {
                 "統一奔騰": "00981A.TW", 
                 "安聯台灣科技": "0052.TW",
-                "加密貨幣": "BTC-USD" # 把中文的加密貨幣導向比特幣報價
+                "加密貨幣": "BTC-USD"
             }
             
             download_list = [tw_bench, us_bench]
@@ -253,31 +294,39 @@ try:
             
             for t in all_tickers:
                 t_clean = str(t).strip().upper()
-                target = t_clean # 預設 target 就是乾淨的代號
+                target = t_clean 
                 
-                # 1. 如果在對應表中，直接使用映射的 Ticker
                 if t_clean in proxy_map: 
                     target = proxy_map[t_clean]
-                # 2. 如果包含中文字（且不在對應表中），我們無法丟給 Yahoo，用大盤代替或忽略
                 elif bool(re.search(r'[\u4e00-\u9fff]', t_clean)): 
                     target = tw_bench 
-                # 3. 🌟 終極防呆：如果代號是純數字 (如 2330)，或者數字開頭帶英文 (如 00631L)，強制補上 .TW
                 elif re.match(r'^\d+[a-zA-Z]*$', t_clean): 
                     target = f"{t_clean}.TW"
-                # 4. 其他 (例如 TSLA, AAPL)，保持原樣
                 
                 yf_tickers.append(target)
                 if target not in download_list: 
                     download_list.append(target)
+                    
             print(f"⏳ 正在向 Yahoo Finance 請求 {len(download_list)} 檔標的歷史資料...", flush=True)
             prices_df = yf.download(download_list, period="1y", progress=False)["Close"]
             
             if isinstance(prices_df, pd.Series):
                 prices_df = prices_df.to_frame(name=download_list[0])
                 
-            returns = prices_df.pct_change()
+            returns = prices_df.pct_change().dropna()
 
-            print("🧠 開始計算多因子風險與動能參數...", flush=True)
+            print("🧠 啟動機構級最佳化引擎 (限制 3%~20%)...", flush=True)
+            # 準備計算最佳權重 (排除大盤指標)
+            investable_tickers = [t for t in yf_tickers if t not in [tw_bench, us_bench]]
+            # 確保欄位存在
+            valid_investable = [t for t in investable_tickers if t in returns.columns]
+            
+            target_weights = {}
+            if valid_investable:
+                investable_returns = returns[valid_investable]
+                target_weights = get_optimal_weights(investable_returns, min_wt=0.03, max_wt=0.20)
+
+            print("🧠 開始計算多因子風險參數並寫入資料庫...", flush=True)
             for i, original_ticker in enumerate(all_tickers):
                 yf_ticker = yf_tickers[i]
                 
@@ -302,19 +351,120 @@ try:
                     macd_df = ta.macd(stock_close)
                     macd_h = macd_df.iloc[-1, 1] if macd_df is not None and not macd_df.empty else 0.0
                     
+                    # 抓取剛算好的目標權重
+                    target_w = target_weights.get(yf_ticker, 0.0)
+                    
                     stock_meta[original_ticker].update({
                         "beta": round(beta, 2), 
                         "std": round(ann_std, 2),
                         "rsi": round(rsi, 2), 
-                        "macd_h": round(macd_h, 4)
+                        "macd_h": round(macd_h, 4),
+                        "target_weight": float(target_w)
                     })
-                    print(f"✅ [{original_ticker}] 已更新 -> Beta: {beta:.2f}, Std: {ann_std:.1f}%, RSI: {rsi:.1f}")
+                    print(f"✅ [{original_ticker}] 更新 -> Beta: {beta:.2f}, Std: {ann_std:.1f}%, RSI: {rsi:.1f}, 目標權重: {target_w*100:.2f}%")
                 else:
                     if original_ticker not in proxy_map and not bool(re.search(r'[\u4e00-\u9fff]', original_ticker)):
                         print(f"⚠️ [{original_ticker}] 在 Yahoo 找不到對應標的 ({yf_ticker})。")
 
             supabase.table("portfolio_db").update({"stock_meta": stock_meta}).eq("id", target_id).execute()
-            print("🎉 雲端自動化任務完成！")
+            print("🎉 股票元資料與權重任務完成！")
+
+            # ==========================================
+            # ⚖️ 4. 第三階段：自動化再平衡與交易訊號生成
+            # ==========================================
+            print("\n⚖️ 啟動再平衡引擎：計算目標權重落差與交易訊號...", flush=True)
+            
+            current_holdings = {}
+            for tx in ledger_data:
+                t = str(tx.get("ticker", "")).strip().upper()
+                if not t: continue
+                shares = float(tx.get("shares", 0))
+                tx_type = str(tx.get("type", "buy")).lower()
+                if tx_type in ["sell", "賣出"]:
+                    shares = -shares
+                current_holdings[t] = current_holdings.get(t, 0) + shares
+
+            portfolio_value = 0.0
+            asset_values = {}
+            
+            for t in all_tickers:
+                shares = current_holdings.get(t, 0)
+                last_price = stock_meta.get(t, {}).get("last_price", 0.0)
+                
+                # 如果庫存沒紀錄最新價格，從 yfinance 的 dataframe 抓
+                if last_price == 0.0 and yf_tickers:
+                    idx = all_tickers.index(t)
+                    yt = yf_tickers[idx]
+                    if yt in prices_df.columns:
+                        last_price = float(prices_df[yt].dropna().iloc[-1])
+                
+                value = max(0, shares * last_price)
+                asset_values[t] = value
+                portfolio_value += value
+
+            rebalance_signals = []
+            
+            if portfolio_value > 0:
+                print(f"💰 當前投資組合總淨值估算: {portfolio_value:,.2f}", flush=True)
+                for t in all_tickers:
+                    target_w = stock_meta.get(t, {}).get("target_weight", 0.0)
+                    current_w = asset_values.get(t, 0.0) / portfolio_value
+                    delta_w = target_w - current_w
+                    
+                    target_value = portfolio_value * target_w
+                    delta_value = target_value - asset_values.get(t, 0.0)
+                    
+                    # 變動超過 1% NAV 才發出交易訊號
+                    if abs(delta_w) > 0.01:
+                        action = "BUY (加碼)" if delta_w > 0 else "SELL (減碼)"
+                        rebalance_signals.append({
+                            "ticker": t,
+                            "action": action,
+                            "current_weight": f"{current_w*100:.2f}%",
+                            "target_weight": f"{target_w*100:.2f}%",
+                            "delta_weight": f"{delta_w*100:.2f}%",
+                            "trade_amount": round(delta_value, 2)
+                        })
+                        print(f"   [{t}] {action} -> 目標: {target_w*100:.1f}%, 當前: {current_w*100:.1f}%, 需調整金額: {delta_value:,.2f}")
+
+            if rebalance_signals and GEMINI_API_KEY:
+                print("🤖 喚醒 AI 撰寫再平衡交易執行報告...", flush=True)
+                rebalance_prompt = f"""
+                你是一位機構級交易員。基金經理已經透過約束最佳化演算法計算出了最新的目標權重。
+                
+                以下是需要執行的再平衡清單：
+                {json.dumps(rebalance_signals, ensure_ascii=False, indent=2)}
+                
+                當前總經環境診斷摘要：{macro_payload.get('ai_analysis', {}).get('summary', '無')}
+                
+                請嚴格依照以下 JSON 格式回傳一份給交易台的執行摘要，絕對不要輸出 Markdown 標籤：
+                {{
+                    "execution_summary": "一句話總結本次再平衡的核心邏輯（例如：因應VIX攀升，減碼高Beta股，加碼防禦資產）",
+                    "priority_trades": [
+                        {{
+                            "ticker": "標的代號",
+                            "reason": "為什麼演算法要求加/減碼這檔？(結合總經環境簡短分析)"
+                        }}
+                    ]
+                }}
+                """
+                
+                # 直接用主力引擎產生報告
+                rebalance_res = client.models.generate_content(model="gemini-3.1-pro-preview", contents=rebalance_prompt)
+                
+                try:
+                    rb_match = re.search(r'\{.*\}', rebalance_res.text, re.DOTALL)
+                    if rb_match:
+                        rb_analysis = json.loads(rb_match.group(0))
+                        supabase.table("portfolio_db").update({
+                            "rebalance_meta": {
+                                "signals": rebalance_signals,
+                                "ai_execution_plan": rb_analysis
+                            }
+                        }).eq("id", target_id).execute()
+                        print("✅ 再平衡交易清單與 AI 執行報告已成功同步至 Supabase！")
+                except Exception as e:
+                    print(f"⚠️ AI 執行報告解析失敗: {e}")
 
 except Exception as e:
     print(f"🔥 股票管線處理發生錯誤:\n{traceback.format_exc()}", flush=True)
