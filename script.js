@@ -432,7 +432,10 @@ createApp({
                     
                     // 🌟 新增：權重落差 (實際權重與雲端紀律權重的差距)
                     // 若大於 0 代表持有過多 (需要減碼)，若小於 0 代表持有過少 (需要加碼)
-                    item.weightGap = (item.totalWeight * 100) - item.targetWeight; 
+                    item.weightGap = item.targetWeight - (item.totalWeight * 100); 
+                });
+                groups[cat].items.sort((a,b) => b.marketValueTwd - a.marketValueTwd);
+            }
                 });
                 groups[cat].items.sort((a,b) => b.marketValueTwd - a.marketValueTwd);
             }
