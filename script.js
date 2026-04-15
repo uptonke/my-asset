@@ -327,6 +327,9 @@ createApp({
             return Object.values(map).filter(h => h.shares > 0.0001);
         });
 
+        // ==========================================
+        // 🌟 整合雲端與 MC 雙重目標權重
+        // ==========================================
         const groupedHoldings = computed(() => {
             const groups = {};
             let grandTotal = 0; 
@@ -387,6 +390,15 @@ createApp({
                 if (macdH > 0) { macdSignal = '🟢 黃金交叉'; macdColor = 'text-green-400 border-green-900/50 bg-green-900/20'; }
                 else if (macdH < 0) { macdSignal = '🔴 死亡交叉'; macdColor = 'text-red-400 border-red-900/50 bg-red-900/20'; }
 
+                // 🌟 新增：讀取雙重目標權重
+                const cloudTargetWeight = meta.target_weight ? (meta.target_weight * 100) : 0;
+                
+                let mcWeight = 0;
+                if (mcOptimal.value && mcOptimal.value.weights) {
+                    const match = mcOptimal.value.weights.find(w => w.ticker === h.ticker);
+                    if (match) mcWeight = parseFloat(match.opt);
+                }
+
                 const item = { 
                     ...h, isUSD, 
                     riskLevel: meta.risk || 'High',
@@ -402,7 +414,11 @@ createApp({
                     marketValueTwd: mvTwd, 
                     unrealizedPLTwd: mvTwd - h.totalCostTwd, 
                     returnRate: cumulativeReturn * 100, 
-                    annualizedReturnRate: annualizedReturn * 100 
+                    annualizedReturnRate: annualizedReturn * 100,
+                    
+                    // 🌟 新增：權重屬性
+                    targetWeight: cloudTargetWeight,
+                    mcWeight: mcWeight
                 };
                 
                 groups[h.category].items.push(item);
@@ -413,6 +429,10 @@ createApp({
                 groups[cat].items.forEach(item => {
                     item.totalWeight = grandTotal > 0 ? (item.marketValueTwd / grandTotal) : 0;
                     item.isOverweight = item.totalWeight > 0.20; 
+                    
+                    // 🌟 新增：權重落差 (實際權重與雲端紀律權重的差距)
+                    // 若大於 0 代表持有過多 (需要減碼)，若小於 0 代表持有過少 (需要加碼)
+                    item.weightGap = (item.totalWeight * 100) - item.targetWeight; 
                 });
                 groups[cat].items.sort((a,b) => b.marketValueTwd - a.marketValueTwd);
             }
