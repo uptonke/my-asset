@@ -241,20 +241,34 @@ try:
         
         if all_tickers:
             tw_bench, us_bench = "^TWII", "SPY"
-            proxy_map = {"統一奔騰": "00981A.TW", "統一黑馬": "0050.TW", "安聯台灣科技": "0052.TW"}
+            # 建立代號映射表 (處理你的自訂基金和特殊標的)
+            proxy_map = {
+                "統一奔騰": "00981A.TW", 
+                "安聯台灣科技": "0052.TW",
+                "加密貨幣": "BTC-USD" # 把中文的加密貨幣導向比特幣報價
+            }
             
             download_list = [tw_bench, us_bench]
             yf_tickers = []
             
             for t in all_tickers:
-                if t in proxy_map: target = proxy_map[t]
-                elif bool(re.search(r'[\u4e00-\u9fff]', t)): target = t
-                elif re.match(r'^\d+$', t): target = f"{t}.TW"
-                else: target = t
+                t_clean = str(t).strip().upper()
+                target = t_clean # 預設 target 就是乾淨的代號
+                
+                # 1. 如果在對應表中，直接使用映射的 Ticker
+                if t_clean in proxy_map: 
+                    target = proxy_map[t_clean]
+                # 2. 如果包含中文字（且不在對應表中），我們無法丟給 Yahoo，用大盤代替或忽略
+                elif bool(re.search(r'[\u4e00-\u9fff]', t_clean)): 
+                    target = tw_bench 
+                # 3. 🌟 終極防呆：如果代號是純數字 (如 2330)，或者數字開頭帶英文 (如 00631L)，強制補上 .TW
+                elif re.match(r'^\d+[a-zA-Z]*$', t_clean): 
+                    target = f"{t_clean}.TW"
+                # 4. 其他 (例如 TSLA, AAPL)，保持原樣
                 
                 yf_tickers.append(target)
-                if target not in download_list: download_list.append(target)
-
+                if target not in download_list: 
+                    download_list.append(target)
             print(f"⏳ 正在向 Yahoo Finance 請求 {len(download_list)} 檔標的歷史資料...", flush=True)
             prices_df = yf.download(download_list, period="1y", progress=False)["Close"]
             
