@@ -3,8 +3,6 @@ name: Daily Quant Pipeline
 on:
   workflow_dispatch: # 保留手動按鈕，方便隨時測試
   schedule:
-    # 💡 設定在國際標準時 (UTC) 每週五晚上 16:00 執行
-    # 換算過來就是台灣時間 (UTC+8) 每週六早上 00:00
     - cron: '0 1 * * 2,4,6'
 
 jobs:
