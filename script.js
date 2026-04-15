@@ -26,6 +26,74 @@ createApp({
             } else {
                 alert('庫存中沒有合格的標的 (需設定 Beta 與 StdDev)');
             }
+            // ==========================================
+        // 🤖 專屬 AI 量化風險總監 (CRO)
+        // ==========================================
+        const croInsight = ref(null);
+        const isCroThinking = ref(false);
+
+        async function generateQuantInsight() {
+            const apiKey = localStorage.getItem('GEMINI_API_KEY') || prompt('首次使用請輸入您的 Gemini API Key (將安全儲存於瀏覽器):');
+            if (!apiKey) return;
+            localStorage.setItem('GEMINI_API_KEY', apiKey);
+
+            isCroThinking.value = true;
+            croInsight.value = null;
+
+            const payload = {
+                portfolio_beta: portfolioStats.value.beta,
+                portfolio_volatility: stats.value.annVol + '%',
+                time_weighted_return_twr: stats.value.annRet + '%',
+                money_weighted_return_mwr: stats.value.mwr + '%',
+                sharpe_ratio: stats.value.sharpe,
+                treynor_ratio: stats.value.treynor,
+                max_drawdown: stats.value.mdd + '%',
+                cvar_95: stats.value.cvar95 + '%',
+                skewness: stats.value.skew,
+                kurtosis: stats.value.kurt,
+                systemic_correlation: sysCorr.value
+            };
+
+            const promptText = `
+            [SYSTEM_DIRECTIVE]
+            Task: Act as an aggressive, high-alpha Quant Chief Risk Officer (CRO).
+            Input: Real-time portfolio performance metrics.
+            Constraint: Output strictly in Traditional Chinese. Keep it extremely concise, punchy, and actionable. No pleasantries. Max 3 bullet points.
+
+            [ANALYSIS_RULES]
+            1. TWR vs MWR: Compare them. If MWR > TWR, praise the market timing (cash flow injections). If TWR > MWR, criticize the timing (buying at the top).
+            2. Tail Risk: Look at Skewness (偏度) and Kurtosis (峭度). If Skewness is highly negative or Kurtosis > 3, explicitly warn about "Black Swan / Fat Tail risks" and suggest hedging (e.g., Options, VIX, TLT).
+            3. Efficiency: Evaluate Treynor and Sharpe. Is the return worth the Beta taken?
+            4. Correlation: If Systemic Correlation > 0.7, warn that diversification is failing.
+
+            [INPUT_DATA]
+            ${JSON.stringify(payload, null, 2)}
+            `;
+
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: promptText }] }],
+                        generationConfig: { temperature: 0.2 } // 保持冷靜客觀
+                    })
+                });
+
+                const data = await response.json();
+                if (data.error) throw new Error(data.error.message);
+                
+                // 解析 Markdown 格式的文字
+                let text = data.candidates[0].content.parts[0].text;
+                // 簡單把 markdown 的 bullet points 轉成陣列
+                croInsight.value = text.split('\n').filter(line => line.trim().length > 0).map(line => line.replace(/^[\*\-]\s*/, '').replace(/\*\*/g, ''));
+            } catch (e) {
+                alert('AI 分析失敗: ' + e.message);
+                if(e.message.includes('API key not valid')) localStorage.removeItem('GEMINI_API_KEY');
+            } finally {
+                isCroThinking.value = false;
+            }
+        }
         }
         
         // ==========================================
