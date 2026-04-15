@@ -279,15 +279,16 @@
                                         <th class="p-2 text-right text-purple-300" title="資金加權年化報酬率">年化 (CAGR)</th>
                                         
                                         <th class="p-2 text-right">現有權重%</th>
-                                        <th class="p-2 text-right text-blue-300" title="雲端紀律運算權重 (Python)">雲端目標%</th>
-                                        <th class="p-2 text-right text-purple-400" title="MC理論極限權重">MC理論%</th>
-                                        <th class="p-2 text-right" title="與雲端目標的偏離度">落差 (Drift)</th>
+                                        <th class="p-2 text-right text-blue-300" title="雲端紀律運算權重 (Python)">雲端%</th>
+                                        <th class="p-2 text-right text-purple-400" title="MC理論極限權重">MC%</th>
+                                        <th class="p-2 text-right text-yellow-400 font-bold" title="50%雲端 + 50%MC">綜合目標%</th>
+                                        <th class="p-2 text-right" title="與綜合目標的偏離度">落差 (Drift)</th>
                                     </tr>
                                 </thead>
                                 <tbody class="text-sm">
                                     <template v-for="(group, catName) in groupedHoldings" :key="catName">
                                         <tr class="group-header">
-                                            <td colspan="13" class="pl-6 py-2 border-t border-b border-gray-600 bg-gray-800/30">
+                                            <td colspan="14" class="pl-6 py-2 border-t border-b border-gray-600 bg-gray-800/30">
                                                <i class="fas fa-folder-open mr-2 text-blue-400"></i> <span class="font-bold text-gray-200">{{ catName }}</span> 
                                                <span class="text-gray-400 text-xs font-normal ml-2">(Total: {{ formatNumber(group.totalValue) }})</span>
                                             </td>
@@ -343,7 +344,10 @@
                                             <td class="p-2 text-right font-mono text-purple-400">
                                                 {{ stock.mcWeight ? stock.mcWeight.toFixed(1) + '%' : '-' }}
                                             </td>
-                                            <td class="p-2 text-right font-mono font-bold">
+                                            <td class="p-2 text-right font-mono text-yellow-400 font-bold text-lg">
+                                                {{ stock.blendedWeight.toFixed(1) }}%
+                                            </td>
+                                            <td class="p-2 text-right font-mono font-bold text-lg">
                                                 <span :class="stock.weightGap > 3 ? 'text-green-400' : (stock.weightGap < -3 ? 'text-red-400' : 'text-gray-500')">
                                                     {{ stock.weightGap > 0 ? '+' : '' }}{{ stock.weightGap.toFixed(1) }}%
                                                 </span>
@@ -388,8 +392,8 @@
                                                     <span class="font-mono font-bold text-gray-300">{{ formatPercent(stock.totalWeight) }}</span>
                                                 </div>
                                                 <div class="flex flex-col">
-                                                    <span class="text-gray-500 text-[10px]">目標</span>
-                                                    <span class="font-mono font-bold text-blue-400">{{ stock.targetWeight ? stock.targetWeight.toFixed(1) + '%' : '-' }}</span>
+                                                    <span class="text-gray-500 text-[10px]">綜合目標</span>
+                                                    <span class="font-mono font-bold text-yellow-400">{{ stock.blendedWeight.toFixed(1) }}%</span>
                                                 </div>
                                                 <div class="flex flex-col">
                                                     <span class="text-gray-500 text-[10px]">落差</span>
