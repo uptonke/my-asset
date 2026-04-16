@@ -29,7 +29,7 @@ createApp({
         }
 
         // ==========================================
-        // 🤖 專屬 AI 量化風險總監 (CRO)
+        // 🤖 專屬 AI 量化風險總監 (CRO) - 18 指標終極版
         // ==========================================
         const croInsight = ref(null);
         const isCroThinking = ref(false);
@@ -42,37 +42,57 @@ createApp({
             isCroThinking.value = true;
             croInsight.value = null;
 
+            // 🌟 1. 將所有 18 項指標打包進 payload
             const payload = {
-                portfolio_beta: portfolioStats.value.beta,
-                portfolio_volatility: stats.value.annVol + '%',
-                time_weighted_return_twr: stats.value.annRet + '%',
-                money_weighted_return_mwr: stats.value.mwr + '%',
-                sharpe_ratio: stats.value.sharpe,
-                treynor_ratio: stats.value.treynor,
-                max_drawdown: stats.value.mdd + '%',
-                cvar_95: stats.value.cvar95 + '%',
-                skewness: stats.value.skew,
-                kurtosis: stats.value.kurt,
-                systemic_correlation: sysCorr.value
+                return_metrics: {
+                    time_weighted_return_twr: stats.value.annRet + '%',
+                    money_weighted_return_mwr: stats.value.mwr + '%',
+                    log_return: stats.value.annLogRet + '%',
+                    alpha_jensen: stats.value.alpha + '%'
+                },
+                risk_efficiency: {
+                    portfolio_beta: riskParams.value.beta,
+                    portfolio_volatility: stats.value.annVol + '%',
+                    sharpe_ratio: stats.value.sharpe,
+                    sortino_ratio: stats.value.sortino,
+                    treynor_ratio: stats.value.treynor
+                },
+                asymmetry_and_win_rate: {
+                    omega_ratio: stats.value.omega,
+                    profit_factor_pf: stats.value.profitFactor,
+                    skewness: stats.value.skew,
+                    kurtosis: stats.value.kurt
+                },
+                catastrophic_risk: {
+                    max_drawdown_mdd: stats.value.mdd + '%',
+                    ulcer_index_ui: stats.value.ulcer,
+                    time_under_water_tuw_days: stats.value.tuw,
+                    calmar_ratio: stats.value.calmar,
+                    value_at_risk_var_95: stats.value.var95 + '%',
+                    cvar_95: stats.value.cvar95 + '%'
+                },
+                systemic_correlation: sysCorr.value.toFixed(2)
             };
 
+            // 🌟 2. 重寫 Prompt，要求 AI 進行多維度交叉比對
             const promptText = `
             [SYSTEM_DIRECTIVE]
-            Task: Act as an aggressive, high-alpha Quant Chief Risk Officer (CRO).
-            Input: Real-time portfolio performance metrics.
-            Constraint: Output strictly in Traditional Chinese. Keep it concise, punchy, and actionable.
+            Task: Act as an aggressive, highly analytical Quant Chief Risk Officer (CRO) for a family office.
+            Input: Real-time portfolio performance metrics categorized by Returns, Efficiency, Asymmetry, and Catastrophic Risk.
+            Constraint: Output strictly in Traditional Chinese. Keep it brutally honest, punchy, and actionable. No pleasantries. Max 6 bullet points.
 
             [ANALYSIS_RULES]
-            You MUST evaluate each key metric below and provide a 1-sentence diagnostic:
-            1. **TWR vs MWR**: Explain the difference. If MWR > TWR, the market timing (cash flow injections) is creating positive alpha. If TWR > MWR, cash drags are hurting performance.
-            2. **Risk-Adjusted Return (Sharpe & Treynor)**: Diagnose if the returns justify the volatility and beta taken.
-            3. **Tail Risk (Skewness & Kurtosis)**: Analyze the asymmetry. Is it negatively skewed (crash risk)? Is it leptokurtic (fat tails)? Suggest specific hedges if risky.
-            4. **Systemic Risk (Correlation)**: Evaluate if the portfolio is too concentrated. High correlation means diversification is failing.
-            5. **Drawdown Risk (MDD & CVaR)**: Assess the catastrophic potential.
+            You MUST evaluate the portfolio holistically by crossing different metrics. Provide a bulleted list analyzing the following aspects:
+
+            1. **【資金效率與選股 (TWR vs MWR & Alpha)】**: Compare MWR and TWR. Is the user's market timing adding value? Look at Jensen's Alpha—is the portfolio actually beating the market after adjusting for Beta?
+            2. **【風險報酬定價 (Sharpe, Sortino & Treynor)】**: Are we taking on too much Volatility or Beta for the returns we get? (e.g., negative Sharpe means cash is better).
+            3. **【勝率與肥尾風險 (Omega, PF, Skew, Kurt)】**: Cross-analyze Omega Ratio and Profit Factor. Is the win-rate stable? Look at Kurtosis (>3 means fat tails) and Skewness. Warn explicitly about black swan risks if Kurtosis is high or Skewness is negative.
+            4. **【深淵與痛苦指數 (MDD, UI, TUW & Calmar)】**: Analyze the Time Under Water (TUW) and Ulcer Index (UI). Is the user enduring long, painful drawdowns for meager returns? Evaluate the Calmar ratio.
+            5. **【極端下行曝險 (VaR, CVaR & Correlation)】**: Look at the 95% CVaR and Systemic Correlation. If Correlation is > 0.75, warn that diversification is a mirage. 
+            6. **【CRO 總結與行動建議】**: Give one definitive, aggressive instruction on what to trade or hedge right now based on the worst metric above.
 
             [OUTPUT_FORMAT]
-            Provide a bulleted list analyzing the data point by point. Example format:
-            - **[指標名稱]**: [一針見血的解讀與建議]
+            - **[維度名稱]**: [一針見血的解讀與具體的對沖/調倉建議]
 
             [INPUT_DATA]
             ${JSON.stringify(payload, null, 2)}
@@ -90,7 +110,7 @@ createApp({
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             contents: [{ parts: [{ text: promptText }] }],
-                            generationConfig: { temperature: 0.2 } 
+                            generationConfig: { temperature: 0.2 } // 保持冷靜與嚴謹的量化語氣
                         })
                     });
 
@@ -109,13 +129,12 @@ createApp({
                         
                         croInsight.value = parsedInsight;
                         
-                        // 🌟 將產生的報告同步回 Supabase
+                        // 將產生的報告同步回 Supabase
                         await supabase.from('portfolio_db').update({ 
                             cro_insight: parsedInsight,
                             cro_last_update: new Date().toISOString()
                         }).eq('id', 1);
 
-                        console.log("✅ AI 報告已成功同步至 Supabase 雲端");
                         break; 
                     } else {
                         throw new Error("回傳格式異常");
