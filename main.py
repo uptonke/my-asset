@@ -114,22 +114,26 @@ def calc_z_score(series):
     return (series.iloc[-1] - series.mean()) / std if std != 0 else 0.0
 
 try:
+    print("   ⏳ 正在抓取公債殖利率...", flush=True)
     try:
         bonds = yf.download(["^TNX", "^IRX"], period="1mo", progress=False)["Close"]
         y10 = float(bonds["^TNX"].dropna().iloc[-1])
         y3m = float(bonds["^IRX"].dropna().iloc[-1])
     except: y10, y3m = 4.2, 5.0
 
+    print("   ⏳ 正在計算信用利差...", flush=True)
     try: hyg_yield = yf.Ticker("HYG").info.get('yield', 0.05) * 100 
     except: hyg_yield = 7.5
     hy_spread = max(0.1, hyg_yield - y10)
 
+    print("   ⏳ 正在計算加密貨幣動能...", flush=True)
     try:
         btc_data = yf.download("BTC-USD", period="1mo", progress=False)["Close"]
         btc_clean = btc_data.iloc[:, 0].dropna() if isinstance(btc_data, pd.DataFrame) else btc_data.dropna()
         btc_mom = ((btc_clean.iloc[-1] / btc_clean.iloc[0]) - 1) * 100 if len(btc_clean) > 1 else 0.0
     except: btc_mom = 0.0
 
+    print("   ⏳ 正在計算 SPY 長期報酬與短期波動...", flush=True)
     try:
         spy = yf.download("SPY", period="10y", progress=False)["Close"]
         spy_clean = spy.iloc[:, 0].dropna() if isinstance(spy, pd.DataFrame) else spy.dropna()
@@ -137,6 +141,7 @@ try:
         spy_vol = spy_clean.tail(252).pct_change().std() * np.sqrt(252) if len(spy_clean) > 10 else 0.15
     except: spy_cagr, spy_vol = 0.10, 0.15
 
+    print("   ⏳ 正在抓取跨資產期貨、情緒指標、PCR與AUD/JPY...", flush=True)
     try:
         vix_family = yf.download(["^VIX", "^VXN", "^VVIX"], period="1y", progress=False)["Close"]
         if isinstance(vix_family, pd.Series): vix_family = vix_family.to_frame()
@@ -160,7 +165,9 @@ try:
     try:
         pcr_data = yf.Ticker("^PCR").history(period="1y")['Close'].dropna()
         pcr, pcr_z = float(pcr_data.iloc[-1]), float(calc_z_score(pcr_data))
-    except: pcr, pcr_z = 1.0, 0.0
+    except Exception as e: 
+        print(f"   ⚠️ ^PCR 可能已下市或抓取失敗: {e}", flush=True)
+        pcr, pcr_z = 1.0, 0.0
 
     try:
         aud_jpy_data = yf.download("AUDJPY=X", period="1mo", progress=False)["Close"]
@@ -168,6 +175,7 @@ try:
         aud_jpy_mom = float(((aud_jpy_clean.iloc[-1] / aud_jpy_clean.iloc[0]) - 1) * 100) if len(aud_jpy_clean) > 1 else 0.0
     except: aud_jpy_mom = 0.0
 
+    print("   ⏳ 正在抓取 MOVE 指數與板塊輪動指標...", flush=True)
     try:
         try:
             move_data = yf.Ticker("^MOVE").history(period="1y")['Close'].dropna()
@@ -209,7 +217,7 @@ try:
         move_idx, move_z, iwm_spy_mom, xlu_xly_mom, hyg_tlt_mom = 100.0, 0.0, 0.0, 0.0, 0.0
         dbc_mom, soxx_spy_mom, liquidity_spread, rsp_spy_mom, kre_spy_mom = 0.0, 0.0, 0.0, 0.0, 0.0
 
-    print("   ⏳ 正在計算系統靜態相關性矩陣...", flush=True)
+    print("   ⏳ 正在計算系統靜態相關性矩陣 (系統性風險)...", flush=True)
     sys_corr, corr_matrix = 0.3, {}
     current_shares, active_tickers = {}, []
     try:
@@ -234,7 +242,6 @@ try:
                 if isinstance(port_df, pd.Series): port_df = port_df.to_frame(name=mapped_tickers[0])
                 port_returns = port_df.pct_change().dropna()
                 
-                # 恢復為單純的靜態相關性計算
                 corr_df = port_returns.corr()
                 mask = np.triu(np.ones_like(corr_df, dtype=bool), k=1)
                 raw_sys_corr = float(corr_df.where(mask).mean().mean())
@@ -263,6 +270,7 @@ try:
     # Gemini AI 總結
     # ==========================================
     regime_packet = build_regime_packet(macro_payload)
+    print(f"🤖 喚醒 Gemini AI 進行格式化 (內部判定階段: {regime_packet['stage_candidate']})...", flush=True)
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
     if GEMINI_API_KEY:
         try:
@@ -276,7 +284,6 @@ try:
             [TRANSFORMATION_RULES]
             1. STAGE: Translate `stage_candidate` to Traditional Chinese.
             2. SUMMARY: 1 sentence. MUST START WITH "[目前總經形勢: 翻譯後的STAGE]". Map stage to a max-alpha strategy.
-               *CRITICAL*: If `sys_corr` > 0.8, declare a systemic liquidation event.
             3. DETAILS.TITLE: Traditional Chinese metric name.
             4. DETAILS.DESC: Max 35 chars. Explicitly cite specific numeric values (Z-Scores).
             5. DETAILS.COLOR: "text-green-400", "text-red-400", "text-gray-400".
@@ -295,10 +302,12 @@ try:
                     if match:
                         macro_payload['ai_analysis'] = json.loads(match.group(0))
                         macro_payload['ai_analysis']['calculated_stage'] = regime_packet["stage_candidate"]
+                        print(f"✅ AI 格式轉換成功！(使用模型: {model_name})")
                         break
                 except: continue
         except: pass
 
+    print("🚀 正在同步總經數據至 Supabase...", flush=True)
     target_id = 1
     existing = supabase.table("portfolio_db").select("id").limit(1).execute()
     if existing.data: supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
@@ -372,6 +381,7 @@ try:
         for t in all_tickers:
             if t not in stock_meta: stock_meta[t] = {}
 
+        print("📊 正在從 Google Sheet 抓取自訂報價...", flush=True)
         sheet_prices = get_sheet_prices(db_record.get("settings", {}).get("sheetUrl", ""))
         
         if all_tickers:
@@ -384,11 +394,13 @@ try:
                 target = proxy_map.get(t_clean, tw_bench if bool(re.search(r'[\u4e00-\u9fff]', t_clean)) else (f"{t_clean}.TW" if re.match(r'^\d+[a-zA-Z]*$', t_clean) else t_clean))
                 yf_tickers.append(target)
                 if target not in download_list: download_list.append(target)
-                    
+            
+            print(f"⏳ 正在向 Yahoo Finance 請求 {len(download_list)} 檔標的歷史資料...", flush=True)        
             prices_df = yf.download(download_list, period="1y", progress=False)["Close"]
             if isinstance(prices_df, pd.Series): prices_df = prices_df.to_frame(name=download_list[0])
             returns = prices_df.pct_change().dropna()
 
+            print("⚖️ 正在過濾真實庫存標的...", flush=True)
             current_shares = {}
             for tx in ledger_data:
                 t = str(tx.get("ticker", "")).strip().upper()
@@ -398,15 +410,18 @@ try:
             active_tickers = [t for t, s in current_shares.items() if s > 0.0001]
             ticker_to_yf = dict(zip(all_tickers, yf_tickers))
             valid_investable = [yf_t for t in active_tickers if (yf_t := ticker_to_yf.get(t)) and yf_t in returns.columns and yf_t not in [tw_bench, us_bench]]
+            
+            print(f"✅ 篩選完成：庫存共有 {len(valid_investable)} 檔標的進入最佳化引擎。")
 
             target_weights = {}
             if valid_investable:
                 num_assets = len(valid_investable)
                 dynamic_min = 0.0 if num_assets < 5 else min(0.03, 0.9 / num_assets)
+                print(f"🧠 啟動機構級最佳化引擎 (限制 {dynamic_min*100:.0f}%~20%)...", flush=True)
                 target_weights = get_optimal_weights(returns[valid_investable], stock_meta, min_wt=dynamic_min, max_wt=1.0 if num_assets < 5 else 0.20)
                 
                 # ==========================================
-                # 🌟 保留的升級：Fama-French 6 因子模型
+                # 🌟 Fama-French 6 因子模型
                 # ==========================================
                 print("🧠 啟動 Fama-French 6 因子模型 (FF5 + Momentum) 迴歸引擎...", flush=True)
                 try:
@@ -460,10 +475,11 @@ try:
                                     "wml": float(round(results.params['Mom'], 2)),
                                     "r_squared": float(round(results.rsquared, 2))
                                 }
-                                print(f"✅ FF6 運算成功: R²={results.rsquared:.2f}")
+                                print(f"✅ FF6 運算成功: Mkt β={results.params['Mkt-RF']:.2f}, R²={results.rsquared:.2f}")
                                 supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
                 except Exception as e: print(f"⚠️ FF6 迴歸失敗: {e}", flush=True)
 
+            print("🧠 開始計算各別標的風險參數並寫入資料庫...", flush=True)
             for i, original_ticker in enumerate(all_tickers):
                 yf_ticker = yf_tickers[i]
                 if original_ticker in sheet_prices: stock_meta[original_ticker]["last_price"] = sheet_prices[original_ticker]
@@ -477,17 +493,22 @@ try:
                     if len(aligned) < 30: continue
                     
                     bench_var = aligned.iloc[:,1].var()
+                    beta_val = round(aligned.iloc[:,0].cov(aligned.iloc[:,1]) / bench_var if bench_var > 0 else 1.0, 2)
+                    std_val = round(np.sqrt(aligned.iloc[:,0].var() * 252) * 100, 2)
+                    tw_val = float(target_weights.get(yf_ticker, 0.0))
+                    
                     stock_meta[original_ticker].update({
-                        "beta": round(aligned.iloc[:,0].cov(aligned.iloc[:,1]) / bench_var if bench_var > 0 else 1.0, 2),
-                        "std": round(np.sqrt(aligned.iloc[:,0].var() * 252) * 100, 2),
+                        "beta": beta_val,
+                        "std": std_val,
                         "rsi": round(ta.rsi(stock_close).iloc[-1] if ta.rsi(stock_close) is not None else 50.0, 2), 
                         "macd_h": round(ta.macd(stock_close).iloc[-1, 1] if ta.macd(stock_close) is not None else 0.0, 4),
-                        "target_weight": float(target_weights.get(yf_ticker, 0.0))
+                        "target_weight": tw_val
                     })
+                    print(f"✅ [{original_ticker}] 更新 -> Beta: {beta_val:.2f}, Std: {std_val:.1f}%, 目標權重: {tw_val*100:.2f}%")
 
             supabase.table("portfolio_db").update({"stock_meta": stock_meta}).eq("id", target_id).execute()
 
-            print("\n⚖️ 啟動自動再平衡引擎...", flush=True)
+            print("\n⚖️ 啟動自動再平衡引擎：計算目標權重落差與交易訊號...", flush=True)
             portfolio_value, asset_values, rebalance_signals = 0.0, {}, []
             for t in all_tickers:
                 shares = current_shares.get(t, 0)
@@ -497,14 +518,18 @@ try:
                 val = max(0, shares * lp)
                 asset_values[t], portfolio_value = val, portfolio_value + val
 
+            print(f"💰 當前投資組合總淨值估算: {portfolio_value:,.2f}")
             if portfolio_value > 0:
                 for t in all_tickers:
                     tw = stock_meta.get(t, {}).get("target_weight", 0.0)
                     cw = asset_values.get(t, 0.0) / portfolio_value
                     if abs(tw - cw) > 0.01:
-                        rebalance_signals.append({"ticker": t, "action": "BUY (加碼)" if tw > cw else "SELL (減碼)", "current_weight": f"{cw*100:.2f}%", "target_weight": f"{tw*100:.2f}%", "delta_weight": f"{(tw-cw)*100:.2f}%", "trade_amount": round((portfolio_value * tw) - asset_values.get(t, 0.0), 2)})
+                        action_str = "BUY (加碼)" if tw > cw else "SELL (減碼)"
+                        print(f"   [{t}] {action_str} -> 目標: {tw*100:.1f}%, 當前: {cw*100:.1f}%")
+                        rebalance_signals.append({"ticker": t, "action": action_str, "current_weight": f"{cw*100:.2f}%", "target_weight": f"{tw*100:.2f}%", "delta_weight": f"{(tw-cw)*100:.2f}%", "trade_amount": round((portfolio_value * tw) - asset_values.get(t, 0.0), 2)})
 
             if rebalance_signals and GEMINI_API_KEY:
+                print("🤖 喚醒 AI 撰寫再平衡交易執行報告...", flush=True)
                 try:
                     rebalance_prompt = f"""
                     [SYSTEM_DIRECTIVE]
@@ -531,6 +556,7 @@ try:
                     rb_match = re.search(r'\{.*\}', client.models.generate_content(model="gemini-3-flash-preview", contents=rebalance_prompt).text, re.DOTALL)
                     if rb_match:
                         supabase.table("portfolio_db").update({"rebalance_meta": {"signals": rebalance_signals, "ai_execution_plan": json.loads(rb_match.group(0))}}).eq("id", target_id).execute()
+                        print("✅ 再平衡交易清單與 AI 執行報告已成功同步至 Supabase！")
                 except Exception as e: print(f"⚠️ AI 執行報告生成失敗: {e}")
 
 except Exception as e:
