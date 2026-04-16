@@ -273,7 +273,8 @@ createApp({
             annRet:'0.00', annLogRet:'0.00', mwr:'0.00', annVol:'0.00', sharpe:'0.00', sortino:'0.00', treynor:'0.00', 
             alpha:'0.00', var95:'0.00', cvar95:'0.00', mdd:'0.00', calmar:'0.00', skew:'0.00', kurt:'0.00', 
             tuw: '0', ulcer: '0.00', omega: '0.00', profitFactor: '0.00', 
-            ff_alpha: '-', ff_mkt_beta: '-', ff_smb: '-', ff_hml: '-', ff_r_squared: '-' 
+            ff_alpha: '-', ff_mkt_beta: '-', ff_smb: '-', ff_hml: '-', 
+            ff_rmw: '-', ff_cma: '-', ff_wml: '-', ff_r_squared: '-' 
         });
 
         async function loadDataFromCloud() {
@@ -307,6 +308,9 @@ createApp({
                             stats.value.ff_mkt_beta = macroData.fama_french.mkt_beta;
                             stats.value.ff_smb = macroData.fama_french.smb;
                             stats.value.ff_hml = macroData.fama_french.hml;
+                            stats.value.ff_rmw = macroData.fama_french.rmw;
+                            stats.value.ff_cma = macroData.fama_french.cma;
+                            stats.value.ff_wml = macroData.fama_french.wml;
                             stats.value.ff_r_squared = macroData.fama_french.r_squared;
                         }
                     }
@@ -707,6 +711,9 @@ createApp({
                  ff_mkt_beta: stats.value.ff_mkt_beta || '-',
                  ff_smb: stats.value.ff_smb || '-',
                  ff_hml: stats.value.ff_hml || '-',
+                 ff_rmw: stats.value.ff_rmw || '-',
+                 ff_cma: stats.value.ff_cma || '-',
+                 ff_wml: stats.value.ff_wml || '-', 
                  ff_r_squared: stats.value.ff_r_squared || '-'
              }; 
         }, { deep: true, immediate: true });
