@@ -421,9 +421,9 @@ try:
                 target_weights = get_optimal_weights(returns[valid_investable], stock_meta, min_wt=dynamic_min, max_wt=1.0 if num_assets < 5 else 0.20)
                 
                 # ==========================================
-                # 🌟 Fama-French 6 因子模型 (升級版：使用週資料)
+                # 🌟 終極升級：跨資產 8 因子模型 (FF6 + TW + Crypto)
                 # ==========================================
-                print("🧠 啟動 Fama-French 6 因子模型 (FF5 + Momentum) 迴歸引擎...", flush=True)
+                print("🧠 啟動跨資產 8 因子模型 (FF6 + TW_Mkt + Crypto) 迴歸引擎...", flush=True)
                 try:
                     import statsmodels.api as sm
                     domain_kf = "https://mba.tuck.dartmouth.edu"
@@ -443,8 +443,15 @@ try:
 
                     ff5_data = parse_french_csv(requests.get(ff5_url, timeout=15).content)
                     mom_data = parse_french_csv(requests.get(mom_url, timeout=15).content)
-                    
                     ff_data = pd.concat([ff5_data, mom_data], axis=1).dropna()
+                    
+                    # 🌟 新增：獨立抓取台股大盤與比特幣資料作為客製化因子
+                    custom_factors_df = yf.download(["^TWII", "BTC-USD"], period="2y", progress=False)["Close"].pct_change().dropna()
+                    # 確保欄位名稱正確
+                    if "^TWII" in custom_factors_df.columns and "BTC-USD" in custom_factors_df.columns:
+                        custom_factors = custom_factors_df[["^TWII", "BTC-USD"]].rename(columns={"^TWII": "TW_Mkt", "BTC-USD": "Crypto"})
+                    else:
+                        custom_factors = pd.DataFrame(0, index=ff_data.index, columns=["TW_Mkt", "Crypto"])
 
                     if len(returns) > 30:
                         port_weights = []
@@ -458,19 +465,23 @@ try:
                             daily_port_return.index = pd.to_datetime(daily_port_return.index).tz_localize(None)
                             daily_port_return.name = 'Port_Ret'
 
-                            # 🌟 升級：將日報酬轉換為「週報酬 (Weekly)」，吸收台美時差與假日錯位
+                            # 🌟 將所有資料降頻為「週報酬 (Weekly)」吸收時差與假日錯位
                             weekly_port = daily_port_return.resample('W-FRI').apply(lambda x: (1 + x).prod() - 1)
                             weekly_ff = ff_data.resample('W-FRI').apply(lambda x: (1 + x).prod() - 1)
+                            weekly_custom = custom_factors.resample('W-FRI').apply(lambda x: (1 + x).prod() - 1)
                             
-                            aligned_data = pd.concat([weekly_port, weekly_ff], axis=1).replace([np.inf, -np.inf], np.nan).dropna()
+                            aligned_data = pd.concat([weekly_port, weekly_ff, weekly_custom], axis=1).replace([np.inf, -np.inf], np.nan).dropna()
                             
-                            if len(aligned_data) > 10: # 週資料筆數較少，門檻降至 10 週
+                            if len(aligned_data) > 10:
+                                # 計算客製化因子的超額報酬 (扣除無風險利率 RF)
+                                aligned_data['TW_Mkt_RF'] = aligned_data['TW_Mkt'] - aligned_data['RF']
+                                aligned_data['Crypto_RF'] = aligned_data['Crypto'] - aligned_data['RF']
+                                
                                 Y = (aligned_data['Port_Ret'] - aligned_data['RF']).astype(float)
-                                X = sm.add_constant(aligned_data[['Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'Mom']]).astype(float)
+                                X = sm.add_constant(aligned_data[['Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'Mom', 'TW_Mkt_RF', 'Crypto_RF']]).astype(float)
                                 
                                 results = sm.OLS(Y, X).fit()
                                 macro_payload["fama_french"] = {
-                                    # 注意：週資料年化需乘以 52，而不是 252
                                     "alpha": float(round(results.params['const'] * 52 * 100, 2)),
                                     "mkt_beta": float(round(results.params['Mkt-RF'], 2)),
                                     "smb": float(round(results.params['SMB'], 2)),
@@ -478,11 +489,13 @@ try:
                                     "rmw": float(round(results.params['RMW'], 2)),
                                     "cma": float(round(results.params['CMA'], 2)),
                                     "wml": float(round(results.params['Mom'], 2)),
+                                    "tw_mkt": float(round(results.params.get('TW_Mkt_RF', 0), 2)), # 🌟 台股因子
+                                    "crypto": float(round(results.params.get('Crypto_RF', 0), 2)), # 🌟 加密貨幣因子
                                     "r_squared": float(round(results.rsquared, 2))
                                 }
-                                print(f"✅ FF6 運算成功 (Weekly): Mkt β={results.params['Mkt-RF']:.2f}, R²={results.rsquared:.2f}")
+                                print(f"✅ 8因子運算成功: R²={results.rsquared:.2f}, TW_β={results.params.get('TW_Mkt_RF', 0):.2f}, Crypto_β={results.params.get('Crypto_RF', 0):.2f}")
                                 supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
-                except Exception as e: print(f"⚠️ FF6 迴歸失敗: {e}", flush=True)
+                except Exception as e: print(f"⚠️ 8因子迴歸失敗: {e}", flush=True)
 
             print("🧠 開始計算各別標的風險參數並寫入資料庫...", flush=True)
             for i, original_ticker in enumerate(all_tickers):
