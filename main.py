@@ -994,10 +994,16 @@ try:
                 print("🤖 喚醒 AI 撰寫再平衡交易執行報告...", flush=True)
                 rebalance_prompt = f"""
                 [SYSTEM_DIRECTIVE]
-                Task: Generate a high-conviction rebalance execution plan.
-                Tone: Institutional Trader, Aggressive, Data-driven.
+                Task: Generate a high-conviction, logically flawless rebalance execution plan.
+                Tone: Institutional Risk Manager & Quant Trader. Coldly rational, strictly data-driven.
                 Language: MUST strictly output all text values in TRADITIONAL CHINESE (繁體中文).
                 Constraints: Output ONLY JSON. No conversational filler.
+
+                [LOGICAL_GUARDRAILS]
+                - CRITICAL: DO NOT confuse "Sector Rotation / Capital Efficiency" with "Hedging".
+                - TRUE HEDGING means moving to cash, bonds, or negative-beta assets.
+                - DO NOT suggest buying high-beta, risk-on assets (like Crypto or Tech stocks) as a "hedge" against market risks.
+                - If the trades involve moving capital to high-beta assets, explicitly frame it as "Risk-On Rotation", "Pursuing Alpha", or "Capitalizing on Momentum", NEVER as "Hedging".
 
                 [INPUT_DATA]
                 Macro Summary: {macro_payload.get('ai_analysis', {}).get('summary', '無')}
@@ -1005,7 +1011,7 @@ try:
 
                 [OUTPUT_SCHEMA]
                 {{
-                    "execution_summary": "<string_1_sentence_rationale_linking_macro_to_trades_in_traditional_chinese>",
+                    "execution_summary": "<string_1_sentence_rationale_linking_macro_to_trades_in_traditional_chinese_with_strict_financial_logic>",
                     "priority_trades": [
                         {{
                             "ticker": "<string>",
