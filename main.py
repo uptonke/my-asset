@@ -16,6 +16,19 @@ from supabase import create_client, Client
 from google import genai
 
 warnings.filterwarnings('ignore')
+import shutil
+try:
+    # 針對 GitHub Actions (Linux) 或 Mac 的快取路徑
+    cache_path = os.path.join(os.path.expanduser('~'), '.cache', 'yfinance')
+    if os.path.exists(cache_path):
+        shutil.rmtree(cache_path)
+    
+    # 針對 Windows 系統的快取路徑
+    windows_cache = os.path.join(os.environ.get('LOCALAPPDATA', ''), 'yfinance')
+    if os.path.exists(windows_cache):
+        shutil.rmtree(windows_cache)
+except Exception:
+    pass
 
 # ==========================================
 # 1. 讀取環境變數與初始化
