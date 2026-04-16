@@ -597,7 +597,15 @@
                         </h4>
                         <p class="text-xs text-gray-400 mb-5">透過 Carhart 4-Factor 與 FF5 擴充模型，解構投資組合的真實超額報酬來源。($R^2 = {{ stats?.ff_r_squared || '-' }})</p>
                         
-                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                            <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-700/50">
+                                <div class="text-[10px] text-gray-500 mb-1" title="與美股脫鉤的台股系統風險">台股因子 (TW Mkt)</div>
+                                <div class="text-lg font-bold font-mono text-cyan-400">{{ stats?.ff_tw_mkt || '-' }}</div>
+                            </div>
+                            <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-700/50 shadow-[0_0_10px_rgba(245,158,11,0.1)] border-orange-900/50">
+                                <div class="text-[10px] text-gray-500 mb-1" title="數位資產的獨立波動風險">加密貨幣 (Crypto)</div>
+                                <div class="text-lg font-bold font-mono text-orange-400">{{ stats?.ff_crypto || '-' }}</div>
+                            </div>
                             <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-700/50">
                                 <div class="text-[10px] text-gray-500 mb-1">純粹超額報酬 (α)</div>
                                 <div class="text-lg font-bold font-mono" :class="parseFloat(stats?.ff_alpha) > 0 ? 'text-green-400' : 'text-red-400'">
