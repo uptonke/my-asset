@@ -570,7 +570,6 @@ createApp({
             }).reverse();
         });
 
-        // 🌟 新增：壓力測試歷史情境計算屬性
         const stressTestResults = computed(() => {
             const currentBeta = parseFloat(portfolioStats.value.beta) || 1.0;
             const historicalScenarios = [
@@ -1030,7 +1029,6 @@ createApp({
             });
         }
         
-        // 🌟 確保所有在 HTML 呼叫的方法都被正確宣告
         function getTypeColor(type) { return type==='Buy'?'text-red-400':'text-green-400'; }
         function getCategoryColorCode(cat) { return '#3b82f6'; }
         function formatNumber(n) { return new Intl.NumberFormat('zh-TW', {maximumFractionDigits:0}).format(n||0); }
@@ -1042,7 +1040,6 @@ createApp({
             const canvas = document.getElementById('corrChart');
             if(!canvas || !correlationMatrix.value) return;
             
-            // 🚨 修復 2：暴力清除 Canvas 上任何殘留的 Chart 實例，根除 "already in use" 錯誤
             const existingChart = Chart.getChart(canvas);
             if (existingChart) existingChart.destroy();
             if (chartCorr) chartCorr.destroy();
@@ -1072,7 +1069,6 @@ createApp({
                         },
                         borderColor: '#1e293b', 
                         borderWidth: 1, 
-                        // 🚨 修復 1：加入 chartArea 的安全防呆，如果還沒算好版面，先給預設值 20
                         width: (c) => c.chart.chartArea ? (c.chart.chartArea.width / tickers.length - 2) : 20, 
                         height: (c) => c.chart.chartArea ? (c.chart.chartArea.height / tickers.length - 2) : 20,
                     }]
@@ -1233,7 +1229,7 @@ createApp({
             fireTargets, activeFireStageIndex, activeFireTarget, isLoggedIn, loginEmail, loginPassword, loginError, 
             isAuthenticating, handleLogin, handleLogout, checkAuth, fireProgress, 
             updateCharts, addFireTarget, macroRegime, enableBlackSwan, mcRisk, blViews, mcAvailableAssets, addBlView, enableInflation,
-            generateAutoViews, runMonteCarlo, stressTestResults, // 🚨 新增了 stressTestResults
+            generateAutoViews, runMonteCarlo, stressTestResults, 
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr,
             croInsight, isCroThinking, generateQuantInsight
         };
