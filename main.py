@@ -473,21 +473,32 @@ try:
             active_tickers = [t for t, s in current_shares.items() if s > 0.0001]
             
             if len(active_tickers) > 1:
-                port_df = yf.download(active_tickers, period="3mo", progress=False)["Close"]
-                if isinstance(port_df, pd.Series): port_df = port_df.to_frame(name=active_tickers[0])
+                # 🌟 修正 2：在計算相關係數前，先使用 proxy_map 轉換代號
+                tw_bench = "^TWII"
+                proxy_map = {"統一奔騰": "00981A.TW", "安聯台灣科技": "0052.TW", "加密貨幣": "BTC-USD"}
+                mapped_tickers = []
+                for t in active_tickers:
+                    t_clean = t.strip().upper()
+                    if t_clean in proxy_map: mapped_tickers.append(proxy_map[t_clean])
+                    elif bool(re.search(r'[\u4e00-\u9fff]', t_clean)): mapped_tickers.append(tw_bench)
+                    elif re.match(r'^\d+[a-zA-Z]*$', t_clean): mapped_tickers.append(f"{t_clean}.TW")
+                    else: mapped_tickers.append(t_clean)
+                
+                mapped_tickers = list(set(mapped_tickers)) # 移除重複
+                
+                port_df = yf.download(mapped_tickers, period="3mo", progress=False)["Close"]
+                if isinstance(port_df, pd.Series): port_df = port_df.to_frame(name=mapped_tickers[0])
                 
                 port_returns = port_df.pct_change().dropna()
                 corr_df = port_returns.corr()
                 
                 mask = np.triu(np.ones_like(corr_df, dtype=bool), k=1)
-                # 🚨 關鍵修正：確保算出來的平均值不是 NaN
                 raw_sys_corr = float(corr_df.where(mask).mean().mean())
                 if np.isnan(raw_sys_corr) or np.isinf(raw_sys_corr):
                     sys_corr = 0.0
                 else:
                     sys_corr = raw_sys_corr
                 
-                # 再次確保 corr_matrix 裡所有的 NaN, Inf 都被替換掉
                 corr_matrix = corr_df.replace([np.inf, -np.inf], np.nan).fillna(0.0).to_dict()
     except Exception as e:
         print(f"⚠️ 相關係數計算失敗: {e}")
@@ -623,6 +634,7 @@ def get_sheet_prices(url_str):
     if not url_str: return {}
     print("📊 正在從 Google Sheet 抓取自訂報價...", flush=True)
     try:
+        # 🌟 修正 1：修復帶有 Markdown 語法的 Sheet URL
         match = re.search(r'/d/([a-zA-Z0-9-_]+)', url_str)
         gid_match = re.search(r'[#&?]gid=([0-9]+)', url_str)
         if not match: return {}
