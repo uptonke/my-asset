@@ -480,9 +480,15 @@ try:
                 corr_df = port_returns.corr()
                 
                 mask = np.triu(np.ones_like(corr_df, dtype=bool), k=1)
-                sys_corr = float(corr_df.where(mask).mean().mean())
+                # 🚨 關鍵修正：確保算出來的平均值不是 NaN
+                raw_sys_corr = float(corr_df.where(mask).mean().mean())
+                if np.isnan(raw_sys_corr) or np.isinf(raw_sys_corr):
+                    sys_corr = 0.0
+                else:
+                    sys_corr = raw_sys_corr
                 
-                corr_matrix = corr_df.fillna(0).to_dict()
+                # 再次確保 corr_matrix 裡所有的 NaN, Inf 都被替換掉
+                corr_matrix = corr_df.replace([np.inf, -np.inf], np.nan).fillna(0.0).to_dict()
     except Exception as e:
         print(f"⚠️ 相關係數計算失敗: {e}")
         sys_corr = 0.3
