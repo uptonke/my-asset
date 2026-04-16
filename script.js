@@ -661,14 +661,15 @@ createApp({
             });
         });
 
-        // ==========================================
-        // 🌟 升級版 2: 獨立 HWM 引擎 + MWR 計算
+       // ==========================================
+        // 🌟 升級版 3: 獨立 HWM 引擎 + MWR + 潰瘍指數/水下時間/Omega
         // ==========================================
         watch([enrichedHistory, riskParams, dataFrequency], () => {
              const empty = { 
                  annRet:'-', annLogRet:'-', mwr:'-', annVol:'-', sharpe:'-', 
                  sortino:'-', treynor:'-', alpha:'-', var95:'-', cvar95:'-', 
-                 mdd:'-', calmar:'-', skew:'-', kurt:'-' 
+                 mdd:'-', calmar:'-', skew:'-', kurt:'-',
+                 tuw: '-', ulcer: '-', omega: '-', profitFactor: '-' // 🌟 新增空值預設
              };
              const h = [...enrichedHistory.value].reverse(); 
              if (h.length < 3) { stats.value = empty; return; }
@@ -678,31 +679,45 @@ createApp({
              let cumIndex = 1.0;
              let peakIndex = 1.0;
              let maxDrawdown = 0;
+             
+             // 🌟 NEW: 用於計算水下時間 (TUW) 與潰瘍指數 (UI)
+             let peakDate = new Date(h[0].date);
+             let maxTuwDays = 0;
+             let sqDrawdownSum = 0;
 
-             returns.forEach(r => {
+             returns.forEach((r, idx) => {
                  cumIndex = cumIndex * (1 + r);
-                 if (cumIndex > peakIndex) peakIndex = cumIndex;
-                 const dd = peakIndex > 0 ? (cumIndex - peakIndex) / peakIndex : 0;
-                 if (dd < maxDrawdown) maxDrawdown = dd; 
+                 const currentDate = new Date(h[idx + 1].date); // idx + 1 因為 returns 裁掉了 h[0]
+
+                 if (cumIndex > peakIndex) {
+                     peakIndex = cumIndex;
+                     peakDate = currentDate; // 創新高，重置水下時間起點
+                 } else {
+                     // 處於水下，計算天數
+                     const tuw = (currentDate - peakDate) / (1000 * 60 * 60 * 24);
+                     if (tuw > maxTuwDays) maxTuwDays = tuw;
+                 }
+
+                 const dd = peakIndex > 0 ? (peakIndex - cumIndex) / peakIndex : 0;
+                 if (dd > maxDrawdown) maxDrawdown = dd; 
+                 
+                 // UI: 累加回撤的平方 (以百分比計算)
+                 sqDrawdownSum += Math.pow(dd * 100, 2);
              });
 
              const cumTwr = returns.reduce((acc, r) => acc * (1 + r), 1) - 1;
              const factor = dataFrequency.value === 'Weekly' ? Math.sqrt(52) : Math.sqrt(252);
              const years = returns.length / (dataFrequency.value === 'Weekly' ? 52 : 252);
              
-             // 1. TWR (時間加權報酬率)
              const annRet = years > 0 ? (Math.pow(1 + cumTwr, 1 / years) - 1) : 0;
-             
-             // 2. 連續複利 Log Return = LN(1 + TWR)
              const annLogRet = Math.log(1 + annRet);
 
-             // 3. MWR (資金加權報酬率 / 簡單 IRR 近似值)
+             // MWR 計算
              let mwr = 0;
              const beginVal = h[0].assets;
              const endVal = h[h.length - 1].assets;
              let netCashFlow = 0;
              let timeWeightedCashFlow = 0;
-             
              const totalDays = (new Date(h[h.length - 1].date) - new Date(h[0].date)) / (1000 * 60 * 60 * 24);
              
              if (totalDays > 0) {
@@ -711,12 +726,10 @@ createApp({
                      const curr = h[i];
                      const daysFromStart = (new Date(curr.date) - new Date(h[0].date)) / (1000 * 60 * 60 * 24);
                      const weight = (totalDays - daysFromStart) / totalDays;
-                     
                      let flow = curr.cost - prev.cost; 
                      netCashFlow += flow;
                      timeWeightedCashFlow += flow * weight;
                  }
-                 
                  const dietzDenom = beginVal + timeWeightedCashFlow;
                  if (dietzDenom > 0) {
                      const totalMWR = (endVal - beginVal - netCashFlow) / dietzDenom;
@@ -733,15 +746,26 @@ createApp({
              const beta = riskParams.value.beta || 1;
 
              const sharpe = annVol > 0 ? (annRet - rf) / annVol : 0;
-             
-             // 4. Treynor Ratio (崔納指標)
              const treynor = beta !== 0 ? (annRet - rf) / beta : 0;
              
              const downsideReturns = returns.filter(r => r < 0);
              const downsideDev = Math.sqrt(downsideReturns.length > 0 ? downsideReturns.reduce((a,b) => a + Math.pow(b, 2), 0) / returns.length : 0) * factor; 
              const sortino = downsideDev > 0 ? (annRet - rf) / downsideDev : 0;
-
              const calmar = Math.abs(maxDrawdown) > 0 ? annRet / Math.abs(maxDrawdown) : 0;
+
+             // 🌟 NEW: 潰瘍指數 (Ulcer Index)
+             const ulcerIndex = Math.sqrt(sqDrawdownSum / returns.length);
+
+             // 🌟 NEW: 獲利因子 (Profit Factor)
+             const sumGainsAbs = returns.filter(r => r > 0).reduce((a,b)=>a+b, 0);
+             const sumLossesAbs = Math.abs(returns.filter(r => r < 0).reduce((a,b)=>a+b, 0));
+             const profitFactor = sumLossesAbs === 0 ? 999 : (sumGainsAbs / sumLossesAbs);
+
+             // 🌟 NEW: Omega Ratio (以單期無風險利率為門檻)
+             const rf_period = rf / (dataFrequency.value === 'Weekly' ? 52 : 252);
+             const omegaGains = returns.reduce((a, r) => a + Math.max(r - rf_period, 0), 0);
+             const omegaLosses = returns.reduce((a, r) => a + Math.max(rf_period - r, 0), 0);
+             const omegaRatio = omegaLosses === 0 ? 999 : (omegaGains / omegaLosses);
 
              const expectedRet = rf + beta * (rm - rf);
              const alpha = annRet - expectedRet;
@@ -760,7 +784,6 @@ createApp({
 
              const n = returns.length;
              const stdPop = Math.sqrt(returns.reduce((a,b)=>a+Math.pow(b-avgR, 2),0)/n);
-             
              let sumCubed = 0; let sumQuart = 0;
              returns.forEach(r => { sumCubed += Math.pow(r - avgR, 3); sumQuart += Math.pow(r - avgR, 4); });
 
@@ -778,10 +801,15 @@ createApp({
                  mdd: (maxDrawdown * 100).toFixed(2), 
                  calmar: calmar.toFixed(2), 
                  skew: ((sumCubed / n) / Math.pow(stdPop, 3)).toFixed(2),
-                 kurt: (((sumQuart / n) / Math.pow(stdPop, 4)) - 3).toFixed(2)
+                 kurt: (((sumQuart / n) / Math.pow(stdPop, 4)) - 3).toFixed(2),
+                 
+                 // 🌟 輸出新指標
+                 tuw: Math.round(maxTuwDays),
+                 ulcer: ulcerIndex.toFixed(2),
+                 omega: omegaRatio > 100 ? '∞' : omegaRatio.toFixed(2),
+                 profitFactor: profitFactor > 100 ? '∞' : profitFactor.toFixed(2)
              }; 
         }, { deep: true, immediate: true });
-
         const aiInsights = computed(() => {
             const val = totalStockValueTwd.value;
             if (val === 0) return { summary: '尚無庫存資料，請先新增交易紀錄。', details: [] };
