@@ -648,7 +648,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mt-4">
+                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-9 gap-3 mt-4">
                     <div class="quant-card">
                         <div class="quant-label text-blue-400" title="時間加權報酬 (評估選股能力)">年化 TWR</div>
                         <div class="quant-value text-white">{{ stats.annRet }}%</div>
@@ -661,6 +661,7 @@
                         <div class="quant-label text-blue-300" title="連續複利 LN(1+TWR)">Log Return</div>
                         <div class="quant-value text-white">{{ stats.annLogRet }}%</div>
                     </div>
+                    
                     <div class="quant-card">
                         <div class="quant-label text-gray-400">年化標準差 (Vol)</div>
                         <div class="quant-value text-white">{{ stats.annVol }}%</div>
@@ -669,15 +670,23 @@
                         <div class="quant-label text-yellow-400">夏普 (Sharpe)</div>
                         <div class="quant-value text-white">{{ stats.sharpe }}</div>
                     </div>
-                    <div class="quant-card border-yellow-900/30 bg-yellow-900/10">
-                        <div class="quant-label text-yellow-300" title="每承擔1單位系統風險(Beta)的超額報酬">崔納 (Treynor)</div>
-                        <div class="quant-value text-white">{{ stats.treynor }}</div>
-                    </div>
                     <div class="quant-card">
                         <div class="quant-label text-yellow-400">索提諾 (Sortino)</div>
                         <div class="quant-value text-white">{{ stats.sortino }}</div>
                     </div>
-                    
+                    <div class="quant-card border-yellow-900/30 bg-yellow-900/10">
+                        <div class="quant-label text-yellow-300" title="每承擔1單位系統風險的超額報酬">崔納 (Treynor)</div>
+                        <div class="quant-value text-white">{{ stats.treynor }}</div>
+                    </div>
+                    <div class="quant-card border-yellow-900/30 bg-yellow-900/10">
+                        <div class="quant-label text-yellow-300" title="機率權重盈虧比 (克服非常態分配)">Omega 比率</div>
+                        <div class="quant-value text-white">{{ stats.omega }}</div>
+                    </div>
+                    <div class="quant-card border-yellow-900/30 bg-yellow-900/10">
+                        <div class="quant-label text-yellow-300" title="總獲利 / 總虧損">獲利因子 (PF)</div>
+                        <div class="quant-value text-white">{{ stats.profitFactor }}</div>
+                    </div>
+
                     <div class="quant-card">
                         <div class="quant-label text-purple-400">組合 Beta (β)</div>
                         <div class="quant-value text-white">{{ riskParams.beta }}</div>
@@ -694,11 +703,22 @@
                         <div class="quant-label text-yellow-400">卡瑪 (Calmar)</div>
                         <div class="quant-value text-white">{{ stats.calmar }}</div>
                     </div>
+                    <div class="quant-card bg-red-900/20 border-red-500/30">
+                        <div class="quant-label text-red-400" title="綜合深度與長度的回撤懲罰">潰瘍指數 (UI)</div>
+                        <div class="quant-value text-white">{{ stats.ulcer }}</div>
+                    </div>
+                    <div class="quant-card bg-red-900/20 border-red-500/30">
+                        <div class="quant-label text-red-400" title="最長未創新高天數">水下時間 (天)</div>
+                        <div class="quant-value text-white">{{ stats.tuw }}</div>
+                    </div>
                     <div class="quant-card"><div class="quant-label text-red-400">VaR (95%)</div><div class="quant-value text-white">{{ stats.var95 }}%</div></div>
-                    <div class="quant-card bg-red-900/20 border-red-500/30"><div class="quant-label text-red-400">預期短缺 CVaR</div><div class="quant-value text-white">{{ stats.cvar95 }}%</div></div>
                     <div class="quant-card bg-white/5 border-yellow-400/30">
                         <div class="quant-label text-yellow-400">偏度 (Skewness)</div>
                         <div class="quant-value text-white" :class="stats.skew < 0 ? 'text-red-400' : 'text-green-400'">{{ stats.skew }}</div>
+                    </div>
+                    <div class="quant-card bg-white/5 border-yellow-400/30">
+                        <div class="quant-label text-yellow-400">峭度 (Kurtosis)</div>
+                        <div class="quant-value text-white" :class="stats.kurt > 3 ? 'text-red-400' : 'text-gray-300'">{{ stats.kurt }}</div>
                     </div>
                 </div>
                 
