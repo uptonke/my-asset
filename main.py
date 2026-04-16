@@ -867,12 +867,24 @@ try:
                             aligned_data = pd.concat([daily_port_return, ff_data], axis=1).dropna()
                             
                             if len(aligned_data) > 30:
-                                Y = aligned_data['Port_Ret'] - aligned_data['RF']
-                                X = aligned_data[['Mkt-RF', 'SMB', 'HML']]
-                                X = sm.add_constant(X) 
+                                # 🚨 終極清洗：確保 aligned_data 裡面絕對沒有 NaN 或 Infinity
+                                aligned_data = aligned_data.replace([np.inf, -np.inf], np.nan).dropna()
                                 
-                                model = sm.OLS(Y, X)
-                                results = model.fit()
+                                if len(aligned_data) > 30:
+                                    # 準備 Y (應變數：投組超額報酬 = 投組報酬 - 無風險利率)
+                                    Y = aligned_data['Port_Ret'] - aligned_data['RF']
+                                    
+                                    # 準備 X (自變數：Mkt-RF, SMB, HML)
+                                    X = aligned_data[['Mkt-RF', 'SMB', 'HML']]
+                                    X = sm.add_constant(X) # 加入 Alpha (截距項)
+                                    
+                                    # 🚨 再加上一層保險，確保轉換為 float 類型
+                                    Y = Y.astype(float)
+                                    X = X.astype(float)
+                                    
+                                    # 執行 OLS 多元線性迴歸
+                                    model = sm.OLS(Y, X)
+                                    results = model.fit()
                                 
                                 ff_alpha = results.params['const'] * 252 * 100 
                                 ff_mkt_beta = results.params['Mkt-RF']
