@@ -1024,11 +1024,16 @@ createApp({
         let chartSML, chartCML, chartAlloc, chartHist, chartRolling, chartMC, chartFire, chartCorr;
 
         function drawCorrelationMatrix() {
-            const ctx = document.getElementById('corrChart');
-            if(!ctx || !correlationMatrix.value) return;
-            if(chartCorr) chartCorr.destroy();
+            const canvas = document.getElementById('corrChart');
+            if(!canvas || !correlationMatrix.value) return;
+            
+            // 🚨 修復 2：暴力清除 Canvas 上任何殘留的 Chart 實例，根除 "already in use" 錯誤
+            const existingChart = Chart.getChart(canvas);
+            if (existingChart) existingChart.destroy();
+            if (chartCorr) chartCorr.destroy();
 
-            const matrixObj = correlationMatrix.value; const tickers = Object.keys(matrixObj);
+            const matrixObj = correlationMatrix.value; 
+            const tickers = Object.keys(matrixObj);
             if(tickers.length === 0) return;
 
             const dataPoints = [];
@@ -1038,7 +1043,7 @@ createApp({
                 }
             }
 
-            chartCorr = new Chart(ctx, {
+            chartCorr = new Chart(canvas, {
                 type: 'matrix',
                 data: {
                     datasets: [{
@@ -1050,7 +1055,11 @@ createApp({
                             if (val < 0) return `rgba(239, 68, 68, ${Math.abs(val) * 0.8})`; 
                             return 'rgba(30, 41, 59, 1)'; 
                         },
-                        borderColor: '#1e293b', borderWidth: 1, width: (ctx) => ctx.chart.chartArea.width / tickers.length - 2, height: (ctx) => ctx.chart.chartArea.height / tickers.length - 2,
+                        borderColor: '#1e293b', 
+                        borderWidth: 1, 
+                        // 🚨 修復 1：加入 chartArea 的安全防呆，如果還沒算好版面，先給預設值 20
+                        width: (c) => c.chart.chartArea ? (c.chart.chartArea.width / tickers.length - 2) : 20, 
+                        height: (c) => c.chart.chartArea ? (c.chart.chartArea.height / tickers.length - 2) : 20,
                     }]
                 },
                 options: {
