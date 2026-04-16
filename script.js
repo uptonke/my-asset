@@ -274,7 +274,7 @@ createApp({
             alpha:'0.00', var95:'0.00', cvar95:'0.00', mdd:'0.00', calmar:'0.00', skew:'0.00', kurt:'0.00', 
             tuw: '0', ulcer: '0.00', omega: '0.00', profitFactor: '0.00', 
             ff_alpha: '-', ff_mkt_beta: '-', ff_smb: '-', ff_hml: '-', 
-            ff_rmw: '-', ff_cma: '-', ff_wml: '-', ff_r_squared: '-' 
+            ff_rmw: '-', ff_cma: '-', ff_wml: '-', ff_r_squared: '-', 
             ff_tw_mkt: '-', ff_crypto: '-'
         });
 
