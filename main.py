@@ -66,7 +66,6 @@ def score_vix(v, z_score=0):
     v = _num(v)
     z = _num(z_score, 0)
     if v is None: return 0
-    # 🌟 NEW: 加入 Z-Score 判斷，若極度偏離常態，加重扣分
     if v > 30 or z > 2.5: return -2
     if v >= 20 or z > 1.5: return -1
     if v >= 12: return 1
@@ -209,13 +208,12 @@ def score_pcr(v, z_score=0):
     if v < 0.8: return 2  
     return 1
 
-# 🌟 NEW: 加入系統性風險評分 (平均相關係數)
 def score_sys_corr(v):
     v = _num(v)
     if v is None: return 0
-    if v > 0.85: return -3 # 雷曼時刻，分散投資失效
-    if v > 0.70: return -1 # 齊漲齊跌，風險升高
-    if v < 0.30: return 2  # 板塊輪動健康
+    if v > 0.85: return -3 
+    if v > 0.70: return -1 
+    if v < 0.30: return 2  
     return 0
 
 def choose_stage(scores):
@@ -233,7 +231,6 @@ def choose_stage(scores):
         
     if scores["yield_curve"] > 0 and scores["hy_spread"] > 0 and scores["vix"] > 0 and scores["btc_1m_mom"] > 0: return "expansion"
 
-    # 因應指標擴充，重新調平總分門檻
     if total >= 10: return "expansion"
     if 3 <= total <= 9: return "neutral"
     if -5 <= total <= 2: return "tight_liquidity"
@@ -246,19 +243,19 @@ def build_regime_packet(macro_payload):
         "yield_curve": macro_payload.get("yield_curve"),
         "hy_spread": macro_payload.get("hy_spread"),
         "vix": macro_payload.get("vix"),
-        "vix_z": macro_payload.get("vix_z"), # 🌟 加入 Z-Score
+        "vix_z": macro_payload.get("vix_z"), 
         "dxy": macro_payload.get("dxy"),
         "btc_1m_mom": macro_payload.get("btc_1m_mom"),
         "oil_price": macro_payload.get("oil_price"),
         "copper_gold_ratio": macro_payload.get("copper_gold_ratio"),
         "move_index": macro_payload.get("move_index"),
-        "move_z": macro_payload.get("move_z"), # 🌟 加入 Z-Score
+        "move_z": macro_payload.get("move_z"), 
         "iwm_spy_mom": macro_payload.get("iwm_spy_mom"),
         "xlu_xly_mom": macro_payload.get("xlu_xly_mom"),
         "vxn": macro_payload.get("vxn"),
-        "vxn_z": macro_payload.get("vxn_z"), # 🌟 加入 Z-Score
+        "vxn_z": macro_payload.get("vxn_z"), 
         "vvix": macro_payload.get("vvix"),
-        "vvix_z": macro_payload.get("vvix_z"), # 🌟 加入 Z-Score
+        "vvix_z": macro_payload.get("vvix_z"), 
         "hyg_tlt_mom": macro_payload.get("hyg_tlt_mom"),
         "dbc_mom": macro_payload.get("dbc_mom"),
         "soxx_spy_mom": macro_payload.get("soxx_spy_mom"),
@@ -267,8 +264,8 @@ def build_regime_packet(macro_payload):
         "kre_spy_mom": macro_payload.get("kre_spy_mom"),
         "aud_jpy_mom": macro_payload.get("aud_jpy_mom"),
         "put_call_ratio": macro_payload.get("put_call_ratio"),
-        "pcr_z": macro_payload.get("pcr_z"), # 🌟 加入 Z-Score
-        "sys_corr": macro_payload.get("sys_corr") # 🌟 加入平均相關係數
+        "pcr_z": macro_payload.get("pcr_z"), 
+        "sys_corr": macro_payload.get("sys_corr") 
     }
 
     scores = {
@@ -317,7 +314,6 @@ def build_regime_packet(macro_payload):
 # ==========================================
 print("🌍 啟動量化大腦：開始透過 Yahoo API 抓取市場參數...", flush=True)
 
-# 🌟 NEW: 計算 Z-Score 的輔助函數
 def calc_z_score(series):
     if series.empty or len(series) < 20: return 0.0
     mean = series.mean()
@@ -365,7 +361,6 @@ try:
 
     print("   ⏳ 正在抓取跨資產期貨、情緒指標、PCR與AUD/JPY (1年期歷史計算Z-Score)...", flush=True)
     try:
-        # 🌟 改抓 1 年期資料來算 Z-Score
         vix_family = yf.download(["^VIX", "^VXN", "^VVIX"], period="1y", progress=False)["Close"]
         if isinstance(vix_family, pd.Series): vix_family = vix_family.to_frame()
         
@@ -387,7 +382,6 @@ try:
         vix, vxn, vvix, dxy, gold, copper, oil, copper_gold_ratio = 20.0, 22.0, 90.0, 100.0, 2000.0, 4.0, 75.0, 0.2
         vix_z, vxn_z, vvix_z = 0.0, 0.0, 0.0
 
-    # 獨立沙盒處理 Put/Call Ratio
     try:
         pcr_data = yf.Ticker("^PCR").history(period="1y")['Close'].dropna()
         pcr = float(pcr_data.iloc[-1]) if not pcr_data.empty else 1.0
@@ -396,7 +390,6 @@ try:
         print("⚠️ Put/Call Ratio (^PCR) 讀取失敗或無資料，預設為中性值 1.0")
         pcr, pcr_z = 1.0, 0.0
 
-    # 獨立沙盒處理 AUD/JPY
     try:
         aud_jpy_data = yf.download("AUDJPY=X", period="1mo", progress=False)["Close"]
         if isinstance(aud_jpy_data, pd.DataFrame): aud_jpy_data = aud_jpy_data.iloc[:, 0]
@@ -460,17 +453,16 @@ try:
         move_idx, move_z, iwm_spy_mom, xlu_xly_mom, hyg_tlt_mom = 100.0, 0.0, 0.0, 0.0, 0.0
         dbc_mom, soxx_spy_mom, liquidity_spread, rsp_spy_mom, kre_spy_mom = 0.0, 0.0, 0.0, 0.0, 0.0
 
-    # 🌟 NEW: 從 Supabase 取得庫存標的，計算平均相關係數 (Systemic Risk)
     print("   ⏳ 正在計算投資組合平均相關係數 (系統性風險)...", flush=True)
     try:
         response = supabase.table("portfolio_db").select("*").limit(1).execute()
-        sys_corr = 0.3 # 預設值
+        sys_corr = 0.3 
         corr_matrix = {}
+        current_shares = {}
         
         if response.data:
             db_record = response.data[0]
             ledger_data = db_record.get("ledger_data", [])
-            current_shares = {}
             for tx in ledger_data:
                 t = str(tx.get("ticker", "")).strip().upper()
                 if not t: continue
@@ -481,18 +473,15 @@ try:
             active_tickers = [t for t, s in current_shares.items() if s > 0.0001]
             
             if len(active_tickers) > 1:
-                # 取得庫存標的歷史資料
                 port_df = yf.download(active_tickers, period="3mo", progress=False)["Close"]
                 if isinstance(port_df, pd.Series): port_df = port_df.to_frame(name=active_tickers[0])
                 
                 port_returns = port_df.pct_change().dropna()
                 corr_df = port_returns.corr()
                 
-                # 計算上三角矩陣的平均值
                 mask = np.triu(np.ones_like(corr_df, dtype=bool), k=1)
                 sys_corr = float(corr_df.where(mask).mean().mean())
                 
-                # 將 NaN 轉為 0 以確保 JSON 可序列化
                 corr_matrix = corr_df.fillna(0).to_dict()
     except Exception as e:
         print(f"⚠️ 相關係數計算失敗: {e}")
@@ -516,7 +505,7 @@ try:
         "aud_jpy_mom": float(round(aud_jpy_mom, 2)), 
         "put_call_ratio": float(round(pcr, 2)), "pcr_z": float(round(pcr_z, 2)),
         "sys_corr": float(round(sys_corr, 2)),
-        "corr_matrix": corr_matrix # 傳給前端畫 Heatmap
+        "corr_matrix": corr_matrix 
     }
     
     # ==========================================
@@ -532,7 +521,6 @@ try:
             
             model_pipeline = ["gemini-3-flash-preview", "gemini-2.5-flash", "gemini-3.1-pro-preview", "gemini-2.5-pro", "gemini-2.0-flash"]
                 
-            # 🌟 NEW: 在 Prompt 中要求 AI 注意 Z-Score 與系統相關性
             prompt = f"""
             [SYSTEM_DIRECTIVE]
             Task: Transform deterministic macro signals into aggressive tactical trading metadata.
@@ -613,6 +601,7 @@ try:
     if existing.data:
         supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
     else:
+        # 初次建立使用 insert
         supabase.table("portfolio_db").insert({"id": target_id, "macro_meta": macro_payload}).execute()
 
 except Exception as e:
@@ -778,6 +767,8 @@ try:
 
             print("🧠 啟動機構級最佳化引擎 (限制 3%~20%)...", flush=True)
             print("⚖️ 正在過濾真實庫存標的...", flush=True)
+            
+            # 定義 current_shares
             current_shares = {}
             for tx in ledger_data:
                 t = str(tx.get("ticker", "")).strip().upper()
@@ -809,6 +800,82 @@ try:
                     dynamic_max = 0.20
                     
                 target_weights = get_optimal_weights(investable_returns, stock_meta, min_wt=dynamic_min, max_wt=dynamic_max)
+                
+                # ==========================================
+                # 🔬 NEW: 啟動 Fama-French 3 因子模型迴歸引擎
+                # ==========================================
+                print("🧠 啟動 Fama-French 3 因子模型迴歸引擎...", flush=True)
+                try:
+                    import pandas_datareader.data as web
+                    import statsmodels.api as sm
+
+                    # 1. 抓取 Kenneth French 的日資料 (Mkt-RF, SMB, HML, RF)
+                    ff_dict = web.DataReader('F-F_Research_Data_Factors_daily', 'famafrench', start='2023-01-01')
+                    ff_data = ff_dict[0]
+                    
+                    # 確保 index 是 timezone-naive 的 datetime，並將百分比轉為小數
+                    ff_data.index = pd.to_datetime(ff_data.index.astype(str)).tz_localize(None)
+                    ff_data = ff_data / 100.0
+
+                    # 2. 計算投資組合的歷史每日超額報酬
+                    if len(returns) > 30:
+                        # 使用現有的實際庫存權重 (current_shares) 來計算投組報酬
+                        port_weights = []
+                        total_shares = sum([current_shares.get(t, 0) for t in active_tickers])
+                        
+                        if total_shares > 0:
+                            # 構建一個與 valid_investable 對應的權重陣列
+                            for yt in valid_investable:
+                                original_ticker = list(ticker_to_yf.keys())[list(ticker_to_yf.values()).index(yt)]
+                                weight = current_shares.get(original_ticker, 0) / total_shares
+                                port_weights.append(weight)
+                                
+                            port_weights = np.array(port_weights)
+                            # 計算投組每日加權報酬率
+                            daily_port_return = investable_returns.dot(port_weights)
+                            daily_port_return.index = pd.to_datetime(daily_port_return.index).tz_localize(None)
+                            daily_port_return.name = 'Port_Ret'
+
+                            # 3. 對齊時間軸 (只取雙方都有資料的日期)
+                            aligned_data = pd.concat([daily_port_return, ff_data], axis=1).dropna()
+                            
+                            if len(aligned_data) > 30:
+                                # 準備 Y (應變數：投組超額報酬 = 投組報酬 - 無風險利率)
+                                Y = aligned_data['Port_Ret'] - aligned_data['RF']
+                                
+                                # 準備 X (自變數：Mkt-RF, SMB, HML)
+                                X = aligned_data[['Mkt-RF', 'SMB', 'HML']]
+                                X = sm.add_constant(X) # 加入 Alpha (截距項)
+                                
+                                # 執行 OLS 多元線性迴歸
+                                model = sm.OLS(Y, X)
+                                results = model.fit()
+                                
+                                # 提取因子暴露度 (年化 Alpha, Beta, R-squared)
+                                ff_alpha = results.params['const'] * 252 * 100 # 轉為百分比
+                                ff_mkt_beta = results.params['Mkt-RF']
+                                ff_smb = results.params['SMB']
+                                ff_hml = results.params['HML']
+                                ff_r_squared = results.rsquared
+                                
+                                fama_french_stats = {
+                                    "alpha": float(round(ff_alpha, 2)),
+                                    "mkt_beta": float(round(ff_mkt_beta, 2)),
+                                    "smb": float(round(ff_smb, 2)),
+                                    "hml": float(round(ff_hml, 2)),
+                                    "r_squared": float(round(ff_r_squared, 2))
+                                }
+                                
+                                print(f"✅ FF3 運算成功: Mkt β={ff_mkt_beta:.2f}, SMB={ff_smb:.2f}, HML={ff_hml:.2f}, R²={ff_r_squared:.2f}")
+                                
+                                # 將 FF3 結果塞進 macro_meta 準備更新到 Supabase
+                                macro_payload["fama_french"] = fama_french_stats
+                                supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
+                            else:
+                                print("⚠️ 日期對齊後資料點不足，跳過 FF3 運算。")
+                except Exception as e:
+                    print(f"⚠️ Fama-French 迴歸運算失敗: {e}", flush=True)
+                # ==========================================
 
             print("🧠 開始計算多因子風險參數並寫入資料庫...", flush=True)
             for i, original_ticker in enumerate(all_tickers):
