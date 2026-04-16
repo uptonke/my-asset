@@ -209,8 +209,8 @@ try:
         move_idx, move_z, iwm_spy_mom, xlu_xly_mom, hyg_tlt_mom = 100.0, 0.0, 0.0, 0.0, 0.0
         dbc_mom, soxx_spy_mom, liquidity_spread, rsp_spy_mom, kre_spy_mom = 0.0, 0.0, 0.0, 0.0, 0.0
 
-    print("   ⏳ 正在計算系統相關性矩陣 (並升級為 60-Day Rolling)...", flush=True)
-    sys_corr, corr_matrix, rolling_corr_series = 0.3, {}, []
+    print("   ⏳ 正在計算系統靜態相關性矩陣...", flush=True)
+    sys_corr, corr_matrix = 0.3, {}
     current_shares, active_tickers = {}, []
     try:
         response = supabase.table("portfolio_db").select("*").limit(1).execute()
@@ -234,34 +234,13 @@ try:
                 if isinstance(port_df, pd.Series): port_df = port_df.to_frame(name=mapped_tickers[0])
                 port_returns = port_df.pct_change().dropna()
                 
-                # 🌟 升級功能：60天動態滾動相關性 (Rolling Correlation)
-                if len(port_returns) >= 60:
-                    for i in range(60, len(port_returns) + 1):
-                        window = port_returns.iloc[i-60:i]
-                        corr_df = window.corr()
-                        mask = np.triu(np.ones_like(corr_df, dtype=bool), k=1)
-                        mean_corr = float(corr_df.where(mask).mean().mean())
-                        if not np.isnan(mean_corr):
-                            rolling_corr_series.append({"date": window.index[-1].strftime("%Y-%m-%d"), "corr": round(mean_corr, 4)})
-                    if rolling_corr_series: sys_corr = rolling_corr_series[-1]["corr"]
-                else:
-                    corr_df = port_returns.corr()
-                    mask = np.triu(np.ones_like(corr_df, dtype=bool), k=1)
-                    raw_sys_corr = float(corr_df.where(mask).mean().mean())
-                    sys_corr = raw_sys_corr if not np.isnan(raw_sys_corr) else 0.0
-
+                # 恢復為單純的靜態相關性計算
+                corr_df = port_returns.corr()
+                mask = np.triu(np.ones_like(corr_df, dtype=bool), k=1)
+                raw_sys_corr = float(corr_df.where(mask).mean().mean())
+                sys_corr = raw_sys_corr if not np.isnan(raw_sys_corr) else 0.0
                 corr_matrix = port_returns.corr().replace([np.inf, -np.inf], np.nan).fillna(0.0).to_dict()
-                corr_spike_alert = False
-                sys_corr_change_5d = 0.0
-                if len(rolling_corr_series) >= 6:
-                    recent_corr = rolling_corr_series[-1]["corr"]
-                    past_corr = rolling_corr_series[-6]["corr"] # 5個交易日(一週)前的相關性
-                    sys_corr_change_5d = recent_corr - past_corr
-                    
-                    # 警報觸發條件：一週內相關性暴增超過 0.15，且目前絕對值大於 0.6 (代表開始齊漲齊跌)
-                    if sys_corr_change_5d > 0.15 and recent_corr > 0.60:
-                        corr_spike_alert = True
-                        print(f"🚨 [警告] 系統相關性陡升警報觸發！(5日變化: +{sys_corr_change_5d:.2f}, 當前: {recent_corr:.2f})", flush=True)
+                
     except Exception as e: print(f"⚠️ 相關性計算失敗: {e}")
 
     macro_payload = {
@@ -277,16 +256,13 @@ try:
         "soxx_spy_mom": float(round(soxx_spy_mom, 2)), "liquidity_spread": float(round(liquidity_spread, 2)),
         "rsp_spy_mom": float(round(rsp_spy_mom, 2)), "kre_spy_mom": float(round(kre_spy_mom, 2)), "aud_jpy_mom": float(round(aud_jpy_mom, 2)), 
         "put_call_ratio": float(round(pcr, 2)), "pcr_z": float(round(pcr_z, 2)),
-        "sys_corr": float(round(sys_corr, 2)), "sys_corr_change_5d": float(round(sys_corr_change_5d, 4)), 
-        "corr_spike_alert": corr_spike_alert, "corr_matrix": corr_matrix, "rolling_corr_series": rolling_corr_series
+        "sys_corr": float(round(sys_corr, 2)), "corr_matrix": corr_matrix
     }
     
     # ==========================================
     # Gemini AI 總結
     # ==========================================
     regime_packet = build_regime_packet(macro_payload)
-    regime_packet["corr_spike_alert"] = corr_spike_alert
-    regime_packet["sys_corr_change_5d"] = sys_corr_change_5d
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
     if GEMINI_API_KEY:
         try:
@@ -300,10 +276,9 @@ try:
             [TRANSFORMATION_RULES]
             1. STAGE: Translate `stage_candidate` to Traditional Chinese.
             2. SUMMARY: 1 sentence. MUST START WITH "[目前總經形勢: 翻譯後的STAGE]". Map stage to a max-alpha strategy.
-               *CRITICAL_ALERT*: If `corr_spike_alert` is true in the data, you MUST declare a "流動性衝擊/無差別拋售警告" and override all bullish signals.
+               *CRITICAL*: If `sys_corr` > 0.8, declare a systemic liquidation event.
             3. DETAILS.TITLE: Traditional Chinese metric name.
             4. DETAILS.DESC: Max 35 chars. Explicitly cite specific numeric values (Z-Scores).
-               *CRITICAL_ALERT*: If `corr_spike_alert` is true, add a dedicated detail item warning about the 5-day correlation spike.
             5. DETAILS.COLOR: "text-green-400", "text-red-400", "text-gray-400".
             6. DETAILS.ICON: Single emoji.
 
@@ -431,7 +406,7 @@ try:
                 target_weights = get_optimal_weights(returns[valid_investable], stock_meta, min_wt=dynamic_min, max_wt=1.0 if num_assets < 5 else 0.20)
                 
                 # ==========================================
-                # 🌟 升級：Fama-French 6 因子模型 (FF5 + Momentum)
+                # 🌟 保留的升級：Fama-French 6 因子模型
                 # ==========================================
                 print("🧠 啟動 Fama-French 6 因子模型 (FF5 + Momentum) 迴歸引擎...", flush=True)
                 try:
@@ -485,7 +460,7 @@ try:
                                     "wml": float(round(results.params['Mom'], 2)),
                                     "r_squared": float(round(results.rsquared, 2))
                                 }
-                                print(f"✅ FF6 運算成功: R²={results.rsquared:.2f}, RMW={results.params['RMW']:.2f}, WML={results.params['Mom']:.2f}")
+                                print(f"✅ FF6 運算成功: R²={results.rsquared:.2f}")
                                 supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
                 except Exception as e: print(f"⚠️ FF6 迴歸失敗: {e}", flush=True)
 
@@ -538,10 +513,10 @@ try:
                     Language: STRICTLY Traditional Chinese (繁體中文). ONLY JSON output.
 
                     [LOGICAL_GUARDRAILS]
-                    - CRITICAL: DO NOT confuse "Sector Rotation" with "Hedging".
+                    - CRITICAL: DO NOT confuse "Sector Rotation / Capital Efficiency" with "Hedging".
                     - TRUE HEDGING means moving to cash, bonds, or negative-beta assets.
-                    - If the trades involve moving capital to high-beta assets, explicitly frame it as "Risk-On Rotation", NEVER as "Hedging".
-                    - 🚨 BLACK SWAN OVERRIDE: If the Macro Summary mentions "流動性衝擊", "相關性陡升", or "無差別拋售", you MUST frame the entire rebalance execution as extreme defensive De-Risking (selling high-beta, fleeing to safety).
+                    - DO NOT suggest buying high-beta, risk-on assets (like Crypto or Tech stocks) as a "hedge" against market risks.
+                    - If the trades involve moving capital to high-beta assets, explicitly frame it as "Risk-On Rotation", "Pursuing Alpha", or "Capitalizing on Momentum", NEVER as "Hedging".
 
                     [INPUT_DATA]
                     Macro Summary: {macro_payload.get('ai_analysis', {}).get('summary', '無')}
