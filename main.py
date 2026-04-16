@@ -6,6 +6,7 @@ import warnings
 import traceback
 import math
 import requests
+import zipfile
 import numpy as np
 import pandas as pd
 import yfinance as yf
@@ -473,7 +474,6 @@ try:
             active_tickers = [t for t, s in current_shares.items() if s > 0.0001]
             
             if len(active_tickers) > 1:
-                # 🌟 修正 2：在計算相關係數前，先使用 proxy_map 轉換代號
                 tw_bench = "^TWII"
                 proxy_map = {"統一奔騰": "00981A.TW", "安聯台灣科技": "0052.TW", "加密貨幣": "BTC-USD"}
                 mapped_tickers = []
@@ -484,7 +484,7 @@ try:
                     elif re.match(r'^\d+[a-zA-Z]*$', t_clean): mapped_tickers.append(f"{t_clean}.TW")
                     else: mapped_tickers.append(t_clean)
                 
-                mapped_tickers = list(set(mapped_tickers)) # 移除重複
+                mapped_tickers = list(set(mapped_tickers))
                 
                 port_df = yf.download(mapped_tickers, period="3mo", progress=False)["Close"]
                 if isinstance(port_df, pd.Series): port_df = port_df.to_frame(name=mapped_tickers[0])
@@ -618,7 +618,6 @@ try:
     if existing.data:
         supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
     else:
-        # 初次建立使用 insert
         supabase.table("portfolio_db").insert({"id": target_id, "macro_meta": macro_payload}).execute()
 
 except Exception as e:
@@ -634,11 +633,16 @@ def get_sheet_prices(url_str):
     if not url_str: return {}
     print("📊 正在從 Google Sheet 抓取自訂報價...", flush=True)
     try:
-        # 🌟 修正 1：修復帶有 Markdown 語法的 Sheet URL
-        match = re.search(r'/d/([a-zA-Z0-9-_]+)', url_str)
-        gid_match = re.search(r'[#&?]gid=([0-9]+)', url_str)
+        # 🌟 修正 1：純字串處理，徹底拔除 Markdown 殘留
+        clean_url = re.sub(r'\[.*?\]\((.*?)\)', r'\1', url_str)
+        match = re.search(r'/d/([a-zA-Z0-9-_]+)', clean_url)
+        gid_match = re.search(r'[#&?]gid=([0-9]+)', clean_url)
         if not match: return {}
-        csv_url = f"[https://docs.google.com/spreadsheets/d/](https://docs.google.com/spreadsheets/d/){match.group(1)}/gviz/tq?tqx=out:csv&gid={gid_match.group(1) if gid_match else '0'}"
+        
+        sheet_id = match.group(1)
+        gid = gid_match.group(1) if gid_match else '0'
+        csv_url = "[https://docs.google.com/spreadsheets/d/](https://docs.google.com/spreadsheets/d/)" + sheet_id + "/gviz/tq?tqx=out:csv&gid=" + gid
+        
         response = requests.get(csv_url, timeout=10)
         response.raise_for_status() 
         df = pd.read_csv(io.StringIO(response.text), header=None)
@@ -786,7 +790,6 @@ try:
             print("🧠 啟動機構級最佳化引擎 (限制 3%~20%)...", flush=True)
             print("⚖️ 正在過濾真實庫存標的...", flush=True)
             
-            # 定義 current_shares
             current_shares = {}
             for tx in ledger_data:
                 t = str(tx.get("ticker", "")).strip().upper()
@@ -824,53 +827,47 @@ try:
                 # ==========================================
                 print("🧠 啟動 Fama-French 3 因子模型迴歸引擎...", flush=True)
                 try:
-                    import pandas_datareader.data as web
                     import statsmodels.api as sm
-
-                    # 1. 抓取 Kenneth French 的日資料 (Mkt-RF, SMB, HML, RF)
-                    ff_dict = web.DataReader('F-F_Research_Data_Factors_daily', 'famafrench', start='2023-01-01')
-                    ff_data = ff_dict[0]
+                    # 🌟 修正 2：拋棄 pandas_datareader，直接下載解析 ZIP 檔，徹底解決相容性問題！
+                    ff_url = "[https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_daily_CSV.zip](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_daily_CSV.zip)"
+                    r = requests.get(ff_url, timeout=15)
+                    with zipfile.ZipFile(io.BytesIO(r.content)) as z:
+                        with z.open(z.namelist()[0]) as f:
+                            # Kenneth French 的檔案前三行是說明文字，要跳過
+                            ff_data = pd.read_csv(f, skiprows=3, index_col=0)
                     
-                    # 確保 index 是 timezone-naive 的 datetime，並將百分比轉為小數
-                    ff_data.index = pd.to_datetime(ff_data.index.astype(str)).tz_localize(None)
-                    ff_data = ff_data / 100.0
+                    # 整理資料：去除無效欄位，將日期轉為 datetime，數值轉為小數
+                    ff_data.index = pd.to_datetime(ff_data.index.astype(str).str.strip(), format='%Y%m%d', errors='coerce')
+                    ff_data = ff_data.dropna()
+                    ff_data = ff_data.apply(pd.to_numeric, errors='coerce').dropna()
+                    ff_data = ff_data / 100.0 
 
-                    # 2. 計算投資組合的歷史每日超額報酬
                     if len(returns) > 30:
-                        # 使用現有的實際庫存權重 (current_shares) 來計算投組報酬
                         port_weights = []
                         total_shares = sum([current_shares.get(t, 0) for t in active_tickers])
                         
                         if total_shares > 0:
-                            # 構建一個與 valid_investable 對應的權重陣列
                             for yt in valid_investable:
                                 original_ticker = list(ticker_to_yf.keys())[list(ticker_to_yf.values()).index(yt)]
                                 weight = current_shares.get(original_ticker, 0) / total_shares
                                 port_weights.append(weight)
                                 
                             port_weights = np.array(port_weights)
-                            # 計算投組每日加權報酬率
                             daily_port_return = investable_returns.dot(port_weights)
                             daily_port_return.index = pd.to_datetime(daily_port_return.index).tz_localize(None)
                             daily_port_return.name = 'Port_Ret'
 
-                            # 3. 對齊時間軸 (只取雙方都有資料的日期)
                             aligned_data = pd.concat([daily_port_return, ff_data], axis=1).dropna()
                             
                             if len(aligned_data) > 30:
-                                # 準備 Y (應變數：投組超額報酬 = 投組報酬 - 無風險利率)
                                 Y = aligned_data['Port_Ret'] - aligned_data['RF']
-                                
-                                # 準備 X (自變數：Mkt-RF, SMB, HML)
                                 X = aligned_data[['Mkt-RF', 'SMB', 'HML']]
-                                X = sm.add_constant(X) # 加入 Alpha (截距項)
+                                X = sm.add_constant(X) 
                                 
-                                # 執行 OLS 多元線性迴歸
                                 model = sm.OLS(Y, X)
                                 results = model.fit()
                                 
-                                # 提取因子暴露度 (年化 Alpha, Beta, R-squared)
-                                ff_alpha = results.params['const'] * 252 * 100 # 轉為百分比
+                                ff_alpha = results.params['const'] * 252 * 100 
                                 ff_mkt_beta = results.params['Mkt-RF']
                                 ff_smb = results.params['SMB']
                                 ff_hml = results.params['HML']
@@ -886,7 +883,6 @@ try:
                                 
                                 print(f"✅ FF3 運算成功: Mkt β={ff_mkt_beta:.2f}, SMB={ff_smb:.2f}, HML={ff_hml:.2f}, R²={ff_r_squared:.2f}")
                                 
-                                # 將 FF3 結果塞進 macro_meta 準備更新到 Supabase
                                 macro_payload["fama_french"] = fama_french_stats
                                 supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
                             else:
