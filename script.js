@@ -337,6 +337,22 @@ createApp({
                         if (macroData.sys_corr) {
                             sysCorr.value = macroData.sys_corr;
                         }
+                                                // 🌟 NEW: 從 Supabase 讀取並裝載 Fama-French 因子數據到 stats
+                        if (macroData.fama_french) {
+                            // 因為 stats 物件可能在其他地方被重置，我們用 Object.assign 來確保屬性存在
+                            stats.value.ff_alpha = macroData.fama_french.alpha;
+                            stats.value.ff_mkt_beta = macroData.fama_french.mkt_beta;
+                            stats.value.ff_smb = macroData.fama_french.smb;
+                            stats.value.ff_hml = macroData.fama_french.hml;
+                            stats.value.ff_r_squared = macroData.fama_french.r_squared;
+                        } else {
+                            // 防呆：如果雲端還沒算出來，給個預設值
+                            stats.value.ff_alpha = '-';
+                            stats.value.ff_mkt_beta = '-';
+                            stats.value.ff_smb = '-';
+                            stats.value.ff_hml = '-';
+                            stats.value.ff_r_squared = '-';
+                        }
                     }
                     
                     if (data.rebalance_meta) {
@@ -827,6 +843,11 @@ createApp({
                  ulcer: ulcerIndex.toFixed(2),
                  omega: omegaRatio > 100 ? '∞' : omegaRatio.toFixed(2),
                  profitFactor: profitFactor > 100 ? '∞' : profitFactor.toFixed(2)
+                ff_alpha: stats.value.ff_alpha || '-',
+                 ff_mkt_beta: stats.value.ff_mkt_beta || '-',
+                 ff_smb: stats.value.ff_smb || '-',
+                 ff_hml: stats.value.ff_hml || '-',
+                 ff_r_squared: stats.value.ff_r_squared || '-'
              }; 
         }, { deep: true, immediate: true });
         const aiInsights = computed(() => {
