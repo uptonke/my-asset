@@ -547,6 +547,56 @@
                     </div>
                 </div>
 
+                <div class="glass p-5 rounded-2xl flex flex-col mt-6 border-l-4 border-indigo-500 relative">
+                    <div class="absolute -right-4 -top-4 opacity-5 pointer-events-none">
+                        <i class="fas fa-microscope text-9xl text-indigo-500"></i>
+                    </div>
+                    <div class="relative z-10">
+                        <h4 class="text-white font-bold mb-1 flex items-center gap-2 text-lg">
+                            <i class="fas fa-atom text-indigo-400"></i> Fama-French 3-Factor 因子解析
+                        </h4>
+                        <p class="text-xs text-gray-400 mb-5">透過 Multiple Linear Regression 解構投資組合的真實超額報酬來源。($R^2 = {{ stats?.ff_r_squared || '-' }})</p>
+                        
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-700/50">
+                                <div class="text-xs text-gray-500 mb-1">純粹超額報酬 (α)</div>
+                                <div class="text-xl font-bold font-mono" :class="parseFloat(stats?.ff_alpha) > 0 ? 'text-green-400' : 'text-red-400'">
+                                    {{ parseFloat(stats?.ff_alpha) > 0 ? '+' : '' }}{{ stats?.ff_alpha || '-' }}%
+                                </div>
+                                <div class="text-[10px] text-gray-400 mt-1">排除大盤、市值、價值因子後的真實選股能力。</div>
+                            </div>
+
+                            <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-700/50">
+                                <div class="text-xs text-gray-500 mb-1">大盤風險 (Mkt-RF)</div>
+                                <div class="text-xl font-bold font-mono text-blue-400">{{ stats?.ff_mkt_beta || '-' }}</div>
+                                <div class="text-[10px] text-gray-400 mt-1">投資組合對整體大盤的敏感度 (傳統 Beta)。</div>
+                            </div>
+
+                            <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-700/50">
+                                <div class="text-xs text-gray-500 mb-1">市值因子 (SMB)</div>
+                                <div class="text-xl font-bold font-mono" :class="parseFloat(stats?.ff_smb) > 0 ? 'text-yellow-400' : 'text-purple-400'">
+                                    {{ stats?.ff_smb || '-' }}
+                                </div>
+                                <div class="text-[10px] text-gray-400 mt-1">
+                                    > 0 偏向<span class="text-yellow-400">中小型股</span><br>
+                                    < 0 偏向<span class="text-purple-400">大型權值股</span>
+                                </div>
+                            </div>
+
+                            <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-700/50">
+                                <div class="text-xs text-gray-500 mb-1">價值因子 (HML)</div>
+                                <div class="text-xl font-bold font-mono" :class="parseFloat(stats?.ff_hml) > 0 ? 'text-orange-400' : 'text-cyan-400'">
+                                    {{ stats?.ff_hml || '-' }}
+                                </div>
+                                <div class="text-[10px] text-gray-400 mt-1">
+                                    > 0 偏向<span class="text-orange-400">傳統價值股</span><br>
+                                    < 0 偏向<span class="text-cyan-400">科技成長股</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div class="glass p-5 rounded-2xl flex flex-col relative min-h-[300px] md:h-96">
                         <h4 class="text-white font-bold mb-2">證券市場線 (SML) - Beta vs Return</h4>
