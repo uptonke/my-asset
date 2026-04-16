@@ -285,6 +285,8 @@ try:
     # Gemini AI 總結
     # ==========================================
     regime_packet = build_regime_packet(macro_payload)
+    regime_packet["corr_spike_alert"] = corr_spike_alert
+    regime_packet["sys_corr_change_5d"] = sys_corr_change_5d
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
     if GEMINI_API_KEY:
         try:
@@ -307,8 +309,6 @@ try:
 
             [INPUT_DATA]
             {json.dumps(regime_packet, ensure_ascii=False)}
-            "corr_spike_alert": {str(corr_spike_alert).lower()},
-            "sys_corr_change_5d": {sys_corr_change_5d}
 
             [OUTPUT_SCHEMA]
             {{"summary": "<string>", "details": [{{"icon": "<emoji>", "color": "<string_class>", "title": "<string>", "desc": "<string>"}}]}}
