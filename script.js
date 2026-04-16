@@ -264,11 +264,11 @@ createApp({
         const priceMap = ref({});
         const stockMeta = ref({});
 
-        // 🚨 確保 stats 在最前面初始化，包含所有的 Fama-French 欄位，避免 Vue 抓不到變數
+        // 🚨 安全初始化：確保所有會被 HTML 綁定的數值都有合理的預設值，避免畫面渲染 Crash
         const stats = ref({ 
-            annRet:'-', annLogRet:'-', mwr:'-', annVol:'-', sharpe:'-', sortino:'-', treynor:'-', 
-            alpha:'-', var95:'-', cvar95:'-', mdd:'-', calmar:'-', skew:'-', kurt:'-', 
-            tuw: '-', ulcer: '-', omega: '-', profitFactor: '-', 
+            annRet:'0.00', annLogRet:'0.00', mwr:'0.00', annVol:'0.00', sharpe:'0.00', sortino:'0.00', treynor:'0.00', 
+            alpha:'0.00', var95:'0.00', cvar95:'0.00', mdd:'0.00', calmar:'0.00', skew:'0.00', kurt:'0.00', 
+            tuw: '0', ulcer: '0.00', omega: '0.00', profitFactor: '0.00', 
             ff_alpha: '-', ff_mkt_beta: '-', ff_smb: '-', ff_hml: '-', ff_r_squared: '-' 
         });
 
@@ -298,7 +298,6 @@ createApp({
                         if (macroData.corr_matrix) correlationMatrix.value = macroData.corr_matrix;
                         if (macroData.sys_corr) sysCorr.value = macroData.sys_corr;
 
-                        // 🌟 讀取 Fama-French 因子資料
                         if (macroData.fama_french) {
                             stats.value.ff_alpha = macroData.fama_french.alpha;
                             stats.value.ff_mkt_beta = macroData.fama_french.mkt_beta;
@@ -336,7 +335,7 @@ createApp({
             } finally {
                 isDbSyncing.value = false;
                 isAppReady.value = true; 
-                updateCharts();
+                nextTick(() => updateCharts());
             }
         }
 
@@ -355,7 +354,7 @@ createApp({
         function toggleSimMode() {
             isSimMode.value = !isSimMode.value;
             if (isSimMode.value && mockHistoryData.value.length === 0) generateMonthlyMockData();
-            updateCharts();
+            nextTick(() => updateCharts());
         }
 
         function updateMeta(stock) {
@@ -394,7 +393,7 @@ createApp({
                         saveData();
                         lastUpdate.value = new Date().toLocaleTimeString();
                         isUpdating.value = false;
-                        updateCharts();
+                        nextTick(() => updateCharts());
                         alert(`成功更新 ${count} 筆。`);
                     }
                 });
@@ -562,7 +561,9 @@ createApp({
 
         watch([enrichedHistory, riskParams, dataFrequency], () => {
              const h = [...enrichedHistory.value].reverse(); 
-             if (h.length < 3) return; // 若長度不足，保留預設值
+             
+             // 🚨 安全出口：如果資料不夠，維持預設值直接返回，不要讓 NaN 炸掉程式
+             if (h.length < 3) return;
 
              const returns = h.slice(1).map(item => item.dailyReturn);
 
@@ -586,7 +587,7 @@ createApp({
              const factor = dataFrequency.value === 'Weekly' ? Math.sqrt(52) : Math.sqrt(252);
              const years = returns.length / (dataFrequency.value === 'Weekly' ? 52 : 252);
              const annRet = years > 0 ? (Math.pow(1 + cumTwr, 1 / years) - 1) : 0;
-             const annLogRet = Math.log(1 + annRet);
+             const annLogRet = Math.log(1 + annRet) || 0;
 
              let mwr = 0; const beginVal = h[0].assets; const endVal = h[h.length - 1].assets;
              let netCashFlow = 0; let timeWeightedCashFlow = 0;
@@ -609,7 +610,7 @@ createApp({
 
              const avgR = returns.reduce((a,b)=>a+b,0)/returns.length;
              const stdSample = Math.sqrt(returns.reduce((a,b) => a + Math.pow(b-avgR, 2), 0) / (returns.length - 1));
-             const annVol = stdSample * factor;
+             const annVol = stdSample * factor || 0;
 
              const rf = riskParams.value.rf / 100; const rm = riskParams.value.rm / 100; const beta = riskParams.value.beta || 1;
              const sharpe = annVol > 0 ? (annRet - rf) / annVol : 0;
@@ -620,15 +621,15 @@ createApp({
              const sortino = downsideDev > 0 ? (annRet - rf) / downsideDev : 0;
              const calmar = Math.abs(maxDrawdown) > 0 ? annRet / Math.abs(maxDrawdown) : 0;
 
-             const ulcerIndex = Math.sqrt(sqDrawdownSum / returns.length);
+             const ulcerIndex = Math.sqrt(sqDrawdownSum / returns.length) || 0;
              const sumGainsAbs = returns.filter(r => r > 0).reduce((a,b)=>a+b, 0);
              const sumLossesAbs = Math.abs(returns.filter(r => r < 0).reduce((a,b)=>a+b, 0));
-             const profitFactor = sumLossesAbs === 0 ? 999 : (sumGainsAbs / sumLossesAbs);
+             const profitFactor = sumLossesAbs === 0 ? (sumGainsAbs > 0 ? 999 : 0) : (sumGainsAbs / sumLossesAbs);
 
              const rf_period = rf / (dataFrequency.value === 'Weekly' ? 52 : 252);
              const omegaGains = returns.reduce((a, r) => a + Math.max(r - rf_period, 0), 0);
              const omegaLosses = returns.reduce((a, r) => a + Math.max(rf_period - r, 0), 0);
-             const omegaRatio = omegaLosses === 0 ? 999 : (omegaGains / omegaLosses);
+             const omegaRatio = omegaLosses === 0 ? (omegaGains > 0 ? 999 : 0) : (omegaGains / omegaLosses);
 
              const expectedRet = rf + beta * (rm - rf);
              const alpha = annRet - expectedRet;
@@ -644,11 +645,17 @@ createApp({
              } else cvar95 = var95;
 
              const n = returns.length;
-             const stdPop = Math.sqrt(returns.reduce((a,b)=>a+Math.pow(b-avgR, 2),0)/n);
+             const stdPop = Math.sqrt(returns.reduce((a,b)=>a+Math.pow(b-avgR, 2),0)/n) || 1; // 避免除以 0
              let sumCubed = 0; let sumQuart = 0;
              returns.forEach(r => { sumCubed += Math.pow(r - avgR, 3); sumQuart += Math.pow(r - avgR, 4); });
+             
+             let skewVal = ((sumCubed / n) / Math.pow(stdPop, 3));
+             let kurtVal = (((sumQuart / n) / Math.pow(stdPop, 4)) - 3);
+             
+             if(isNaN(skewVal)) skewVal = 0;
+             if(isNaN(kurtVal)) kurtVal = 0;
 
-             // 🚨 重新賦值時，完整帶回 Fama-French 因子，不漏掉任何屬性！
+             // 🚨 安全賦值：確保這裡的任何一個數字呼叫 .toFixed() 都不會出錯！
              stats.value = { 
                  annRet: (annRet*100).toFixed(2), 
                  annLogRet: (annLogRet*100).toFixed(2), 
@@ -662,13 +669,14 @@ createApp({
                  cvar95: (cvar95 * 100).toFixed(2), 
                  mdd: (maxDrawdown * 100).toFixed(2), 
                  calmar: calmar.toFixed(2), 
-                 skew: ((sumCubed / n) / Math.pow(stdPop, 3)).toFixed(2),
-                 kurt: (((sumQuart / n) / Math.pow(stdPop, 4)) - 3).toFixed(2),
-                 tuw: Math.round(maxTuwDays),
+                 skew: skewVal.toFixed(2),
+                 kurt: kurtVal.toFixed(2),
+                 tuw: Math.round(maxTuwDays).toString(),
                  ulcer: ulcerIndex.toFixed(2),
-                 omega: omegaRatio > 100 ? '∞' : omegaRatio.toFixed(2),
-                 profitFactor: profitFactor > 100 ? '∞' : profitFactor.toFixed(2),
+                 omega: omegaRatio > 100 ? '∞' : Number(omegaRatio).toFixed(2),
+                 profitFactor: profitFactor > 100 ? '∞' : Number(profitFactor).toFixed(2),
                  
+                 // FF3 繼承舊值
                  ff_alpha: stats.value.ff_alpha || '-',
                  ff_mkt_beta: stats.value.ff_mkt_beta || '-',
                  ff_smb: stats.value.ff_smb || '-',
