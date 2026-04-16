@@ -251,6 +251,17 @@ try:
                     sys_corr = raw_sys_corr if not np.isnan(raw_sys_corr) else 0.0
 
                 corr_matrix = port_returns.corr().replace([np.inf, -np.inf], np.nan).fillna(0.0).to_dict()
+                corr_spike_alert = False
+                sys_corr_change_5d = 0.0
+                if len(rolling_corr_series) >= 6:
+                    recent_corr = rolling_corr_series[-1]["corr"]
+                    past_corr = rolling_corr_series[-6]["corr"] # 5個交易日(一週)前的相關性
+                    sys_corr_change_5d = recent_corr - past_corr
+                    
+                    # 警報觸發條件：一週內相關性暴增超過 0.15，且目前絕對值大於 0.6 (代表開始齊漲齊跌)
+                    if sys_corr_change_5d > 0.15 and recent_corr > 0.60:
+                        corr_spike_alert = True
+                        print(f"🚨 [警告] 系統相關性陡升警報觸發！(5日變化: +{sys_corr_change_5d:.2f}, 當前: {recent_corr:.2f})", flush=True)
     except Exception as e: print(f"⚠️ 相關性計算失敗: {e}")
 
     macro_payload = {
@@ -266,7 +277,8 @@ try:
         "soxx_spy_mom": float(round(soxx_spy_mom, 2)), "liquidity_spread": float(round(liquidity_spread, 2)),
         "rsp_spy_mom": float(round(rsp_spy_mom, 2)), "kre_spy_mom": float(round(kre_spy_mom, 2)), "aud_jpy_mom": float(round(aud_jpy_mom, 2)), 
         "put_call_ratio": float(round(pcr, 2)), "pcr_z": float(round(pcr_z, 2)),
-        "sys_corr": float(round(sys_corr, 2)), "corr_matrix": corr_matrix, "rolling_corr_series": rolling_corr_series
+        "sys_corr": float(round(sys_corr, 2)), "sys_corr_change_5d": float(round(sys_corr_change_5d, 4)), 
+        "corr_spike_alert": corr_spike_alert, "corr_matrix": corr_matrix, "rolling_corr_series": rolling_corr_series
     }
     
     # ==========================================
@@ -285,15 +297,18 @@ try:
 
             [TRANSFORMATION_RULES]
             1. STAGE: Translate `stage_candidate` to Traditional Chinese.
-            2. SUMMARY: 1 sentence. MUST START WITH "[目前總經形勢: 翻譯後的STAGE]". Map stage and Z-scores to a max-alpha strategy.
-               *CRITICAL*: If `sys_corr` > 0.8, declare a systemic liquidation event.
+            2. SUMMARY: 1 sentence. MUST START WITH "[目前總經形勢: 翻譯後的STAGE]". Map stage to a max-alpha strategy.
+               *CRITICAL_ALERT*: If `corr_spike_alert` is true in the data, you MUST declare a "流動性衝擊/無差別拋售警告" and override all bullish signals.
             3. DETAILS.TITLE: Traditional Chinese metric name.
-            4. DETAILS.DESC: Max 35 chars. Explicitly cite specific numeric values (Z-Scores) combined with an actionable contrarian trigger.
+            4. DETAILS.DESC: Max 35 chars. Explicitly cite specific numeric values (Z-Scores).
+               *CRITICAL_ALERT*: If `corr_spike_alert` is true, add a dedicated detail item warning about the 5-day correlation spike.
             5. DETAILS.COLOR: "text-green-400", "text-red-400", "text-gray-400".
             6. DETAILS.ICON: Single emoji.
 
             [INPUT_DATA]
             {json.dumps(regime_packet, ensure_ascii=False)}
+            "corr_spike_alert": {str(corr_spike_alert).lower()},
+            "sys_corr_change_5d": {sys_corr_change_5d}
 
             [OUTPUT_SCHEMA]
             {{"summary": "<string>", "details": [{{"icon": "<emoji>", "color": "<string_class>", "title": "<string>", "desc": "<string>"}}]}}
@@ -523,10 +538,10 @@ try:
                     Language: STRICTLY Traditional Chinese (繁體中文). ONLY JSON output.
 
                     [LOGICAL_GUARDRAILS]
-                    - CRITICAL: DO NOT confuse "Sector Rotation / Capital Efficiency" with "Hedging".
+                    - CRITICAL: DO NOT confuse "Sector Rotation" with "Hedging".
                     - TRUE HEDGING means moving to cash, bonds, or negative-beta assets.
-                    - DO NOT suggest buying high-beta, risk-on assets (like Crypto or Tech stocks) as a "hedge" against market risks.
-                    - If the trades involve moving capital to high-beta assets, explicitly frame it as "Risk-On Rotation", "Pursuing Alpha", or "Capitalizing on Momentum", NEVER as "Hedging".
+                    - If the trades involve moving capital to high-beta assets, explicitly frame it as "Risk-On Rotation", NEVER as "Hedging".
+                    - 🚨 BLACK SWAN OVERRIDE: If the Macro Summary mentions "流動性衝擊", "相關性陡升", or "無差別拋售", you MUST frame the entire rebalance execution as extreme defensive De-Risking (selling high-beta, fleeing to safety).
 
                     [INPUT_DATA]
                     Macro Summary: {macro_payload.get('ai_analysis', {}).get('summary', '無')}
