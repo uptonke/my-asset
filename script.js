@@ -448,7 +448,7 @@ createApp({
                 let mvTwd = h.shares * currentPriceTwd;
 
                 grandTotal += mvTwd; 
-                if (!groups[h.category]) groups[h.category] = { totalValue: 0, items: [] };
+                if (!groups[h.category]) groups[h.category] = { totalValue: 0, totalCost: 0, items: [] };
                 
                 const meta = stockMeta.value[h.ticker] || {};
                 const cumulativeReturn = h.totalCostTwd ? (mvTwd - h.totalCostTwd) / h.totalCostTwd : 0;
@@ -497,6 +497,7 @@ createApp({
                     targetWeight: cloudTargetWeight, mcWeight: mcWeight, blendedWeight: finalBlendedWeight
                 });
                 groups[h.category].totalValue += mvTwd; 
+                groups[h.category].totalCost += h.totalCostTwd;
             });
 
             for (const cat in groups) {
@@ -506,6 +507,8 @@ createApp({
                     item.weightGap = item.blendedWeight - (item.totalWeight * 100); 
                 });
                 groups[cat].items.sort((a,b) => b.marketValueTwd - a.marketValueTwd);
+                groups[cat].unrealizedPL = groups[cat].totalValue - groups[cat].totalCost;
+                groups[cat].returnRate = groups[cat].totalCost > 0 ? (groups[cat].unrealizedPL / groups[cat].totalCost) * 100 : 0;
             }
             return groups;
         });
