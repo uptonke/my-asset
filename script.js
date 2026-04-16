@@ -264,7 +264,6 @@ createApp({
         const priceMap = ref({});
         const stockMeta = ref({});
 
-        // 🚨 安全初始化：確保所有會被 HTML 綁定的數值都有合理的預設值，避免畫面渲染 Crash
         const stats = ref({ 
             annRet:'0.00', annLogRet:'0.00', mwr:'0.00', annVol:'0.00', sharpe:'0.00', sortino:'0.00', treynor:'0.00', 
             alpha:'0.00', var95:'0.00', cvar95:'0.00', mdd:'0.00', calmar:'0.00', skew:'0.00', kurt:'0.00', 
@@ -559,10 +558,31 @@ createApp({
             }).reverse();
         });
 
+        // 🌟 新增：壓力測試歷史情境計算屬性
+        const stressTestResults = computed(() => {
+            const currentBeta = parseFloat(portfolioStats.value.beta) || 1.0;
+            const historicalScenarios = [
+                { name: '2008 金融海嘯 (Lehman)', desc: '次貸風暴，系統性流動性枯竭', benchDrop: -50.9 },
+                { name: '2000 達康泡沫 (Dot-com)', desc: '網路科技股本夢比估值破滅', benchDrop: -49.1 },
+                { name: '2020 新冠鎔斷 (COVID-19)', desc: '疫情爆發恐慌，全球經濟瞬間停擺', benchDrop: -33.9 },
+                { name: '2022 暴力升息 (Rate Hikes)', desc: '通膨失控，聯準會急升息狂殺估值', benchDrop: -25.4 }
+            ];
+
+            return historicalScenarios.map(scenario => {
+                let expectedDrop = scenario.benchDrop * currentBeta;
+                if (expectedDrop < -100) expectedDrop = -100;
+
+                return {
+                    ...scenario,
+                    portDrop: expectedDrop.toFixed(1),
+                    valueLost: (totalStockValueTwd.value * Math.abs(expectedDrop) / 100)
+                };
+            });
+        });
+
         watch([enrichedHistory, riskParams, dataFrequency], () => {
              const h = [...enrichedHistory.value].reverse(); 
              
-             // 🚨 安全出口：如果資料不夠，維持預設值直接返回，不要讓 NaN 炸掉程式
              if (h.length < 3) return;
 
              const returns = h.slice(1).map(item => item.dailyReturn);
@@ -645,7 +665,7 @@ createApp({
              } else cvar95 = var95;
 
              const n = returns.length;
-             const stdPop = Math.sqrt(returns.reduce((a,b)=>a+Math.pow(b-avgR, 2),0)/n) || 1; // 避免除以 0
+             const stdPop = Math.sqrt(returns.reduce((a,b)=>a+Math.pow(b-avgR, 2),0)/n) || 1; 
              let sumCubed = 0; let sumQuart = 0;
              returns.forEach(r => { sumCubed += Math.pow(r - avgR, 3); sumQuart += Math.pow(r - avgR, 4); });
              
@@ -655,7 +675,6 @@ createApp({
              if(isNaN(skewVal)) skewVal = 0;
              if(isNaN(kurtVal)) kurtVal = 0;
 
-             // 🚨 安全賦值：確保這裡的任何一個數字呼叫 .toFixed() 都不會出錯！
              stats.value = { 
                  annRet: (annRet*100).toFixed(2), 
                  annLogRet: (annLogRet*100).toFixed(2), 
@@ -676,7 +695,6 @@ createApp({
                  omega: omegaRatio > 100 ? '∞' : Number(omegaRatio).toFixed(2),
                  profitFactor: profitFactor > 100 ? '∞' : Number(profitFactor).toFixed(2),
                  
-                 // FF3 繼承舊值
                  ff_alpha: stats.value.ff_alpha || '-',
                  ff_mkt_beta: stats.value.ff_mkt_beta || '-',
                  ff_smb: stats.value.ff_smb || '-',
@@ -997,6 +1015,7 @@ createApp({
             });
         }
         
+        // 🌟 確保所有在 HTML 呼叫的方法都被正確宣告
         function getTypeColor(type) { return type==='Buy'?'text-red-400':'text-green-400'; }
         function getCategoryColorCode(cat) { return '#3b82f6'; }
         function formatNumber(n) { return new Intl.NumberFormat('zh-TW', {maximumFractionDigits:0}).format(n||0); }
@@ -1175,6 +1194,7 @@ createApp({
         watch(currentTab, () => { nextTick(() => { updateCharts(); }); });
         watch([exchangeRate, sheetUrl, isSimMode, riskParams, quantStartDate, dataFrequency, fireTargets, correlationMatrix], () => updateCharts(), {deep:true});
 
+        // 🚨 終極修正：將所有在 HTML 呼叫的函數與變數都暴露給 Vue
         return { 
             currentTab, showHistoryModal, isUpdating, isSimMode, toggleSimMode, 
             transactions, groupedHoldings, categoryTotals, riskTotals, portfolioStats, 
@@ -1189,7 +1209,7 @@ createApp({
             fireTargets, activeFireStageIndex, activeFireTarget, isLoggedIn, loginEmail, loginPassword, loginError, 
             isAuthenticating, handleLogin, handleLogout, checkAuth, fireProgress, 
             updateCharts, addFireTarget, macroRegime, enableBlackSwan, mcRisk, blViews, mcAvailableAssets, addBlView, enableInflation,
-            generateAutoViews, runMonteCarlo, stressTestResults,
+            generateAutoViews, runMonteCarlo, stressTestResults, // 🚨 新增了 stressTestResults
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr,
             croInsight, isCroThinking, generateQuantInsight
         };
