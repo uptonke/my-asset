@@ -6,7 +6,6 @@
     <title>股票紀錄 v11 (Supabase Enterprise Edition)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <script>
       tailwind.config = {
         safelist: [
@@ -101,11 +100,6 @@
                 </button>
              </div>
              <button @click="fetchPrices" class="p-2 text-blue-400 hover:text-white transition" title="從 Sheet 更新"><i class="fas fa-sync-alt" :class="{'fa-spin': isUpdating}"></i></button>
-             <label class="p-2 text-yellow-400 hover:text-white transition cursor-pointer" title="匯入備份">
-                 <i class="fas fa-file-upload"></i>
-                 <input type="file" @change="importData" class="hidden" accept=".json">
-             </label>
-             <button @click="exportAll" class="p-2 text-green-400 hover:text-white transition" title="匯出備份"><i class="fas fa-download"></i></button>
              <button @click="handleLogout" class="p-2 text-red-400 hover:text-white transition border-l border-gray-600 pl-3 ml-1" title="登出系統"><i class="fas fa-sign-out-alt"></i></button>
        </div>
     </header>
@@ -148,93 +142,53 @@
                     </div>
                 </div>
 
-                <div class="glass p-5 md:p-6 rounded-2xl border-l-4 border-red-500 relative overflow-hidden mt-6 mb-6">
+                <div class="glass p-5 md:p-6 rounded-2xl border-l-4 border-red-500 relative mt-6 mb-6">
                     <div class="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-4 mb-4">
                         <div class="shrink-0">
                             <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                                <i class="fas fa-fire text-red-500"></i> FIRE 階段性攻堅進度
+                                <i class="fas fa-fire text-red-500"></i> FIRE 階段進度
                             </h3>
-                            <div class="text-xs text-gray-400 mt-2">
-                                目前淨值：NT$ {{ formatNumber(totalStockValueTwd) }} <br class="md:hidden">
-                                <span class="text-red-400 font-bold ml-0 md:ml-2">下一階段目標：NT$ {{ formatNumber(activeFireTarget.amount) }}</span>
-                            </div>
                         </div>
-                        
                         <div class="flex flex-wrap gap-2 w-full lg:w-auto mt-2 lg:mt-0 items-end">
                             <div v-for="(stage, index) in fireTargets" :key="index" 
-                                 class="flex flex-col gap-1 bg-gray-900/50 p-2 rounded-lg border transition-colors relative group"
-                                 :class="activeFireStageIndex === index ? 'border-red-500 bg-red-900/30 shadow-[0_0_10px_rgba(239,68,68,0.2)]' : 'border-gray-700/50 opacity-70 hover:opacity-100'">
-                                
-                                <button @click="fireTargets.splice(index, 1)" class="absolute -top-2 -right-2 bg-red-900 hover:bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity z-10" title="刪除此階段">
-                                    <i class="fas fa-times"></i>
-                                </button>
-
-                                <div class="flex items-center gap-1 text-[10px] text-gray-400 font-bold">
-                                    <input v-model.number="stage.age" type="number" class="w-7 bg-transparent text-white text-center border-b border-gray-600 focus:border-red-400 outline-none transition-colors" placeholder="年齡">歲
-                                    (<input v-model.number="stage.year" type="number" class="w-10 bg-transparent text-white text-center border-b border-gray-600 focus:border-red-400 outline-none transition-colors" placeholder="年份">)
-                                </div>
-                                
+                                 class="flex flex-col gap-1 bg-gray-900/50 p-2 rounded-lg border transition-colors relative"
+                                 :class="activeFireStageIndex === index ? 'border-red-500 bg-red-900/30' : 'border-gray-700/50 opacity-70'">
+                                <div class="flex items-center gap-1 text-[10px] text-gray-400 font-bold">{{ stage.age }}歲 ({{ stage.year }})</div>
                                 <div class="flex items-center gap-1">
                                     <span class="text-gray-500 text-[10px]">$</span>
-                                    <input v-model.number="stage.amount" type="number" class="w-16 md:w-20 bg-transparent text-white text-sm font-mono focus:outline-none border-b border-gray-600 focus:border-red-400 transition-colors" placeholder="目標金額">
+                                    <span class="text-white text-sm font-mono">{{ formatNumber(stage.amount) }}</span>
                                 </div>
                             </div>
-
-                            <button @click="addFireTarget" class="h-[52px] w-8 border border-dashed border-gray-600 rounded-lg flex items-center justify-center text-gray-500 hover:text-red-400 hover:border-red-400 transition-colors bg-gray-900/30" title="新增一個 FIRE 階段">
-                                <i class="fas fa-plus"></i>
-                            </button>
                         </div>
                     </div>
-                    
                     <div class="relative pt-2">
                         <div class="flex mb-2 items-center justify-between">
-                            <div>
-                                <span class="text-xs font-bold inline-block py-1 px-2 uppercase rounded-md text-red-200 bg-red-900/50 border border-red-800 shadow-sm">
-                                    攻克 {{ activeFireTarget.age }} 歲目標達成率
-                                </span>
-                            </div>
-                            <div class="text-right">
-                                <span class="text-xl font-bold inline-block text-red-400 font-mono tracking-wider" style="text-shadow: 0 0 10px rgba(248, 113, 113, 0.5);">
-                                    {{ fireProgress.toFixed(2) }}%
-                                </span>
-                            </div>
+                            <span class="text-xs font-bold text-red-200">攻克 {{ activeFireTarget.age }} 歲目標達成率</span>
+                            <span class="text-xl font-bold text-red-400 font-mono">{{ fireProgress.toFixed(2) }}%</span>
                         </div>
-                        <div class="overflow-hidden h-3 mb-2 text-xs flex rounded-full bg-gray-800 border border-gray-700 shadow-inner">
-                            <div :style="{ width: Math.min(fireProgress, 100) + '%' }" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-to-r from-orange-500 to-red-500 transition-all duration-1000 relative">
-                                <div class="absolute top-0 left-0 bottom-0 right-0 bg-white opacity-20" style="animation: pulse 2s infinite;"></div>
-                            </div>
+                        <div class="overflow-hidden h-3 mb-2 rounded-full bg-gray-800 border border-gray-700">
+                            <div :style="{ width: Math.min(fireProgress, 100) + '%' }" class="h-full bg-gradient-to-r from-orange-500 to-red-500 transition-all duration-1000"></div>
                         </div>
                     </div>
-
-                    <div class="mt-6 relative border-t border-gray-700/50 pt-6 min-h-[300px] md:h-64">
-                        <canvas id="fireChart"></canvas>
-                    </div>
+                    <div class="mt-6 min-h-[300px] md:h-64"><canvas id="fireChart"></canvas></div>
                 </div>
 
-                <div class="glass p-5 rounded-2xl border-l-4 border-indigo-500 relative mt-6 mb-6 transition-all duration-300">
-                    <div class="absolute -right-4 -top-4 opacity-10 pointer-events-none">
-                        <i class="fas fa-brain text-9xl text-indigo-400"></i>
-                    </div>
+                <div class="glass p-5 rounded-2xl border-l-4 border-indigo-500 relative mt-6 mb-6">
                     <div class="relative z-10 flex flex-col gap-2">
                         <div class="flex justify-between items-center cursor-pointer group" @click="isAiExpanded = !isAiExpanded">
                             <div class="flex-1 pr-4">
                                 <h3 class="text-lg font-bold text-white flex items-center gap-2 mb-1">
-                                    <i class="fas fa-magic text-indigo-400" :class="{'animate-pulse': !isAiExpanded}"></i> 
-                                    AI 量化診斷與投組總結
+                                    <i class="fas fa-magic text-indigo-400"></i> AI 量化診斷與投組總結
                                 </h3>
-                                <p class="text-sm font-medium transition-colors" :class="aiInsights.details.length > 0 ? 'text-indigo-200 group-hover:text-indigo-100' : 'text-gray-400'">
-                                    <i v-if="aiInsights.details.length === 0" class="fas fa-spinner fa-spin mr-1"></i>
-                                    {{ aiInsights.summary }}
-                                </p>
+                                <p class="text-sm font-medium text-indigo-200">{{ aiInsights.summary }}</p>
                             </div>
-                            <button class="text-indigo-400 hover:text-white transition-transform duration-300 transform bg-gray-900/50 w-8 h-8 rounded-full flex items-center justify-center border border-indigo-500/30" :class="{'rotate-180': isAiExpanded}">
+                            <button class="text-indigo-400 w-8 h-8 rounded-full flex items-center justify-center border border-indigo-500/30" :class="{'rotate-180': isAiExpanded}">
                                 <i class="fas fa-chevron-down"></i>
                             </button>
                         </div>
-                        
-                        <div v-show="isAiExpanded" class="mt-3 border-t border-indigo-500/30 pt-4 animate-fade-in">
+                        <div v-show="isAiExpanded" class="mt-3 border-t border-indigo-500/30 pt-4">
                             <ul v-if="aiInsights.details.length > 0" class="space-y-3">
-                                <li v-for="(insight, idx) in aiInsights.details" :key="idx" class="flex items-start gap-3 text-sm bg-gray-900/30 p-3 rounded-lg border border-gray-700/50 hover:border-indigo-500/50 transition-colors">
+                                <li v-for="(insight, idx) in aiInsights.details" :key="idx" class="flex items-start gap-3 text-sm bg-gray-900/30 p-3 rounded-lg border border-gray-700/50">
                                     <span class="text-xl mt-0.5" v-html="insight.icon"></span>
                                     <div>
                                         <span class="font-bold tracking-wide" :class="insight.color">{{ insight.title }}：</span>
@@ -246,24 +200,31 @@
                     </div>
                 </div>
 
-                <div class="glass p-5 rounded-2xl relative min-h-[300px] md:h-[450px] flex flex-col border-t-4 transition-colors duration-500" 
+                <div class="glass p-5 rounded-2xl relative min-h-[400px] md:h-[500px] flex flex-col border-t-4 transition-colors duration-500" 
                      :class="sysCorr > 0.85 ? 'border-red-600 bg-red-900/10' : 'border-gray-500'">
                     <div class="flex justify-between items-start mb-2">
                         <div>
                             <h4 class="text-white font-bold mb-1 flex items-center gap-2">
-                                <i class="fas fa-th text-blue-400"></i> 資產相關性矩陣 (Systemic Risk)
+                                <i class="fas fa-th text-blue-400"></i> 系統性風險 (Systemic Risk)
                             </h4>
-                            <p class="text-xs text-gray-400">衡量庫存標的齊漲齊跌程度。深綠代表正相關，深紅代表負相關（具避險效果）。</p>
+                            <p class="text-xs text-gray-400">衡量庫存標的齊漲齊跌程度。當相關性飆升，分散投資將失效。</p>
                         </div>
-                        
                         <div v-if="sysCorr > 0.85" class="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full animate-pulse flex items-center gap-1 shadow-[0_0_15px_rgba(220,38,38,0.5)]">
-                            <i class="fas fa-skull-crossbones"></i> 雷曼時刻 (系統風險極高)
+                            <i class="fas fa-skull-crossbones"></i> 雷曼時刻 (風險極高)
                         </div>
                         <div v-else class="bg-gray-800 text-gray-300 text-xs font-bold px-3 py-1 rounded border border-gray-700">
-                            平均相關性: <span :class="sysCorr > 0.7 ? 'text-red-400' : 'text-green-400'">{{ sysCorr.toFixed(2) }}</span>
+                            當前相關性: <span :class="sysCorr > 0.7 ? 'text-red-400' : 'text-green-400'">{{ sysCorr.toFixed(2) }}</span>
                         </div>
                     </div>
-                    <div class="flex-1 relative mt-2"><canvas id="corrChart"></canvas></div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 mt-2">
+                        <div class="relative w-full h-full min-h-[200px]">
+                            <canvas id="corrChart"></canvas>
+                        </div>
+                        <div class="relative w-full h-full min-h-[200px]">
+                            <canvas id="rollingCorrChart"></canvas>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -272,15 +233,8 @@
                         <div class="flex-1 relative"><canvas id="allocationChart"></canvas></div>
                     </div>
                     <div class="glass p-5 rounded-2xl col-span-2 flex flex-col min-h-[300px] md:h-96">
-                        <div class="flex justify-between items-center mb-4 border-l-4 border-emerald-500 pl-3">
-                            <h4 class="text-white font-bold">淨值成長趨勢 (NAV)</h4>
-                        </div>
-                        <div class="flex-1 relative">
-                            <canvas id="historyChart"></canvas>
-                             <div v-if="displayHistory.length < 2" class="absolute inset-0 flex items-center justify-center text-gray-500 text-xs bg-gray-900/50 rounded-lg">
-                                <p>需要更多歷史數據</p>
-                            </div>
-                        </div>
+                        <h4 class="text-white font-bold mb-4 border-l-4 border-emerald-500 pl-3">淨值成長趨勢 (NAV)</h4>
+                        <div class="flex-1 relative"><canvas id="historyChart"></canvas></div>
                     </div>
                 </div>
             </div>
@@ -288,114 +242,73 @@
             <div v-show="currentTab === 'holdings'" class="flex flex-col space-y-4 animate-fade-in">
                 <div class="glass rounded-xl overflow-hidden flex flex-col flex-1">
                     <div class="p-4 bg-gray-800/50 border-b border-gray-700 flex justify-between items-center">
-                        <h3 class="font-bold text-white"><i class="fas fa-layer-group text-yellow-500 mr-2"></i>庫存明細 (Risk Monitor)</h3>
-                        <div class="text-xs text-gray-400 flex items-center gap-4">
-                             <span v-if="lastUpdate" class="text-green-400 hidden sm:inline">更新於: {{ lastUpdate }}</span>
-                             <span class="text-red-400 font-bold"><i class="fas fa-exclamation-triangle"></i> 單一 > 20%</span>
-                        </div>
+                        <h3 class="font-bold text-white"><i class="fas fa-layer-group text-yellow-500 mr-2"></i>庫存明細</h3>
                     </div>
                     
-                    <div class="overflow-y-auto flex-1 p-2 md:p-0 bg-[#0f172a]/50">
-                        
+                    <div class="overflow-y-auto flex-1 bg-[#0f172a]/50">
                         <div class="hidden md:block w-full overflow-x-auto">
                             <table class="w-full text-left whitespace-nowrap excel-table">
                                 <thead>
                                     <tr>
                                         <th class="pl-6">代號</th>
                                         <th>風險</th>
-                                        <th class="text-center w-16" title="Beta 係數">Beta (β)</th>
-                                        <th class="text-center w-16" title="年化標準差">SD (σ%)</th>
-                                        <th class="text-right">持有股數</th>
-                                        <th class="p-2 text-right">市值(TWD)</th>
-                                        <th class="p-2 text-center text-indigo-300" title="RSI & MACD">技術訊號</th>
-                                        <th class="p-2 text-right text-gray-300">累積報酬</th>
-                                        <th class="p-2 text-right text-purple-300" title="資金加權年化報酬率">年化 (CAGR)</th>
-                                        
-                                        <th class="p-2 text-right">現有權重%</th>
-                                        <th class="p-2 text-right text-blue-300" title="雲端紀律運算權重 (Python)">雲端%</th>
-                                        <th class="p-2 text-right text-purple-400" title="MC理論極限權重">MC%</th>
-                                        <th class="p-2 text-right text-yellow-400 font-bold" title="50%雲端 + 50%MC">綜合目標%</th>
-                                        <th class="p-2 text-right" title="與綜合目標的偏離度">落差 (Drift)</th>
+                                        <th class="text-center">Beta (β)</th>
+                                        <th class="text-center">SD (σ%)</th>
+                                        <th class="text-right">股數</th>
+                                        <th class="text-right">市值(TWD)</th>
+                                        <th class="text-center text-indigo-300">技術訊號</th>
+                                        <th class="text-right text-gray-300">累積報酬</th>
+                                        <th class="text-right">現有權重%</th>
+                                        <th class="text-right text-yellow-400">綜合目標%</th>
+                                        <th class="text-right">落差</th>
                                     </tr>
                                 </thead>
                                 <tbody class="text-sm">
                                     <template v-for="(group, catName) in groupedHoldings" :key="catName">
                                         <tr class="group-header">
-    <td colspan="14" class="py-2 border-t border-b border-gray-600 bg-gray-800/60">
-        <div class="flex justify-between items-center pl-6 pr-4">
-           <div>
-               <i class="fas fa-folder-open mr-2 text-blue-400"></i> <span class="font-bold text-gray-200">{{ catName }}</span> 
-               <span class="text-gray-400 text-xs font-normal ml-2">市值: NT$ {{ formatNumber(group.totalValue) }}</span>
-           </div>
-           <div class="text-xs font-bold tracking-wider flex items-center">
-               <span class="text-gray-500 mr-2">分類損益:</span>
-               <span :class="group.unrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
-                   {{ group.unrealizedPL >= 0 ? '+' : '' }}{{ formatNumber(group.unrealizedPL) }}
-               </span>
-               <span class="mx-3 text-gray-600">|</span>
-               <span class="text-gray-500 mr-2">分類報酬:</span>
-               <span :class="group.returnRate >= 0 ? 'text-red-400' : 'text-green-400'" class="bg-gray-900/80 px-2 py-1 rounded border border-gray-700 shadow-sm">
-                   {{ group.returnRate >= 0 ? '+' : '' }}{{ group.returnRate.toFixed(2) }}%
-               </span>
-           </div>
-        </div>
-    </td>
-</tr>
-                                        <tr v-for="stock in group.items" :key="stock.ticker" 
-                                            class="hover:bg-white/5 transition-colors border-b border-white/5">
-                                            <td class="pl-6 font-bold text-white flex items-center gap-2 py-2">
-                                                {{ stock.ticker }}
-                                                <span v-if="stock.isUSD" class="text-[9px] bg-gray-700 px-1 rounded text-gray-300">USD</span>
+                                            <td colspan="11" class="py-2 border-t border-b border-gray-600 bg-gray-800/60">
+                                                <div class="flex justify-between items-center pl-6 pr-4">
+                                                   <div>
+                                                       <i class="fas fa-folder-open mr-2 text-blue-400"></i> <span class="font-bold text-gray-200">{{ catName }}</span> 
+                                                       <span class="text-gray-400 text-xs font-normal ml-2">市值: NT$ {{ formatNumber(group.totalValue) }}</span>
+                                                   </div>
+                                                   <div class="text-xs font-bold tracking-wider flex items-center">
+                                                       <span class="text-gray-500 mr-2">分類損益:</span>
+                                                       <span :class="group.unrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
+                                                           {{ group.unrealizedPL >= 0 ? '+' : '' }}{{ formatNumber(group.unrealizedPL) }}
+                                                       </span>
+                                                       <span class="mx-3 text-gray-600">|</span>
+                                                       <span class="text-gray-500 mr-2">分類報酬:</span>
+                                                       <span :class="group.returnRate >= 0 ? 'text-red-400' : 'text-green-400'" class="bg-gray-900/80 px-2 py-1 rounded border border-gray-700 shadow-sm">
+                                                           {{ group.returnRate >= 0 ? '+' : '' }}{{ group.returnRate.toFixed(2) }}%
+                                                       </span>
+                                                   </div>
+                                                </div>
                                             </td>
+                                        </tr>
+                                        <tr v-for="stock in group.items" :key="stock.ticker" class="hover:bg-white/5 border-b border-white/5">
+                                            <td class="pl-6 font-bold text-white py-2">{{ stock.ticker }}</td>
                                             <td>
                                                <select v-model="stock.riskLevel" @change="updateMeta(stock)" class="risk-select" :class="stock.riskLevel === 'Low' ? 'risk-low' : 'risk-high'">
                                                     <option value="High">High</option><option value="Low">Low</option>
                                                </select>
                                             </td>
-                                            <td>
-                                               <input v-model.number="stock.beta" @change="updateMeta(stock)" class="w-12 bg-transparent text-center border-b border-gray-600 focus:border-yellow-400 outline-none text-yellow-400 font-mono" placeholder="1.0">
-                                            </td>
-                                            <td>
-                                               <input v-model.number="stock.stdDev" @change="updateMeta(stock)" class="w-12 bg-transparent text-center border-b border-gray-600 focus:border-yellow-400 outline-none text-yellow-400 font-mono" placeholder="20">
-                                            </td>
+                                            <td><input v-model.number="stock.beta" @change="updateMeta(stock)" class="w-12 bg-transparent text-center border-b border-gray-600 outline-none text-yellow-400"></td>
+                                            <td><input v-model.number="stock.stdDev" @change="updateMeta(stock)" class="w-12 bg-transparent text-center border-b border-gray-600 outline-none text-yellow-400"></td>
                                             <td class="text-right font-mono text-gray-300">{{ formatNumber(stock.shares) }}</td>
                                             <td class="text-right font-mono text-white font-bold">{{ formatNumber(stock.marketValueTwd) }}</td>
-                                            
                                             <td class="p-2 text-center text-xs">
-                                                <div class="flex flex-col gap-1 items-center justify-center" v-if="stock.techSignals">
-                                                    <span :class="stock.techSignals.rsiColor" class="font-bold bg-gray-800 px-1.5 py-0.5 rounded border border-gray-700 whitespace-nowrap shadow-sm">
-                                                        RSI: {{ stock.techSignals.rsiVal }}
-                                                    </span>
-                                                    <span :class="stock.techSignals.macdColor" class="font-bold bg-gray-800 px-1.5 py-0.5 rounded border border-gray-700 whitespace-nowrap shadow-sm">
-                                                        {{ stock.techSignals.macdText }}
-                                                    </span>
+                                                <div class="flex flex-col gap-1 items-center" v-if="stock.techSignals">
+                                                    <span :class="stock.techSignals.rsiColor" class="font-bold px-1.5 rounded border">{{ stock.techSignals.rsiVal }}</span>
+                                                    <span :class="stock.techSignals.macdColor" class="px-1.5 rounded">{{ stock.techSignals.macdText }}</span>
                                                 </div>
-                                                <div v-else class="text-gray-600">-</div>
                                             </td>
-
                                             <td class="p-2 text-right font-medium" :class="stock.returnRate >= 0 ? 'text-red-400' : 'text-green-400'">
                                                 {{ parseFloat(stock.returnRate).toFixed(2) }}%
                                             </td>
-                                            <td class="p-2 text-right font-bold" :class="stock.annualizedReturnRate >= 0 ? 'text-red-400' : 'text-green-400'">
-                                                <span class="bg-gray-800/50 px-2 py-1 rounded border border-gray-700">
-                                                    {{ parseFloat(stock.annualizedReturnRate || 0).toFixed(2) }}%
-                                                </span>
-                                            </td>
-
-                                            <td class="text-right font-mono font-bold relative text-gray-300">
-                                                {{ formatPercent(stock.totalWeight) }}
-                                                <i v-if="stock.isOverweight" class="fas fa-exclamation-triangle text-red-500 ml-1 animate-pulse" title="佔總資產 > 20%"></i>
-                                            </td>
-                                            <td class="p-2 text-right font-mono text-blue-300 font-bold">
-                                                {{ stock.targetWeight ? stock.targetWeight.toFixed(1) + '%' : '-' }}
-                                            </td>
-                                            <td class="p-2 text-right font-mono text-purple-400">
-                                                {{ stock.mcWeight ? stock.mcWeight.toFixed(1) + '%' : '-' }}
-                                            </td>
-                                            <td class="p-2 text-right font-mono text-yellow-400 font-bold text-lg">
-                                                {{ stock.blendedWeight.toFixed(1) }}%
-                                            </td>
-                                            <td class="p-2 text-right font-mono font-bold text-lg">
+                                            <td class="text-right font-mono">{{ formatPercent(stock.totalWeight) }}</td>
+                                            <td class="p-2 text-right font-mono text-yellow-400 font-bold">{{ stock.blendedWeight.toFixed(1) }}%</td>
+                                            <td class="p-2 text-right font-mono font-bold">
                                                 <span :class="stock.weightGap > 3 ? 'text-green-400' : (stock.weightGap < -3 ? 'text-red-400' : 'text-gray-500')">
                                                     {{ stock.weightGap > 0 ? '+' : '' }}{{ stock.weightGap.toFixed(1) }}%
                                                 </span>
@@ -406,123 +319,29 @@
                             </table>
                         </div>
 
-                        <div class="md:hidden space-y-4 pb-4">
+                        <div class="md:hidden space-y-4 pb-4 px-2">
                             <template v-for="(group, catName) in groupedHoldings" :key="'mob-'+catName">
-                                <div class="sticky top-0 z-10 bg-[#1e293b]/95 backdrop-blur-md px-3 py-2 flex flex-col gap-1 rounded-lg border border-gray-700 shadow-lg">
-    <div class="flex justify-between items-center">
-        <div class="font-bold text-gray-200 flex items-center">
-            <i class="fas fa-folder-open mr-2 text-blue-400"></i> {{ catName }}
-        </div>
-        <div class="text-xs text-gray-300 font-mono font-bold">
-            NT$ {{ formatNumber(group.totalValue) }}
-        </div>
-    </div>
-    <div class="flex justify-between items-center text-[10px] border-t border-gray-700/50 pt-1 mt-1">
-        <div class="text-gray-400">分類小計績效</div>
-        <div class="flex gap-3 font-mono font-bold">
-            <span :class="group.unrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
-                {{ group.unrealizedPL >= 0 ? '+' : '' }}{{ formatNumber(group.unrealizedPL) }}
-            </span>
-            <span :class="group.returnRate >= 0 ? 'text-red-400' : 'text-green-400'" class="bg-gray-800 px-1 rounded border border-gray-600">
-                {{ group.returnRate >= 0 ? '+' : '' }}{{ group.returnRate.toFixed(2) }}%
-            </span>
-        </div>
-    </div>
-</div>
-                                
-                                <div v-for="stock in group.items" :key="'mob-'+stock.ticker" 
-                                     class="bg-gray-800/60 border border-gray-700/60 rounded-xl overflow-hidden shadow-lg transition-all duration-300"
-                                     :class="expandedCardTicker === stock.ticker ? 'border-blue-500/50 ring-1 ring-blue-500/20' : ''">
-                                    
-                                    <div class="p-3 cursor-pointer" @click="toggleCard(stock.ticker)">
-                                        <div class="flex justify-between items-start mb-2">
-                                            <div class="flex items-center gap-2">
-                                                <span class="font-bold text-white text-base">{{ stock.ticker }}</span>
-                                                <span v-if="stock.isUSD" class="text-[9px] bg-gray-700 px-1 py-0.5 rounded text-gray-300 border border-gray-600">USD</span>
-                                                <i v-if="stock.isOverweight" class="fas fa-exclamation-triangle text-red-500 text-xs animate-pulse" title="過度集中"></i>
-                                            </div>
-                                            <div class="text-right">
-                                                <div class="font-mono font-bold text-white text-base">NT$ {{ formatNumber(stock.marketValueTwd) }}</div>
-                                            </div>
+                                <div class="sticky top-0 z-10 bg-[#1e293b]/95 backdrop-blur-md px-3 py-2 flex flex-col gap-1 rounded-lg border border-gray-700 shadow-lg mt-4">
+                                    <div class="flex justify-between items-center">
+                                        <div class="font-bold text-gray-200 flex items-center">
+                                            <i class="fas fa-folder-open mr-2 text-blue-400"></i> {{ catName }}
                                         </div>
-                                        
-                                        <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-700/50">
-                                            <div class="flex gap-3 text-xs">
-                                                <div class="flex flex-col">
-                                                    <span class="text-gray-500 text-[10px]">現有</span>
-                                                    <span class="font-mono font-bold text-gray-300">{{ formatPercent(stock.totalWeight) }}</span>
-                                                </div>
-                                                <div class="flex flex-col">
-                                                    <span class="text-gray-500 text-[10px]">綜合目標</span>
-                                                    <span class="font-mono font-bold text-yellow-400">{{ stock.blendedWeight.toFixed(1) }}%</span>
-                                                </div>
-                                                <div class="flex flex-col">
-                                                    <span class="text-gray-500 text-[10px]">落差</span>
-                                                    <span class="font-mono font-bold" :class="stock.weightGap > 3 ? 'text-green-400' : (stock.weightGap < -3 ? 'text-red-400' : 'text-gray-500')">
-                                                        {{ stock.weightGap > 0 ? '+' : '' }}{{ stock.weightGap.toFixed(1) }}%
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <i class="fas fa-chevron-down text-gray-500 text-xs transition-transform duration-300" :class="{'rotate-180 text-blue-400': expandedCardTicker === stock.ticker}"></i>
-                                        </div>
+                                        <div class="text-xs text-gray-300 font-mono font-bold">NT$ {{ formatNumber(group.totalValue) }}</div>
                                     </div>
-                                    
-                                    <div v-show="expandedCardTicker === stock.ticker" class="bg-gray-900/80 p-3 border-t border-gray-700 text-xs space-y-3">
-                                        <div class="flex justify-between items-center bg-black/30 p-2 rounded-lg">
-                                            <div class="flex flex-col">
-                                                <span class="text-gray-500 mb-1">庫存股數</span>
-                                                <span class="font-mono text-gray-300">{{ formatNumber(stock.shares) }}</span>
-                                            </div>
-                                            <div class="flex flex-col items-end">
-                                                <span class="text-gray-500 mb-1">自訂/獲取現價</span>
-                                                <input v-model.number="stock.manualPrice" @change="manualUpdate(stock)" 
-                                                       class="w-20 bg-transparent text-right outline-none border-b border-gray-600 text-yellow-400 font-mono font-bold focus:border-blue-400"
-                                                       :placeholder="stock.fetchedPrice">
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="grid grid-cols-3 gap-2">
-                                            <div class="bg-black/30 p-2 rounded-lg flex flex-col items-center">
-                                                <span class="text-gray-500 mb-1">Beta (β)</span>
-                                                <input v-model.number="stock.beta" @change="updateMeta(stock)" class="w-full bg-transparent text-center border-b border-gray-600 focus:border-yellow-400 outline-none text-yellow-400 font-mono font-bold" placeholder="1.0">
-                                            </div>
-                                            <div class="bg-black/30 p-2 rounded-lg flex flex-col items-center">
-                                                <span class="text-gray-500 mb-1">SD (σ%)</span>
-                                                <input v-model.number="stock.stdDev" @change="updateMeta(stock)" class="w-full bg-transparent text-center border-b border-gray-600 focus:border-yellow-400 outline-none text-yellow-400 font-mono font-bold" placeholder="20">
-                                            </div>
-                                            <div class="bg-black/30 p-2 rounded-lg flex flex-col items-center">
-                                                <span class="text-gray-500 mb-1">防禦屬性</span>
-                                                <select v-model="stock.riskLevel" @change="updateMeta(stock)" class="w-full bg-transparent text-center outline-none font-bold" :class="stock.riskLevel === 'Low' ? 'text-green-400' : 'text-red-400'">
-                                                    <option value="High" class="bg-gray-800">High</option>
-                                                    <option value="Low" class="bg-gray-800">Low</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="flex justify-between items-center bg-black/30 p-2 rounded-lg">
-                                             <div class="flex flex-col">
-                                                <span class="text-gray-500 mb-1">技術訊號 (RSI / MACD)</span>
-                                                <div class="flex gap-2">
-                                                    <span v-if="stock.techSignals" :class="stock.techSignals.rsiColor" class="text-[10px] font-bold px-1.5 py-0.5 rounded border shadow-sm">
-                                                        RSI {{ stock.techSignals.rsiVal }}
-                                                    </span>
-                                                    <span v-if="stock.techSignals" :class="stock.techSignals.macdColor" class="px-2 py-0.5 rounded text-[10px]">
-                                                        {{ stock.techSignals.macdText }}
-                                                    </span>
-                                                </div>
-                                             </div>
-                                             <div class="flex flex-col items-end">
-                                                <span class="text-gray-500 mb-1">年化報酬 (CAGR)</span>
-                                                <span class="text-[12px] font-bold px-1.5 py-0.5 rounded border bg-gray-900 border-gray-700" :class="stock.annualizedReturnRate >= 0 ? 'text-red-400' : 'text-green-400'">
-                                                    {{ parseFloat(stock.annualizedReturnRate || 0).toFixed(1) }}%
-                                                </span>
-                                             </div>
+                                    <div class="flex justify-between items-center text-[10px] border-t border-gray-700/50 pt-1 mt-1">
+                                        <div class="text-gray-400">分類小計績效</div>
+                                        <div class="flex gap-3 font-mono font-bold">
+                                            <span :class="group.unrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
+                                                {{ group.unrealizedPL >= 0 ? '+' : '' }}{{ formatNumber(group.unrealizedPL) }}
+                                            </span>
+                                            <span :class="group.returnRate >= 0 ? 'text-red-400' : 'text-green-400'" class="bg-gray-800 px-1 rounded border border-gray-600">
+                                                {{ group.returnRate >= 0 ? '+' : '' }}{{ group.returnRate.toFixed(2) }}%
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
-                            </template>
+                                </template>
                         </div>
-                        
                     </div>
                 </div>
             </div>
@@ -530,504 +349,107 @@
             <div v-show="currentTab === 'advanced'" class="flex flex-col space-y-6 animate-fade-in">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div class="glass p-5 rounded-2xl flex flex-col justify-center">
-                        <h4 class="text-white font-bold mb-3 border-l-4 border-blue-500 pl-3">1. 風險屬性分佈</h4>
+                        <h4 class="text-white font-bold mb-3 border-l-4 border-blue-500 pl-3">風險屬性分佈</h4>
                         <div class="space-y-3">
                              <div>
                                  <div class="flex justify-between text-xs mb-1">
-                                     <span class="text-red-400 font-bold">高風險資產 (High)</span>
-                                     <span class="font-mono text-white">{{ formatNumber(riskTotals.High) }} ({{ formatPercent(riskTotals.High / totalStockValueTwd) }})</span>
+                                     <span class="text-red-400 font-bold">高風險 (High)</span>
+                                     <span class="text-white font-mono">{{ formatPercent(riskTotals.High / totalStockValueTwd) }}</span>
                                  </div>
-                                 <div class="bg-gray-700 h-1.5 rounded-full overflow-hidden"><div class="h-full bg-red-500" :style="{ width: ((riskTotals.High / totalStockValueTwd) * 100) + '%' }"></div></div>
+                                 <div class="bg-gray-700 h-1.5 rounded-full"><div class="h-full bg-red-500" :style="{ width: ((riskTotals.High / totalStockValueTwd) * 100) + '%' }"></div></div>
                              </div>
                              <div>
                                  <div class="flex justify-between text-xs mb-1">
-                                     <span class="text-green-400 font-bold">低風險資產 (Low)</span>
-                                     <span class="font-mono text-white">{{ formatNumber(riskTotals.Low) }} ({{ formatPercent(riskTotals.Low / totalStockValueTwd) }})</span>
+                                     <span class="text-green-400 font-bold">低風險 (Low)</span>
+                                     <span class="text-white font-mono">{{ formatPercent(riskTotals.Low / totalStockValueTwd) }}</span>
                                  </div>
-                                 <div class="bg-gray-700 h-1.5 rounded-full overflow-hidden"><div class="h-full bg-green-500" :style="{ width: ((riskTotals.Low / totalStockValueTwd) * 100) + '%' }"></div></div>
+                                 <div class="bg-gray-700 h-1.5 rounded-full"><div class="h-full bg-green-500" :style="{ width: ((riskTotals.Low / totalStockValueTwd) * 100) + '%' }"></div></div>
                              </div>
                          </div>
                     </div>
-
                     <div class="glass p-5 rounded-2xl flex flex-col justify-center">
-                        <h4 class="text-white font-bold mb-3 border-l-4 border-yellow-500 pl-3">2. 投資組合體質 (Weighted)</h4>
-                        <div class="grid grid-cols-2 gap-4 text-center">
-                            <div class="quant-card border-yellow-500/30">
-                                <div class="quant-label text-yellow-400">組合 Beta (βp)</div>
+                        <h4 class="text-white font-bold mb-3 border-l-4 border-yellow-500 pl-3">組合體質</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="quant-card">
+                                <div class="quant-label text-yellow-400">βp</div>
                                 <div class="quant-value text-white">{{ portfolioStats.beta }}</div>
-                                <div class="text-[10px] text-gray-500 mt-1">系統風險敏感度</div>
                             </div>
-                            <div class="quant-card border-blue-500/30">
-                                <div class="quant-label text-blue-400">組合 StdDev (σp)</div>
+                            <div class="quant-card">
+                                <div class="quant-label text-blue-400">σp</div>
                                 <div class="quant-value text-white">{{ portfolioStats.std }}%</div>
-                                <div class="text-[10px] text-gray-500 mt-1">總風險 (加權平均)</div>
                             </div>
                         </div>
                     </div>
-
                     <div class="glass p-5 rounded-2xl flex flex-col justify-center">
-                        <h4 class="text-white font-bold mb-3 border-l-4 border-purple-500 pl-3 flex items-center gap-2">
-                            3. 市場參數 (SML/CML)
-                            <span class="text-[9px] bg-purple-900/80 text-purple-300 px-1.5 py-0.5 rounded border border-purple-500/50 flex items-center gap-1">
-                                <i class="fas fa-robot"></i> Auto-Synced
-                            </span>
-                        </h4>
-                        <div class="flex flex-col gap-3">
-                            <div class="flex justify-between items-center text-xs">
-                                <span class="text-gray-400">無風險利率 (Rf):</span>
-                                <input v-model.number="riskParams.rf" class="w-16 bg-slate-800 text-center border rounded border-slate-600 text-white" step="0.1"> %
-                            </div>
-                            <div class="flex justify-between items-center text-xs">
-                                <span class="text-gray-400">市場預期報酬 (Rm):</span>
-                                <input v-model.number="riskParams.rm" class="w-16 bg-slate-800 text-center border rounded border-slate-600 text-white" step="0.1"> %
-                            </div>
-                            <div class="flex justify-between items-center text-xs">
-                                <span class="text-gray-400">市場標準差 (σm):</span>
-                                <input v-model.number="riskParams.sm" class="w-16 bg-slate-800 text-center border rounded border-slate-600 text-white" step="0.1"> %
-                            </div>
-                            <button @click="updateCharts" class="btn-purple text-xs py-1 rounded w-full mt-1">更新圖表</button>
+                        <h4 class="text-white font-bold mb-3 border-l-4 border-purple-500 pl-3 flex items-center gap-2">市場參數 (SML/CML)</h4>
+                        <div class="flex flex-col gap-2">
+                            <div class="flex justify-between text-xs text-gray-400"><span>Rf:</span><span class="text-white">{{ riskParams.rf }}%</span></div>
+                            <div class="flex justify-between text-xs text-gray-400"><span>Rm:</span><span class="text-white">{{ riskParams.rm }}%</span></div>
+                            <div class="flex justify-between text-xs text-gray-400"><span>σm:</span><span class="text-white">{{ riskParams.sm }}%</span></div>
                         </div>
                     </div>
                 </div>
 
-                               <div class="glass p-5 rounded-2xl flex flex-col mt-6 border-l-4 border-indigo-500 relative">
+                <div class="glass p-5 rounded-2xl flex flex-col mt-6 border-l-4 border-indigo-500 relative">
                     <div class="absolute -right-4 -top-4 opacity-5 pointer-events-none">
                         <i class="fas fa-microscope text-9xl text-indigo-500"></i>
                     </div>
                     <div class="relative z-10">
                         <h4 class="text-white font-bold mb-1 flex items-center gap-2 text-lg">
-                            <i class="fas fa-atom text-indigo-400"></i> Fama-French 3-Factor 因子解析
+                            <i class="fas fa-atom text-indigo-400"></i> 多因子迴歸解構 (FF5 + Momentum)
                         </h4>
-                        <p class="text-xs text-gray-400 mb-5">透過 Multiple Linear Regression 解構投資組合的真實超額報酬來源。($R^2 = {{ stats?.ff_r_squared || '-' }})</p>
+                        <p class="text-xs text-gray-400 mb-5">透過 Carhart 4-Factor 與 FF5 擴充模型，解構投資組合的真實超額報酬來源。($R^2 = {{ stats?.ff_r_squared || '-' }})</p>
                         
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                             <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-700/50">
-                                <div class="text-xs text-gray-500 mb-1">純粹超額報酬 (α)</div>
-                                <div class="text-xl font-bold font-mono" :class="parseFloat(stats?.ff_alpha) > 0 ? 'text-green-400' : 'text-red-400'">
+                                <div class="text-[10px] text-gray-500 mb-1">純粹超額報酬 (α)</div>
+                                <div class="text-lg font-bold font-mono" :class="parseFloat(stats?.ff_alpha) > 0 ? 'text-green-400' : 'text-red-400'">
                                     {{ parseFloat(stats?.ff_alpha) > 0 ? '+' : '' }}{{ stats?.ff_alpha || '-' }}%
                                 </div>
-                                <div class="text-[10px] text-gray-400 mt-1">排除大盤、市值、價值因子後的真實選股能力。</div>
                             </div>
-
                             <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-700/50">
-                                <div class="text-xs text-gray-500 mb-1">大盤風險 (Mkt-RF)</div>
-                                <div class="text-xl font-bold font-mono text-blue-400">{{ stats?.ff_mkt_beta || '-' }}</div>
-                                <div class="text-[10px] text-gray-400 mt-1">投資組合對整體大盤的敏感度 (傳統 Beta)。</div>
+                                <div class="text-[10px] text-gray-500 mb-1" title="大盤敏感度">大盤風險 (Mkt)</div>
+                                <div class="text-lg font-bold font-mono text-blue-400">{{ stats?.ff_mkt_beta || '-' }}</div>
                             </div>
-
                             <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-700/50">
-                                <div class="text-xs text-gray-500 mb-1">市值因子 (SMB)</div>
-                                <div class="text-xl font-bold font-mono" :class="parseFloat(stats?.ff_smb) > 0 ? 'text-yellow-400' : 'text-purple-400'">
-                                    {{ stats?.ff_smb || '-' }}
-                                </div>
-                                <div class="text-[10px] text-gray-400 mt-1">
-                                    &gt; 0 偏向<span class="text-yellow-400">中小型股</span><br>
-                                    &lt; 0 偏向<span class="text-purple-400">大型權值股</span>
-                                </div>
+                                <div class="text-[10px] text-gray-500 mb-1" title=">0 偏中小型, <0 偏大型權值">市值因子 (SMB)</div>
+                                <div class="text-lg font-bold font-mono text-yellow-400">{{ stats?.ff_smb || '-' }}</div>
                             </div>
-
                             <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-700/50">
-                                <div class="text-xs text-gray-500 mb-1">價值因子 (HML)</div>
-                                <div class="text-xl font-bold font-mono" :class="parseFloat(stats?.ff_hml) > 0 ? 'text-orange-400' : 'text-cyan-400'">
-                                    {{ stats?.ff_hml || '-' }}
-                                </div>
-                                <div class="text-[10px] text-gray-400 mt-1">
-                                    &gt; 0 偏向<span class="text-orange-400">傳統價值股</span><br>
-                                    &lt; 0 偏向<span class="text-cyan-400">科技成長股</span>
-                                </div>
+                                <div class="text-[10px] text-gray-500 mb-1" title=">0 偏價值股, <0 偏成長科技股">價值因子 (HML)</div>
+                                <div class="text-lg font-bold font-mono text-orange-400">{{ stats?.ff_hml || '-' }}</div>
+                            </div>
+                            <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-700/50">
+                                <div class="text-[10px] text-gray-500 mb-1" title=">0 偏高獲利品質, <0 偏低利潤/虧損">獲利能力 (RMW)</div>
+                                <div class="text-lg font-bold font-mono text-emerald-400">{{ stats?.ff_rmw || '-' }}</div>
+                            </div>
+                            <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-700/50">
+                                <div class="text-[10px] text-gray-500 mb-1" title=">0 偏動能強勢股, <0 偏反轉弱勢股">動能因子 (WML)</div>
+                                <div class="text-lg font-bold font-mono text-purple-400">{{ stats?.ff_wml || '-' }}</div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div class="glass p-5 rounded-2xl flex flex-col relative min-h-[300px] md:h-96">
-                        <h4 class="text-white font-bold mb-2">證券市場線 (SML) - Beta vs Return</h4>
+                    <div class="glass p-5 rounded-2xl min-h-[300px] md:h-96 flex flex-col">
+                        <h4 class="text-white font-bold mb-2">證券市場線 (SML)</h4>
                         <div class="flex-1 relative"><canvas id="smlChart"></canvas></div>
                     </div>
-                    <div class="glass p-5 rounded-2xl flex flex-col relative min-h-[300px] md:h-96">
-                        <h4 class="text-white font-bold mb-2">資本市場線 (CML) - StdDev vs Return</h4>
+                    <div class="glass p-5 rounded-2xl min-h-[300px] md:h-96 flex flex-col">
+                        <h4 class="text-white font-bold mb-2">資本市場線 (CML)</h4>
                         <div class="flex-1 relative"><canvas id="cmlChart"></canvas></div>
                     </div>
                 </div>
-
-                <div class="glass p-6 rounded-2xl flex flex-col mt-6 border-t-4 border-red-900 shadow-[0_0_20px_rgba(127,29,29,0.3)] relative overflow-hidden">
-                    <div class="absolute -right-4 -top-4 opacity-5 pointer-events-none">
-                        <i class="fas fa-biohazard text-9xl text-red-500"></i>
-                    </div>
-                    
-                    <div class="relative z-10">
-                        <h4 class="text-white text-lg font-bold mb-1 flex items-center gap-2">
-                            <i class="fas fa-radiation text-red-500 animate-pulse"></i> 歷史極端情境壓力測試 (Stress Testing)
-                        </h4>
-                        <p class="text-xs text-gray-400 mb-5">基於當前投資組合系統性風險曝險 (<span class="text-yellow-400 font-bold">β = {{ portfolioStats.beta }}</span>)，映射至歷史黑天鵝事件之預期最大回撤 (MDD)。</p>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div v-for="scenario in stressTestResults" :key="scenario.name" class="bg-gray-900/60 p-4 rounded-xl border border-gray-700/50 hover:border-red-900/50 transition-colors">
-                                <div class="flex justify-between items-end mb-2">
-                                    <div>
-                                        <div class="text-white font-bold">{{ scenario.name }}</div>
-                                        <div class="text-[10px] text-gray-500 mt-0.5">{{ scenario.desc }}</div>
-                                    </div>
-                                    <div class="text-right">
-                                        <span class="text-xs text-gray-400 block mb-0.5">預期跌幅</span>
-                                        <span class="font-mono font-bold text-lg" :class="scenario.portDrop < 0 ? 'text-red-500' : 'text-green-500'">
-                                            {{ scenario.portDrop }}%
-                                        </span>
-                                    </div>
-                                </div>
-                                
-                                <div class="w-full bg-gray-800 rounded-full h-2.5 overflow-hidden relative mb-2">
-                                    <div class="absolute top-0 bottom-0 bg-gray-400 w-[2px] z-10" :style="{ left: Math.abs(scenario.benchDrop) + '%' }" title="當時大盤跌幅"></div>
-                                    <div class="bg-gradient-to-r from-red-500 to-red-900 h-full transition-all duration-1000" :style="{ width: Math.min(Math.abs(scenario.portDrop), 100) + '%' }"></div>
-                                </div>
-                                
-                                <div class="text-[10px] flex justify-between">
-                                    <span class="text-gray-500">大盤同期: <span class="text-gray-400">{{ scenario.benchDrop }}%</span></span>
-                                    <span class="text-red-400 font-bold tracking-wider">預估蒸發: NT$ -{{ formatNumber(scenario.valueLost) }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            </div> 
+            </div>
 
             <div v-show="currentTab === 'analytics'" class="flex flex-col space-y-6 animate-fade-in">
-                <div class="p-4 rounded-xl flex flex-wrap items-center justify-between gap-4 border transition-colors duration-500" :class="isSimMode ? 'glass-sim border-red-900/50' : 'glass border-white/5'">
-                    <div class="flex flex-col md:flex-row gap-6 w-full md:w-auto">
-                        <div>
-                             <h3 class="font-bold text-white text-lg flex items-center gap-2 mb-2 md:mb-0">
-                                <i class="fas fa-brain" :class="isSimMode ? 'text-red-500' : 'text-yellow-500'"></i> 量化風險分析
-                             </h3>
-                        </div>
-                        <div class="flex gap-4 items-end flex-wrap">
-                            <div class="flex flex-col">
-                                <label class="text-[10px] text-gray-400 font-bold mb-1">計算開始日</label>
-                                <input v-model="quantStartDate" type="date" class="bg-gray-800 text-white border border-gray-600 text-xs rounded px-2 py-1 focus:border-yellow-500 outline-none">
-                            </div>
-                             <div class="flex flex-col">
-                                <label class="text-[10px] text-gray-400 font-bold mb-1">數據頻率 (n)</label>
-                                <div class="bg-gray-800/50 text-blue-400 font-bold border border-blue-900/50 text-xs rounded px-3 py-1.5 cursor-not-allowed">
-                                    <i class="fas fa-bolt"></i> 週資料 (Weekly √52)
-                                </div>
-                            </div>
-                            <div class="flex flex-col w-20">
-                                <label class="text-[10px] text-gray-400 font-bold mb-1">Rf (%)</label>
-                                <input v-model.number="riskParams.rf" type="number" step="0.1" class="bg-gray-800 text-white border border-gray-600 text-xs rounded px-2 py-1 text-center focus:border-yellow-500 outline-none">
-                            </div>
-                            <div class="flex flex-col w-20">
-                                <label class="text-[10px] text-gray-400 font-bold mb-1">Rm (%)</label>
-                                <input v-model.number="riskParams.rm" type="number" step="0.1" class="bg-gray-800 text-white border border-gray-600 text-xs rounded px-2 py-1 text-center focus:border-yellow-500 outline-none">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex gap-2 items-end">
-                        <div class="flex flex-col" v-if="!isSimMode">
-                            <label class="text-[10px] text-gray-400 font-bold mb-1 text-right">快照日期</label>
-                            <input v-model="snapshotDate" type="date" class="bg-gray-800 text-white border border-gray-600 text-xs rounded px-2 py-1.5 focus:border-yellow-500 outline-none">
-                        </div>
-                        <button v-if="!isSimMode" @click="snapshotToHistory" class="btn-gold px-3 py-2 rounded text-xs font-bold shadow hover:scale-105 transition flex items-center gap-1 h-[30px]" title="紀錄當下淨值與成本">
-                            <i class="fas fa-camera"></i> 快照
-                        </button>
-                        
-                        <button @click="openMonteCarlo" class="bg-purple-600 hover:bg-purple-500 px-3 py-2 rounded text-xs text-white font-bold shadow transition flex items-center gap-1 h-[30px]">
-                            <i class="fas fa-random"></i> MC 最佳化
-                        </button>
-                        
-                        <button v-if="isSimMode" @click="generateMonthlyMockData" class="text-red-300 hover:text-white text-xs border border-red-500/50 px-3 py-2 rounded h-[30px]">重刷</button>
-                        <button v-if="!isSimMode" @click="showHistoryModal = true" class="text-blue-400 hover:text-white text-xs border border-blue-500/50 px-3 py-2 rounded h-[30px]">補登</button>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-6 gap-3 mt-4">
-                    <div class="quant-card">
-                        <div class="quant-label text-blue-400" title="時間加權報酬 (評估選股能力)">年化 TWR</div>
-                        <div class="quant-value text-white">{{ stats.annRet }}%</div>
-                    </div>
-                    <div class="quant-card border-blue-900/30 bg-blue-900/10">
-                        <div class="quant-label text-blue-300" title="資金加權報酬 (評估擇時進出能力)">年化 MWR</div>
-                        <div class="quant-value text-white">{{ stats.mwr }}%</div>
-                    </div>
-                    <div class="quant-card border-blue-900/30 bg-blue-900/10">
-                        <div class="quant-label text-blue-300" title="連續複利 LN(1+TWR)">Log Return</div>
-                        <div class="quant-value text-white">{{ stats.annLogRet }}%</div>
-                    </div>
-                    
-                    <div class="quant-card">
-                        <div class="quant-label text-gray-400">年化標準差 (Vol)</div>
-                        <div class="quant-value text-white">{{ stats.annVol }}%</div>
-                    </div>
-                    <div class="quant-card">
-                        <div class="quant-label text-yellow-400">夏普 (Sharpe)</div>
-                        <div class="quant-value text-white">{{ stats.sharpe }}</div>
-                    </div>
-                    <div class="quant-card">
-                        <div class="quant-label text-yellow-400">索提諾 (Sortino)</div>
-                        <div class="quant-value text-white">{{ stats.sortino }}</div>
-                    </div>
-                    <div class="quant-card border-yellow-900/30 bg-yellow-900/10">
-                        <div class="quant-label text-yellow-300" title="每承擔1單位系統風險的超額報酬">崔納 (Treynor)</div>
-                        <div class="quant-value text-white">{{ stats.treynor }}</div>
-                    </div>
-                    <div class="quant-card border-yellow-900/30 bg-yellow-900/10">
-                        <div class="quant-label text-yellow-300" title="機率權重盈虧比 (克服非常態分配)">Omega 比率</div>
-                        <div class="quant-value text-white">{{ stats.omega }}</div>
-                    </div>
-                    <div class="quant-card border-yellow-900/30 bg-yellow-900/10">
-                        <div class="quant-label text-yellow-300" title="總獲利 / 總虧損">獲利因子 (PF)</div>
-                        <div class="quant-value text-white">{{ stats.profitFactor }}</div>
-                    </div>
-
-                    <div class="quant-card">
-                        <div class="quant-label text-purple-400">組合 Beta (β)</div>
-                        <div class="quant-value text-white">{{ riskParams.beta }}</div>
-                    </div>
-                    <div class="quant-card">
-                        <div class="quant-label text-green-400">Alpha (Jensen)</div>
-                        <div class="quant-value text-white">{{ stats.alpha }}%</div>
-                    </div>
-                    <div class="quant-card bg-red-900/20 border-red-500/30">
-                        <div class="quant-label text-red-400">最大回撤 (MDD)</div>
-                        <div class="quant-value text-white">{{ stats.mdd }}%</div>
-                    </div>
-                    <div class="quant-card">
-                        <div class="quant-label text-yellow-400">卡瑪 (Calmar)</div>
-                        <div class="quant-value text-white">{{ stats.calmar }}</div>
-                    </div>
-                    <div class="quant-card bg-red-900/20 border-red-500/30">
-                        <div class="quant-label text-red-400" title="綜合深度與長度的回撤懲罰">潰瘍指數 (UI)</div>
-                        <div class="quant-value text-white">{{ stats.ulcer }}</div>
-                    </div>
-                    <div class="quant-card bg-red-900/20 border-red-500/30">
-                        <div class="quant-label text-red-400" title="最長未創新高天數">水下時間 (天)</div>
-                        <div class="quant-value text-white">{{ stats.tuw }}</div>
-                    </div>
-                    <div class="quant-card"><div class="quant-label text-red-400">VaR (95%)</div><div class="quant-value text-white">{{ stats.var95 }}%</div></div>
-                    <div class="quant-card bg-white/5 border-yellow-400/30">
-                        <div class="quant-label text-yellow-400">偏度 (Skewness)</div>
-                        <div class="quant-value text-white" :class="stats.skew < 0 ? 'text-red-400' : 'text-green-400'">{{ stats.skew }}</div>
-                    </div>
-                    <div class="quant-card bg-white/5 border-yellow-400/30">
-                        <div class="quant-label text-yellow-400">峭度 (Kurtosis)</div>
-                        <div class="quant-value text-white" :class="stats.kurt > 3 ? 'text-red-400' : 'text-gray-300'">{{ stats.kurt }}</div>
-                    </div>
-                </div>
-                
-                <div class="mt-6 glass p-5 rounded-2xl border-l-4 border-blue-500 relative transition-all duration-300" :class="isCroThinking ? 'animate-pulse bg-blue-900/20' : ''">
-                    <div class="flex justify-between items-start mb-4">
-                        <div>
-                            <h4 class="text-white font-bold flex items-center gap-2 text-lg">
-                                <i class="fas fa-user-tie text-blue-400"></i> AI 量化風險總監 (CRO) 深度洞察
-                            </h4>
-                            <p class="text-xs text-gray-400 mt-1">基於 18 項高階量化指標 (TUW, UI, Omega, CVaR) 進行全方位壓力診斷</p>
-                        </div>
-                        <button @click="generateQuantInsight" :disabled="isCroThinking" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg shadow-[0_0_10px_rgba(37,99,235,0.4)] transition-all flex items-center gap-2">
-                            <i v-if="isCroThinking" class="fas fa-spinner fa-spin"></i>
-                            <i v-else class="fas fa-bolt text-yellow-300"></i>
-                            {{ isCroThinking ? '運算中...' : '生成洞察報告' }}
-                        </button>
-                    </div>
-
-                    <div v-if="croInsight" class="bg-gray-900/60 rounded-xl p-4 border border-gray-700/50">
-                        <ul class="space-y-3">
-                            <li v-for="(insight, idx) in croInsight" :key="idx" class="flex items-start gap-3 text-sm">
-                                <i class="fas fa-caret-right text-blue-400 mt-1"></i>
-                                <span class="text-gray-200 leading-relaxed">{{ insight }}</span>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-
-                 <div class="glass rounded-xl flex flex-col mt-4 transition-all duration-300 border border-gray-700/50 hover:border-gray-500/50">
-                    
-                    <div class="p-4 cursor-pointer flex justify-between items-center bg-gray-800/30 hover:bg-gray-800/60 transition-colors" @click="isHistoryExpanded = !isHistoryExpanded">
-                        <h3 class="font-bold text-white flex items-center gap-2">
-                            <i class="fas fa-list-alt text-blue-400"></i> 快照歷史紀錄 (TWR 精算明細)
-                            <span class="text-xs font-normal text-gray-500 ml-2 hidden sm:inline">{{ enrichedHistory.length }} 筆資料</span>
-                        </h3>
-                        <div class="flex items-center gap-3">
-                            <span class="text-xs text-gray-500" v-if="!isHistoryExpanded">點擊展開</span>
-                            <button class="text-gray-400 hover:text-white transition-transform duration-300 transform w-8 h-8 rounded-full flex items-center justify-center bg-gray-900/50 border border-gray-700" :class="{'rotate-180 text-blue-400 border-blue-500/30': isHistoryExpanded}">
-                                <i class="fas fa-chevron-down"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div v-show="isHistoryExpanded" class="border-t border-gray-700/50 overflow-hidden animate-fade-in">
-                        <div class="overflow-x-auto p-2 md:p-0">
-                            <table class="w-full text-left whitespace-nowrap">
-                                <thead class="bg-[#0f172a] text-xs text-gray-400 uppercase font-semibold border-b border-gray-700">
-                                   <tr>
-                                       <th class="p-3 pl-6">日期</th>
-                                       <th class="p-3 text-right">總資產 (NAV)</th>
-                                       <th class="p-3 text-right">總成本 (Cost)</th>
-                                       <th class="p-3 text-right">週期報酬 (Return)</th>
-                                       <th class="p-3 text-center" v-if="!isSimMode">動作</th>
-                                   </tr>
-                                </thead>
-                                <tbody class="text-sm divide-y divide-white/5">
-                                    <tr v-for="(h, idx) in enrichedHistory" :key="h.date" class="hover:bg-white/5 transition-colors">
-                                        <td class="p-3 pl-6 font-mono text-blue-300">{{ h.date }}</td>
-                                        <td class="p-3 text-right font-mono text-white">{{ formatNumber(h.assets) }}</td>
-                                        <td class="p-3 text-right font-mono text-gray-500">{{ formatNumber(h.cost) }}</td>
-                                        <td class="p-3 text-right font-mono font-bold" :class="h.dailyReturn >= 0 ? 'text-red-400' : 'text-green-400'">
-                                            {{ h.dailyReturn ? (h.dailyReturn * 100).toFixed(2) + '%' : '-' }}
-                                        </td>
-                                        <td class="p-3 text-center" v-if="!isSimMode">
-                                            <button @click.stop="removeHistoryByDate(h.date)" class="text-gray-600 hover:text-red-500 transition-colors w-8 h-8 rounded-full hover:bg-red-500/10">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    <tr v-if="enrichedHistory.length === 0">
-                                        <td colspan="5" class="p-6 text-center text-gray-500 text-xs">
-                                            尚無快照紀錄，請點擊上方「快照」按鈕建立第一筆資料。
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
                  </div>
-
-                 <div class="glass p-5 rounded-xl flex flex-col relative mt-6 min-h-[300px] md:h-64">
-                    <h4 class="text-white font-bold mb-2"><i class="fas fa-history text-blue-400 mr-2"></i>Rolling 12-Period (Sharpe & Volatility)</h4>
-                    <div class="flex-1 relative"><canvas id="rollingChart"></canvas></div>
-                </div>
-            </div>
-
-            <div v-show="currentTab === 'ledger'" class="flex flex-col md:flex-row gap-6">
-                 <div class="w-full md:w-80 glass p-5 rounded-xl h-fit space-y-4">
-                    <h3 class="font-bold text-white text-lg border-b border-gray-700 pb-2">新增交易</h3>
-                    <div><label class="text-xs text-gray-400 mb-1 block">1. 資產類別</label><div class="grid grid-cols-2 gap-2"><button @click="txForm.category='美股'" :class="txForm.category==='美股'?'bg-yellow-600 text-black font-bold':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs transition">美股</button><button @click="txForm.category='台股'" :class="txForm.category==='台股'?'bg-blue-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs transition">台股</button><button @click="txForm.category='基金'" :class="txForm.category==='基金'?'bg-green-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs transition">基金</button><button @click="txForm.category='加密貨幣'" :class="txForm.category==='加密貨幣'?'bg-purple-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs transition">加密貨幣</button></div></div>
-                    <div><label class="text-xs text-gray-400 mb-1 block">2. 交易內容 (TWD)</label><div class="grid grid-cols-2 gap-2 mb-2"><input v-model="txForm.date" type="date" class="input-dark p-2 rounded text-xs col-span-2"><select v-model="txForm.type" class="input-dark p-2 rounded text-xs col-span-2"><option value="Buy">買入 (Buy)</option><option value="Sell">賣出 (Sell)</option></select></div><input v-model="txForm.ticker" placeholder="代號 / 名稱 (如 AAPL)" class="w-full input-dark p-2 rounded text-xs uppercase mb-2"><div class="grid grid-cols-2 gap-2 mb-2"><div><label class="text-[10px] text-gray-500 block">成交單價 (TWD)</label><input v-model.number="txForm.price" type="number" placeholder="台幣價格" class="w-full input-dark p-2 rounded text-xs"></div><div><label class="text-[10px] text-gray-500 block">數量</label><input v-model.number="txForm.shares" type="number" placeholder="股數" class="w-full input-dark p-2 rounded text-xs"></div></div><div class="text-xs text-right text-gray-400 font-mono">總金額 (TWD): <span class="text-white font-bold">{{ formatNumber((txForm.price || 0) * (txForm.shares || 0)) }}</span></div></div>
-                    <button @click="addTransaction" class="w-full btn-purple text-white rounded-lg font-bold text-sm py-3 shadow-lg">確認送出</button>
-                 </div>
-                 <div class="flex-1 glass rounded-xl overflow-hidden flex flex-col">
-                    <div class="p-4 bg-gray-800/50 border-b border-gray-700">
-                        <h3 class="font-bold text-white">交易流水帳 (TWD)</h3>
-                    </div>
-                    <div class="overflow-x-auto p-2 md:p-0">
-                        <table class="w-full text-left">
-                            <thead class="bg-[#0f172a] text-xs text-gray-400 uppercase font-semibold border-b border-gray-700"><tr><th class="p-3">日期</th><th class="p-3">類別</th><th class="p-3">名稱</th><th class="p-3 text-right">現金流 (TWD)</th><th class="p-3"></th></tr></thead>
-                            <tbody class="text-sm divide-y divide-white/5">
-                                <tr v-for="(tx, idx) in reversedTransactions" :key="idx" class="hover:bg-white/5">
-                                    <td class="p-3 text-gray-400">{{ tx.date }}</td>
-                                    <td class="p-3 font-bold" :class="getTypeColor(tx.type)">{{ tx.type }}</td>
-                                    <td class="p-3 text-white">{{ tx.ticker || '-' }}</td>
-                                    <td class="p-3 text-right font-mono text-white">{{ formatNumber(tx.totalCashFlow) }}</td>
-                                    <td class="p-3 text-center">
-                                        <button @click="removeTransaction(tx)" class="text-gray-600 hover:text-red-500 transition-colors">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                 </div>
-            </div>
-
-            <div v-if="showHistoryModal" class="fixed inset-0 bg-black/90 flex items-center justify-center z-[100]"><div class="glass p-6 rounded-xl w-full max-w-lg"><h3 class="text-lg font-bold text-white mb-4">補登資料</h3><div class="space-y-3 mb-6"><div class="flex gap-2"><input v-model="historyForm.date" type="date" class="input-dark p-2 rounded flex-1"><input v-model.number="historyForm.assets" type="number" placeholder="NAV" class="input-dark p-2 rounded flex-1"><input v-model.number="historyForm.cost" type="number" placeholder="Cost" class="input-dark p-2 rounded flex-1"></div><button @click="addHistoryRecord" class="w-full btn-gold text-black py-2 rounded font-bold">新增</button></div><button @click="showHistoryModal=false" class="w-full bg-gray-700 py-2 rounded text-white">關閉</button></div></div>
-            
-            <div v-if="showMCModal" class="fixed inset-0 bg-black/95 flex items-center justify-center z-[100] p-4">
-                <div class="glass p-4 md:p-6 rounded-xl w-full max-w-5xl h-[90vh] md:h-[85vh] flex flex-col">
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 border-b border-gray-700 pb-3 gap-3 relative">
-                        <h3 class="text-lg md:text-xl font-bold text-white flex items-center gap-2 shrink-0">
-                            <i class="fas fa-random text-purple-400"></i> MC 最佳化配置
-                        </h3>
-                        <div class="flex flex-wrap md:flex-nowrap gap-1 bg-gray-900 p-1 rounded-lg border border-gray-700 w-full md:w-auto shadow-inner">
-                            <button @click="mcRisk='averse'; runMonteCarlo()" :class="mcRisk==='averse'?'bg-green-600 text-white shadow-md':'text-gray-400 hover:text-gray-200'" class="flex-1 md:flex-none px-2 md:px-4 py-1.5 text-xs font-bold rounded-md transition-all">保守</button>
-                            <button @click="mcRisk='neutral'; runMonteCarlo()" :class="mcRisk==='neutral'?'bg-blue-600 text-white shadow-md':'text-gray-400 hover:text-gray-200'" class="flex-1 md:flex-none px-2 md:px-4 py-1.5 text-xs font-bold rounded-md transition-all">穩健</button>
-                            <button @click="mcRisk='aggressive'; runMonteCarlo()" :class="mcRisk==='aggressive'?'bg-red-600 text-white shadow-md':'text-gray-400 hover:text-gray-200'" class="flex-1 md:flex-none px-2 md:px-4 py-1.5 text-xs font-bold rounded-md transition-all">積極</button>
-                        </div>
-                        <button @click="showMCModal=false" class="text-gray-400 hover:text-white absolute top-0 right-0 md:static p-2"><i class="fas fa-times text-xl"></i></button>
-                    </div>
-                    
-                    <div class="flex flex-col md:flex-row flex-wrap gap-3 mb-4 bg-gray-800/50 p-3 rounded-lg border border-gray-700 items-start md:items-center justify-between shadow-inner">
-                        <div class="flex items-center gap-2 w-full md:w-auto">
-                            <span class="text-xs text-gray-400 font-bold"><i class="fas fa-satellite-dish"></i> 總經雷達:</span>
-                            <div class="bg-gray-900/80 text-white text-xs font-bold border border-indigo-500/50 rounded px-3 py-1.5 shadow-[0_0_8px_rgba(99,102,241,0.2)] flex items-center gap-2 select-none cursor-default">
-                                <i class="fas fa-robot text-indigo-400 animate-pulse"></i>
-                                <span v-if="macroRegime === 'Normal'" class="text-gray-300">⚖️ 正常 (Normal)</span>
-                                <span v-else-if="macroRegime === 'Bull'" class="text-green-400">🐂 狂牛 (Bull Market)</span>
-                                <span v-else-if="macroRegime === 'Bear'" class="text-orange-400">🐻 熊市 (Bear Market)</span>
-                                <span v-else-if="macroRegime === 'Crisis'" class="text-red-500 animate-bounce">⚠️ 金融海嘯 (Crisis)</span>
-                            </div>
-                        </div>
-                        <div class="flex gap-2 w-full md:w-auto">
-                            <button @click="enableBlackSwan = !enableBlackSwan; runMonteCarlo()"
-                                    class="flex-1 md:flex-none px-2 py-2 text-xs font-bold rounded border transition-all flex items-center justify-center gap-1 md:gap-2"
-                                    :class="enableBlackSwan ? 'bg-red-900/80 text-red-400 border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'bg-gray-800 text-gray-500 border-gray-600 hover:text-gray-300'">
-                                <i class="fas fa-crow"></i> <span class="hidden sm:inline">黑天鵝 (Jump-Diffusion)</span><span class="sm:hidden">黑天鵝</span>
-                            </button>
-                            <button @click="enableInflation = !enableInflation; runMonteCarlo()"
-                                    class="flex-1 md:flex-none px-2 py-2 text-xs font-bold rounded border transition-all flex items-center justify-center gap-1 md:gap-2"
-                                    :class="enableInflation ? 'bg-blue-900/80 text-blue-400 border-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]' : 'bg-gray-800 text-gray-500 border-gray-600 hover:text-gray-300'">
-                                <i class="fas fa-fire"></i> <span class="hidden sm:inline">扣除通膨 (實質報酬)</span><span class="sm:hidden">扣除通膨</span>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden">
-                        <div class="flex-1 bg-gray-900 rounded-xl relative p-2 md:p-4 border border-gray-700 min-h-[40vh] md:min-h-0">
-                            <canvas id="mcChart"></canvas>
-                        </div>
-                        <div class="w-full md:w-72 bg-gray-800/50 rounded-xl p-4 overflow-y-auto border border-gray-700 h-[35vh] md:h-auto">
-                            <h4 class="text-yellow-400 font-bold mb-3 text-sm flex items-center gap-2 sticky top-0 bg-gray-800 pb-2 z-10">
-                                <i v-if="mcRisk==='neutral'" class="fas fa-balance-scale"></i>
-                                <i v-else-if="mcRisk==='averse'" class="fas fa-shield-alt text-green-400"></i>
-                                <i v-else class="fas fa-rocket text-red-400"></i>
-                                {{ mcRisk === 'neutral' ? '最佳夏普組合' : (mcRisk === 'averse' ? '低波動組合' : '高預期報酬組合') }}
-                            </h4>
-                            <div v-if="mcOptimal" class="space-y-2">
-                                <div class="flex justify-between text-xs text-gray-300 border-b border-gray-600 pb-1">
-                                    <span>{{ enableInflation ? '實質報酬 (Real)' : '預期報酬' }}</span>
-                                    <span class="font-mono text-green-400">{{ mcOptimal.ret }}%</span>
-                                </div>
-                                <div class="flex justify-between text-xs text-gray-300 border-b border-gray-600 pb-1"><span>標準差</span><span class="font-mono text-red-400">{{ mcOptimal.vol }}%</span></div>
-                                <div class="flex justify-between text-xs text-gray-300 border-b border-gray-600 pb-1"><span title="調整後夏普值 (含高階動差)">Sharpe / ASR</span><span class="font-mono text-yellow-400 font-bold">{{ mcOptimal.sharpe }}</span></div>
-                                <div class="flex justify-between text-xs text-gray-300 border-b border-gray-600 pb-1"><span>偏度 (Skew)</span><span class="font-mono" :class="mcOptimal.skew >= 0 ? 'text-green-400' : 'text-red-400'">{{ mcOptimal.skew }}</span></div>
-                                <div class="flex justify-between text-xs text-gray-300 border-b border-gray-600 pb-3"><span>超額峭度 (Ex. Kurt)</span><span class="font-mono text-orange-400">{{ mcOptimal.kurt }}</span></div>
-                                
-                                <h5 class="text-[10px] text-gray-400 uppercase tracking-wider mb-2 mt-4 border-b border-gray-700 pb-1">Rebalance 具體調整清單</h5>
-                                <div v-for="item in mcOptimal.weights" :key="item.ticker" class="mb-3 bg-gray-900/50 p-2 rounded border border-gray-700/50">
-                                    <div class="flex justify-between text-xs mb-1">
-                                        <span class="text-white font-bold">{{ item.ticker }}</span>
-                                        <span class="font-mono text-blue-300 font-bold">目標: {{ item.opt }}%</span>
-                                    </div>
-                                    <div class="flex justify-between text-[10px]">
-                                        <span class="text-gray-500">當前: {{ item.cur }}%</span>
-                                        <span class="font-bold" :class="item.diff > 0 ? 'text-green-400' : (item.diff < 0 ? 'text-red-400' : 'text-gray-500')">
-                                            {{ item.diff > 0 ? '加碼 +' : (item.diff < 0 ? '減碼 ' : '') }}{{ item.diff }}%
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div class="mt-4 p-3 bg-blue-900/20 border border-blue-800 rounded-lg text-[10px] text-blue-200 leading-relaxed">
-                                    <p class="font-bold mb-1 text-blue-300"><i class="fas fa-info-circle"></i> 調整指南 (How to Trade)</p>
-                                    <ul class="list-disc pl-4 opacity-90 space-y-1">
-                                        <li>將 <strong>加/減碼 %</strong> 乘以「總資產規模」即為買賣金額。</li>
-                                        <li><strong>加碼</strong>：動用閒置現金，或由減碼資金轉入。</li>
-                                        <li><strong>減碼</strong>：獲利了結或停損，將部位降至目標。</li>
-                                    </ul>
-                                </div>
-                            </div>
-                            <div v-else class="text-xs text-gray-500 flex justify-center items-center h-32">
-                                <i class="fas fa-spinner fa-spin mr-2"></i> 計算 5000 種組合中...
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
        </div>
     </main>
 </div>
 
-<script src="script.js?v=11.2"></script>
+<script src="script.js?v=11.5"></script>
 </body>
 </html>
