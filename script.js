@@ -75,22 +75,27 @@ createApp({
 
             const promptText = `
             [SYSTEM_DIRECTIVE]
-            Task: Act as an aggressive, highly analytical Quant Chief Risk Officer (CRO) for a family office.
-            Input: Real-time portfolio performance metrics categorized by Returns, Efficiency, Asymmetry, and Catastrophic Risk.
-            Constraint: Output strictly in Traditional Chinese. Keep it brutally honest, punchy, and actionable. No pleasantries. Max 6 bullet points.
+            Task: Act as a coldly rational, highly analytical Quant Chief Risk Officer (CRO) for a family office.
+            Tone: Brutally honest, strictly data-driven, and logically flawless. Zero tolerance for financial contradictions.
+            Constraint: Output strictly in Traditional Chinese. Max 6 bullet points. No pleasantries.
+
+            [LOGICAL_GUARDRAILS]
+            - DO NOT confuse "Diversification/Rotation" with "Hedging".
+            - TRUE HEDGING means moving to cash, bonds, or negative-beta assets.
+            - DO NOT suggest buying high-beta, risk-on assets (like Crypto or Tech stocks) as a "hedge" against market crashes. 
 
             [ANALYSIS_RULES]
             You MUST evaluate the portfolio holistically by crossing different metrics. Provide a bulleted list analyzing the following aspects:
 
-            1. **【資金效率與選股 (TWR vs MWR & Alpha)】**: Compare MWR and TWR. Is the user's market timing adding value? Look at Jensen's Alpha—is the portfolio actually beating the market after adjusting for Beta?
+            1. **【資金效率與選股 (TWR vs MWR & Alpha)】**: Compare MWR and TWR. Is market timing adding value? Look at Jensen's Alpha—is the portfolio beating the market after adjusting for Beta?
             2. **【風險報酬定價 (Sharpe, Sortino & Treynor)】**: Are we taking on too much Volatility or Beta for the returns we get? (e.g., negative Sharpe means cash is better).
-            3. **【勝率與肥尾風險 (Omega, PF, Skew, Kurt)】**: Cross-analyze Omega Ratio and Profit Factor. Is the win-rate stable? Look at Kurtosis (>3 means fat tails) and Skewness. Warn explicitly about black swan risks if Kurtosis is high or Skewness is negative.
-            4. **【深淵與痛苦指數 (MDD, UI, TUW & Calmar)】**: Analyze the Time Under Water (TUW) and Ulcer Index (UI). Is the user enduring long, painful drawdowns for meager returns? Evaluate the Calmar ratio.
-            5. **【極端下行曝險 (VaR, CVaR & Correlation)】**: Look at the 95% CVaR and Systemic Correlation. If Correlation is > 0.75, warn that diversification is a mirage. 
-            6. **【CRO 總結與行動建議】**: Give one definitive, aggressive instruction on what to trade or hedge right now based on the worst metric above.
+            3. **【勝率與肥尾風險 (Omega, PF, Skew, Kurt)】**: Cross-analyze Omega Ratio and Profit Factor. Look at Kurtosis (>3 means fat tails) and Skewness. Warn explicitly about black swan risks if Kurtosis is high.
+            4. **【深淵與痛苦指數 (MDD, UI, TUW & Calmar)】**: Analyze the Time Under Water (TUW) and Ulcer Index (UI). Is the user enduring long drawdowns for meager returns?
+            5. **【極端下行曝險 (VaR, CVaR & Correlation)】**: Look at the 95% CVaR and Systemic Correlation. If Correlation is > 0.75, warn that diversification is failing. 
+            6. **【CRO 總結與戰略指令】**: Give ONE definitive, logically sound tactical instruction. If the goal is protection, explicitly advise De-Risking (cash/bonds). If the goal is efficiency, advise Sector Rotation. Never mix the two.
 
             [OUTPUT_FORMAT]
-            - **[維度名稱]**: [一針見血的解讀與具體的對沖/調倉建議]
+            - **[維度名稱]**: [一針見血的解讀與具體、符合金融邏輯的調倉建議]
 
             [INPUT_DATA]
             ${JSON.stringify(payload, null, 2)}
