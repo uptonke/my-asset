@@ -641,7 +641,10 @@ def get_sheet_prices(url_str):
         
         sheet_id = match.group(1)
         gid = gid_match.group(1) if gid_match else '0'
-        csv_url = "[https://docs.google.com/spreadsheets/d/](https://docs.google.com/spreadsheets/d/)" + sheet_id + "/gviz/tq?tqx=out:csv&gid=" + gid
+        domain = "https://docs.google.com"
+        path = "/spreadsheets/d/" + sheet_id + "/gviz/tq?tqx=out:csv&gid=" + gid
+        csv_url = domain + path
+
         
         response = requests.get(csv_url, timeout=10)
         response.raise_for_status() 
@@ -822,14 +825,18 @@ try:
                     
                 target_weights = get_optimal_weights(investable_returns, stock_meta, min_wt=dynamic_min, max_wt=dynamic_max)
                 
-                # ==========================================
+                                # ==========================================
                 # 🔬 NEW: 啟動 Fama-French 3 因子模型迴歸引擎
                 # ==========================================
                 print("🧠 啟動 Fama-French 3 因子模型迴歸引擎...", flush=True)
                 try:
                     import statsmodels.api as sm
-                    # 🌟 修正 2：拋棄 pandas_datareader，直接下載解析 ZIP 檔，徹底解決相容性問題！
-                    ff_url = "[https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_daily_CSV.zip](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_daily_CSV.zip)"
+                    
+                    # 🌟 修正 3：字串拼接大法！徹底防止編輯器自動加上 Markdown 超連結中括號
+                    domain = "https://mba.tuck.dartmouth.edu"
+                    path = "/pages/faculty/ken.french/ftp/F-F_Research_Data_Factors_daily_CSV.zip"
+                    ff_url = domain + path
+                    
                     r = requests.get(ff_url, timeout=15)
                     with zipfile.ZipFile(io.BytesIO(r.content)) as z:
                         with z.open(z.namelist()[0]) as f:
@@ -890,6 +897,7 @@ try:
                 except Exception as e:
                     print(f"⚠️ Fama-French 迴歸運算失敗: {e}", flush=True)
                 # ==========================================
+
 
             print("🧠 開始計算多因子風險參數並寫入資料庫...", flush=True)
             for i, original_ticker in enumerate(all_tickers):
