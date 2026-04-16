@@ -421,7 +421,7 @@ try:
                 target_weights = get_optimal_weights(returns[valid_investable], stock_meta, min_wt=dynamic_min, max_wt=1.0 if num_assets < 5 else 0.20)
                 
                 # ==========================================
-                # 🌟 Fama-French 6 因子模型
+                # 🌟 Fama-French 6 因子模型 (升級版：使用週資料)
                 # ==========================================
                 print("🧠 啟動 Fama-French 6 因子模型 (FF5 + Momentum) 迴歸引擎...", flush=True)
                 try:
@@ -458,15 +458,20 @@ try:
                             daily_port_return.index = pd.to_datetime(daily_port_return.index).tz_localize(None)
                             daily_port_return.name = 'Port_Ret'
 
-                            aligned_data = pd.concat([daily_port_return, ff_data], axis=1).replace([np.inf, -np.inf], np.nan).dropna()
+                            # 🌟 升級：將日報酬轉換為「週報酬 (Weekly)」，吸收台美時差與假日錯位
+                            weekly_port = daily_port_return.resample('W-FRI').apply(lambda x: (1 + x).prod() - 1)
+                            weekly_ff = ff_data.resample('W-FRI').apply(lambda x: (1 + x).prod() - 1)
                             
-                            if len(aligned_data) > 30:
+                            aligned_data = pd.concat([weekly_port, weekly_ff], axis=1).replace([np.inf, -np.inf], np.nan).dropna()
+                            
+                            if len(aligned_data) > 10: # 週資料筆數較少，門檻降至 10 週
                                 Y = (aligned_data['Port_Ret'] - aligned_data['RF']).astype(float)
                                 X = sm.add_constant(aligned_data[['Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'Mom']]).astype(float)
                                 
                                 results = sm.OLS(Y, X).fit()
                                 macro_payload["fama_french"] = {
-                                    "alpha": float(round(results.params['const'] * 252 * 100, 2)),
+                                    # 注意：週資料年化需乘以 52，而不是 252
+                                    "alpha": float(round(results.params['const'] * 52 * 100, 2)),
                                     "mkt_beta": float(round(results.params['Mkt-RF'], 2)),
                                     "smb": float(round(results.params['SMB'], 2)),
                                     "hml": float(round(results.params['HML'], 2)),
@@ -475,7 +480,7 @@ try:
                                     "wml": float(round(results.params['Mom'], 2)),
                                     "r_squared": float(round(results.rsquared, 2))
                                 }
-                                print(f"✅ FF6 運算成功: Mkt β={results.params['Mkt-RF']:.2f}, R²={results.rsquared:.2f}")
+                                print(f"✅ FF6 運算成功 (Weekly): Mkt β={results.params['Mkt-RF']:.2f}, R²={results.rsquared:.2f}")
                                 supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
                 except Exception as e: print(f"⚠️ FF6 迴歸失敗: {e}", flush=True)
 
