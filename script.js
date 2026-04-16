@@ -842,7 +842,7 @@ createApp({
                  tuw: Math.round(maxTuwDays),
                  ulcer: ulcerIndex.toFixed(2),
                  omega: omegaRatio > 100 ? '∞' : omegaRatio.toFixed(2),
-                 profitFactor: profitFactor > 100 ? '∞' : profitFactor.toFixed(2)
+                 profitFactor: profitFactor > 100 ? '∞' : profitFactor.toFixed(2),
                 ff_alpha: stats.value.ff_alpha || '-',
                  ff_mkt_beta: stats.value.ff_mkt_beta || '-',
                  ff_smb: stats.value.ff_smb || '-',
