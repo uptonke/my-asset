@@ -52,6 +52,20 @@ def build_session() -> requests.Session:
     })
     return session
 
+def normalize_ticker(ticker: str) -> str:
+    t = str(ticker).strip().upper()
+
+    # 台股前綴統一去掉
+    for prefix in ["TPE:", "TW:", "TWSE:", "TPEX:"]:
+        if t.startswith(prefix):
+            t = t[len(prefix):]
+
+    # 常見 Yahoo / 市場尾碼去掉
+    for suffix in [".TW", ".TWO"]:
+        if t.endswith(suffix):
+            t = t[:-len(suffix)]
+
+    return t
 
 # ==========================================
 # 匯率：抓 USD/TWD
@@ -135,7 +149,7 @@ def get_sheet_prices(sheet_url, session):
         df.columns = ["ticker", "price"]
 
         # 清理資料
-        df["ticker"] = df["ticker"].astype(str).str.strip().str.upper()
+        df["ticker"] = df["ticker"].apply(normalize_ticker)
         df["price"] = pd.to_numeric(df["price"], errors="coerce")
 
         df = df.dropna(subset=["ticker", "price"])
@@ -177,7 +191,7 @@ def aggregate_holdings(ledger: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]
     holdings: Dict[str, Dict[str, Any]] = {}
 
     for tx in ledger:
-        ticker = str(tx.get("ticker", "")).upper().strip()
+        ticker = normalize_ticker(tx.get("ticker", ""))
         if not ticker:
             continue
 
