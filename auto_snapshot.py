@@ -102,7 +102,7 @@ def build_google_sheet_csv_url(sheet_url: str) -> str:
 # ==========================================
 # 從 Google Sheet 抓自訂價格
 # ==========================================
-def get_sheet_prices(sheet_url):
+def get_sheet_prices(sheet_url, session):
     if not sheet_url:
         return {}
 
@@ -110,7 +110,7 @@ def get_sheet_prices(sheet_url):
         # 從網址抓 sheet_id
         sheet_id = sheet_url.split('/d/')[1].split('/')[0]
 
-        # 嘗試抓 gid；沒有就預設 0
+        # 抓 gid，沒有就預設 0
         gid = "0"
         if "gid=" in sheet_url:
             gid = sheet_url.split("gid=")[1].split("&")[0].split("#")[0]
@@ -120,7 +120,7 @@ def get_sheet_prices(sheet_url):
 
         print(f"📥 正在讀取 Google Sheet: {csv_url}")
 
-        response = requests.get(csv_url, timeout=20)
+        response = session.get(csv_url, timeout=20)
         response.raise_for_status()
 
         # 你的 sheet 沒有 header，所以 header=None
@@ -138,7 +138,6 @@ def get_sheet_prices(sheet_url):
         df["ticker"] = df["ticker"].astype(str).str.strip().str.upper()
         df["price"] = pd.to_numeric(df["price"], errors="coerce")
 
-        # 去掉空白列 / 無效價格
         df = df.dropna(subset=["ticker", "price"])
         df = df[df["ticker"] != ""]
 
@@ -150,7 +149,6 @@ def get_sheet_prices(sheet_url):
     except Exception as e:
         print(f"⚠️ Google Sheet 報價抓取失敗: {e}", flush=True)
         return {}
-
 # ==========================================
 # 抓 Supabase 單筆資料
 # ==========================================
