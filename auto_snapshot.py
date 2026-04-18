@@ -102,46 +102,54 @@ def build_google_sheet_csv_url(sheet_url: str) -> str:
 # ==========================================
 # 從 Google Sheet 抓自訂價格
 # ==========================================
-def get_sheet_prices(sheet_url: str, session: requests.Session) -> Dict[str, float]:
+def get_sheet_prices(sheet_url):
     if not sheet_url:
         return {}
 
     try:
-        csv_url = build_google_sheet_csv_url(sheet_url)
-        print(f"📥 讀取 Google Sheet CSV: {csv_url}")
+        # 從網址抓 sheet_id
+        sheet_id = sheet_url.split('/d/')[1].split('/')[0]
 
-        response = session.get(csv_url, timeout=REQUEST_TIMEOUT)
+        # 嘗試抓 gid；沒有就預設 0
+        gid = "0"
+        if "gid=" in sheet_url:
+            gid = sheet_url.split("gid=")[1].split("&")[0].split("#")[0]
+
+        # 正確的 CSV 匯出網址
+        csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&gid={gid}"
+
+        print(f"📥 正在讀取 Google Sheet: {csv_url}")
+
+        response = requests.get(csv_url, timeout=20)
         response.raise_for_status()
 
-        df = pd.read_csv(io.StringIO(response.text), header=0)
+        # 你的 sheet 沒有 header，所以 header=None
+        df = pd.read_csv(io.StringIO(response.text), header=None)
 
-        if df.empty:
-            print("⚠️ Google Sheet 為空。")
+        if df.shape[1] < 2:
+            print("⚠️ Sheet 格式錯誤：至少需要 A 欄代號、B 欄價格。", flush=True)
             return {}
 
-        df.columns = df.columns.astype(str).str.strip().str.upper()
+        # 只取前兩欄：A=ticker, B=price
+        df = df.iloc[:, :2].copy()
+        df.columns = ["ticker", "price"]
 
-        ticker_col = next((col for col in df.columns if col in TICKER_CANDIDATES), None)
-        price_col = next((col for col in df.columns if col in PRICE_CANDIDATES), None)
+        # 清理資料
+        df["ticker"] = df["ticker"].astype(str).str.strip()
+        df["price"] = pd.to_numeric(df["price"], errors="coerce")
 
-        if not ticker_col or not price_col:
-            print(f"⚠️ Sheet 解析失敗：找不到對應欄位。ticker={TICKER_CANDIDATES} / price={PRICE_CANDIDATES}")
-            return {}
+        # 去掉空白列 / 無效價格
+        df = df.dropna(subset=["ticker", "price"])
+        df = df[df["ticker"] != ""]
 
-        df = df.dropna(subset=[ticker_col, price_col]).copy()
-        df[ticker_col] = df[ticker_col].astype(str).str.upper().str.strip()
-        df[price_col] = pd.to_numeric(df[price_col], errors="coerce")
+        price_dict = dict(zip(df["ticker"], df["price"]))
 
-        df = df.dropna(subset=[price_col])
-
-        price_dict = dict(zip(df[ticker_col], df[price_col]))
-        print(f"✅ 成功抓取 {len(price_dict)} 筆 Sheet 報價")
+        print(f"✅ 成功抓取 {len(price_dict)} 筆 Sheet 報價。")
         return {k: float(v) for k, v in price_dict.items()}
 
     except Exception as e:
-        print(f"⚠️ Google Sheet 報價抓取失敗：{e}")
+        print(f"⚠️ Google Sheet 報價抓取失敗: {e}", flush=True)
         return {}
-
 
 # ==========================================
 # 抓 Supabase 單筆資料
