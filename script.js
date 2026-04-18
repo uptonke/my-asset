@@ -1169,16 +1169,96 @@ function resizeAllCharts() {
             const allocCtx = document.getElementById('allocationChart'); if(allocCtx && !chartAlloc) chartAlloc = new Chart(allocCtx, { type: 'doughnut', data: { labels: [], datasets: [{data:[]}] }, options: { responsive: true, maintainAspectRatio: false } });
             const histCtx = document.getElementById('historyChart'); if(histCtx && !chartHist) chartHist = new Chart(histCtx, { type: 'line', data: { labels: [], datasets: [{data:[]},{data:[]}] }, options: { responsive: true, maintainAspectRatio: false } });
             const smlCtx = document.getElementById('smlChart');
-            if(smlCtx && !chartSML) { chartSML = new Chart(smlCtx, { type: 'scatter', data: { datasets: [] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: {display:true, text:'Beta (β)'}, min: 0, max: 2 }, y: { title: {display:true, text:'Annualized Return (%)'} } }, plugins: { tooltip: { callbacks: { label: (ctx) => `${ctx.raw.name}: (${ctx.raw.x.toFixed(2)}, ${ctx.raw.y.toFixed(2)}%)` } } } } }); }
+if (smlCtx && !chartSML) {
+    chartSML = new Chart(smlCtx, {
+        type: 'scatter',
+        data: { datasets: [] },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    title: { display: true, text: 'Beta (β)' },
+                    min: 0,
+                    max: 2
+                },
+                y: {
+                    title: { display: true, text: 'Annualized Return (%)' },
+                    min: -20,
+                    max: 60
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                            const rawY = ctx.raw?.rawY ?? ctx.raw?.y ?? 0;
+                            const capped = ctx.raw?.y ?? 0;
+                            const suffix = rawY !== capped ? ` (顯示封頂: ${capped.toFixed(2)}%)` : '';
+                            return `${ctx.raw.name}: (${ctx.raw.x.toFixed(2)}, 原始 ${rawY.toFixed(2)}%)${suffix}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
             const cmlCtx = document.getElementById('cmlChart');
-            if(cmlCtx && !chartCML) { chartCML = new Chart(cmlCtx, { type: 'scatter', data: { datasets: [] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: {display:true, text:'StdDev (σ%)'}, min: 0 }, y: { title: {display:true, text:'Annualized Return (%)'} } }, plugins: { tooltip: { callbacks: { label: (ctx) => `${ctx.raw.name}: (${ctx.raw.x.toFixed(2)}%, ${ctx.raw.y.toFixed(2)}%)` } } } } }); }
-            const rollingCtx = document.getElementById('rollingChart');
+if (cmlCtx && !chartCML) {
+    chartCML = new Chart(cmlCtx, {
+        type: 'scatter',
+        data: { datasets: [] },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+    title: { display: true, text: 'StdDev (σ%)' },
+    min: 0,
+    max: 40
+},
+                y: {
+                    title: { display: true, text: 'Annualized Return (%)' },
+                    min: -20,
+                    max: 60
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+    const rawX = ctx.raw?.rawX ?? ctx.raw?.x ?? 0;
+    const rawY = ctx.raw?.rawY ?? ctx.raw?.y ?? 0;
+    const cappedX = ctx.raw?.x ?? 0;
+    const cappedY = ctx.raw?.y ?? 0;
+
+    const xSuffix = rawX !== cappedX ? ` (波動顯示封頂: ${cappedX.toFixed(2)}%)` : '';
+    const ySuffix = rawY !== cappedY ? ` (報酬顯示封頂: ${cappedY.toFixed(2)}%)` : '';
+
+    return `${ctx.raw.name}: 原始 (${rawX.toFixed(2)}%, ${rawY.toFixed(2)}%)${xSuffix}${ySuffix}`;
+}
+                    }
+                }
+            }
+        }
+    });
+}            const rollingCtx = document.getElementById('rollingChart');
             if(rollingCtx && !chartRolling) { chartRolling = new Chart(rollingCtx, { type: 'line', data: { labels: [], datasets: [] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { type: 'linear', display: true, position: 'left', title: {display: true, text: 'Sharpe Ratio'} }, y1: { type: 'linear', display: true, position: 'right', grid: {drawOnChartArea: false}, title: {display: true, text: 'Volatility (%)'} } } } }); }
             const fireCtx = document.getElementById('fireChart');
             if(fireCtx && !chartFire) { chartFire = new Chart(fireCtx, { type: 'line', data: { labels: [], datasets: [] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: {display:true, text:'年份'} }, y: { title: {display:true, text:'總淨值 (TWD)'}, beginAtZero: true } }, plugins: { tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: NT$ ${new Intl.NumberFormat('zh-TW').format(ctx.raw)}` } }, legend: { labels: { color: '#e2e8f0' } } } } }); }
         }
 
         function updateCharts() {
+            function capPlotReturn(val) {
+    const n = parseFloat(val);
+    if (isNaN(n)) return 0;
+    return Math.max(-20, Math.min(n, 60));
+    }
+    function capPlotStdDev(val) {
+    const n = parseFloat(val);
+    if (isNaN(n)) return 0;
+    return Math.max(0, Math.min(n, 40));
+}
     if (chartUpdateFrame) cancelAnimationFrame(chartUpdateFrame);
     if (chartResizeTimer1) clearTimeout(chartResizeTimer1);
     if (chartResizeTimer2) clearTimeout(chartResizeTimer2);
@@ -1272,77 +1352,84 @@ function resizeAllCharts() {
         }
 
         if (chartSML) {
-            const points = [];
-            for (const cat in groupedHoldings.value) {
-                groupedHoldings.value[cat].items.forEach(item => {
-                    points.push({
-                        x: parseFloat(item.beta) || 0,
-                        y: parseFloat(item.annualizedReturnRate) || 0,
-                        name: item.ticker
-                    });
-                });
-            }
+    const points = [];
+    for (const cat in groupedHoldings.value) {
+        groupedHoldings.value[cat].items.forEach(item => {
+            const rawY = parseFloat(item.annualizedReturnRate) || 0;
+            points.push({
+                x: parseFloat(item.beta) || 0,
+                y: capPlotReturn(rawY),
+                rawY,
+                name: item.ticker
+            });
+        });
+    }
 
-            const rf = parseFloat(riskParams.value.rf) || 0;
-            const rm = parseFloat(riskParams.value.rm) || 0;
+    const rf = parseFloat(riskParams.value.rf) || 0;
+    const rm = parseFloat(riskParams.value.rm) || 0;
 
-            chartSML.data.datasets = [
-                {
-                    label: 'Assets',
-                    data: points,
-                    backgroundColor: '#60a5fa'
-                },
-                {
-                    type: 'line',
-                    label: 'SML',
-                    data: [
-                        { x: 0, y: rf },
-                        { x: 2, y: rf + 2 * (rm - rf) }
-                    ],
-                    borderColor: '#fbbf24',
-                    pointRadius: 0,
-                    tension: 0
-                }
-            ];
-            chartSML.update();
+    chartSML.data.datasets = [
+        {
+            label: 'Assets',
+            data: points,
+            backgroundColor: '#60a5fa'
+        },
+        {
+            type: 'line',
+            label: 'SML',
+            data: [
+                { x: 0, y: rf },
+                { x: 2, y: rf + 2 * (rm - rf) }
+            ],
+            borderColor: '#fbbf24',
+            pointRadius: 0,
+            tension: 0
         }
+    ];
+
+    chartSML.update();
+}
 
         if (chartCML) {
-            const points = [];
-            for (const cat in groupedHoldings.value) {
-                groupedHoldings.value[cat].items.forEach(item => {
-                    points.push({
-                        x: parseFloat(item.stdDev) || 0,
-                        y: parseFloat(item.annualizedReturnRate) || 0,
-                        name: item.ticker
-                    });
-                });
-            }
+    const points = [];
+    for (const cat in groupedHoldings.value) {
+        groupedHoldings.value[cat].items.forEach(item => {
+            const rawY = parseFloat(item.annualizedReturnRate) || 0;
+            points.push({
+    x: capPlotStdDev(parseFloat(item.stdDev) || 0),
+    rawX: parseFloat(item.stdDev) || 0,
+    y: capPlotReturn(rawY),
+    rawY,
+    name: item.ticker
+});
+        });
+    }
 
-            const rf = parseFloat(riskParams.value.rf) || 0;
-            const rm = parseFloat(riskParams.value.rm) || 0;
-            const sm = parseFloat(riskParams.value.sm) || 15;
+    const rf = parseFloat(riskParams.value.rf) || 0;
+    const rm = parseFloat(riskParams.value.rm) || 0;
+    const sm = parseFloat(riskParams.value.sm) || 15;
 
-            chartCML.data.datasets = [
-                {
-                    label: 'Assets',
-                    data: points,
-                    backgroundColor: '#a78bfa'
-                },
-                {
-                    type: 'line',
-                    label: 'CML',
-                    data: [
-                        { x: 0, y: rf },
-                        { x: sm * 2, y: rf + 2 * (rm - rf) }
-                    ],
-                    borderColor: '#34d399',
-                    pointRadius: 0,
-                    tension: 0
-                }
-            ];
-            chartCML.update();
+    chartCML.data.datasets = [
+        {
+            label: 'Assets',
+            data: points,
+            backgroundColor: '#a78bfa'
+        },
+        {
+            type: 'line',
+            label: 'CML',
+            data: [
+                { x: 0, y: rf },
+                { x: Math.min(sm * 2, 40), y: rf + 2 * (rm - rf) }
+            ],
+            borderColor: '#34d399',
+            pointRadius: 0,
+            tension: 0
         }
+    ];
+
+    chartCML.update();
+}
 
         if (chartRolling) {
             const h = [...enrichedHistory.value].reverse();

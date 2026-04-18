@@ -67,7 +67,7 @@
 
     <header class="sticky top-0 z-50 flex-none shadow-lg backdrop-blur-xl border-b border-white/10 transition-colors duration-500" :class="isSimMode ? 'glass-sim' : 'glass'">
     <div class="px-4 md:px-6 py-3 border-b border-white/10">
-        <div class="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+        <div class="max-w-[1700px] 2xl:max-w-[1850px] mx-auto flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
             
             <div class="flex items-center gap-3 min-w-0">
                 <div class="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center shrink-0">
@@ -110,7 +110,7 @@
     </div>
 
     <div class="px-4 md:px-6 py-3">
-        <div class="max-w-7xl mx-auto flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+        <div class="max-w-[1700px] 2xl:max-w-[1850px] mx-auto flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
             
             <nav class="flex gap-2 overflow-x-auto whitespace-nowrap no-scrollbar rounded-2xl bg-black/15 border border-white/10 p-1.5">
     <button @click="currentTab='summary'"
@@ -174,7 +174,7 @@
 </header>
 
     <main class="flex-1 p-4 md:p-6 transition-colors duration-500">
-        <div class="max-w-7xl mx-auto min-h-full space-y-6 pb-20">
+        <div class="max-w-[1700px] 2xl:max-w-[1850px] mx-auto min-h-full space-y-6 pb-20">
 
             <!-- ===== Summary Tab ===== -->
             <section v-show="currentTab === 'summary'" class="animate-fade-in space-y-6">
@@ -482,47 +482,47 @@
     <div class="holdings-fake-header-anchor">
     <div class="holdings-fake-header">
         <div id="holdingsHeaderScroll" class="overflow-hidden">
-            <table class="w-max min-w-full text-left whitespace-nowrap excel-table text-[13px]">
+            <table class="w-max min-w-full text-left whitespace-nowrap excel-table text-[12px]">
                 <colgroup>
-                    <col style="width: 130px;">
-                    <col style="width: 100px;">
-                    <col style="width: 90px;">
-                    <col style="width: 90px;">
-                    <col style="width: 100px;">
-                    <col style="width: 110px;">
-                    <col style="width: 110px;">
-                    <col style="width: 120px;">
-                    <col style="width: 120px;">
-                    <col style="width: 130px;">
-                    <col style="width: 130px;">
-                    <col style="width: 110px;">
-                    <col style="width: 120px;">
-                    <col style="width: 100px;">
-                    <col style="width: 90px;">
-                    <col style="width: 90px;">
-                    <col style="width: 120px;">
-                    <col style="width: 110px;">
-                </colgroup>
+    <col style="width: 96px;">
+    <col style="width: 78px;">
+    <col style="width: 68px;">
+    <col style="width: 68px;">
+    <col style="width: 82px;">
+    <col style="width: 90px;">
+    <col style="width: 90px;">
+    <col style="width: 98px;">
+    <col style="width: 98px;">
+    <col style="width: 108px;">
+    <col style="width: 110px;">
+    <col style="width: 86px;">
+    <col style="width: 94px;">
+    <col style="width: 82px;">
+    <col style="width: 76px;">
+    <col style="width: 72px;">
+    <col style="width: 92px;">
+    <col style="width: 86px;">
+</colgroup>
                 <thead class="bg-[#111827]/95 backdrop-blur-md border-b border-white/10 shadow-sm">
                     <tr>
-                        <th class="pl-6">代號</th>
+                        <th class="pl-4">代號</th>
                         <th>風險</th>
                         <th class="text-center w-16" title="Beta 係數">Beta (β)</th>
                         <th class="text-center w-16" title="年化標準差">SD (σ%)</th>
                         <th class="text-right">持有股數</th>
-                        <th class="p-2 text-right">均價(TWD)</th>
-                        <th class="p-2 text-right">現價(TWD)</th>
-                        <th class="p-2 text-right text-gray-400">成本(TWD)</th>
-                        <th class="p-2 text-right text-white">現值(TWD)</th>
-                        <th class="p-2 text-right text-yellow-300">未實現損益</th>
-                        <th class="p-2 text-center text-indigo-300" title="RSI & MACD">技術訊號</th>
-                        <th class="p-2 text-right text-gray-300">累積報酬</th>
-                        <th class="p-2 text-right text-purple-300" title="資金加權年化報酬率">年化 (CAGR)</th>
-                        <th class="p-2 text-right">現有權重%</th>
-                        <th class="p-2 text-right text-blue-300" title="雲端紀律運算權重 (Python)">雲端%</th>
-                        <th class="p-2 text-right text-purple-400" title="MC理論極限權重">MC%</th>
-                        <th class="p-2 text-right text-yellow-400 font-bold" title="50%雲端 + 50%MC">綜合目標%</th>
-                        <th class="p-2 text-right" title="與綜合目標的偏離度">落差 (Drift)</th>
+                        <th class="px-1.5 py-2 text-right">均價(TWD)</th>
+                        <th class="px-1.5 py-2 text-right">現價(TWD)</th>
+                        <th class="px-1.5 py-2 text-right text-gray-400">成本(TWD)</th>
+                        <th class="px-1.5 py-2 text-right text-white">現值(TWD)</th>
+                        <th class="px-1.5 py-2 text-right text-yellow-300">未實現損益</th>
+                        <th class="px-1.5 py-2 text-center text-indigo-300" title="RSI & MACD">技術訊號</th>
+                        <th class="px-1.5 py-2 text-right text-gray-300">累積報酬</th>
+                        <th class="px-1.5 py-2 text-right text-purple-300" title="資金加權年化報酬率">年化 (CAGR)</th>
+                        <th class="px-1.5 py-2 text-right">現有權重%</th>
+                        <th class="px-1.5 py-2 text-right text-blue-300" title="雲端紀律運算權重 (Python)">雲端%</th>
+                        <th class="px-1.5 py-2 text-right text-purple-400" title="MC理論極限權重">MC%</th>
+                        <th class="px-1.5 py-2 text-right text-yellow-400 font-bold" title="50%雲端 + 50%MC">綜合目標%</th>
+                        <th class="px-1.5 py-2 text-right" title="與綜合目標的偏離度">落差 (Drift)</th>
                     </tr>
                 </thead>
             </table>
@@ -531,27 +531,27 @@
 </div>
     <!-- 真表身：保留水平捲動 -->
     <div id="holdingsBodyScroll" @scroll="syncHoldingsHeaderScroll" class="w-full overflow-x-auto rounded-b-2xl">
-        <table class="w-max min-w-full text-left whitespace-nowrap excel-table text-[13px] holdings-body-table">
+        <table class="w-max min-w-full text-left whitespace-nowrap excel-table text-[12px] holdings-body-table">
             <colgroup>
-                <col style="width: 130px;">
-                <col style="width: 100px;">
-                <col style="width: 90px;">
-                <col style="width: 90px;">
-                <col style="width: 100px;">
-                <col style="width: 110px;">
-                <col style="width: 110px;">
-                <col style="width: 120px;">
-                <col style="width: 120px;">
-                <col style="width: 130px;">
-                <col style="width: 130px;">
-                <col style="width: 110px;">
-                <col style="width: 120px;">
-                <col style="width: 100px;">
-                <col style="width: 90px;">
-                <col style="width: 90px;">
-                <col style="width: 120px;">
-                <col style="width: 110px;">
-            </colgroup>
+    <col style="width: 96px;">
+    <col style="width: 78px;">
+    <col style="width: 68px;">
+    <col style="width: 68px;">
+    <col style="width: 82px;">
+    <col style="width: 90px;">
+    <col style="width: 90px;">
+    <col style="width: 98px;">
+    <col style="width: 98px;">
+    <col style="width: 108px;">
+    <col style="width: 110px;">
+    <col style="width: 86px;">
+    <col style="width: 94px;">
+    <col style="width: 82px;">
+    <col style="width: 76px;">
+    <col style="width: 72px;">
+    <col style="width: 92px;">
+    <col style="width: 86px;">
+</colgroup>
 
             <tbody class="text-[13px]">
                 <template v-for="(group, catName) in groupedHoldings" :key="catName">
@@ -579,7 +579,7 @@
                     </tr>
 
                     <tr v-for="stock in group.items" :key="stock.ticker" class="hover:bg-white/[0.04] transition-colors border-b border-white/[0.06]">
-                        <td class="pl-5 font-bold text-white flex items-center gap-2 py-3">
+                        <td class="pl-4 font-bold text-white flex items-center gap-1.5 py-2.5">
                             {{ stock.ticker }}
                             <span v-if="stock.isUSD" class="text-[9px] bg-gray-700 px-1 rounded text-gray-300">USD</span>
                         </td>
@@ -600,7 +600,7 @@
                         <td class="text-right font-mono text-gray-500">{{ formatNumber(stock.totalCostTwd) }}</td>
                         <td class="text-right font-mono text-white font-bold">{{ formatNumber(stock.marketValueTwd) }}</td>
                         <td class="text-right font-mono font-bold">
-                            <span class="px-2 py-1 rounded-lg border"
+                            <span class="px-1.5 py-0.5 rounded-md border"
                                   :class="stock.unrealizedPLTwd >= 0
                                       ? 'text-red-400 bg-red-500/10 border-red-500/20'
                                       : 'text-green-400 bg-green-500/10 border-green-500/20'">
