@@ -186,10 +186,11 @@ def safe_download_close(symbols, period="1mo", progress=False, interval=None):
             close = close.to_frame(name=col_name)
 
         return close.dropna(how="all")
-
     except Exception as e:
         print(f"⚠️ yfinance 下載失敗 ({symbols}): {e}", flush=True)
         return pd.DataFrame()
+
+
 def safe_last(series_or_df, default=None):
     try:
         if isinstance(series_or_df, pd.DataFrame):
@@ -295,7 +296,7 @@ try:
     try:
         hyg_yield = yf.Ticker("HYG").info.get('yield', 0.05) * 100
     except Exception as e:
-        print(f"⚠️ 抓取 HYG 殖利率失敗，改用預設值: {e}", flush=True)
+        print(f"⚠️ 抓取 HYG yield 失敗，改用預設值: {e}", flush=True)
         hyg_yield = DEFAULT_MACRO["hyg_yield"]
     hy_spread = max(0.1, hyg_yield - y10)
 
@@ -318,7 +319,7 @@ try:
         else:
             spy_cagr, spy_vol = DEFAULT_MACRO["spy_cagr"], DEFAULT_MACRO["spy_vol"]
     except Exception as e:
-        print(f"⚠️ 抓取 SPY 長期資料失敗，改用預設值: {e}", flush=True)
+        print(f"⚠️ 抓取 SPY 長期報酬/波動失敗，改用預設值: {e}", flush=True)
         spy_cagr, spy_vol = DEFAULT_MACRO["spy_cagr"], DEFAULT_MACRO["spy_vol"]
 
     print("   ⏳ 正在抓取跨資產期貨、情緒指標、PCR與AUD/JPY...", flush=True)
@@ -336,9 +337,9 @@ try:
         gold = safe_last(safe_download_close("GC=F", period="5d", progress=False), default=DEFAULT_MACRO["gold"])
         copper = safe_last(safe_download_close("HG=F", period="5d", progress=False), default=DEFAULT_MACRO["copper"])
         oil = safe_last(safe_download_close("CL=F", period="5d", progress=False), default=DEFAULT_MACRO["oil"])
-        copper_gold_ratio = (copper / gold) * 100 if gold else DEFAULT_MACRO["copper_gold_ratio"]
+        copper_gold_ratio = (copper / gold) * 100
     except Exception as e:
-        print(f"⚠️ 抓取跨資產價格失敗，改用預設值: {e}", flush=True)
+        print(f"⚠️ 抓取跨資產期貨/情緒指標失敗，改用預設值: {e}", flush=True)
         vix = DEFAULT_MACRO["vix"]
         vxn = DEFAULT_MACRO["vxn"]
         vvix = DEFAULT_MACRO["vvix"]
@@ -370,11 +371,11 @@ try:
         try:
             move_data = yf.Ticker("^MOVE").history(period="1y")['Close'].dropna()
             if move_data.empty:
-                raise ValueError("MOVE 資料為空")
+                raise ValueError("^MOVE empty")
             move_idx, move_z = float(move_data.iloc[-1]), float(calc_z_score(move_data))
         except Exception:
             tlt = safe_download_close("TLT", period="1y", progress=False)
-            tlt_series = tlt.iloc[:, 0].dropna() if not tlt.empty else pd.Series(dtype=float)
+            tlt_series = tlt.iloc[:, 0].dropna()
             move_data = (tlt_series.pct_change().rolling(20).std() * np.sqrt(252) * 100 * 5).dropna()
             move_idx = float(move_data.iloc[-1]) if not move_data.empty else DEFAULT_MACRO["move_idx"]
             move_z = float(calc_z_score(move_data)) if not move_data.empty else DEFAULT_MACRO["move_z"]
@@ -431,26 +432,29 @@ try:
                 mask = np.triu(np.ones_like(corr_df, dtype=bool), k=1)
                 raw_sys_corr = float(corr_df.where(mask).mean().mean())
                 sys_corr = raw_sys_corr if not np.isnan(raw_sys_corr) else 0.0
-                corr_matrix = corr_df.replace([np.inf, -np.inf], np.nan).fillna(0.0).to_dict()
+                corr_matrix = port_returns.corr().replace([np.inf, -np.inf], np.nan).fillna(0.0).to_dict()
     except Exception as e:
-        print(f"⚠️ 相關性計算失敗: {e}")
+        print(f"⚠️ 相關性計算失敗: {e}", flush=True)
 
     macro_payload = {
-        "yield_10y": float(round(y10, 2)), "yield_2y": float(round(y3m, 2)), "yield_curve": float(round(y10 - y3m, 2)),
+        "yield_10y": float(round(y10, 2)), "yield_2y": float(round(y3m, 2)), "yield_curve": float(round(y10 - y3m, 2)), 
         "hy_spread": float(round(hy_spread, 2)), "btc_1m_mom": float(round(btc_mom, 2)), "market_rf": float(round(y10, 2)),
         "market_rm": float(round(spy_cagr * 100, 2)), "market_sm": float(round(spy_vol * 100, 2)),
         "vix": float(round(vix, 2)), "vix_z": float(round(vix_z, 2)), "vxn": float(round(vxn, 2)), "vxn_z": float(round(vxn_z, 2)),
         "vvix": float(round(vvix, 2)), "vvix_z": float(round(vvix_z, 2)),
-        "dxy": float(round(dxy, 2)), "gold_price": float(round(gold, 2)), "oil_price": float(round(oil, 2)), "copper_gold_ratio": float(round(copper_gold_ratio, 4)),
+        "dxy": float(round(dxy, 2)), "gold_price": float(round(gold, 2)), "oil_price": float(round(oil, 2)), "copper_gold_ratio": float(round(copper_gold_ratio, 4)), 
         "move_index": float(round(move_idx, 2)), "move_z": float(round(move_z, 2)),
         "iwm_spy_mom": float(round(iwm_spy_mom, 2)), "xlu_xly_mom": float(round(xlu_xly_mom, 2)),
         "hyg_tlt_mom": float(round(hyg_tlt_mom, 2)), "dbc_mom": float(round(dbc_mom, 2)),
         "soxx_spy_mom": float(round(soxx_spy_mom, 2)), "liquidity_spread": float(round(liquidity_spread, 2)),
-        "rsp_spy_mom": float(round(rsp_spy_mom, 2)), "kre_spy_mom": float(round(kre_spy_mom, 2)), "aud_jpy_mom": float(round(aud_jpy_mom, 2)),
+        "rsp_spy_mom": float(round(rsp_spy_mom, 2)), "kre_spy_mom": float(round(kre_spy_mom, 2)), "aud_jpy_mom": float(round(aud_jpy_mom, 2)), 
         "put_call_ratio": float(round(pcr, 2)), "pcr_z": float(round(pcr_z, 2)),
         "sys_corr": float(round(sys_corr, 2)), "corr_matrix": corr_matrix
     }
-
+    
+    # ==========================================
+    # Gemini AI 總結
+    # ==========================================
     regime_packet = build_regime_packet(macro_payload)
     print(f"🤖 喚醒 Gemini AI 進行格式化 (內部判定階段: {regime_packet['stage_candidate']})...", flush=True)
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -486,18 +490,14 @@ try:
                         macro_payload['ai_analysis']['calculated_stage'] = regime_packet["stage_candidate"]
                         print(f"✅ AI 格式轉換成功！(使用模型: {model_name})")
                         break
-                except Exception:
-                    continue
-        except Exception as e:
-            print(f"⚠️ Gemini AI 格式轉換失敗: {e}", flush=True)
+                except: continue
+        except: pass
 
     print("🚀 正在同步總經數據至 Supabase...", flush=True)
     target_id = 1
     existing = supabase.table("portfolio_db").select("id").limit(1).execute()
-    if existing.data:
-        supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
-    else:
-        supabase.table("portfolio_db").insert({"id": target_id, "macro_meta": macro_payload}).execute()
+    if existing.data: supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
+    else: supabase.table("portfolio_db").insert({"id": target_id, "macro_meta": macro_payload}).execute()
 
 except Exception as e:
     print(f"🔥 總經數據處理致命錯誤:\n{traceback.format_exc()}", flush=True)
@@ -509,16 +509,14 @@ except Exception as e:
 print("\n⏳ 接著開始執行股票多因子管線與最佳化...", flush=True)
 
 def get_sheet_prices(url_str):
-    if not url_str:
-        return {}
+    if not url_str: return {}
     try:
-        clean_url = re.sub(r'\[.*?\]\((.*?)\)', r'', url_str)
+        clean_url = re.sub(r'\[.*?\]\((.*?)\)', r'\1', url_str)
         match = re.search(r'/d/([a-zA-Z0-9-_]+)', clean_url)
         gid_match = re.search(r'[#&?]gid=([0-9]+)', clean_url)
-        if not match:
-            return {}
+        if not match: return {}
         csv_url = "https://docs.google.com/spreadsheets/d/" + match.group(1) + "/gviz/tq?tqx=out:csv&gid=" + (gid_match.group(1) if gid_match else '0')
-
+        
         response = requests.get(csv_url, timeout=10)
         df = pd.read_csv(io.StringIO(response.text), header=None)
         price_map = {}
@@ -528,10 +526,9 @@ def get_sheet_prices(url_str):
                 try:
                     price = float(str(row[1]).replace(',', ''))
                     price_map[ticker] = price
-                    if ':' in ticker:
-                        price_map[ticker.split(':')[1].strip()] = price
+                    if ':' in ticker: price_map[ticker.split(':')[1].strip()] = price
                 except Exception as e:
-                    print(f"⚠️ Google Sheet 報價解析失敗 ({ticker}): {e}", flush=True)
+                    print(f"⚠️ Google Sheet 價格解析失敗: {e}", flush=True)
         return price_map
     except Exception as e:
         print(f"⚠️ Google Sheet 報價抓取失敗: {e}", flush=True)
@@ -587,7 +584,7 @@ try:
                 if target and target not in download_list:
                     download_list.append(target)
 
-            print(f"⏳ 正在向 Yahoo Finance 請求 {len(download_list)} 檔標的歷史資料...", flush=True)
+            print(f"⏳ 正在向 Yahoo Finance 請求 {len(download_list)} 檔標的歷史資料...", flush=True)        
             prices_df = safe_download_close(download_list, period="1y", progress=False)
             returns = prices_df.pct_change().dropna()
 
