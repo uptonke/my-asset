@@ -115,6 +115,39 @@ def build_regime_packet(macro_payload):
     }
     stage = choose_stage(scores)
     return {"raw": raw, "scores": scores, "stage_candidate": stage, "total_score": sum(scores.values()), "confidence_hint": 0.85}
+DEFAULT_MACRO = {
+    "y10": 4.2,
+    "y3m": 5.0,
+    "hyg_yield": 7.5,
+    "btc_mom": 0.0,
+    "spy_cagr": 0.10,
+    "spy_vol": 0.15,
+    "vix": 20.0,
+    "vix_z": 0.0,
+    "vxn": 22.0,
+    "vxn_z": 0.0,
+    "vvix": 90.0,
+    "vvix_z": 0.0,
+    "dxy": 100.0,
+    "gold": 2000.0,
+    "copper": 4.0,
+    "oil": 75.0,
+    "copper_gold_ratio": 0.2,
+    "pcr": 1.0,
+    "pcr_z": 0.0,
+    "aud_jpy_mom": 0.0,
+    "move_idx": 100.0,
+    "move_z": 0.0,
+    "iwm_spy_mom": 0.0,
+    "xlu_xly_mom": 0.0,
+    "hyg_tlt_mom": 0.0,
+    "dbc_mom": 0.0,
+    "soxx_spy_mom": 0.0,
+    "liquidity_spread": 0.0,
+    "rsp_spy_mom": 0.0,
+    "kre_spy_mom": 0.0,
+    "sys_corr": 0.3,
+}
 
 # ==========================================
 # 2. 抓取總經數據與市場參數
@@ -126,112 +159,252 @@ def calc_z_score(series):
     std = series.std()
     return (series.iloc[-1] - series.mean()) / std if std != 0 else 0.0
 
+def safe_download_close(symbols, period="1mo", progress=False, interval=None):
+    try:
+        kwargs = {
+            "period": period,
+            "progress": progress
+        }
+        if interval:
+            kwargs["interval"] = interval
+
+        raw = yf.download(symbols, **kwargs)
+
+        if isinstance(raw, pd.DataFrame):
+            if "Close" in raw.columns:
+                close = raw["Close"]
+            else:
+                close = raw
+        else:
+            close = raw
+
+        if isinstance(close, pd.Series):
+            if isinstance(symbols, (list, tuple, set)):
+                col_name = list(symbols)[0] if len(symbols) == 1 else (close.name or "Close")
+            else:
+                col_name = str(symbols)
+            close = close.to_frame(name=col_name)
+
+        return close.dropna(how="all")
+
+    except Exception as e:
+        print(f"⚠️ yfinance 下載失敗 ({symbols}): {e}", flush=True)
+        return pd.DataFrame()
+def safe_last(series_or_df, default=None):
+    try:
+        if isinstance(series_or_df, pd.DataFrame):
+            if series_or_df.empty or series_or_df.shape[1] == 0:
+                return default
+            s = series_or_df.iloc[:, 0].dropna()
+        else:
+            s = pd.Series(series_or_df).dropna()
+        return float(s.iloc[-1]) if len(s) > 0 else default
+    except Exception:
+        return default
+
+
+def simple_momentum_pct(series_or_df, default=0.0):
+    try:
+        if isinstance(series_or_df, pd.DataFrame):
+            if series_or_df.empty or series_or_df.shape[1] == 0:
+                return default
+            s = series_or_df.iloc[:, 0].dropna()
+        else:
+            s = pd.Series(series_or_df).dropna()
+
+        if len(s) < 2:
+            return default
+
+        return float(((s.iloc[-1] / s.iloc[0]) - 1) * 100)
+    except Exception:
+        return default
+
+
+def relative_momentum_pct(df, lhs, rhs=None, default=0.0):
+    try:
+        if lhs not in df.columns:
+            return default
+        s1 = df[lhs].dropna()
+        if len(s1) < 2:
+            return default
+
+        r1 = (s1.iloc[-1] / s1.iloc[0]) - 1
+
+        if rhs is None:
+            return float(r1 * 100)
+
+        if rhs not in df.columns:
+            return default
+        s2 = df[rhs].dropna()
+        if len(s2) < 2:
+            return default
+
+        r2 = (s2.iloc[-1] / s2.iloc[0]) - 1
+        return float((r1 - r2) * 100)
+    except Exception:
+        return default
+
+
+PROXY_TICKER_MAP = {
+    "統一奔騰": "00981A.TW",
+    "安聯台灣科技": "0052.TW",
+    "加密貨幣": "BTC-USD",
+}
+
+
+def normalize_ticker(raw):
+    return str(raw).strip().upper() if raw is not None else ""
+
+
+def is_tw_numeric_ticker(ticker):
+    return bool(re.match(r'^\d+[A-Z]*$', ticker))
+
+
+def is_chinese_label(ticker):
+    return bool(re.search(r'[一-鿿]', ticker))
+
+
+def map_to_yf_ticker(ticker, tw_bench="^TWII"):
+    t = normalize_ticker(ticker)
+
+    if not t:
+        return ""
+
+    if t in PROXY_TICKER_MAP:
+        return PROXY_TICKER_MAP[t]
+
+    if is_chinese_label(t):
+        return tw_bench
+
+    if is_tw_numeric_ticker(t):
+        return f"{t}.TW"
+
+    return t
+
 try:
     print("   ⏳ 正在抓取公債殖利率...", flush=True)
     try:
-        bonds = yf.download(["^TNX", "^IRX"], period="1mo", progress=False)["Close"]
+        bonds = safe_download_close(["^TNX", "^IRX"], period="1mo", progress=False)
         y10 = float(bonds["^TNX"].dropna().iloc[-1])
         y3m = float(bonds["^IRX"].dropna().iloc[-1])
-    except: y10, y3m = 4.2, 5.0
+    except Exception as e:
+        print(f"⚠️ 抓取公債殖利率失敗，改用預設值: {e}", flush=True)
+        y10, y3m = DEFAULT_MACRO["y10"], DEFAULT_MACRO["y3m"]
 
     print("   ⏳ 正在計算信用利差...", flush=True)
-    try: hyg_yield = yf.Ticker("HYG").info.get('yield', 0.05) * 100 
-    except: hyg_yield = 7.5
+    try:
+        hyg_yield = yf.Ticker("HYG").info.get('yield', 0.05) * 100
+    except Exception as e:
+        print(f"⚠️ 抓取 HYG 殖利率失敗，改用預設值: {e}", flush=True)
+        hyg_yield = DEFAULT_MACRO["hyg_yield"]
     hy_spread = max(0.1, hyg_yield - y10)
 
     print("   ⏳ 正在計算加密貨幣動能...", flush=True)
     try:
-        btc_data = yf.download("BTC-USD", period="1mo", progress=False)["Close"]
-        btc_clean = btc_data.iloc[:, 0].dropna() if isinstance(btc_data, pd.DataFrame) else btc_data.dropna()
-        btc_mom = ((btc_clean.iloc[-1] / btc_clean.iloc[0]) - 1) * 100 if len(btc_clean) > 1 else 0.0
-    except: btc_mom = 0.0
+        btc_data = safe_download_close("BTC-USD", period="1mo", progress=False)
+        btc_mom = simple_momentum_pct(btc_data, default=0.0)
+    except Exception as e:
+        print(f"⚠️ 抓取 BTC 動能失敗，改用預設值: {e}", flush=True)
+        btc_mom = DEFAULT_MACRO["btc_mom"]
 
     print("   ⏳ 正在計算 SPY 長期報酬與短期波動...", flush=True)
     try:
-        spy = yf.download("SPY", period="10y", progress=False)["Close"]
-        spy_clean = spy.iloc[:, 0].dropna() if isinstance(spy, pd.DataFrame) else spy.dropna()
-        spy_cagr = ((spy_clean.iloc[-1] / spy_clean.iloc[0]) ** (1/10)) - 1 if len(spy_clean) > 10 else 0.10
-        spy_vol = spy_clean.tail(252).pct_change().std() * np.sqrt(252) if len(spy_clean) > 10 else 0.15
-    except: spy_cagr, spy_vol = 0.10, 0.15
+        spy = safe_download_close("SPY", period="10y", progress=False)
+        spy_clean = spy.iloc[:, 0].dropna()
+        if len(spy_clean) > 10:
+            years = max(1, (spy_clean.index[-1] - spy_clean.index[0]).days / 365.25)
+            spy_cagr = (spy_clean.iloc[-1] / spy_clean.iloc[0]) ** (1 / years) - 1
+            spy_vol = spy_clean.tail(252).pct_change().std() * np.sqrt(252)
+        else:
+            spy_cagr, spy_vol = DEFAULT_MACRO["spy_cagr"], DEFAULT_MACRO["spy_vol"]
+    except Exception as e:
+        print(f"⚠️ 抓取 SPY 長期資料失敗，改用預設值: {e}", flush=True)
+        spy_cagr, spy_vol = DEFAULT_MACRO["spy_cagr"], DEFAULT_MACRO["spy_vol"]
 
     print("   ⏳ 正在抓取跨資產期貨、情緒指標、PCR與AUD/JPY...", flush=True)
     try:
-        vix_family = yf.download(["^VIX", "^VXN", "^VVIX"], period="1y", progress=False)["Close"]
-        if isinstance(vix_family, pd.Series): vix_family = vix_family.to_frame()
-        vix_s = vix_family["^VIX"].dropna() if "^VIX" in vix_family.columns else pd.Series([20.0])
-        vxn_s = vix_family["^VXN"].dropna() if "^VXN" in vix_family.columns else pd.Series([22.0])
-        vvix_s = vix_family["^VVIX"].dropna() if "^VVIX" in vix_family.columns else pd.Series([90.0])
-        
+        vix_family = safe_download_close(["^VIX", "^VXN", "^VVIX"], period="1y", progress=False)
+        vix_s = vix_family["^VIX"].dropna() if "^VIX" in vix_family.columns else pd.Series([DEFAULT_MACRO["vix"]])
+        vxn_s = vix_family["^VXN"].dropna() if "^VXN" in vix_family.columns else pd.Series([DEFAULT_MACRO["vxn"]])
+        vvix_s = vix_family["^VVIX"].dropna() if "^VVIX" in vix_family.columns else pd.Series([DEFAULT_MACRO["vvix"]])
+
         vix, vix_z = float(vix_s.iloc[-1]), float(calc_z_score(vix_s))
         vxn, vxn_z = float(vxn_s.iloc[-1]), float(calc_z_score(vxn_s))
         vvix, vvix_z = float(vvix_s.iloc[-1]), float(calc_z_score(vvix_s))
-        
-        dxy = float(yf.Ticker("DX-Y.NYB").history(period="5d")['Close'].dropna().iloc[-1])
-        gold = float(yf.Ticker("GC=F").history(period="5d")['Close'].dropna().iloc[-1])
-        copper = float(yf.Ticker("HG=F").history(period="5d")['Close'].dropna().iloc[-1]) 
-        oil = float(yf.Ticker("CL=F").history(period="5d")['Close'].dropna().iloc[-1])    
-        copper_gold_ratio = (copper / gold) * 100 
-    except:
-        vix, vxn, vvix, dxy, gold, copper, oil, copper_gold_ratio = 20.0, 22.0, 90.0, 100.0, 2000.0, 4.0, 75.0, 0.2
-        vix_z, vxn_z, vvix_z = 0.0, 0.0, 0.0
+
+        dxy = safe_last(safe_download_close("DX-Y.NYB", period="5d", progress=False), default=DEFAULT_MACRO["dxy"])
+        gold = safe_last(safe_download_close("GC=F", period="5d", progress=False), default=DEFAULT_MACRO["gold"])
+        copper = safe_last(safe_download_close("HG=F", period="5d", progress=False), default=DEFAULT_MACRO["copper"])
+        oil = safe_last(safe_download_close("CL=F", period="5d", progress=False), default=DEFAULT_MACRO["oil"])
+        copper_gold_ratio = (copper / gold) * 100 if gold else DEFAULT_MACRO["copper_gold_ratio"]
+    except Exception as e:
+        print(f"⚠️ 抓取跨資產價格失敗，改用預設值: {e}", flush=True)
+        vix = DEFAULT_MACRO["vix"]
+        vxn = DEFAULT_MACRO["vxn"]
+        vvix = DEFAULT_MACRO["vvix"]
+        dxy = DEFAULT_MACRO["dxy"]
+        gold = DEFAULT_MACRO["gold"]
+        copper = DEFAULT_MACRO["copper"]
+        oil = DEFAULT_MACRO["oil"]
+        copper_gold_ratio = DEFAULT_MACRO["copper_gold_ratio"]
+        vix_z = DEFAULT_MACRO["vix_z"]
+        vxn_z = DEFAULT_MACRO["vxn_z"]
+        vvix_z = DEFAULT_MACRO["vvix_z"]
 
     try:
         pcr_data = yf.Ticker("^PCR").history(period="1y")['Close'].dropna()
         pcr, pcr_z = float(pcr_data.iloc[-1]), float(calc_z_score(pcr_data))
-    except Exception as e: 
+    except Exception as e:
         print(f"   ⚠️ ^PCR 可能已下市或抓取失敗: {e}", flush=True)
-        pcr, pcr_z = 1.0, 0.0
+        pcr, pcr_z = DEFAULT_MACRO["pcr"], DEFAULT_MACRO["pcr_z"]
 
     try:
-        aud_jpy_data = yf.download("AUDJPY=X", period="1mo", progress=False)["Close"]
-        aud_jpy_clean = aud_jpy_data.iloc[:, 0].dropna() if isinstance(aud_jpy_data, pd.DataFrame) else aud_jpy_data.dropna()
-        aud_jpy_mom = float(((aud_jpy_clean.iloc[-1] / aud_jpy_clean.iloc[0]) - 1) * 100) if len(aud_jpy_clean) > 1 else 0.0
-    except: aud_jpy_mom = 0.0
+        aud_jpy_data = safe_download_close("AUDJPY=X", period="1mo", progress=False)
+        aud_jpy_mom = simple_momentum_pct(aud_jpy_data, default=0.0)
+    except Exception as e:
+        print(f"⚠️ 抓取 AUD/JPY 動能失敗，改用預設值: {e}", flush=True)
+        aud_jpy_mom = DEFAULT_MACRO["aud_jpy_mom"]
 
     print("   ⏳ 正在抓取 MOVE 指數與板塊輪動指標...", flush=True)
     try:
         try:
             move_data = yf.Ticker("^MOVE").history(period="1y")['Close'].dropna()
-            if move_data.empty: raise ValueError
+            if move_data.empty:
+                raise ValueError("MOVE 資料為空")
             move_idx, move_z = float(move_data.iloc[-1]), float(calc_z_score(move_data))
-        except:
-            tlt = yf.download("TLT", period="1y", progress=False)["Close"]
-            tlt = tlt.iloc[:, 0] if isinstance(tlt, pd.DataFrame) else tlt
-            move_data = (tlt.pct_change().rolling(20).std() * np.sqrt(252) * 100 * 5).dropna()
-            move_idx = float(move_data.iloc[-1]) if not move_data.empty else 100.0
-            move_z = float(calc_z_score(move_data))
+        except Exception:
+            tlt = safe_download_close("TLT", period="1y", progress=False)
+            tlt_series = tlt.iloc[:, 0].dropna() if not tlt.empty else pd.Series(dtype=float)
+            move_data = (tlt_series.pct_change().rolling(20).std() * np.sqrt(252) * 100 * 5).dropna()
+            move_idx = float(move_data.iloc[-1]) if not move_data.empty else DEFAULT_MACRO["move_idx"]
+            move_z = float(calc_z_score(move_data)) if not move_data.empty else DEFAULT_MACRO["move_z"]
 
         target_etfs = ["IWM", "SPY", "XLU", "XLY", "HYG", "TLT", "DBC", "SOXX", "BIL", "SHY", "RSP", "KRE"]
-        etfs = yf.download(target_etfs, period="1mo", progress=False)["Close"]
-        if isinstance(etfs, pd.Series): etfs = etfs.to_frame()
-        
-        def safe_mom(t1, t2=None):
-            try:
-                s1 = etfs[t1].dropna() if t1 in etfs.columns else pd.Series()
-                if len(s1) < 2: return 0.0
-                r1 = (s1.iloc[-1] / s1.iloc[0]) - 1
-                if t2:
-                    s2 = etfs[t2].dropna() if t2 in etfs.columns else pd.Series()
-                    if len(s2) < 2: return 0.0
-                    return float((r1 - ((s2.iloc[-1] / s2.iloc[0]) - 1)) * 100)
-                return float(r1 * 100)
-            except: return 0.0
+        etfs = safe_download_close(target_etfs, period="1mo", progress=False)
 
-        iwm_spy_mom = safe_mom("IWM", "SPY")
-        xlu_xly_mom = safe_mom("XLU", "XLY")
-        hyg_tlt_mom = safe_mom("HYG", "TLT")
-        soxx_spy_mom = safe_mom("SOXX", "SPY")
-        dbc_mom = safe_mom("DBC")
-        liquidity_spread = safe_mom("BIL", "SHY") 
-        rsp_spy_mom = safe_mom("RSP", "SPY") 
-        kre_spy_mom = safe_mom("KRE", "SPY") 
-
-    except:
-        move_idx, move_z, iwm_spy_mom, xlu_xly_mom, hyg_tlt_mom = 100.0, 0.0, 0.0, 0.0, 0.0
-        dbc_mom, soxx_spy_mom, liquidity_spread, rsp_spy_mom, kre_spy_mom = 0.0, 0.0, 0.0, 0.0, 0.0
+        iwm_spy_mom = relative_momentum_pct(etfs, "IWM", "SPY")
+        xlu_xly_mom = relative_momentum_pct(etfs, "XLU", "XLY")
+        hyg_tlt_mom = relative_momentum_pct(etfs, "HYG", "TLT")
+        soxx_spy_mom = relative_momentum_pct(etfs, "SOXX", "SPY")
+        dbc_mom = relative_momentum_pct(etfs, "DBC")
+        liquidity_spread = relative_momentum_pct(etfs, "BIL", "SHY")
+        rsp_spy_mom = relative_momentum_pct(etfs, "RSP", "SPY")
+        kre_spy_mom = relative_momentum_pct(etfs, "KRE", "SPY")
+    except Exception as e:
+        print(f"⚠️ 抓取 MOVE / 板塊輪動指標失敗，改用預設值: {e}", flush=True)
+        move_idx = DEFAULT_MACRO["move_idx"]
+        move_z = DEFAULT_MACRO["move_z"]
+        iwm_spy_mom = DEFAULT_MACRO["iwm_spy_mom"]
+        xlu_xly_mom = DEFAULT_MACRO["xlu_xly_mom"]
+        hyg_tlt_mom = DEFAULT_MACRO["hyg_tlt_mom"]
+        dbc_mom = DEFAULT_MACRO["dbc_mom"]
+        soxx_spy_mom = DEFAULT_MACRO["soxx_spy_mom"]
+        liquidity_spread = DEFAULT_MACRO["liquidity_spread"]
+        rsp_spy_mom = DEFAULT_MACRO["rsp_spy_mom"]
+        kre_spy_mom = DEFAULT_MACRO["kre_spy_mom"]
 
     print("   ⏳ 正在計算系統靜態相關性矩陣 (系統性風險)...", flush=True)
-    sys_corr, corr_matrix = 0.3, {}
+    sys_corr, corr_matrix = DEFAULT_MACRO["sys_corr"], {}
     current_shares, active_tickers = {}, []
     try:
         response = supabase.table("portfolio_db").select("*").limit(1).execute()
@@ -239,49 +412,45 @@ try:
             db_record = response.data[0]
             for tx in db_record.get("ledger_data", []):
                 t = str(tx.get("ticker", "")).strip().upper()
-                if not t: continue
+                if not t:
+                    continue
                 s = float(tx.get("shares", 0))
-                if str(tx.get("type", "buy")).lower() in ["sell", "賣出"]: s = -s
+                if str(tx.get("type", "buy")).lower() in ["sell", "賣出"]:
+                    s = -s
                 current_shares[t] = current_shares.get(t, 0) + s
-                
+
             active_tickers = [t for t, s in current_shares.items() if s > 0.0001]
-            
+
             if len(active_tickers) > 1:
                 tw_bench = "^TWII"
-                proxy_map = {"統一奔騰": "00981A.TW", "安聯台灣科技": "0052.TW", "加密貨幣": "BTC-USD"}
-                mapped_tickers = list(set(proxy_map.get(t, tw_bench if bool(re.search(r'[\u4e00-\u9fff]', t)) else (f"{t}.TW" if re.match(r'^\d+[a-zA-Z]*$', t) else t)) for t in active_tickers))
-                
-                port_df = yf.download(mapped_tickers, period="6mo", progress=False)["Close"]
-                if isinstance(port_df, pd.Series): port_df = port_df.to_frame(name=mapped_tickers[0])
+                mapped_tickers = list(set(map_to_yf_ticker(t, tw_bench=tw_bench) for t in active_tickers))
+                port_df = safe_download_close(mapped_tickers, period="6mo", progress=False)
                 port_returns = port_df.pct_change().dropna()
-                
+
                 corr_df = port_returns.corr()
                 mask = np.triu(np.ones_like(corr_df, dtype=bool), k=1)
                 raw_sys_corr = float(corr_df.where(mask).mean().mean())
                 sys_corr = raw_sys_corr if not np.isnan(raw_sys_corr) else 0.0
-                corr_matrix = port_returns.corr().replace([np.inf, -np.inf], np.nan).fillna(0.0).to_dict()
-                
-    except Exception as e: print(f"⚠️ 相關性計算失敗: {e}")
+                corr_matrix = corr_df.replace([np.inf, -np.inf], np.nan).fillna(0.0).to_dict()
+    except Exception as e:
+        print(f"⚠️ 相關性計算失敗: {e}")
 
     macro_payload = {
-        "yield_10y": float(round(y10, 2)), "yield_2y": float(round(y3m, 2)), "yield_curve": float(round(y10 - y3m, 2)), 
+        "yield_10y": float(round(y10, 2)), "yield_2y": float(round(y3m, 2)), "yield_curve": float(round(y10 - y3m, 2)),
         "hy_spread": float(round(hy_spread, 2)), "btc_1m_mom": float(round(btc_mom, 2)), "market_rf": float(round(y10, 2)),
         "market_rm": float(round(spy_cagr * 100, 2)), "market_sm": float(round(spy_vol * 100, 2)),
         "vix": float(round(vix, 2)), "vix_z": float(round(vix_z, 2)), "vxn": float(round(vxn, 2)), "vxn_z": float(round(vxn_z, 2)),
         "vvix": float(round(vvix, 2)), "vvix_z": float(round(vvix_z, 2)),
-        "dxy": float(round(dxy, 2)), "gold_price": float(round(gold, 2)), "oil_price": float(round(oil, 2)), "copper_gold_ratio": float(round(copper_gold_ratio, 4)), 
+        "dxy": float(round(dxy, 2)), "gold_price": float(round(gold, 2)), "oil_price": float(round(oil, 2)), "copper_gold_ratio": float(round(copper_gold_ratio, 4)),
         "move_index": float(round(move_idx, 2)), "move_z": float(round(move_z, 2)),
         "iwm_spy_mom": float(round(iwm_spy_mom, 2)), "xlu_xly_mom": float(round(xlu_xly_mom, 2)),
         "hyg_tlt_mom": float(round(hyg_tlt_mom, 2)), "dbc_mom": float(round(dbc_mom, 2)),
         "soxx_spy_mom": float(round(soxx_spy_mom, 2)), "liquidity_spread": float(round(liquidity_spread, 2)),
-        "rsp_spy_mom": float(round(rsp_spy_mom, 2)), "kre_spy_mom": float(round(kre_spy_mom, 2)), "aud_jpy_mom": float(round(aud_jpy_mom, 2)), 
+        "rsp_spy_mom": float(round(rsp_spy_mom, 2)), "kre_spy_mom": float(round(kre_spy_mom, 2)), "aud_jpy_mom": float(round(aud_jpy_mom, 2)),
         "put_call_ratio": float(round(pcr, 2)), "pcr_z": float(round(pcr_z, 2)),
         "sys_corr": float(round(sys_corr, 2)), "corr_matrix": corr_matrix
     }
-    
-    # ==========================================
-    # Gemini AI 總結
-    # ==========================================
+
     regime_packet = build_regime_packet(macro_payload)
     print(f"🤖 喚醒 Gemini AI 進行格式化 (內部判定階段: {regime_packet['stage_candidate']})...", flush=True)
     GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -317,14 +486,18 @@ try:
                         macro_payload['ai_analysis']['calculated_stage'] = regime_packet["stage_candidate"]
                         print(f"✅ AI 格式轉換成功！(使用模型: {model_name})")
                         break
-                except: continue
-        except: pass
+                except Exception:
+                    continue
+        except Exception as e:
+            print(f"⚠️ Gemini AI 格式轉換失敗: {e}", flush=True)
 
     print("🚀 正在同步總經數據至 Supabase...", flush=True)
     target_id = 1
     existing = supabase.table("portfolio_db").select("id").limit(1).execute()
-    if existing.data: supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
-    else: supabase.table("portfolio_db").insert({"id": target_id, "macro_meta": macro_payload}).execute()
+    if existing.data:
+        supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
+    else:
+        supabase.table("portfolio_db").insert({"id": target_id, "macro_meta": macro_payload}).execute()
 
 except Exception as e:
     print(f"🔥 總經數據處理致命錯誤:\n{traceback.format_exc()}", flush=True)
@@ -336,14 +509,16 @@ except Exception as e:
 print("\n⏳ 接著開始執行股票多因子管線與最佳化...", flush=True)
 
 def get_sheet_prices(url_str):
-    if not url_str: return {}
+    if not url_str:
+        return {}
     try:
-        clean_url = re.sub(r'\[.*?\]\((.*?)\)', r'\1', url_str)
+        clean_url = re.sub(r'\[.*?\]\((.*?)\)', r'', url_str)
         match = re.search(r'/d/([a-zA-Z0-9-_]+)', clean_url)
         gid_match = re.search(r'[#&?]gid=([0-9]+)', clean_url)
-        if not match: return {}
+        if not match:
+            return {}
         csv_url = "https://docs.google.com/spreadsheets/d/" + match.group(1) + "/gviz/tq?tqx=out:csv&gid=" + (gid_match.group(1) if gid_match else '0')
-        
+
         response = requests.get(csv_url, timeout=10)
         df = pd.read_csv(io.StringIO(response.text), header=None)
         price_map = {}
@@ -353,10 +528,14 @@ def get_sheet_prices(url_str):
                 try:
                     price = float(str(row[1]).replace(',', ''))
                     price_map[ticker] = price
-                    if ':' in ticker: price_map[ticker.split(':')[1].strip()] = price
-                except: pass
+                    if ':' in ticker:
+                        price_map[ticker.split(':')[1].strip()] = price
+                except Exception as e:
+                    print(f"⚠️ Google Sheet 報價解析失敗 ({ticker}): {e}", flush=True)
         return price_map
-    except: return {}
+    except Exception as e:
+        print(f"⚠️ Google Sheet 報價抓取失敗: {e}", flush=True)
+        return {}
 
 def get_optimal_weights(returns_df, stock_meta, min_wt=0.03, max_wt=0.20):
     num_assets = len(returns_df.columns)
@@ -386,8 +565,9 @@ def get_optimal_weights(returns_df, stock_meta, min_wt=0.03, max_wt=0.20):
     return dict(zip(returns_df.columns, np.round(res.x, 4))) if res.success else dict(zip(returns_df.columns, np.round(np.array(num_assets * [1./num_assets]), 4)))
 
 try:
-    if response.data:
-        db_record = response.data[0]
+    portfolio_resp = supabase.table("portfolio_db").select("*").limit(1).execute()
+    if portfolio_resp.data:
+        db_record = portfolio_resp.data[0]
         stock_meta, ledger_data = db_record.get("stock_meta", {}), db_record.get("ledger_data", [])
         ledger_tickers = [str(tx["ticker"]).strip().upper() for tx in ledger_data if tx.get("ticker")]
         all_tickers = list(set(list(stock_meta.keys()) + ledger_tickers))
@@ -399,18 +579,16 @@ try:
         
         if all_tickers:
             tw_bench, us_bench = "^TWII", "SPY"
-            proxy_map = {"統一奔騰": "00981A.TW", "安聯台灣科技": "0052.TW", "加密貨幣": "BTC-USD"}
             download_list, yf_tickers = [tw_bench, us_bench], []
-            
+
             for t in all_tickers:
-                t_clean = str(t).strip().upper()
-                target = proxy_map.get(t_clean, tw_bench if bool(re.search(r'[\u4e00-\u9fff]', t_clean)) else (f"{t_clean}.TW" if re.match(r'^\d+[a-zA-Z]*$', t_clean) else t_clean))
+                target = map_to_yf_ticker(t, tw_bench=tw_bench)
                 yf_tickers.append(target)
-                if target not in download_list: download_list.append(target)
-            
-            print(f"⏳ 正在向 Yahoo Finance 請求 {len(download_list)} 檔標的歷史資料...", flush=True)        
-            prices_df = yf.download(download_list, period="1y", progress=False)["Close"]
-            if isinstance(prices_df, pd.Series): prices_df = prices_df.to_frame(name=download_list[0])
+                if target and target not in download_list:
+                    download_list.append(target)
+
+            print(f"⏳ 正在向 Yahoo Finance 請求 {len(download_list)} 檔標的歷史資料...", flush=True)
+            prices_df = safe_download_close(download_list, period="1y", progress=False)
             returns = prices_df.pct_change().dropna()
 
             print("⚖️ 正在過濾真實庫存標的...", flush=True)
@@ -459,7 +637,7 @@ try:
                     ff_data = pd.concat([ff5_data, mom_data], axis=1).dropna()
                     
                     # 🌟 新增：獨立抓取台股大盤與比特幣資料作為客製化因子
-                    custom_factors_df = yf.download(["^TWII", "BTC-USD"], period="2y", progress=False)["Close"].pct_change().dropna()
+                    custom_factors_df = safe_download_close(["^TWII", "BTC-USD"], period="2y", progress=False).pct_change().dropna()
                     # 確保欄位名稱正確
                     if "^TWII" in custom_factors_df.columns and "BTC-USD" in custom_factors_df.columns:
                         custom_factors = custom_factors_df[["^TWII", "BTC-USD"]].rename(columns={"^TWII": "TW_Mkt", "BTC-USD": "Crypto"})

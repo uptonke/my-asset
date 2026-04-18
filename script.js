@@ -1040,51 +1040,115 @@ createApp({
         function formatPercent(n) { return ((n||0)*100).toFixed(1) + '%'; }
 
         let chartSML, chartCML, chartAlloc, chartHist, chartRolling, chartMC, chartFire, chartCorr;
+        let chartUpdateFrame = null;
+        let chartResizeTimer1 = null;
+        let chartResizeTimer2 = null;
+        function getAllCharts() {
+    return [
+        chartAlloc,
+        chartHist,
+        chartSML,
+        chartCML,
+        chartRolling,
+        chartMC,
+        chartFire,
+        chartCorr
+    ].filter(Boolean);
+}
+
+function resizeAllCharts() {
+    requestAnimationFrame(() => {
+        getAllCharts().forEach(chart => {
+            try {
+                chart.resize();
+                chart.update('none');
+            } catch (err) {
+                console.warn('chart resize failed:', err);
+            }
+        });
+    });
+}
 
         function drawCorrelationMatrix() {
-            const canvas = document.getElementById('corrChart');
-            if(!canvas || !correlationMatrix.value) return;
-            
-            const existingChart = Chart.getChart(canvas);
-            if (existingChart) existingChart.destroy();
-            if (chartCorr) chartCorr.destroy();
+    const canvas = document.getElementById('corrChart');
+    if (!canvas || !correlationMatrix.value) return;
 
-            const matrixObj = correlationMatrix.value; 
-            const tickers = Object.keys(matrixObj);
-            if(tickers.length === 0) return;
+    const matrixObj = correlationMatrix.value;
+    const tickers = Object.keys(matrixObj);
+    if (tickers.length === 0) return;
 
-            const dataPoints = [];
-            for (let i = 0; i < tickers.length; i++) {
-                for (let j = 0; j < tickers.length; j++) {
-                    dataPoints.push({ x: j, y: i, v: matrixObj[tickers[i]][tickers[j]] });
-                }
-            }
-
-            chartCorr = new Chart(canvas, {
-                type: 'matrix',
-                data: {
-                    datasets: [{
-                        label: 'Correlation', data: dataPoints,
-                        backgroundColor: (context) => {
-                            const val = context.raw.v;
-                            if (val === 1) return 'rgba(16, 185, 129, 0.9)'; 
-                            if (val > 0) return `rgba(16, 185, 129, ${val * 0.8})`; 
-                            if (val < 0) return `rgba(239, 68, 68, ${Math.abs(val) * 0.8})`; 
-                            return 'rgba(30, 41, 59, 1)'; 
-                        },
-                        borderColor: '#1e293b', 
-                        borderWidth: 1, 
-                        width: (c) => c.chart.chartArea ? (c.chart.chartArea.width / tickers.length - 2) : 20, 
-                        height: (c) => c.chart.chartArea ? (c.chart.chartArea.height / tickers.length - 2) : 20,
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { display: false }, tooltip: { callbacks: { title: () => null, label: (context) => `${tickers[context.raw.y]} & ${tickers[context.raw.x]}: ${context.raw.v.toFixed(2)}` } } },
-                    scales: { x: { type: 'category', labels: tickers, ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } }, y: { type: 'category', labels: tickers, ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false }, reverse: true } }
-                }
+    const dataPoints = [];
+    for (let i = 0; i < tickers.length; i++) {
+        for (let j = 0; j < tickers.length; j++) {
+            dataPoints.push({
+                x: j,
+                y: i,
+                v: matrixObj[tickers[i]][tickers[j]]
             });
         }
+    }
+
+    if (!chartCorr) {
+        chartCorr = new Chart(canvas, {
+            type: 'matrix',
+            data: {
+                datasets: [{
+                    label: 'Correlation',
+                    data: dataPoints,
+                    backgroundColor: (context) => {
+                        const val = context.raw.v;
+                        if (val === 1) return 'rgba(16, 185, 129, 0.9)';
+                        if (val > 0) return `rgba(16, 185, 129, ${val * 0.8})`;
+                        if (val < 0) return `rgba(239, 68, 68, ${Math.abs(val) * 0.8})`;
+                        return 'rgba(30, 41, 59, 1)';
+                    },
+                    borderColor: '#1e293b',
+                    borderWidth: 1,
+                    width: (c) => c.chart.chartArea ? (c.chart.chartArea.width / tickers.length - 2) : 20,
+                    height: (c) => c.chart.chartArea ? (c.chart.chartArea.height / tickers.length - 2) : 20,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            title: () => null,
+                            label: (context) =>
+                                `${tickers[context.raw.y]} & ${tickers[context.raw.x]}: ${context.raw.v.toFixed(2)}`
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'category',
+                        labels: tickers,
+                        ticks: { color: '#94a3b8', font: { size: 10 } },
+                        grid: { display: false }
+                    },
+                    y: {
+                        type: 'category',
+                        labels: tickers,
+                        ticks: { color: '#94a3b8', font: { size: 10 } },
+                        grid: { display: false },
+                        reverse: true
+                    }
+                }
+            }
+        });
+        return;
+    }
+
+    chartCorr.data.datasets[0].data = dataPoints;
+    chartCorr.options.scales.x.labels = tickers;
+    chartCorr.options.scales.y.labels = tickers;
+    chartCorr.options.plugins.tooltip.callbacks.label = (context) =>
+        `${tickers[context.raw.y]} & ${tickers[context.raw.x]}: ${context.raw.v.toFixed(2)}`;
+
+    chartCorr.update('none');
+}
 
         function initCharts() {
             Chart.defaults.color = '#94a3b8'; Chart.defaults.borderColor = '#334155';
@@ -1098,125 +1162,249 @@ createApp({
             if(rollingCtx && !chartRolling) { chartRolling = new Chart(rollingCtx, { type: 'line', data: { labels: [], datasets: [] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { type: 'linear', display: true, position: 'left', title: {display: true, text: 'Sharpe Ratio'} }, y1: { type: 'linear', display: true, position: 'right', grid: {drawOnChartArea: false}, title: {display: true, text: 'Volatility (%)'} } } } }); }
             const fireCtx = document.getElementById('fireChart');
             if(fireCtx && !chartFire) { chartFire = new Chart(fireCtx, { type: 'line', data: { labels: [], datasets: [] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { title: {display:true, text:'年份'} }, y: { title: {display:true, text:'總淨值 (TWD)'}, beginAtZero: true } }, plugins: { tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: NT$ ${new Intl.NumberFormat('zh-TW').format(ctx.raw)}` } }, legend: { labels: { color: '#e2e8f0' } } } } }); }
-            drawCorrelationMatrix();
         }
 
         function updateCharts() {
-            requestAnimationFrame(() => {
-                initCharts(); 
+    if (chartUpdateFrame) cancelAnimationFrame(chartUpdateFrame);
+    if (chartResizeTimer1) clearTimeout(chartResizeTimer1);
+    if (chartResizeTimer2) clearTimeout(chartResizeTimer2);
 
-                if (chartAlloc) {
-                    const cats = categoryTotals.value;
-                    chartAlloc.data.labels = Object.keys(cats); chartAlloc.data.datasets[0].data = Object.values(cats); 
-                    chartAlloc.data.datasets[0].backgroundColor = ['#f59e0b','#3b82f6','#10b981','#a855f7'];
-                    chartAlloc.update();
-                }
-                
-                if (chartHist) {
-                    const history = displayHistory.value; const sorted = [...history].sort((a,b)=>new Date(a.date)-new Date(b.date));
-                    chartHist.data.labels = sorted.map(h=>h.date);
-                    chartHist.data.datasets[0] = { label: 'NAV', data: sorted.map(h=>h.assets), borderColor: '#3b82f6', fill: true, backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.1 };
-                    chartHist.data.datasets[1] = { label: 'Cost', data: sorted.map(h=>h.cost), borderColor: '#10b981', borderDash:[5,5], tension: 0.1 };
-                    if (chartHist.data.datasets.length > 2) chartHist.data.datasets.splice(2);
-                    chartHist.update();
-                }
+    chartUpdateFrame = requestAnimationFrame(() => {
+        initCharts();
 
-                if (chartFire) {
-                    const targets = fireTargets.value;
-                    const maxYear = targets.length > 0 ? Math.max(...targets.map(t => t.year)) : 2052;
-                    const startYear = 2028;
-                    const labels = []; for (let y = startYear; y <= maxYear; y++) labels.push(y);
-
-                    const targetData = labels.map(y => {
-                        if (y === startYear) return 0;
-                        const t = targets.find(target => target.year === y); return t ? t.amount : null;
-                    });
-
-                    const history = displayHistory.value; let lastKnownAsset = 0; const currentYear = new Date().getFullYear();
-                    const actualData = labels.map(y => {
-                        if (y === startYear && history.filter(h => h.date.startsWith(startYear.toString())).length === 0) return 0;
-                        const recordsInYear = history.filter(h => h.date.startsWith(y.toString()));
-                        if (recordsInYear.length > 0) {
-                            recordsInYear.sort((a, b) => new Date(a.date) - new Date(b.date));
-                            lastKnownAsset = recordsInYear[recordsInYear.length - 1].assets; return lastKnownAsset;
-                        }
-                        return (y <= currentYear && lastKnownAsset > 0) ? lastKnownAsset : null;
-                    });
-
-                    chartFire.data.labels = labels;
-                    chartFire.data.datasets = [
-                        { label: '🎯 FIRE 目標', data: targetData, borderColor: '#fbbf24', borderDash: [5, 5], spanGaps: true, tension: 0, pointBackgroundColor: '#fbbf24', pointRadius: (ctx) => ctx.raw !== null ? 4 : 0 },
-                        { label: '💰 實際水位 (NAV)', data: actualData, borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', fill: true, spanGaps: true, tension: 0.3, pointRadius: 3 }
-                    ];
-                    chartFire.update();
-                }
-
-                if (chartSML && chartCML) {
-                    const rf = riskParams.value.rf; const rm = riskParams.value.rm; const sm = riskParams.value.sm;
-                    const smlLine = [ {x:0, y:rf}, {x:2.5, y: rf + 2.5*(rm-rf)} ];
-
-                    let maxAssetStd = 0;
-                    for(const cat in groupedHoldings.value) { groupedHoldings.value[cat].items.forEach(i => { if(i.stdDev > maxAssetStd) maxAssetStd = i.stdDev; }); }
-                    const cmlMaxX = Math.max(maxAssetStd * 1.2, sm * 3); 
-                    const slope = sm > 0 ? (rm - rf) / sm : 0; 
-                    const cmlLine = [ { x: 0, y: rf }, { x: sm, y: rm }, { x: cmlMaxX, y: rf + slope * cmlMaxX } ];
-
-                    const portRet = parseFloat(stats.value.annRet) || 0; const portVol = parseFloat(stats.value.annVol) || 0; const portBeta = parseFloat(riskParams.value.beta) || 0;
-                    const portPoint = { x: portBeta, y: portRet, name: 'Portfolio' }; const portPointCML = { x: portVol, y: portRet, name: 'Portfolio' }; const marketPoint = { x: sm, y: rm, name: 'Market Index' };
-
-                    const assetPoints = []; const assetPointsCML = [];
-                    for(const cat in groupedHoldings.value) {
-                        groupedHoldings.value[cat].items.forEach(i => {
-                            assetPoints.push({ x: i.beta, y: parseFloat(i.annualizedReturnRate || 0), name: i.ticker });
-                            assetPointsCML.push({ x: i.stdDev, y: parseFloat(i.annualizedReturnRate || 0), name: i.ticker });
-                        });
-                    }
-
-                    chartSML.data.datasets = [
-                        { type: 'line', label: 'SML', data: smlLine, borderColor: '#94a3b8', borderWidth: 2, pointRadius: 0, fill: false, borderDash: [5,5] },
-                        { type: 'scatter', label: 'Holdings', data: assetPoints, backgroundColor: '#f59e0b', pointRadius: 5, pointHoverRadius: 8 },
-                        { type: 'scatter', label: 'Portfolio', data: [portPoint], backgroundColor: '#ef4444', pointRadius: 10, pointStyle: 'circle' }
-                    ]; chartSML.update();
-
-                    chartCML.data.datasets = [
-                        { type: 'line', label: 'CML', data: cmlLine, borderColor: '#94a3b8', borderWidth: 2, pointRadius: 0, fill: false, borderDash: [5,5] },
-                        { type: 'scatter', label: 'Holdings', data: assetPointsCML, backgroundColor: '#3b82f6', pointRadius: 5, pointHoverRadius: 8 },
-                        { type: 'scatter', label: 'Market', data: [marketPoint], backgroundColor: '#10b981', pointRadius: 6, pointStyle: 'triangle' },
-                        { type: 'scatter', label: 'Portfolio', data: [portPointCML], backgroundColor: '#ef4444', pointRadius: 10, pointStyle: 'circle' }
-                    ]; chartCML.update();
-                }
-
-                if (chartRolling) {
-                    const h = [...enrichedHistory.value].reverse(); 
-                    const periodReturns = []; const dates = [];
-                    for(let i=1; i<h.length; i++) { periodReturns.push(h[i].dailyReturn); dates.push(h[i].date); }
-
-                    const windowSize = 52; const factor = Math.sqrt(52); const rf = riskParams.value.rf / 100;
-                    const rollLabels = []; const rollSharpe = []; const rollVol = [];
-
-                    if (periodReturns.length >= windowSize) {
-                        for (let i = windowSize; i <= periodReturns.length; i++) {
-                            const windowR = periodReturns.slice(i - windowSize, i);
-                            const avgR = windowR.reduce((a,b)=>a+b,0) / windowSize;
-                            const varR = windowR.reduce((a,b)=>a+Math.pow(b-avgR,2),0) / (windowSize-1);
-                            const annVol = Math.sqrt(varR) * factor;
-                            const cumTwr = windowR.reduce((acc, r) => acc * (1 + r), 1) - 1;
-                            const sharpe = annVol > 0 ? (cumTwr - rf) / annVol : 0;
-                            rollLabels.push(dates[i-1]); rollSharpe.push(sharpe.toFixed(2)); rollVol.push((annVol*100).toFixed(2));
-                        }
-                    }
-
-                    chartRolling.data.labels = rollLabels;
-                    chartRolling.data.datasets = [
-                        { label: 'Rolling Sharpe', data: rollSharpe, borderColor: '#fbbf24', yAxisID: 'y', tension: 0.3, pointRadius: 1 },
-                        { label: 'Rolling Volatility (%)', data: rollVol, borderColor: '#ef4444', borderDash: [5,5], yAxisID: 'y1', tension: 0.3, pointRadius: 1 }
-                    ]; chartRolling.update();
-                }
-            });
+        if (chartAlloc) {
+            const cats = categoryTotals.value;
+            chartAlloc.data.labels = Object.keys(cats);
+            chartAlloc.data.datasets[0].data = Object.values(cats);
+            chartAlloc.data.datasets[0].backgroundColor = ['#f59e0b','#3b82f6','#10b981','#a855f7'];
+            chartAlloc.update();
         }
-        
-        onMounted(() => { loadDataFromCloud(); });
-        watch(currentTab, () => { nextTick(() => { updateCharts(); }); });
+
+        if (chartHist) {
+            const history = displayHistory.value;
+            const sorted = [...history].sort((a,b)=>new Date(a.date)-new Date(b.date));
+            chartHist.data.labels = sorted.map(h=>h.date);
+            chartHist.data.datasets[0] = {
+                label: 'NAV',
+                data: sorted.map(h=>h.assets),
+                borderColor: '#3b82f6',
+                fill: true,
+                backgroundColor: 'rgba(59,130,246,0.1)',
+                tension: 0.1
+            };
+            chartHist.data.datasets[1] = {
+                label: 'Cost',
+                data: sorted.map(h=>h.cost),
+                borderColor: '#10b981',
+                borderDash:[5,5],
+                tension: 0.1
+            };
+            if (chartHist.data.datasets.length > 2) chartHist.data.datasets.splice(2);
+            chartHist.update();
+        }
+
+        if (chartFire) {
+            const targets = fireTargets.value;
+            const maxYear = targets.length > 0 ? Math.max(...targets.map(t => t.year)) : 2052;
+            const startYear = 2028;
+            const labels = [];
+            for (let y = startYear; y <= maxYear; y++) labels.push(y);
+
+            const targetData = labels.map(y => {
+                if (y === startYear) return 0;
+                const t = targets.find(target => target.year === y);
+                return t ? t.amount : null;
+            });
+
+            const history = displayHistory.value;
+            let lastKnownAsset = 0;
+            const currentYear = new Date().getFullYear();
+            const actualData = labels.map(y => {
+                if (y === startYear && history.filter(h => h.date.startsWith(startYear.toString())).length > 0) {
+                    const yearHistory = history.filter(h => h.date.startsWith(startYear.toString()));
+                    lastKnownAsset = yearHistory[yearHistory.length - 1].assets;
+                    return lastKnownAsset;
+                }
+                if (y <= currentYear) {
+                    const yearHistory = history.filter(h => h.date.startsWith(y.toString()));
+                    if (yearHistory.length > 0) {
+                        lastKnownAsset = yearHistory[yearHistory.length - 1].assets;
+                        return lastKnownAsset;
+                    }
+                    return null;
+                }
+                return null;
+            });
+
+            chartFire.data.labels = labels;
+            chartFire.data.datasets = [
+                {
+                    label: 'FIRE 目標線',
+                    data: targetData,
+                    borderColor: '#f87171',
+                    backgroundColor: 'rgba(248,113,113,0.12)',
+                    borderDash: [6, 6],
+                    tension: 0.2
+                },
+                {
+                    label: '實際淨值',
+                    data: actualData,
+                    borderColor: '#fbbf24',
+                    backgroundColor: 'rgba(251,191,36,0.15)',
+                    tension: 0.25
+                }
+            ];
+            chartFire.update();
+        }
+
+        if (chartSML) {
+            const points = [];
+            for (const cat in groupedHoldings.value) {
+                groupedHoldings.value[cat].items.forEach(item => {
+                    points.push({
+                        x: parseFloat(item.beta) || 0,
+                        y: parseFloat(item.annualizedReturnRate) || 0,
+                        name: item.ticker
+                    });
+                });
+            }
+
+            const rf = parseFloat(riskParams.value.rf) || 0;
+            const rm = parseFloat(riskParams.value.rm) || 0;
+
+            chartSML.data.datasets = [
+                {
+                    label: 'Assets',
+                    data: points,
+                    backgroundColor: '#60a5fa'
+                },
+                {
+                    type: 'line',
+                    label: 'SML',
+                    data: [
+                        { x: 0, y: rf },
+                        { x: 2, y: rf + 2 * (rm - rf) }
+                    ],
+                    borderColor: '#fbbf24',
+                    pointRadius: 0,
+                    tension: 0
+                }
+            ];
+            chartSML.update();
+        }
+
+        if (chartCML) {
+            const points = [];
+            for (const cat in groupedHoldings.value) {
+                groupedHoldings.value[cat].items.forEach(item => {
+                    points.push({
+                        x: parseFloat(item.stdDev) || 0,
+                        y: parseFloat(item.annualizedReturnRate) || 0,
+                        name: item.ticker
+                    });
+                });
+            }
+
+            const rf = parseFloat(riskParams.value.rf) || 0;
+            const rm = parseFloat(riskParams.value.rm) || 0;
+            const sm = parseFloat(riskParams.value.sm) || 15;
+
+            chartCML.data.datasets = [
+                {
+                    label: 'Assets',
+                    data: points,
+                    backgroundColor: '#a78bfa'
+                },
+                {
+                    type: 'line',
+                    label: 'CML',
+                    data: [
+                        { x: 0, y: rf },
+                        { x: sm * 2, y: rf + 2 * (rm - rf) }
+                    ],
+                    borderColor: '#34d399',
+                    pointRadius: 0,
+                    tension: 0
+                }
+            ];
+            chartCML.update();
+        }
+
+        if (chartRolling) {
+            const h = [...enrichedHistory.value].reverse();
+            const rollingLabels = [];
+            const sharpeSeries = [];
+            const volSeries = [];
+
+            for (let i = 12; i < h.length; i++) {
+                const windowData = h.slice(i - 12, i + 1).map(item => item.dailyReturn).filter(v => v !== null);
+                if (windowData.length < 2) continue;
+
+                const avg = windowData.reduce((a, b) => a + b, 0) / windowData.length;
+                const std = Math.sqrt(windowData.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / (windowData.length - 1));
+                const annVol = std * Math.sqrt(52);
+                const annRet = Math.pow(windowData.reduce((a, r) => a * (1 + r), 1), 52 / windowData.length) - 1;
+                const rf = (parseFloat(riskParams.value.rf) || 0) / 100;
+                const sharpe = annVol > 0 ? (annRet - rf) / annVol : 0;
+
+                rollingLabels.push(h[i].date);
+                sharpeSeries.push(parseFloat(sharpe.toFixed(2)));
+                volSeries.push(parseFloat((annVol * 100).toFixed(2)));
+            }
+
+            chartRolling.data.labels = rollingLabels;
+            chartRolling.data.datasets = [
+                {
+                    label: 'Rolling Sharpe',
+                    data: sharpeSeries,
+                    borderColor: '#60a5fa',
+                    backgroundColor: 'rgba(96,165,250,0.12)',
+                    yAxisID: 'y',
+                    tension: 0.2
+                },
+                {
+                    label: 'Rolling Volatility',
+                    data: volSeries,
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245,158,11,0.12)',
+                    yAxisID: 'y1',
+                    tension: 0.2
+                }
+            ];
+            chartRolling.update();
+        }
+
+        drawCorrelationMatrix();
+
+        chartResizeTimer1 = setTimeout(() => {
+            resizeAllCharts();
+        }, 0);
+
+        chartResizeTimer2 = setTimeout(() => {
+            resizeAllCharts();
+        }, 120);
+    });
+}
+
+        onMounted(() => {
+    loadDataFromCloud();
+
+    window.addEventListener('resize', () => {
+        resizeAllCharts();
+    });
+});
+        watch(currentTab, async () => {
+    await nextTick();
+    updateCharts();
+
+    setTimeout(() => {
+        resizeAllCharts();
+    }, 60);
+
+    setTimeout(() => {
+        resizeAllCharts();
+    }, 180);
+});
         watch([exchangeRate, sheetUrl, isSimMode, riskParams, quantStartDate, dataFrequency, fireTargets, correlationMatrix], () => updateCharts(), {deep:true});
 
         // 🚨 終極修正：將所有在 HTML 呼叫的函數與變數都暴露給 Vue
