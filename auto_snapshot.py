@@ -45,9 +45,8 @@ def get_sheet_prices(sheet_url):
         return {k: v for k, v in price_dict.items() if pd.notna(v)}
         
     except Exception as e:
-    print(f"⚠️ Google Sheet 報價抓取失敗: {e}", flush=True)
-    return {}
-
+        print(f"⚠️ Google Sheet 報價抓取失敗: {e}", flush=True)
+        return {}
 # ==========================================
 # 📸 核心邏輯：執行每日資產快照
 # ==========================================
