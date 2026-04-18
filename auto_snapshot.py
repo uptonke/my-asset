@@ -135,7 +135,7 @@ def get_sheet_prices(sheet_url):
         df.columns = ["ticker", "price"]
 
         # 清理資料
-        df["ticker"] = df["ticker"].astype(str).str.strip()
+        df["ticker"] = df["ticker"].astype(str).str.strip().str.upper()
         df["price"] = pd.to_numeric(df["price"], errors="coerce")
 
         # 去掉空白列 / 無效價格
