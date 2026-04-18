@@ -3,8 +3,7 @@ name: Daily Quant Pipeline
 on:
   workflow_dispatch:
   schedule:
-    - cron: '17 9 * * 2,4,6'
-      timezone: 'Asia/Taipei'
+    - cron: '*/5 * * * *'
 
 jobs:
   run-quant-engine:
