@@ -1,200 +1,360 @@
 import os
+import io
+import warnings
+from datetime import datetime
+from typing import Dict, Any, List, Tuple
+from urllib.parse import urlparse, parse_qs
+
+import pandas as pd
 import pytz
 import requests
-import pandas as pd
-import io
-from datetime import datetime
-from supabase import create_client, Client
-import warnings
 import yfinance as yf
+from supabase import create_client, Client
 
-warnings.filterwarnings('ignore')
-
-# ==========================================
-# 1. 安全讀取金鑰 (GitHub Secrets)
-# ==========================================
-url = os.environ.get("SUPABASE_URL")
-key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-
-if not url or not key:
-    raise ValueError("❌ 找不到 Supabase 金鑰！請確認 GitHub Secrets 設定。")
-
-supabase: Client = create_client(url, key)
+warnings.filterwarnings("ignore")
 
 # ==========================================
-# 💱 輔助函數：獲取即時 USD/TWD 匯率
+# 基本設定
 # ==========================================
-def get_usd_twd_rate(default_rate=32.5):
+TABLE_NAME = "portfolio_db"
+ROW_ID = 1
+TIMEZONE = "Asia/Taipei"
+DEFAULT_EXCHANGE_RATE = 32.5
+REQUEST_TIMEOUT = 20
+
+# 你可能在 Google Sheet 使用的欄位名稱
+TICKER_CANDIDATES = ["TICKER", "SYMBOL", "代號", "股票代號"]
+PRICE_CANDIDATES = ["PRICE", "CURRENT PRICE", "價格", "報價", "目前報價"]
+
+# 判斷哪些 category 視為美元計價
+USD_CATEGORIES = {"美股", "US", "US STOCK", "美國股票"}
+
+# ==========================================
+# 安全讀取金鑰
+# ==========================================
+def get_supabase_client() -> Client:
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+
+    if not url or not key:
+        raise ValueError("❌ 找不到 Supabase 金鑰，請確認 GitHub Secrets 設定。")
+
+    return create_client(url, key)
+
+
+# ==========================================
+# HTTP Session
+# ==========================================
+def build_session() -> requests.Session:
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": "portfolio-daily-snapshot/1.0"
+    })
+    return session
+
+
+# ==========================================
+# 匯率：抓 USD/TWD
+# ==========================================
+def get_usd_twd_rate(default_rate: float = DEFAULT_EXCHANGE_RATE) -> float:
     try:
         print("💱 正在透過 Yahoo Finance 獲取即時 USD/TWD 匯率...")
-        # 抓取 TWD=X (美金對台幣)
+        # TWD=X 通常代表 1 USD = 幾 TWD
         ticker = yf.Ticker("TWD=X")
-        # 拿最近一天的收盤價
-        current_rate = ticker.history(period="1d")['Close'].iloc[-1]
+        hist = ticker.history(period="5d")
+
+        if hist.empty or "Close" not in hist.columns:
+            raise ValueError("Yahoo Finance 未回傳有效匯率資料。")
+
+        current_rate = float(hist["Close"].dropna().iloc[-1])
         print(f"✅ 成功獲取即時匯率: {current_rate:.4f}")
-        return float(current_rate)
+        return current_rate
+
     except Exception as e:
-        print(f"⚠️ 獲取即時匯率失敗 ({e})，啟動 Fallback 機制使用預設匯率: {default_rate}", flush=True)
+        print(f"⚠️ 匯率抓取失敗（{e}），改用 fallback 匯率: {default_rate}")
         return float(default_rate)
 
-# ==========================================
-# 🛠️ 輔助函數：從 Google Sheet 抓取自訂價格 (Header 綁定版)
-# ==========================================
-def get_sheet_prices(sheet_url):
-    if not sheet_url:
-        return {}
-    try:
-        # 從網址萃取 sheet_id
-        sheet_id = sheet_url.split('/d/')[1].split('/')[0]
-        csv_url = f"https://docs.google.com/spreadsheets/d/1cVoE67-mR9lQQLn4FE_GYftAOAR2RjvaL3MgqIUQ880/edit?gid=0#gid=0"
-        
-        response = requests.get(csv_url)
-        response.raise_for_status() # 確認連線成功
-        
-        # header=0 代表第一列是標題列
-        df = pd.read_csv(io.StringIO(response.text), header=0)
-        
-        # 將所有欄位名稱轉成大寫並去頭尾，增加容錯率
-        df.columns = df.columns.astype(str).str.strip().str.upper()
-        
-        # 定義你可能在 Sheet 使用的欄位名稱 (可自行擴充)
-        ticker_candidates = ['TICKER', 'SYMBOL', '代號', '股票代號']
-        price_candidates = ['PRICE', 'CURRENT PRICE', '價格', '報價', '目前報價']
-        
-        # 動態尋找存在的欄位
-        ticker_col = next((col for col in df.columns if col in ticker_candidates), None)
-        price_col = next((col for col in df.columns if col in price_candidates), None)
-        
-        if not ticker_col or not price_col:
-            print(f"⚠️ Sheet 解析失敗：找不到對應的標題列。請確保有 {ticker_candidates[0]} 與 {price_candidates[0]}。", flush=True)
-            return {}
-            
-        # 清理資料：只留下欄位有值的 row，並轉成 Dictionary
-        df = df.dropna(subset=[ticker_col, price_col])
-        price_dict = dict(zip(
-            df[ticker_col].astype(str).str.upper().str.strip(), 
-            pd.to_numeric(df[price_col], errors='coerce')
-        ))
-        
-        # 過濾掉無法轉換為數字的無效價格 (NaN)
-        return {k: v for k, v in price_dict.items() if pd.notna(v)}
-        
-    except Exception as e:
-        print(f"⚠️ Google Sheet 報價抓取失敗: {e}", flush=True)
-        return {}
 
 # ==========================================
-# 📸 核心邏輯：執行每日資產快照
+# Google Sheet URL -> CSV URL
 # ==========================================
-def run_daily_snapshot():
-    print("📸 開始執行每日資產快照 (Google Sheet 驅動版)...")
-    
-    # 2. 抓取目前資料庫狀態
-    res = supabase.table("portfolio_db").select("*").eq("id", 1).execute()
+def build_google_sheet_csv_url(sheet_url: str) -> str:
+    """
+    支援常見的 Google Sheet 分享網址：
+    - https://docs.google.com/spreadsheets/d/<sheet_id>/edit?gid=0#gid=0
+    - 其他帶 gid 的形式
+    """
+    if "/d/" not in sheet_url:
+        raise ValueError("不是有效的 Google Sheet 網址。")
+
+    sheet_id = sheet_url.split("/d/")[1].split("/")[0]
+
+    parsed = urlparse(sheet_url)
+    query = parse_qs(parsed.query)
+    gid = query.get("gid", [None])[0]
+
+    # 有 gid 就帶 gid；沒有也能抓第一個工作表
+    if gid:
+        return f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&gid={gid}"
+    return f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv"
+
+
+# ==========================================
+# 從 Google Sheet 抓自訂價格
+# ==========================================
+def get_sheet_prices(sheet_url: str, session: requests.Session) -> Dict[str, float]:
+    if not sheet_url:
+        return {}
+
+    try:
+        csv_url = build_google_sheet_csv_url(sheet_url)
+        print(f"📥 讀取 Google Sheet CSV: {csv_url}")
+
+        response = session.get(csv_url, timeout=REQUEST_TIMEOUT)
+        response.raise_for_status()
+
+        df = pd.read_csv(io.StringIO(response.text), header=0)
+
+        if df.empty:
+            print("⚠️ Google Sheet 為空。")
+            return {}
+
+        df.columns = df.columns.astype(str).str.strip().str.upper()
+
+        ticker_col = next((col for col in df.columns if col in TICKER_CANDIDATES), None)
+        price_col = next((col for col in df.columns if col in PRICE_CANDIDATES), None)
+
+        if not ticker_col or not price_col:
+            print(f"⚠️ Sheet 解析失敗：找不到對應欄位。ticker={TICKER_CANDIDATES} / price={PRICE_CANDIDATES}")
+            return {}
+
+        df = df.dropna(subset=[ticker_col, price_col]).copy()
+        df[ticker_col] = df[ticker_col].astype(str).str.upper().str.strip()
+        df[price_col] = pd.to_numeric(df[price_col], errors="coerce")
+
+        df = df.dropna(subset=[price_col])
+
+        price_dict = dict(zip(df[ticker_col], df[price_col]))
+        print(f"✅ 成功抓取 {len(price_dict)} 筆 Sheet 報價")
+        return {k: float(v) for k, v in price_dict.items()}
+
+    except Exception as e:
+        print(f"⚠️ Google Sheet 報價抓取失敗：{e}")
+        return {}
+
+
+# ==========================================
+# 抓 Supabase 單筆資料
+# ==========================================
+def fetch_portfolio_row(supabase: Client) -> Dict[str, Any]:
+    res = supabase.table(TABLE_NAME).select("*").eq("id", ROW_ID).execute()
     if not res.data:
-        print("❌ 找不到資料庫 id=1 的紀錄。")
-        return
-        
-    data = res.data[0]
-    ledger = data.get("ledger_data", [])
-    history = data.get("history_data", [])
-    settings = data.get("settings", {})
-    
+        raise ValueError(f"❌ 找不到 {TABLE_NAME} 中 id={ROW_ID} 的紀錄。")
+    return res.data[0]
+
+
+# ==========================================
+# Ledger -> Active Holdings
+# ==========================================
+def aggregate_holdings(ledger: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    """
+    以移動平均成本法整理剩餘持倉。
+    回傳格式：
+    {
+        "AAPL": {
+            "shares": 10.0,
+            "total_cost": 50000.0,
+            "category": "美股"
+        }
+    }
+    """
+    holdings: Dict[str, Dict[str, Any]] = {}
+
+    for tx in ledger:
+        ticker = str(tx.get("ticker", "")).upper().strip()
+        if not ticker:
+            continue
+
+        tx_type = str(tx.get("type", "")).strip()
+        shares = float(tx.get("shares", 0) or 0)
+        total_cash_flow = float(tx.get("totalCashFlow", 0) or 0)
+        category = tx.get("category", "台股")
+
+        if ticker not in holdings:
+            holdings[ticker] = {
+                "shares": 0.0,
+                "total_cost": 0.0,
+                "category": category,
+            }
+
+        h = holdings[ticker]
+
+        if tx_type == "Buy":
+            h["shares"] += shares
+            h["total_cost"] += abs(total_cash_flow)
+
+        elif tx_type == "Sell":
+            if h["shares"] <= 0:
+                print(f"⚠️ [{ticker}] 偵測到賣出，但目前持股為 0，已略過此筆賣出。")
+                continue
+
+            sell_shares = min(shares, h["shares"])
+            avg_cost = h["total_cost"] / h["shares"] if h["shares"] > 0 else 0.0
+
+            h["shares"] -= sell_shares
+            h["total_cost"] -= avg_cost * sell_shares
+
+            # 防止浮點數殘值
+            if h["shares"] < 1e-8:
+                h["shares"] = 0.0
+                h["total_cost"] = 0.0
+
+    active_holdings = {
+        ticker: h for ticker, h in holdings.items()
+        if h["shares"] > 0.0001
+    }
+
+    return active_holdings
+
+
+# ==========================================
+# 判斷是否美元計價
+# ==========================================
+def is_usd_category(category: Any) -> bool:
+    if category is None:
+        return False
+    return str(category).strip().upper() in {c.upper() for c in USD_CATEGORIES}
+
+
+# ==========================================
+# 估值
+# ==========================================
+def value_holdings(
+    holdings: Dict[str, Dict[str, Any]],
+    sheet_prices: Dict[str, float],
+    exchange_rate: float
+) -> Tuple[float, float, List[str]]:
+    total_assets_twd = 0.0
+    total_cost_twd = 0.0
+    missing_price_tickers: List[str] = []
+
+    print("\n🧮 開始計算各部位市值...")
+
+    for ticker, h in holdings.items():
+        shares = float(h["shares"])
+        total_cost = float(h["total_cost"])
+        category = h.get("category", "台股")
+
+        raw_price = sheet_prices.get(ticker)
+
+        # Sheet 沒價格 -> 用持倉均價先代替
+        if raw_price is None:
+            missing_price_tickers.append(ticker)
+            raw_price = total_cost / shares if shares > 0 else 0.0
+
+        usd_flag = is_usd_category(category)
+        price_twd = float(raw_price) * exchange_rate if usd_flag else float(raw_price)
+
+        asset_value = shares * price_twd
+        total_assets_twd += asset_value
+        total_cost_twd += total_cost
+
+        currency_label = "USD" if usd_flag else "TWD"
+        print(
+            f"  - [{ticker}] 股數: {shares:.4f} | "
+            f"單價: {raw_price:.4f} {currency_label} | "
+            f"市值: {asset_value:,.0f} TWD"
+        )
+
+    return total_assets_twd, total_cost_twd, missing_price_tickers
+
+
+# ==========================================
+# 更新 history_data
+# ==========================================
+def upsert_history(
+    history: List[Dict[str, Any]],
+    assets_twd: float,
+    cost_twd: float
+) -> List[Dict[str, Any]]:
+    tw_tz = pytz.timezone(TIMEZONE)
+    today_str = datetime.now(tw_tz).strftime("%Y-%m-%d")
+
+    new_record = {
+        "date": today_str,
+        "assets": round(assets_twd),
+        "cost": round(cost_twd),
+    }
+
+    updated_history = [h for h in history if h.get("date") != today_str]
+    updated_history.append(new_record)
+    updated_history.sort(key=lambda x: x["date"])
+
+    return updated_history
+
+
+# ==========================================
+# 主流程
+# ==========================================
+def run_daily_snapshot() -> None:
+    print("📸 開始執行每日資產快照（重寫穩定版）...")
+
+    supabase = get_supabase_client()
+    session = build_session()
+
+    # 1) 抓資料庫資料
+    row = fetch_portfolio_row(supabase)
+    ledger = row.get("ledger_data", []) or []
+    history = row.get("history_data", []) or []
+    settings = row.get("settings", {}) or {}
+
     if not ledger:
         print("⚠️ 帳本為空，沒有部位可供快照，任務結束。")
         return
 
-    # 3. 獲取即時匯率與 Google Sheet 網址
-    fallback_rate = float(settings.get("exchangeRate", 32.5))
-    exchange_rate = get_usd_twd_rate(fallback_rate) # 自動抓取或降級
-    sheet_url = settings.get("sheetUrl", "")
-    
+    # 2) 匯率與報價
+    fallback_rate = float(settings.get("exchangeRate", DEFAULT_EXCHANGE_RATE) or DEFAULT_EXCHANGE_RATE)
+    exchange_rate = get_usd_twd_rate(fallback_rate)
+
+    sheet_url = str(settings.get("sheetUrl", "") or "").strip()
     if not sheet_url:
-        print("⚠️ 警告：找不到 Google Sheet 網址，將無法獲取最新報價，快照可能會失真。")
-        
-    # 🌟 4. 下載最高優先級的 Sheet 報價
+        print("⚠️ 找不到 Google Sheet 網址，將無法同步最新報價，會改用持倉均價 fallback。")
+
     print("📥 正在從 Google Sheet 同步最新報價...")
-    sheet_prices = get_sheet_prices(sheet_url)
-    print(f"📊 成功抓取 {len(sheet_prices)} 筆標的報價。")
+    sheet_prices = get_sheet_prices(sheet_url, session)
 
-    # 5. 結算每一檔股票的「目前剩餘股數」與「總成本」
-    holdings = {}
-    for tx in ledger:
-        t = tx.get("ticker")
-        if not t: continue
-        
-        t = str(t).upper().strip()
-        
-        if t not in holdings:
-            holdings[t] = {"shares": 0, "total_cost": 0, "category": tx.get("category", "台股")}
-            
-        if tx["type"] == "Buy":
-            holdings[t]["shares"] += float(tx.get("shares", 0))
-            holdings[t]["total_cost"] += abs(float(tx.get("totalCashFlow", 0)))
-        elif tx["type"] == "Sell":
-            avg_cost = holdings[t]["total_cost"] / holdings[t]["shares"] if holdings[t]["shares"] > 0 else 0
-            holdings[t]["shares"] -= float(tx.get("shares", 0))
-            holdings[t]["total_cost"] -= avg_cost * float(tx.get("shares", 0))
+    # 3) 聚合持倉
+    active_holdings = aggregate_holdings(ledger)
+    if not active_holdings:
+        print("⚠️ 沒有剩餘持倉，任務結束。")
+        return
 
-    # 過濾掉已經賣光的標的 (股數趨近於0)
-    active_holdings = {k: v for k, v in holdings.items() if v["shares"] > 0.0001}
-
-    # 6. 計算今日總市值與總成本
-    total_assets_twd = 0
-    total_cost_twd = 0
-    missing_price_tickers = []
-    
-    print("\n🧮 開始計算各部位市值...")
-    for ticker, h_data in active_holdings.items():
-        # 優先使用 Google Sheet 的價格
-        raw_price = sheet_prices.get(ticker)
-        
-        # 如果 Sheet 裡找不到這檔股票的價格，發出警告，並暫時使用持倉均價代替
-        if raw_price is None:
-            missing_price_tickers.append(ticker)
-            raw_price = h_data["total_cost"] / h_data["shares"] if h_data["shares"] > 0 else 0
-            
-        # 判斷是否為美股，決定是否需要乘上匯率
-        is_usd = h_data.get("category") == "美股"
-        current_price_twd = float(raw_price) * exchange_rate if is_usd else float(raw_price)
-        
-        asset_value = h_data["shares"] * current_price_twd
-        total_assets_twd += asset_value
-        total_cost_twd += h_data["total_cost"]
-        
-        # 印出單檔明細方便 Debug
-        currency_label = "USD" if is_usd else "TWD"
-        print(f"  - [{ticker}] 股數: {h_data['shares']:.2f} | 單價: {raw_price:.2f} {currency_label} | 市值: {asset_value:,.0f} TWD")
+    # 4) 估值
+    total_assets_twd, total_cost_twd, missing_price_tickers = value_holdings(
+        holdings=active_holdings,
+        sheet_prices=sheet_prices,
+        exchange_rate=exchange_rate,
+    )
 
     if missing_price_tickers:
-        print(f"\n⚠️ 警告：以下標的在 Google Sheet 中找不到報價，已使用持倉均價暫代計算市值：")
-        print(f"   {', '.join(missing_price_tickers)}")
-        print("   建議您將這些代號補上您的 Google Sheet。")
+        print("\n⚠️ 以下標的在 Google Sheet 找不到報價，已改用持倉均價暫代：")
+        print("   " + ", ".join(missing_price_tickers))
 
-    # 7. 準備寫入 History (強制使用台北時間，避免 GitHub 伺服器時差)
-    tw_tz = pytz.timezone('Asia/Taipei')
-    today_str = datetime.now(tw_tz).strftime('%Y-%m-%d')
-    
-    new_record = {
-        "date": today_str,
-        "assets": round(total_assets_twd),
-        "cost": round(total_cost_twd)
-    }
-    
-    # 移除當天可能已經存在的手動紀錄，避免重複，然後加入新紀錄
-    updated_history = [h for h in history if h.get("date") != today_str]
-    updated_history.append(new_record)
-    
-    # 確保歷史紀錄按日期排序
-    updated_history.sort(key=lambda x: x["date"])
+    # 5) 更新 history
+    updated_history = upsert_history(history, total_assets_twd, total_cost_twd)
 
-    # 8. 上傳更新回 Supabase
-    supabase.table("portfolio_db").update({"history_data": updated_history}).eq("id", 1).execute()
-    
-    print(f"\n🎉 快照任務圓滿完成！")
-    print(f"📅 紀錄日期: {today_str}")
+    supabase.table(TABLE_NAME).update({
+        "history_data": updated_history
+    }).eq("id", ROW_ID).execute()
+
+    tw_tz = pytz.timezone(TIMEZONE)
+    today_str = datetime.now(tw_tz).strftime("%Y-%m-%d")
+
+    print("\n🎉 快照任務完成")
+    print(f"📅 日期: {today_str}")
     print(f"💰 總淨值: NT$ {round(total_assets_twd):,}")
     print(f"💵 總成本: NT$ {round(total_cost_twd):,}")
+
 
 if __name__ == "__main__":
     run_daily_snapshot()
