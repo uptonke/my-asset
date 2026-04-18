@@ -6,6 +6,8 @@ import io
 from datetime import datetime
 from supabase import create_client, Client
 import warnings
+import yfinance as yf
+
 warnings.filterwarnings('ignore')
 
 # ==========================================
@@ -20,7 +22,23 @@ if not url or not key:
 supabase: Client = create_client(url, key)
 
 # ==========================================
-# 🛠️ 輔助函數：從 Google Sheet 抓取自訂價格
+# 💱 輔助函數：獲取即時 USD/TWD 匯率
+# ==========================================
+def get_usd_twd_rate(default_rate=32.5):
+    try:
+        print("💱 正在透過 Yahoo Finance 獲取即時 USD/TWD 匯率...")
+        # 抓取 TWD=X (美金對台幣)
+        ticker = yf.Ticker("TWD=X")
+        # 拿最近一天的收盤價
+        current_rate = ticker.history(period="1d")['Close'].iloc[-1]
+        print(f"✅ 成功獲取即時匯率: {current_rate:.4f}")
+        return float(current_rate)
+    except Exception as e:
+        print(f"⚠️ 獲取即時匯率失敗 ({e})，啟動 Fallback 機制使用預設匯率: {default_rate}", flush=True)
+        return float(default_rate)
+
+# ==========================================
+# 🛠️ 輔助函數：從 Google Sheet 抓取自訂價格 (Header 綁定版)
 # ==========================================
 def get_sheet_prices(sheet_url):
     if not sheet_url:
@@ -28,18 +46,35 @@ def get_sheet_prices(sheet_url):
     try:
         # 從網址萃取 sheet_id
         sheet_id = sheet_url.split('/d/')[1].split('/')[0]
-        # 轉換成 CSV 下載連結 (預設抓取第一個分頁)
         csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv"
         
         response = requests.get(csv_url)
         response.raise_for_status() # 確認連線成功
         
-        # 使用 pandas 讀取 CSV
-        df = pd.read_csv(io.StringIO(response.text), header=None)
+        # header=0 代表第一列是標題列
+        df = pd.read_csv(io.StringIO(response.text), header=0)
         
-        # 假設 A 欄 (df[0]) 是代號，B 欄 (df[1]) 是價格
-        # 將代號轉為大寫並去除空白，方便後續比對
-        price_dict = dict(zip(df[0].astype(str).str.upper().str.strip(), pd.to_numeric(df[1], errors='coerce')))
+        # 將所有欄位名稱轉成大寫並去頭尾，增加容錯率
+        df.columns = df.columns.astype(str).str.strip().str.upper()
+        
+        # 定義你可能在 Sheet 使用的欄位名稱 (可自行擴充)
+        ticker_candidates = ['TICKER', 'SYMBOL', '代號', '股票代號']
+        price_candidates = ['PRICE', 'CURRENT PRICE', '價格', '報價', '目前報價']
+        
+        # 動態尋找存在的欄位
+        ticker_col = next((col for col in df.columns if col in ticker_candidates), None)
+        price_col = next((col for col in df.columns if col in price_candidates), None)
+        
+        if not ticker_col or not price_col:
+            print(f"⚠️ Sheet 解析失敗：找不到對應的標題列。請確保有 {ticker_candidates[0]} 與 {price_candidates[0]}。", flush=True)
+            return {}
+            
+        # 清理資料：只留下欄位有值的 row，並轉成 Dictionary
+        df = df.dropna(subset=[ticker_col, price_col])
+        price_dict = dict(zip(
+            df[ticker_col].astype(str).str.upper().str.strip(), 
+            pd.to_numeric(df[price_col], errors='coerce')
+        ))
         
         # 過濾掉無法轉換為數字的無效價格 (NaN)
         return {k: v for k, v in price_dict.items() if pd.notna(v)}
@@ -47,6 +82,7 @@ def get_sheet_prices(sheet_url):
     except Exception as e:
         print(f"⚠️ Google Sheet 報價抓取失敗: {e}", flush=True)
         return {}
+
 # ==========================================
 # 📸 核心邏輯：執行每日資產快照
 # ==========================================
@@ -68,8 +104,9 @@ def run_daily_snapshot():
         print("⚠️ 帳本為空，沒有部位可供快照，任務結束。")
         return
 
-    # 3. 讀取前端設定好的匯率與 Google Sheet 網址
-    exchange_rate = float(settings.get("exchangeRate", 32.5))
+    # 3. 獲取即時匯率與 Google Sheet 網址
+    fallback_rate = float(settings.get("exchangeRate", 32.5))
+    exchange_rate = get_usd_twd_rate(fallback_rate) # 自動抓取或降級
     sheet_url = settings.get("sheetUrl", "")
     
     if not sheet_url:
