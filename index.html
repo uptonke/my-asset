@@ -486,7 +486,8 @@
                                         <th class="text-center w-16" title="Beta 係數">Beta (β)</th>
                                         <th class="text-center w-16" title="年化標準差">SD (σ%)</th>
                                         <th class="text-right">持有股數</th>
-                                        <th class="p-2 text-right">市值(TWD)</th>
+                                        <th class="p-2 text-right">成本(TWD)</th>
+                                        <th class="p-2 text-right">現值(TWD)</th>
                                         <th class="p-2 text-center text-indigo-300" title="RSI & MACD">技術訊號</th>
                                         <th class="p-2 text-right text-gray-300">累積報酬</th>
                                         <th class="p-2 text-right text-purple-300" title="資金加權年化報酬率">年化 (CAGR)</th>
@@ -501,7 +502,7 @@
                                 <tbody class="text-[13px]">
                                     <template v-for="(group, catName) in groupedHoldings" :key="catName">
                                         <tr class="group-header">
-                                            <td colspan="14" class="py-3 border-y border-white/10 bg-white/[0.04]">
+                                            <td colspan="15" class="py-3 border-y border-white/10 bg-white/[0.04]">
                                                 <div class="flex justify-between items-center px-5">
                                                    <div>
                                                        <i class="fas fa-folder-open mr-2 text-blue-400"></i> <span class="font-bold text-gray-200">{{ catName }}</span> 
@@ -538,8 +539,9 @@
                                                <input v-model.number="stock.stdDev" @change="updateMeta(stock)" class="w-12 bg-transparent text-center border-b border-gray-600 focus:border-yellow-400 outline-none text-yellow-400 font-mono" placeholder="20">
                                             </td>
                                             <td class="text-right font-mono text-gray-300">{{ formatNumber(stock.shares) }}</td>
+                                            <td class="text-right font-mono text-gray-300">{{ formatNumber(stock.totalCostTwd) }}</td>
                                             <td class="text-right font-mono text-white font-bold">{{ formatNumber(stock.marketValueTwd) }}</td>
-                                            
+
                                             <td class="p-2 text-center text-xs">
                                                 <div class="flex flex-col gap-1 items-center justify-center" v-if="stock.techSignals">
                                                     <span :class="stock.techSignals.rsiColor" class="font-bold bg-gray-800 px-1.5 py-0.5 rounded border border-gray-700 whitespace-nowrap shadow-sm">
@@ -622,6 +624,9 @@
                                             </div>
                                             <div class="text-right">
                                                 <div class="font-mono font-bold text-white text-base">NT$ {{ formatNumber(stock.marketValueTwd) }}</div>
+                                                <div class="text-[10px] text-gray-500 mt-0.5">
+                                                    成本 NT$ {{ formatNumber(stock.totalCostTwd) }}
+                                                </div>
                                             </div>
                                         </div>
                                         
@@ -659,6 +664,23 @@
                                                        :placeholder="stock.fetchedPrice">
                                             </div>
                                         </div>
+                                        <div class="grid grid-cols-3 gap-2">
+                                            <div class="bg-black/30 p-2 rounded-lg flex flex-col items-center">
+                                                <span class="text-gray-500 mb-1">成本</span>
+                                                <span class="font-mono text-gray-300 text-[11px]">NT$ {{ formatNumber(stock.totalCostTwd) }}</span>
+                                            </div>
+                                            <div class="bg-black/30 p-2 rounded-lg flex flex-col items-center">
+                                                <span class="text-gray-500 mb-1">現值</span>
+                                                <span class="font-mono text-white text-[11px]">NT$ {{ formatNumber(stock.marketValueTwd) }}</span>
+                                            </div>
+                                            <div class="bg-black/30 p-2 rounded-lg flex flex-col items-center">
+                                                <span class="text-gray-500 mb-1">未實現損益</span>
+                                                <span class="font-mono text-[11px] font-bold"
+                                                      :class="stock.unrealizedPLTwd >= 0 ? 'text-red-400' : 'text-green-400'">
+                                                    {{ stock.unrealizedPLTwd >= 0 ? '+' : '' }}{{ formatNumber(stock.unrealizedPLTwd) }}
+                                                </span>
+                                            </div>
+                                       </div>
                                         
                                         <div class="grid grid-cols-3 gap-2">
                                             <div class="bg-black/30 p-2 rounded-lg flex flex-col items-center">
