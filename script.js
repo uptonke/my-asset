@@ -240,7 +240,6 @@ createApp({
         const isDbSyncing = ref(false); 
         const showHistoryModal = ref(false);
         const isUpdating = ref(false);
-        const isSimMode = ref(false);
         const lastUpdate = ref(null);
         
         const exchangeRate = ref(32.5);
@@ -265,7 +264,6 @@ createApp({
 
         const transactions = ref([]);
         const realHistoryData = ref([]);
-        const mockHistoryData = ref([]);
         const priceMap = ref({});
         const stockMeta = ref({});
 
@@ -353,7 +351,7 @@ createApp({
         const txForm = ref({ date: new Date().toISOString().split('T')[0], type: 'Buy', category: '美股', ticker: '', price: null, shares: null });
         const historyForm = ref({ date: new Date().toISOString().split('T')[0], assets: null, cost: null });
 
-        const displayHistory = computed(() => isSimMode.value ? mockHistoryData.value : realHistoryData.value);
+        const displayHistory = computed(() => realHistoryData.value);
 
         watch(displayHistory, (newVal) => {
             if (newVal.length > 0 && !quantStartDate.value) {
@@ -361,12 +359,6 @@ createApp({
                 quantStartDate.value = sorted[0].date;
             }
         }, { immediate: true });
-
-        function toggleSimMode() {
-            isSimMode.value = !isSimMode.value;
-            if (isSimMode.value && mockHistoryData.value.length === 0) generateMonthlyMockData();
-            nextTick(() => updateCharts());
-        }
 
         function updateMeta(stock) {
             if(stock.ticker) {
@@ -856,16 +848,6 @@ createApp({
         });
 
         function addHistoryRecord() { const { date, assets, cost } = historyForm.value; realHistoryData.value.push({ date, assets, cost }); saveData(); updateCharts(); }
-        
-        function generateMonthlyMockData() { 
-             mockHistoryData.value = []; let val = 1000000; let cost = 1000000;
-             for(let i=0; i<12; i++) {
-                 const date = `2024-${String(i+1).padStart(2,'0')}-01`;
-                 val = val * (1 + (Math.random()*0.1 - 0.03)); 
-                 if(i%3===0) { cost += 10000; val += 10000; } 
-                 mockHistoryData.value.push({ date, assets: Math.round(val), cost: Math.round(cost) });
-             }
-        }
 
         function openMonteCarlo() {
             showMCModal.value = true; mcOptimal.value = null; 
@@ -1331,24 +1313,34 @@ if (cmlCtx && !chartCML) {
             });
 
             chartFire.data.labels = labels;
-            chartFire.data.datasets = [
-                {
-                    label: 'FIRE 目標線',
-                    data: targetData,
-                    borderColor: '#f87171',
-                    backgroundColor: 'rgba(248,113,113,0.12)',
-                    borderDash: [6, 6],
-                    tension: 0.2
-                },
-                {
-                    label: '實際淨值',
-                    data: actualData,
-                    borderColor: '#fbbf24',
-                    backgroundColor: 'rgba(251,191,36,0.15)',
-                    tension: 0.25
-                }
-            ];
-            chartFire.update();
+chartFire.data.datasets = [
+    {
+        label: 'FIRE 目標線',
+        data: targetData,
+        borderColor: '#f87171',
+        backgroundColor: 'rgba(248,113,113,0.12)',
+        borderDash: [6, 6],
+        tension: 0.2,
+        spanGaps: true,
+        borderWidth: 3,
+        pointRadius: 3,
+        pointHoverRadius: 4,
+        fill: false
+    },
+    {
+        label: '實際淨值',
+        data: actualData,
+        borderColor: '#fbbf24',
+        backgroundColor: 'rgba(251,191,36,0.15)',
+        tension: 0.25,
+        spanGaps: true,
+        borderWidth: 3,
+        pointRadius: 3,
+        pointHoverRadius: 4,
+        fill: false
+    }
+];
+chartFire.update();
         }
 
         if (chartSML) {
@@ -1517,15 +1509,15 @@ if (cmlCtx && !chartCML) {
     headerScroll.scrollLeft = event.target.scrollLeft;
 }
 });
-        watch([exchangeRate, sheetUrl, isSimMode, riskParams, quantStartDate, dataFrequency, fireTargets, correlationMatrix], () => updateCharts(), {deep:true});
+        watch([exchangeRate, sheetUrl, riskParams, quantStartDate, dataFrequency, fireTargets, correlationMatrix], () => updateCharts(), { deep: true });
 
         // 🚨 終極修正：將所有在 HTML 呼叫的函數與變數都暴露給 Vue
         return { 
-            currentTab, showHistoryModal, isUpdating, isSimMode, toggleSimMode, 
+            currentTab, showHistoryModal, isUpdating,
             transactions, groupedHoldings, categoryTotals, riskTotals, portfolioStats, 
             totalStockValueTwd, totalStockCostTwd, totalStockUnrealizedPL, totalStockReturnRate, 
             reversedTransactions, txForm, historyForm, riskParams, stats, exchangeRate, 
-            sheetUrl, addTransaction, addHistoryRecord, generateMonthlyMockData, 
+            sheetUrl, addTransaction, addHistoryRecord,
             removeTransaction, removeHistoryByDate, manualUpdate, updateMeta, fetchPrices, 
             exportAll, importData, getTypeColor, getCategoryColorCode, formatNumber, formatPercent, 
             lastUpdate, displayHistory, enrichedHistory, quantStartDate, dataFrequency, 
