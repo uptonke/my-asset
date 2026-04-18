@@ -315,3 +315,56 @@ body {
     background: rgba(127, 29, 29, 0.40);
     border-color: rgba(153, 27, 27, 0.60);
 }
+:root {
+    --app-header-height: 0px;
+}
+
+.holdings-fake-header-anchor {
+    position: relative;
+    height: 64px;
+    z-index: 40;
+}
+
+.holdings-fake-header {
+    position: sticky;
+    top: var(--app-header-height);
+    z-index: 40;
+    background: rgba(17, 24, 39, 0.98);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.holdings-fake-header table,
+.holdings-body-table {
+    width: max-content;
+    min-width: 100%;
+}
+
+#holdingsHeaderScroll {
+    overflow: hidden;
+}
+
+#holdingsBodyScroll {
+    overflow-x: auto;
+    overflow-y: visible;
+}
+
+.holdings-sticky-th,
+.holdings-sticky-thead {
+    position: static !important;
+    top: auto !important;
+    z-index: auto !important;
+    background: rgba(17, 24, 39, 0.98) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.group-header td {
+    background-color: rgba(30, 41, 59, 0.98);
+    color: #60a5fa;
+    font-weight: 700;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+}

@@ -476,140 +476,207 @@
     </div>
 </div>
                     
-                    <div class="overflow-y-auto flex-1 p-2 md:p-0 bg-[#0f172a]/50">
-                        <div class="hidden md:block w-full overflow-x-auto rounded-b-2xl">
-                            <table class="w-full text-left whitespace-nowrap excel-table text-[13px]">
-                                <thead class="sticky top-0 z-10 bg-[#111827]/95 backdrop-blur-md border-b border-white/10">
-                                    <tr>
-                                        <th class="pl-6">代號</th>
-                                        <th>風險</th>
-                                        <th class="text-center w-16" title="Beta 係數">Beta (β)</th>
-                                        <th class="text-center w-16" title="年化標準差">SD (σ%)</th>
-                                        <th class="text-right">持有股數</th>
-                                        <th class="p-2 text-right">成本(TWD)</th>
-                                        <th class="p-2 text-right">現值(TWD)</th>
-                                        <th class="p-2 text-center text-indigo-300" title="RSI & MACD">技術訊號</th>
-                                        <th class="p-2 text-right text-gray-300">累積報酬</th>
-                                        <th class="p-2 text-right text-purple-300" title="資金加權年化報酬率">年化 (CAGR)</th>
-                                        
-                                        <th class="p-2 text-right">現有權重%</th>
-                                        <th class="p-2 text-right text-blue-300" title="雲端紀律運算權重 (Python)">雲端%</th>
-                                        <th class="p-2 text-right text-purple-400" title="MC理論極限權重">MC%</th>
-                                        <th class="p-2 text-right text-yellow-400 font-bold" title="50%雲端 + 50%MC">綜合目標%</th>
-                                        <th class="p-2 text-right" title="與綜合目標的偏離度">落差 (Drift)</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="text-[13px]">
-                                    <template v-for="(group, catName) in groupedHoldings" :key="catName">
-                                        <tr class="group-header">
-                                            <td colspan="15" class="py-3 border-y border-white/10 bg-white/[0.04]">
-                                                <div class="flex justify-between items-center px-5">
-                                                   <div>
-                                                       <i class="fas fa-folder-open mr-2 text-blue-400"></i> <span class="font-bold text-gray-200">{{ catName }}</span> 
-                                                       <span class="text-gray-400 text-xs font-normal ml-2">市值: NT$ {{ formatNumber(group.totalValue) }}</span>
-                                                   </div>
-                                                   <div class="text-xs font-bold tracking-wider flex items-center">
-                                                       <span class="text-gray-500 mr-2">分類損益:</span>
-                                                       <span :class="group.unrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
-                                                           {{ group.unrealizedPL >= 0 ? '+' : '' }}{{ formatNumber(group.unrealizedPL) }}
-                                                       </span>
-                                                       <span class="mx-3 text-gray-600">|</span>
-                                                       <span class="text-gray-500 mr-2">分類報酬:</span>
-                                                       <span :class="group.returnRate >= 0 ? 'text-red-400' : 'text-green-400'" class="bg-gray-900/80 px-2 py-1 rounded border border-gray-700 shadow-sm">
-                                                           {{ group.returnRate >= 0 ? '+' : '' }}{{ group.returnRate.toFixed(2) }}%
-                                                       </span>
-                                                   </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        <tr v-for="stock in group.items" :key="stock.ticker" class="hover:bg-white/[0.04] transition-colors border-b border-white/[0.06]">
-                                            <td class="pl-5 font-bold text-white flex items-center gap-2 py-3">
-                                                {{ stock.ticker }}
-                                                <span v-if="stock.isUSD" class="text-[9px] bg-gray-700 px-1 rounded text-gray-300">USD</span>
-                                            </td>
-                                            <td>
-                                               <select v-model="stock.riskLevel" @change="updateMeta(stock)" class="risk-select" :class="stock.riskLevel === 'Low' ? 'risk-low' : 'risk-high'">
-                                                    <option value="High">High</option><option value="Low">Low</option>
-                                               </select>
-                                            </td>
-                                            <td>
-                                               <input v-model.number="stock.beta" @change="updateMeta(stock)" class="w-12 bg-transparent text-center border-b border-gray-600 focus:border-yellow-400 outline-none text-yellow-400 font-mono" placeholder="1.0">
-                                            </td>
-                                            <td>
-                                               <input v-model.number="stock.stdDev" @change="updateMeta(stock)" class="w-12 bg-transparent text-center border-b border-gray-600 focus:border-yellow-400 outline-none text-yellow-400 font-mono" placeholder="20">
-                                            </td>
-                                            <td class="text-right font-mono text-gray-300">{{ formatNumber(stock.shares) }}</td>
-                                            <td class="text-right font-mono text-gray-300">{{ formatNumber(stock.totalCostTwd) }}</td>
-                                            <td class="text-right font-mono text-white font-bold">{{ formatNumber(stock.marketValueTwd) }}</td>
+                    <div class="overflow-visible flex-1 p-2 md:p-0 bg-[#0f172a]/50"> 
+                        <div class="hidden md:block rounded-b-2xl relative">
+    <!-- 假表頭：固定在主 header 下方 -->
+    <div class="holdings-fake-header-anchor">
+    <div class="holdings-fake-header">
+        <div id="holdingsHeaderScroll" class="overflow-hidden">
+            <table class="w-max min-w-full text-left whitespace-nowrap excel-table text-[13px]">
+                <colgroup>
+                    <col style="width: 130px;">
+                    <col style="width: 100px;">
+                    <col style="width: 90px;">
+                    <col style="width: 90px;">
+                    <col style="width: 100px;">
+                    <col style="width: 110px;">
+                    <col style="width: 110px;">
+                    <col style="width: 120px;">
+                    <col style="width: 120px;">
+                    <col style="width: 130px;">
+                    <col style="width: 130px;">
+                    <col style="width: 110px;">
+                    <col style="width: 120px;">
+                    <col style="width: 100px;">
+                    <col style="width: 90px;">
+                    <col style="width: 90px;">
+                    <col style="width: 120px;">
+                    <col style="width: 110px;">
+                </colgroup>
+                <thead class="bg-[#111827]/95 backdrop-blur-md border-b border-white/10 shadow-sm">
+                    <tr>
+                        <th class="pl-6">代號</th>
+                        <th>風險</th>
+                        <th class="text-center w-16" title="Beta 係數">Beta (β)</th>
+                        <th class="text-center w-16" title="年化標準差">SD (σ%)</th>
+                        <th class="text-right">持有股數</th>
+                        <th class="p-2 text-right">均價(TWD)</th>
+                        <th class="p-2 text-right">現價(TWD)</th>
+                        <th class="p-2 text-right text-gray-400">成本(TWD)</th>
+                        <th class="p-2 text-right text-white">現值(TWD)</th>
+                        <th class="p-2 text-right text-yellow-300">未實現損益</th>
+                        <th class="p-2 text-center text-indigo-300" title="RSI & MACD">技術訊號</th>
+                        <th class="p-2 text-right text-gray-300">累積報酬</th>
+                        <th class="p-2 text-right text-purple-300" title="資金加權年化報酬率">年化 (CAGR)</th>
+                        <th class="p-2 text-right">現有權重%</th>
+                        <th class="p-2 text-right text-blue-300" title="雲端紀律運算權重 (Python)">雲端%</th>
+                        <th class="p-2 text-right text-purple-400" title="MC理論極限權重">MC%</th>
+                        <th class="p-2 text-right text-yellow-400 font-bold" title="50%雲端 + 50%MC">綜合目標%</th>
+                        <th class="p-2 text-right" title="與綜合目標的偏離度">落差 (Drift)</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+    </div>
+</div>
+    <!-- 真表身：保留水平捲動 -->
+    <div id="holdingsBodyScroll" @scroll="syncHoldingsHeaderScroll" class="w-full overflow-x-auto rounded-b-2xl">
+        <table class="w-max min-w-full text-left whitespace-nowrap excel-table text-[13px] holdings-body-table">
+            <colgroup>
+                <col style="width: 130px;">
+                <col style="width: 100px;">
+                <col style="width: 90px;">
+                <col style="width: 90px;">
+                <col style="width: 100px;">
+                <col style="width: 110px;">
+                <col style="width: 110px;">
+                <col style="width: 120px;">
+                <col style="width: 120px;">
+                <col style="width: 130px;">
+                <col style="width: 130px;">
+                <col style="width: 110px;">
+                <col style="width: 120px;">
+                <col style="width: 100px;">
+                <col style="width: 90px;">
+                <col style="width: 90px;">
+                <col style="width: 120px;">
+                <col style="width: 110px;">
+            </colgroup>
 
-                                            <td class="p-2 text-center text-xs">
-                                                <div class="flex flex-col gap-1 items-center justify-center" v-if="stock.techSignals">
-                                                    <span :class="stock.techSignals.rsiColor" class="font-bold bg-gray-800 px-1.5 py-0.5 rounded border border-gray-700 whitespace-nowrap shadow-sm">
-                                                        RSI: {{ stock.techSignals.rsiVal }}
-                                                    </span>
-                                                    <span :class="stock.techSignals.macdColor" class="font-bold bg-gray-800 px-1.5 py-0.5 rounded border border-gray-700 whitespace-nowrap shadow-sm">
-                                                        {{ stock.techSignals.macdText }}
-                                                    </span>
-                                                </div>
-                                                <div v-else class="text-gray-600">-</div>
-                                            </td>
+            <tbody class="text-[13px]">
+                <template v-for="(group, catName) in groupedHoldings" :key="catName">
+                    <tr class="group-header">
+                        <td colspan="18" class="py-3 border-y border-white/10 bg-white/[0.04]">
+                            <div class="flex justify-between items-center px-5">
+                               <div>
+                                   <i class="fas fa-folder-open mr-2 text-blue-400"></i>
+                                   <span class="font-bold text-gray-200">{{ catName }}</span>
+                                   <span class="text-gray-400 text-xs font-normal ml-2">市值: NT$ {{ formatNumber(group.totalValue) }}</span>
+                               </div>
+                               <div class="text-xs font-bold tracking-wider flex items-center">
+                                   <span class="text-gray-500 mr-2">分類損益:</span>
+                                   <span :class="group.unrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
+                                       {{ group.unrealizedPL >= 0 ? '+' : '' }}{{ formatNumber(group.unrealizedPL) }}
+                                   </span>
+                                   <span class="mx-3 text-gray-600">|</span>
+                                   <span class="text-gray-500 mr-2">分類報酬:</span>
+                                   <span :class="group.returnRate >= 0 ? 'text-red-400' : 'text-green-400'" class="bg-gray-900/80 px-2 py-1 rounded border border-gray-700 shadow-sm">
+                                       {{ group.returnRate >= 0 ? '+' : '' }}{{ group.returnRate.toFixed(2) }}%
+                                   </span>
+                               </div>
+                            </div>
+                        </td>
+                    </tr>
 
-                                            <td class="p-2 text-right font-medium" :class="stock.returnRate >= 0 ? 'text-red-400' : 'text-green-400'">
-                                                {{ parseFloat(stock.returnRate).toFixed(2) }}%
-                                            </td>
-                                            <td class="p-2 text-right font-bold" :class="stock.annualizedReturnRate >= 0 ? 'text-red-400' : 'text-green-400'">
-                                                <span class="bg-gray-800/50 px-2 py-1 rounded border border-gray-700">
-                                                    {{ parseFloat(stock.annualizedReturnRate || 0).toFixed(2) }}%
-                                                </span>
-                                            </td>
+                    <tr v-for="stock in group.items" :key="stock.ticker" class="hover:bg-white/[0.04] transition-colors border-b border-white/[0.06]">
+                        <td class="pl-5 font-bold text-white flex items-center gap-2 py-3">
+                            {{ stock.ticker }}
+                            <span v-if="stock.isUSD" class="text-[9px] bg-gray-700 px-1 rounded text-gray-300">USD</span>
+                        </td>
+                        <td>
+                           <select v-model="stock.riskLevel" @change="updateMeta(stock)" class="risk-select" :class="stock.riskLevel === 'Low' ? 'risk-low' : 'risk-high'">
+                                <option value="High">High</option><option value="Low">Low</option>
+                           </select>
+                        </td>
+                        <td>
+                           <input v-model.number="stock.beta" @change="updateMeta(stock)" class="w-12 bg-transparent text-center border-b border-gray-600 focus:border-yellow-400 outline-none text-yellow-400 font-mono" placeholder="1.0">
+                        </td>
+                        <td>
+                           <input v-model.number="stock.stdDev" @change="updateMeta(stock)" class="w-12 bg-transparent text-center border-b border-gray-600 focus:border-yellow-400 outline-none text-yellow-400 font-mono" placeholder="20">
+                        </td>
+                        <td class="text-right font-mono text-gray-300">{{ formatNumber(stock.shares) }}</td>
+                        <td class="text-right font-mono text-cyan-300">{{ formatNumber(stock.avgCostTwd) }}</td>
+                        <td class="text-right font-mono text-yellow-300">{{ formatNumber(stock.currentPriceTwd) }}</td>
+                        <td class="text-right font-mono text-gray-500">{{ formatNumber(stock.totalCostTwd) }}</td>
+                        <td class="text-right font-mono text-white font-bold">{{ formatNumber(stock.marketValueTwd) }}</td>
+                        <td class="text-right font-mono font-bold">
+                            <span class="px-2 py-1 rounded-lg border"
+                                  :class="stock.unrealizedPLTwd >= 0
+                                      ? 'text-red-400 bg-red-500/10 border-red-500/20'
+                                      : 'text-green-400 bg-green-500/10 border-green-500/20'">
+                                {{ stock.unrealizedPLTwd >= 0 ? '+' : '' }}{{ formatNumber(stock.unrealizedPLTwd) }}
+                            </span>
+                        </td>
 
-                                            <td class="text-right font-mono font-bold relative text-gray-300">
-                                                {{ formatPercent(stock.totalWeight) }}
-                                                <i v-if="stock.isOverweight" class="fas fa-exclamation-triangle text-red-500 ml-1 animate-pulse" title="佔總資產 > 20%"></i>
-                                            </td>
-                                            <td class="p-2 text-right font-mono text-blue-300 font-bold">
-                                                {{ stock.targetWeight ? stock.targetWeight.toFixed(1) + '%' : '-' }}
-                                            </td>
-                                            <td class="p-2 text-right font-mono text-purple-400">
-                                                {{ stock.mcWeight ? stock.mcWeight.toFixed(1) + '%' : '-' }}
-                                            </td>
-                                            <td class="p-2 text-right font-mono text-yellow-400 font-bold text-lg">
-                                                {{ stock.blendedWeight.toFixed(1) }}%
-                                            </td>
-                                            <td class="p-2 text-right font-mono font-bold text-lg">
-                                                <span :class="stock.weightGap > 3 ? 'text-green-400' : (stock.weightGap < -3 ? 'text-red-400' : 'text-gray-500')">
-                                                    {{ stock.weightGap > 0 ? '+' : '' }}{{ stock.weightGap.toFixed(1) }}%
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
-                        </div>
+                        <td class="p-2 text-center text-xs">
+                            <div class="flex flex-col gap-1 items-center justify-center" v-if="stock.techSignals">
+                                <span :class="stock.techSignals.rsiColor" class="font-bold bg-gray-800 px-1.5 py-0.5 rounded border border-gray-700 whitespace-nowrap shadow-sm">
+                                    RSI: {{ stock.techSignals.rsiVal }}
+                                </span>
+                                <span :class="stock.techSignals.macdColor" class="font-bold bg-gray-800 px-1.5 py-0.5 rounded border border-gray-700 whitespace-nowrap shadow-sm">
+                                    {{ stock.techSignals.macdText }}
+                                </span>
+                            </div>
+                            <div v-else class="text-gray-600">-</div>
+                        </td>
+
+                        <td class="p-2 text-right font-medium" :class="stock.returnRate >= 0 ? 'text-red-400' : 'text-green-400'">
+                            {{ parseFloat(stock.returnRate).toFixed(2) }}%
+                        </td>
+                        <td class="p-2 text-right font-bold" :class="stock.annualizedReturnRate >= 0 ? 'text-red-400' : 'text-green-400'">
+                            <span class="bg-gray-800/50 px-2 py-1 rounded border border-gray-700">
+                                {{ parseFloat(stock.annualizedReturnRate || 0).toFixed(2) }}%
+                            </span>
+                        </td>
+
+                        <td class="text-right font-mono font-bold relative text-gray-300">
+                            {{ formatPercent(stock.totalWeight) }}
+                            <i v-if="stock.isOverweight" class="fas fa-exclamation-triangle text-red-500 ml-1 animate-pulse" title="佔總資產 > 20%"></i>
+                        </td>
+                        <td class="p-2 text-right font-mono text-blue-300 font-bold">
+                            {{ stock.targetWeight ? stock.targetWeight.toFixed(1) + '%' : '-' }}
+                        </td>
+                        <td class="p-2 text-right font-mono text-purple-400">
+                            {{ stock.mcWeight ? stock.mcWeight.toFixed(1) + '%' : '-' }}
+                        </td>
+                        <td class="p-2 text-right font-mono text-yellow-400 font-bold text-lg">
+                            {{ stock.blendedWeight.toFixed(1) }}%
+                        </td>
+                        <td class="p-2 text-right font-mono font-bold text-lg">
+                            <span :class="stock.weightGap > 3 ? 'text-green-400' : (stock.weightGap < -3 ? 'text-red-400' : 'text-gray-500')">
+                                {{ stock.weightGap > 0 ? '+' : '' }}{{ stock.weightGap.toFixed(1) }}%
+                            </span>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+</div>
 
                         <div class="md:hidden space-y-4 pb-4 px-2">
                             <template v-for="(group, catName) in groupedHoldings" :key="'mob-'+catName">
                                 <div class="sticky top-0 z-10 bg-[#1e293b]/95 backdrop-blur-md px-3 py-2 flex flex-col gap-1 rounded-lg border border-gray-700 shadow-lg mt-4">
-                                    <div class="flex justify-between items-center">
-                                        <div class="font-bold text-gray-200 flex items-center">
-                                            <i class="fas fa-folder-open mr-2 text-blue-400"></i> {{ catName }}
-                                        </div>
-                                        <div class="text-xs text-gray-300 font-mono font-bold">
-                                            NT$ {{ formatNumber(group.totalValue) }}
-                                        </div>
-                                    </div>
-                                    <div class="flex justify-between items-center text-[10px] border-t border-gray-700/50 pt-1 mt-1">
-                                        <div class="text-gray-400">分類小計績效</div>
-                                        <div class="flex gap-3 font-mono font-bold">
-                                            <span :class="group.unrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
-                                                {{ group.unrealizedPL >= 0 ? '+' : '' }}{{ formatNumber(group.unrealizedPL) }}
-                                            </span>
-                                            <span :class="group.returnRate >= 0 ? 'text-red-400' : 'text-green-400'" class="bg-gray-800 px-1 rounded border border-gray-600">
-                                                {{ group.returnRate >= 0 ? '+' : '' }}{{ group.returnRate.toFixed(2) }}%
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
+    <div class="flex justify-between items-center">
+        <div class="font-bold text-gray-200 flex items-center">
+            <i class="fas fa-folder-open mr-2 text-blue-400"></i> {{ catName }}
+        </div>
+        <div class="text-xs text-gray-300 font-mono font-bold">
+            NT$ {{ formatNumber(group.totalValue) }}
+        </div>
+    </div>
+    <div class="flex justify-between items-center text-[10px] border-t border-gray-700/50 pt-1 mt-1">
+        <div class="text-gray-400">分類小計績效</div>
+        <div class="flex gap-3 font-mono font-bold">
+            <span :class="group.unrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
+                {{ group.unrealizedPL >= 0 ? '+' : '' }}{{ formatNumber(group.unrealizedPL) }}
+            </span>
+            <span :class="group.returnRate >= 0 ? 'text-red-400' : 'text-green-400'" class="bg-gray-800 px-1 rounded border border-gray-600">
+                {{ group.returnRate >= 0 ? '+' : '' }}{{ group.returnRate.toFixed(2) }}%
+            </span>
+        </div>
+    </div>
+</div>
                                 
                                 <div v-for="stock in group.items" :key="'mob-'+stock.ticker" 
                                      class="bg-gray-800/60 border border-gray-700/60 rounded-xl overflow-hidden shadow-lg transition-all duration-300"
@@ -664,23 +731,59 @@
                                                        :placeholder="stock.fetchedPrice">
                                             </div>
                                         </div>
-                                        <div class="grid grid-cols-3 gap-2">
-                                            <div class="bg-black/30 p-2 rounded-lg flex flex-col items-center">
-                                                <span class="text-gray-500 mb-1">成本</span>
-                                                <span class="font-mono text-gray-300 text-[11px]">NT$ {{ formatNumber(stock.totalCostTwd) }}</span>
-                                            </div>
-                                            <div class="bg-black/30 p-2 rounded-lg flex flex-col items-center">
-                                                <span class="text-gray-500 mb-1">現值</span>
-                                                <span class="font-mono text-white text-[11px]">NT$ {{ formatNumber(stock.marketValueTwd) }}</span>
-                                            </div>
-                                            <div class="bg-black/30 p-2 rounded-lg flex flex-col items-center">
-                                                <span class="text-gray-500 mb-1">未實現損益</span>
-                                                <span class="font-mono text-[11px] font-bold"
-                                                      :class="stock.unrealizedPLTwd >= 0 ? 'text-red-400' : 'text-green-400'">
-                                                    {{ stock.unrealizedPLTwd >= 0 ? '+' : '' }}{{ formatNumber(stock.unrealizedPLTwd) }}
-                                                </span>
-                                            </div>
-                                       </div>
+                                        <div class="space-y-2">
+    <div class="grid grid-cols-2 gap-2">
+        <div class="bg-black/30 p-2 rounded-lg flex flex-col items-center">
+            <span class="text-gray-500 mb-1">均價</span>
+            <span class="font-mono text-cyan-300 text-[11px] font-bold">
+                NT$ {{ formatNumber(stock.avgCostTwd) }}
+            </span>
+        </div>
+
+        <div class="bg-black/30 p-2 rounded-lg flex flex-col items-center">
+            <span class="text-gray-500 mb-1">現價</span>
+            <span class="font-mono text-yellow-300 text-[11px] font-bold">
+                NT$ {{ formatNumber(stock.currentPriceTwd) }}
+            </span>
+        </div>
+
+        <div class="bg-black/30 p-2 rounded-lg flex flex-col items-center">
+            <span class="text-gray-500 mb-1">成本</span>
+            <span class="font-mono text-gray-500 text-[11px]">
+                NT$ {{ formatNumber(stock.totalCostTwd) }}
+            </span>
+        </div>
+
+        <div class="bg-black/30 p-2 rounded-lg flex flex-col items-center">
+            <span class="text-gray-500 mb-1">現值</span>
+            <span class="font-mono text-white text-[11px] font-bold">
+                NT$ {{ formatNumber(stock.marketValueTwd) }}
+            </span>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-2">
+        <div class="bg-black/30 p-3 rounded-lg flex items-center justify-between">
+            <span class="text-gray-400 text-[11px] font-medium">未實現損益</span>
+            <span class="font-mono text-xs font-bold px-2.5 py-1 rounded-lg border"
+                  :class="stock.unrealizedPLTwd >= 0
+                      ? 'text-red-400 bg-red-500/10 border-red-500/20'
+                      : 'text-green-400 bg-green-500/10 border-green-500/20'">
+                {{ stock.unrealizedPLTwd >= 0 ? '+' : '' }}{{ formatNumber(stock.unrealizedPLTwd) }}
+            </span>
+        </div>
+
+        <div class="bg-black/30 p-3 rounded-lg flex items-center justify-between">
+            <span class="text-gray-400 text-[11px] font-medium">報酬率</span>
+            <span class="font-mono text-xs font-bold px-2.5 py-1 rounded-lg border"
+                  :class="stock.returnRate >= 0
+                      ? 'text-red-400 bg-red-500/10 border-red-500/20'
+                      : 'text-green-400 bg-green-500/10 border-green-500/20'">
+                {{ stock.returnRate >= 0 ? '+' : '' }}{{ parseFloat(stock.returnRate).toFixed(2) }}%
+            </span>
+        </div>
+    </div>
+</div>
                                         
                                         <div class="grid grid-cols-3 gap-2">
                                             <div class="bg-black/30 p-2 rounded-lg flex flex-col items-center">

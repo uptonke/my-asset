@@ -1038,6 +1038,20 @@ createApp({
         function getCategoryColorCode(cat) { return '#3b82f6'; }
         function formatNumber(n) { return new Intl.NumberFormat('zh-TW', {maximumFractionDigits:0}).format(n||0); }
         function formatPercent(n) { return ((n||0)*100).toFixed(1) + '%'; }
+        function updateStickyHeaderOffsets() {
+            const headerEl = document.querySelector('header');
+            const root = document.documentElement;
+
+            if (!headerEl || !root) return;
+
+            const headerHeight = Math.ceil(headerEl.getBoundingClientRect().height);
+            root.style.setProperty('--app-header-height', `${headerHeight}px`);
+        }
+        function syncHoldingsHeaderScroll(event) {
+    const headerScroll = document.getElementById('holdingsHeaderScroll');
+    if (!headerScroll || !event?.target) return;
+    headerScroll.scrollLeft = event.target.scrollLeft;
+}
 
         let chartSML, chartCML, chartAlloc, chartHist, chartRolling, chartMC, chartFire, chartCorr;
         let chartUpdateFrame = null;
@@ -1387,6 +1401,9 @@ function resizeAllCharts() {
 }
 
         onMounted(() => {
+            updateStickyHeaderOffsets();
+
+    window.addEventListener('resize', updateStickyHeaderOffsets);
     loadDataFromCloud();
 
     window.addEventListener('resize', () => {
@@ -1395,15 +1412,23 @@ function resizeAllCharts() {
 });
         watch(currentTab, async () => {
     await nextTick();
+    updateStickyHeaderOffsets();
     updateCharts();
 
     setTimeout(() => {
+        updateStickyHeaderOffsets();
         resizeAllCharts();
     }, 60);
 
     setTimeout(() => {
+        updateStickyHeaderOffsets();
         resizeAllCharts();
     }, 180);
+    function syncHoldingsHeaderScroll(event) {
+    const headerScroll = document.getElementById('holdingsHeaderScroll');
+    if (!headerScroll || !event?.target) return;
+    headerScroll.scrollLeft = event.target.scrollLeft;
+}
 });
         watch([exchangeRate, sheetUrl, isSimMode, riskParams, quantStartDate, dataFrequency, fireTargets, correlationMatrix], () => updateCharts(), {deep:true});
 
@@ -1422,8 +1447,9 @@ function resizeAllCharts() {
             fireTargets, activeFireStageIndex, activeFireTarget, isLoggedIn, loginEmail, loginPassword, loginError, 
             isAuthenticating, handleLogin, handleLogout, checkAuth, fireProgress, 
             updateCharts, addFireTarget, macroRegime, enableBlackSwan, mcRisk, blViews, mcAvailableAssets, addBlView, enableInflation,
-            generateAutoViews, runMonteCarlo, stressTestResults, 
+            generateAutoViews, runMonteCarlo, stressTestResults,
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr,
+            syncHoldingsHeaderScroll,
             croInsight, isCroThinking, generateQuantInsight
         };
     }
