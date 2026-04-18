@@ -46,7 +46,7 @@ def get_sheet_prices(sheet_url):
     try:
         # 從網址萃取 sheet_id
         sheet_id = sheet_url.split('/d/')[1].split('/')[0]
-        csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv"
+        csv_url = f"https://docs.google.com/spreadsheets/d/1cVoE67-mR9lQQLn4FE_GYftAOAR2RjvaL3MgqIUQ880/edit?gid=0#gid=0"
         
         response = requests.get(csv_url)
         response.raise_for_status() # 確認連線成功
