@@ -505,14 +505,43 @@ createApp({
             });
 
             for (const cat in groups) {
+                let groupTotalInvested = 0;
+                let groupWeightedDaysSum = 0;
+
                 groups[cat].items.forEach(item => {
                     item.totalWeight = grandTotal > 0 ? (item.marketValueTwd / grandTotal) : 0;
                     item.isOverweight = item.totalWeight > 0.20; 
                     item.weightGap = item.blendedWeight - (item.totalWeight * 100); 
+
+                    // 累加該分類下的總投入資金與加權持有天數
+                    if (holdingDaysMap[item.ticker]) {
+                        groupTotalInvested += holdingDaysMap[item.ticker].totalInvested;
+                        groupWeightedDaysSum += holdingDaysMap[item.ticker].weightedDaysSum;
+                    }
                 });
+                
                 groups[cat].items.sort((a,b) => b.marketValueTwd - a.marketValueTwd);
                 groups[cat].unrealizedPL = groups[cat].totalValue - groups[cat].totalCost;
-                groups[cat].returnRate = groups[cat].totalCost > 0 ? (groups[cat].unrealizedPL / groups[cat].totalCost) * 100 : 0;
+                
+                // 計算分類累積報酬率
+                const groupCumulativeReturn = groups[cat].totalCost > 0 ? (groups[cat].unrealizedPL / groups[cat].totalCost) : 0;
+                groups[cat].returnRate = groupCumulativeReturn * 100;
+
+                // 計算分類年化報酬率 (CAGR)
+                let groupAnnualizedReturn = groupCumulativeReturn; 
+                if (groupTotalInvested > 0) {
+                    const groupAvgDaysHeld = groupWeightedDaysSum / groupTotalInvested;
+                    if (groupAvgDaysHeld > 7) {
+                        const groupYearsHeld = groupAvgDaysHeld / 365;
+                        groupAnnualizedReturn = Math.pow(1 + groupCumulativeReturn, 1 / groupYearsHeld) - 1;
+                    }
+                }
+                
+                // 離群值封頂限制 (最高 500%, 最低 -100%)
+                if (groupAnnualizedReturn > 5) groupAnnualizedReturn = 5;
+                if (groupAnnualizedReturn < -1) groupAnnualizedReturn = -1;
+
+                groups[cat].annualizedReturnRate = groupAnnualizedReturn * 100;
             }
             return groups;
         });
