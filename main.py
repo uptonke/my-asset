@@ -12,6 +12,7 @@ import pandas as pd
 import yfinance as yf
 import pandas_ta as ta
 import scipy.optimize as sco
+from scipy.stats import genpareto
 from supabase import create_client, Client
 from google import genai
 
@@ -494,6 +495,165 @@ def compute_drawdown_series(return_series):
         return dd
     except Exception:
         return pd.Series(dtype=float)
+    
+def get_jump_params_for_ticker(ticker, meta):
+    t = str(ticker or "").strip().upper()
+    category = str(meta.get("category", ""))
+
+    is_crypto = t.endswith("-USD") or "加密" in category or "BTC" in t or "ETH" in t
+    is_leveraged = t in {"SSO", "00631L", "00675L"}
+    is_defensive = t in {"USMV"}
+
+    if is_hard_buffer_ticker(t):
+        return {"lambda": 0.4, "mean": -0.03, "std": 0.02}
+
+    if is_defensive:
+        return {"lambda": 0.7, "mean": -0.05, "std": 0.03}
+
+    if is_crypto or is_leveraged:
+        return {"lambda": 2.0, "mean": -0.18, "std": 0.08}
+
+    return {"lambda": 1.2, "mean": -0.10, "std": 0.05}
+
+
+def simulate_jump_diffusion_tail(port_returns, active_tickers, asset_values, stock_meta, horizon_weeks=13, n_sims=4000, seed=42):
+    base = {
+        "jd_var95": None,
+        "jd_es95": None,
+        "jd_crash_prob": None,
+        "jd_tail_loss": None,
+        "jd_horizon_weeks": horizon_weeks,
+        "jd_effective_lambda": None,
+        "jd_effective_jump_mean": None,
+        "jd_effective_jump_std": None
+    }
+
+    try:
+        s = pd.Series(port_returns).dropna().astype(float)
+        if len(s) < 12:
+            return base
+
+        total_value = sum(float(asset_values.get(t, 0.0) or 0.0) for t in active_tickers)
+        if total_value <= 0:
+            return base
+
+        eff_lambda = 0.0
+        eff_jump_mean = 0.0
+        eff_jump_std = 0.0
+
+        for t in active_tickers:
+            w = float(asset_values.get(t, 0.0) or 0.0) / total_value
+            jp = get_jump_params_for_ticker(t, stock_meta.get(t, {}))
+            eff_lambda += w * float(jp["lambda"])
+            eff_jump_mean += w * float(jp["mean"])
+            eff_jump_std += w * float(jp["std"])
+
+        mu_w = float(s.mean())
+        sigma_w = float(s.std())
+        if not np.isfinite(sigma_w) or sigma_w <= 0:
+            sigma_w = 0.01
+
+        rng = np.random.default_rng(seed)
+        lambda_week = max(0.0, eff_lambda / 52.0)
+
+        wealth = np.ones(n_sims, dtype=float)
+
+        for _ in range(horizon_weeks):
+            z = rng.normal(0.0, 1.0, n_sims)
+            jump_counts = rng.poisson(lambda_week, n_sims)
+
+            jump_component = np.zeros(n_sims, dtype=float)
+            has_jump = jump_counts > 0
+            if np.any(has_jump):
+                # 近似：k 次 jump 的總和 ~ Normal(k*mean, sqrt(k)*std)
+                k = jump_counts[has_jump].astype(float)
+                jump_component[has_jump] = (
+                    k * eff_jump_mean +
+                    np.sqrt(k) * eff_jump_std * rng.normal(0.0, 1.0, has_jump.sum())
+                )
+
+            step_ret = mu_w + sigma_w * z + jump_component
+            step_ret = np.clip(step_ret, -0.95, 3.0)
+            wealth *= (1.0 + step_ret)
+
+        horizon_ret = wealth - 1.0
+        q05 = float(np.quantile(horizon_ret, 0.05))
+        es05 = float(np.mean(horizon_ret[horizon_ret <= q05])) if np.any(horizon_ret <= q05) else q05
+        crash_prob = float(np.mean(horizon_ret <= -0.10) * 100)
+
+        base.update({
+            "jd_var95": round(q05 * 100, 2),
+            "jd_es95": round(es05 * 100, 2),
+            "jd_crash_prob": round(crash_prob, 2),
+            "jd_tail_loss": round(abs(es05) * 100, 2),
+            "jd_horizon_weeks": int(horizon_weeks),
+            "jd_effective_lambda": round(eff_lambda, 4),
+            "jd_effective_jump_mean": round(eff_jump_mean, 4),
+            "jd_effective_jump_std": round(eff_jump_std, 4)
+        })
+        return base
+    except Exception as e:
+        print(f"⚠️ simulate_jump_diffusion_tail 失敗: {e}", flush=True)
+        return base
+
+
+def compute_evt_tail(port_returns, threshold_q=0.10, alpha=0.95):
+    base = {
+        "evt_var95": None,
+        "evt_es95": None,
+        "evt_shape_xi": None,
+        "evt_scale_beta": None,
+        "evt_threshold": None,
+        "evt_exceedance_count": 0,
+        "evt_alpha_conf": alpha
+    }
+
+    try:
+        s = pd.Series(port_returns).dropna().astype(float)
+        if len(s) < 30:
+            return base
+
+        losses = -s
+        u = float(losses.quantile(1 - threshold_q))   # e.g. top 10% losses
+        exceed = losses[losses > u] - u
+        n = len(losses)
+        nu = len(exceed)
+
+        if nu < 8:
+            return base
+
+        xi, loc, beta = genpareto.fit(exceed, floc=0.0)
+        beta = float(beta)
+        xi = float(xi)
+
+        tail_prob = 1.0 - alpha     # 95% VaR => tail 5%
+        fu = nu / n
+
+        if tail_prob <= 0 or fu <= 0:
+            return base
+
+        if abs(xi) < 1e-6:
+            var_loss = u + beta * math.log(fu / tail_prob)
+        else:
+            var_loss = u + (beta / xi) * (((fu / tail_prob) ** xi) - 1.0)
+
+        es_loss = None
+        if xi < 1:
+            es_loss = (var_loss + beta - xi * u) / (1.0 - xi)
+
+        base.update({
+            "evt_var95": round(-var_loss * 100, 2),
+            "evt_es95": round(-es_loss * 100, 2) if es_loss is not None else None,
+            "evt_shape_xi": round(xi, 4),
+            "evt_scale_beta": round(beta, 6),
+            "evt_threshold": round(-u * 100, 2),
+            "evt_exceedance_count": int(nu),
+            "evt_alpha_conf": alpha
+        })
+        return base
+    except Exception as e:
+        print(f"⚠️ compute_evt_tail 失敗: {e}", flush=True)
+        return base
 
 
 def compute_xray_meta(active_tickers, asset_values, stock_meta, returns_df, ticker_to_yf=None):
@@ -614,24 +774,181 @@ def compute_xray_meta(active_tickers, asset_values, stock_meta, returns_df, tick
 def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticker_to_yf=None, tw_bench="^TWII", us_bench="SPY"):
     ticker_to_yf = ticker_to_yf or {}
     base = {
-    "benchmark": None,
-    "sample_weeks": 0,
-    "conditional_correlation": None,
-    "crisis_window_correlation": None,
-    "downside_beta": None,
-    "joint_downside_hit_rate": None,
-    "co_drawdown_frequency": None,
-    "rolling_cvar_26w": None,
-    "rolling_cvar_52w": None,
-    "stressed_cvar": None,
-    "tail_dependence_lite": None,
-    "crisis_window_label": None,
-    "tail_sample_count": 0,
-    "crisis_sample_count": 0,
-    "co_drawdown_threshold": -10.0,
-    "tail_threshold_quantile": 0.05
-}
+        "benchmark": None,
+        "sample_weeks": 0,
+        "conditional_correlation": None,
+        "crisis_window_correlation": None,
+        "downside_beta": None,
+        "joint_downside_hit_rate": None,
+        "co_drawdown_frequency": None,
+        "rolling_cvar_26w": None,
+        "rolling_cvar_52w": None,
+        "stressed_cvar": None,
+        "tail_dependence_lite": None,
+        "crisis_window_label": None,
+        "tail_sample_count": 0,
+        "crisis_sample_count": 0,
+        "co_drawdown_threshold": -10.0,
+        "tail_threshold_quantile": 0.05,
 
+        # === 新增：Jump-Diffusion ===
+        "jd_var95": None,
+        "jd_es95": None,
+        "jd_crash_prob": None,
+        "jd_tail_loss": None,
+        "jd_horizon_weeks": 13,
+        "jd_effective_lambda": None,
+        "jd_effective_jump_mean": None,
+        "jd_effective_jump_std": None,
+
+        # === 新增：EVT / POT-GPD ===
+        "evt_var95": None,
+        "evt_es95": None,
+        "evt_shape_xi": None,
+        "evt_scale_beta": None,
+        "evt_threshold": None,
+        "evt_exceedance_count": 0,
+        "evt_alpha_conf": 0.95
+    }
+
+    try:
+        tw_value = 0.0
+        non_tw_value = 0.0
+        grouped_values = {}
+
+        for t in active_tickers:
+            val = float(asset_values.get(t, 0.0) or 0.0)
+            if val <= 0:
+                continue
+            yf_t = ticker_to_yf.get(t, t)
+            if yf_t not in prices_df.columns:
+                continue
+            grouped_values[yf_t] = grouped_values.get(yf_t, 0.0) + val
+
+            if str(yf_t).endswith(".TW") or "台股" in str(stock_meta.get(t, {}).get("category", "")):
+                tw_value += val
+            else:
+                non_tw_value += val
+
+        if len(grouped_values) < 1:
+            return base
+
+        bench = tw_bench if tw_value > non_tw_value else us_bench
+        if bench not in prices_df.columns:
+            bench = us_bench if us_bench in prices_df.columns else (tw_bench if tw_bench in prices_df.columns else None)
+        if bench is None:
+            return base
+
+        yf_cols = [c for c in grouped_values.keys() if c in prices_df.columns and c != bench]
+        if len(yf_cols) < 1:
+            return base
+
+        weekly_prices = prices_df[yf_cols + [bench]].resample("W-FRI").last().dropna(how="all")
+        weekly_returns = weekly_prices.pct_change().dropna(how="any")
+        if len(weekly_returns) < 8:
+            return base
+
+        weights = pd.Series({c: float(grouped_values[c]) for c in yf_cols}, dtype=float)
+        weight_sum = float(weights.sum())
+        if weight_sum <= 0:
+            return base
+        weights = weights / weight_sum
+
+        ret_sub = weekly_returns[yf_cols].copy()
+        port = ret_sub.mul(weights.reindex(ret_sub.columns).fillna(0.0), axis=1).sum(axis=1)
+        bench_s = weekly_returns[bench]
+
+        aligned = pd.concat([port.rename("port"), bench_s.rename("bench")], axis=1).dropna()
+        if len(aligned) < 8:
+            return base
+
+        port = aligned["port"]
+        bench_s = aligned["bench"]
+
+        q20_b = float(bench_s.quantile(0.20))
+        q10_b = float(bench_s.quantile(0.10))
+        q05_b = float(bench_s.quantile(0.05))
+        q20_p = float(port.quantile(0.20))
+        q05_p = float(port.quantile(0.05))
+
+        cond_mask = bench_s <= q20_b
+        crisis_mask = bench_s <= q10_b
+        downside_mask = bench_s < 0
+        tail_b_mask = bench_s <= q05_b
+
+        tail_sample_count = int(tail_b_mask.sum())
+        crisis_sample_count = int(crisis_mask.sum())
+        co_drawdown_threshold = -10.0
+        tail_threshold_quantile = 0.05
+
+        conditional_corr = safe_corr(port[cond_mask], bench_s[cond_mask])
+        crisis_corr = safe_corr(port[crisis_mask], bench_s[crisis_mask])
+
+        downside_beta = None
+        if downside_mask.sum() >= 3:
+            bench_down = bench_s[downside_mask]
+            port_down = port[downside_mask]
+            bench_var = float(bench_down.var())
+            if bench_var > 0:
+                downside_beta = float(port_down.cov(bench_down) / bench_var)
+
+        joint_hit = float((((bench_s <= q20_b) & (port <= q20_p)).mean()) * 100)
+
+        dd_port = compute_drawdown_series(port)
+        dd_bench = compute_drawdown_series(bench_s)
+        co_dd = float((((dd_port <= -0.10) & (dd_bench <= -0.10)).mean()) * 100)
+
+        rolling_26 = compute_cvar(port.tail(26), q=0.05)
+        rolling_52 = compute_cvar(port.tail(52), q=0.05)
+        stressed = compute_cvar(port[crisis_mask], q=0.05) if crisis_mask.sum() >= 3 else compute_cvar(port.tail(52), q=0.05)
+
+        tail_dependence = None
+        if tail_sample_count >= 1:
+            tail_dependence = float(((port[tail_b_mask] <= q05_p).mean()) * 100)
+
+        base.update({
+            "benchmark": bench,
+            "sample_weeks": int(len(aligned)),
+            "conditional_correlation": round(conditional_corr, 4) if conditional_corr is not None else None,
+            "crisis_window_correlation": round(crisis_corr, 4) if crisis_corr is not None else None,
+            "downside_beta": round(downside_beta, 4) if downside_beta is not None else None,
+            "joint_downside_hit_rate": round(joint_hit, 2),
+            "co_drawdown_frequency": round(co_dd, 2),
+            "rolling_cvar_26w": round(rolling_26 * 100, 2) if rolling_26 is not None else None,
+            "rolling_cvar_52w": round(rolling_52 * 100, 2) if rolling_52 is not None else None,
+            "stressed_cvar": round(stressed * 100, 2) if stressed is not None else None,
+            "tail_dependence_lite": round(tail_dependence, 2) if tail_dependence is not None else None,
+            "crisis_window_label": f"{bench} <= P10 weekly return",
+            "tail_sample_count": tail_sample_count,
+            "crisis_sample_count": crisis_sample_count,
+            "co_drawdown_threshold": co_drawdown_threshold,
+            "tail_threshold_quantile": tail_threshold_quantile
+        })
+
+        # === 新增：Jump-Diffusion ===
+        jd_meta = simulate_jump_diffusion_tail(
+            port_returns=port,
+            active_tickers=active_tickers,
+            asset_values=asset_values,
+            stock_meta=stock_meta,
+            horizon_weeks=13,
+            n_sims=4000,
+            seed=42
+        )
+        base.update(jd_meta)
+
+        # === 新增：EVT (POT + GPD) ===
+        evt_meta = compute_evt_tail(
+            port_returns=port,
+            threshold_q=0.10,
+            alpha=0.95
+        )
+        base.update(evt_meta)
+
+        return base
+    except Exception as e:
+        print(f"⚠️ compute_tail_meta 失敗: {e}", flush=True)
+        return base
     try:
         tw_value = 0.0
         non_tw_value = 0.0
@@ -994,7 +1311,28 @@ try:
             "rolling_cvar_52w": None,
             "stressed_cvar": None,
             "tail_dependence_lite": None,
-            "crisis_window_label": None
+            "crisis_window_label": None,
+            "tail_sample_count": 0,
+            "crisis_sample_count": 0,
+            "co_drawdown_threshold": -10.0,
+            "tail_threshold_quantile": 0.05,
+
+            "jd_var95": None,
+            "jd_es95": None,
+            "jd_crash_prob": None,
+            "jd_tail_loss": None,
+            "jd_horizon_weeks": 13,
+            "jd_effective_lambda": None,
+            "jd_effective_jump_mean": None,
+            "jd_effective_jump_std": None,
+
+            "evt_var95": None,
+            "evt_es95": None,
+            "evt_shape_xi": None,
+            "evt_scale_beta": None,
+            "evt_threshold": None,
+            "evt_exceedance_count": 0,
+            "evt_alpha_conf": 0.95
         }
     }
     if existing.data:
@@ -1285,6 +1623,22 @@ try:
 
             chaos_packet["xray_meta"] = xray_meta
             chaos_packet["tail_meta"] = tail_meta
+
+            chaos_packet["jump_diffusion"] = {
+                "jd_var95": tail_meta.get("jd_var95"),
+                "jd_es95": tail_meta.get("jd_es95"),
+                "jd_crash_prob": tail_meta.get("jd_crash_prob"),
+                "jd_tail_loss": tail_meta.get("jd_tail_loss"),
+                "jd_horizon_weeks": tail_meta.get("jd_horizon_weeks")
+            } 
+
+            chaos_packet["evt_tail"] = {
+                "evt_var95": tail_meta.get("evt_var95"),
+                "evt_es95": tail_meta.get("evt_es95"),
+                "evt_shape_xi": tail_meta.get("evt_shape_xi"),
+                "evt_threshold": tail_meta.get("evt_threshold"),
+                "evt_exceedance_count": tail_meta.get("evt_exceedance_count")
+            }
 
             # ==========================================
             # 🌟 [START] 再平衡引擎 & Buffer Floor 斷路器機制
