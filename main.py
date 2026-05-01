@@ -511,16 +511,11 @@ def compute_xray_meta(active_tickers, asset_values, stock_meta, returns_df, tick
     }
 
     try:
-        available = []
-        for t in active_tickers:
-            yf_t = ticker_to_yf.get(t, t)
-            if yf_t in returns_df.columns and float(asset_values.get(t, 0.0) or 0.0) > 0:
-                available.append((t, yf_t))
-
         total_value = sum(float(asset_values.get(t, 0.0) or 0.0) for t in active_tickers)
         if total_value <= 0:
             return base
 
+        # --- FX exposure ---
         usd_value = 0.0
         for t in active_tickers:
             meta = stock_meta.get(t, {})
@@ -540,14 +535,20 @@ def compute_xray_meta(active_tickers, asset_values, stock_meta, returns_df, tick
             "usd_exposure_value_twd": round(usd_value, 2)
         }
 
-        if len(available) < 2:
-            return base
+        # --- 合併映射到同一 yf ticker 的多個原始標的 ---
+        grouped_values = {}
+        label_map = {}
+        for t in active_tickers:
+            val = float(asset_values.get(t, 0.0) or 0.0)
+            if val <= 0:
+                continue
+            yf_t = ticker_to_yf.get(t, t)
+            if yf_t not in returns_df.columns:
+                continue
+            grouped_values[yf_t] = grouped_values.get(yf_t, 0.0) + val
+            label_map.setdefault(yf_t, []).append(t)
 
-        aggregated_values = {}
-        for t, yf_t in available:
-            aggregated_values[yf_t] = aggregated_values.get(yf_t, 0.0) + float(asset_values.get(t, 0.0) or 0.0)
-
-        yf_cols = [yf_t for yf_t, v in aggregated_values.items() if yf_t in returns_df.columns and v > 0]
+        yf_cols = [c for c in grouped_values.keys() if c in returns_df.columns]
         if len(yf_cols) < 2:
             return base
 
@@ -558,7 +559,7 @@ def compute_xray_meta(active_tickers, asset_values, stock_meta, returns_df, tick
         cov_df = sub_returns.cov() * 252.0
         corr_df = sub_returns.corr().replace([np.inf, -np.inf], np.nan).fillna(0.0)
 
-        values = np.array([aggregated_values[yf_t] for yf_t in yf_cols], dtype=float)
+        values = np.array([float(grouped_values[c]) for c in yf_cols], dtype=float)
         weight_sum = values.sum()
         if weight_sum <= 0:
             return base
@@ -575,11 +576,10 @@ def compute_xray_meta(active_tickers, asset_values, stock_meta, returns_df, tick
                 mrc = float(sigma_w[i] / port_vol)
                 rc = float(weights[i] * mrc)
                 risk_pct = float((rc / port_vol) * 100) if port_vol > 0 else None
-                original_names = [t for t, mapped in available if mapped == yf_t]
-                label = original_names[0] if len(original_names) == 1 else "/".join(original_names[:2]) + ("…" if len(original_names) > 2 else "")
+                display_name = "/".join(label_map.get(yf_t, [yf_t]))
                 mrc_table.append({
-                    "ticker": label,
-                    "mapped_yf": yf_t,
+                    "ticker": display_name,
+                    "yf_ticker": yf_t,
                     "weight_pct": round(float(weights[i] * 100), 2),
                     "risk_pct": round(risk_pct, 2) if risk_pct is not None else None,
                     "mrc": round(mrc * 100, 4),
@@ -606,7 +606,6 @@ def compute_xray_meta(active_tickers, asset_values, stock_meta, returns_df, tick
         print(f"⚠️ compute_xray_meta 失敗: {e}", flush=True)
         return base
 
-
 def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticker_to_yf=None, tw_bench="^TWII", us_bench="SPY"):
     ticker_to_yf = ticker_to_yf or {}
     base = {
@@ -625,24 +624,25 @@ def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticke
     }
 
     try:
-        available = []
         tw_value = 0.0
         non_tw_value = 0.0
+        grouped_values = {}
 
         for t in active_tickers:
             val = float(asset_values.get(t, 0.0) or 0.0)
             if val <= 0:
                 continue
             yf_t = ticker_to_yf.get(t, t)
-            if yf_t in prices_df.columns:
-                available.append((t, yf_t))
+            if yf_t not in prices_df.columns:
+                continue
+            grouped_values[yf_t] = grouped_values.get(yf_t, 0.0) + val
 
             if str(yf_t).endswith(".TW") or "台股" in str(stock_meta.get(t, {}).get("category", "")):
                 tw_value += val
             else:
                 non_tw_value += val
 
-        if len(available) < 1:
+        if len(grouped_values) < 1:
             return base
 
         bench = tw_bench if tw_value > non_tw_value else us_bench
@@ -651,152 +651,23 @@ def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticke
         if bench is None:
             return base
 
-        aggregated_values = {}
-        for t, yf_t in available:
-            aggregated_values[yf_t] = aggregated_values.get(yf_t, 0.0) + float(asset_values.get(t, 0.0) or 0.0)
-
-        yf_cols = [yf_t for yf_t, v in aggregated_values.items() if yf_t in prices_df.columns and v > 0 and yf_t != bench]
+        yf_cols = [c for c in grouped_values.keys() if c in prices_df.columns and c != bench]
         if len(yf_cols) < 1:
             return base
-
-        selected_cols = yf_cols + [bench]
-        weekly_prices = prices_df[selected_cols].resample("W-FRI").last().dropna(how="all")
-        weekly_returns = weekly_prices.pct_change().dropna(how="any")
-        if len(weekly_returns) < 8:
-            return base
-
-        weights = pd.Series({yf_t: aggregated_values[yf_t] for yf_t in yf_cols}, dtype=float)
-        weights = weights.reindex(yf_cols).fillna(0.0)
-        weight_sum = float(weights.sum())
-        if weight_sum <= 0:
-            return base
-        weights = weights / weight_sum
-
-        port = weekly_returns[yf_cols].mul(weights, axis=1).sum(axis=1)
-        bench_s = weekly_returns[bench]
-
-        aligned = pd.concat([port.rename("port"), bench_s.rename("bench")], axis=1).dropna()
-        if len(aligned) < 8:
-            return base
-
-        port = aligned["port"]
-        bench_s = aligned["bench"]
-
-        q20_b = float(bench_s.quantile(0.20))
-        q10_b = float(bench_s.quantile(0.10))
-        q05_b = float(bench_s.quantile(0.05))
-        q20_p = float(port.quantile(0.20))
-        q05_p = float(port.quantile(0.05))
-
-        cond_mask = bench_s <= q20_b
-        crisis_mask = bench_s <= q10_b
-        downside_mask = bench_s < 0
-
-        conditional_corr = safe_corr(port[cond_mask], bench_s[cond_mask])
-        crisis_corr = safe_corr(port[crisis_mask], bench_s[crisis_mask])
-
-        downside_beta = None
-        if int(downside_mask.sum()) >= 3:
-            bench_down = bench_s[downside_mask]
-            port_down = port[downside_mask]
-            bench_var = float(bench_down.var())
-            if bench_var > 0:
-                downside_beta = float(port_down.cov(bench_down) / bench_var)
-
-        joint_hit = float((((bench_s <= q20_b) & (port <= q20_p)).mean()) * 100)
-
-        dd_port = compute_drawdown_series(port)
-        dd_bench = compute_drawdown_series(bench_s)
-        co_dd = float((((dd_port <= -0.10) & (dd_bench <= -0.10)).mean()) * 100)
-
-        rolling_26 = compute_cvar(port.tail(26), q=0.05)
-        rolling_52 = compute_cvar(port.tail(52), q=0.05)
-        stressed = compute_cvar(port[crisis_mask], q=0.05) if int(crisis_mask.sum()) >= 3 else compute_cvar(port.tail(52), q=0.05)
-
-        tail_dependence = None
-        tail_b_mask = bench_s <= q05_b
-        if int(tail_b_mask.sum()) >= 1:
-            tail_dependence = float(((port[tail_b_mask] <= q05_p).mean()) * 100)
-
-        base.update({
-            "benchmark": bench,
-            "sample_weeks": int(len(aligned)),
-            "conditional_correlation": round(conditional_corr, 4) if conditional_corr is not None else None,
-            "crisis_window_correlation": round(crisis_corr, 4) if crisis_corr is not None else None,
-            "downside_beta": round(downside_beta, 4) if downside_beta is not None else None,
-            "joint_downside_hit_rate": round(joint_hit, 2),
-            "co_drawdown_frequency": round(co_dd, 2),
-            "rolling_cvar_26w": round(rolling_26 * 100, 2) if rolling_26 is not None else None,
-            "rolling_cvar_52w": round(rolling_52 * 100, 2) if rolling_52 is not None else None,
-            "stressed_cvar": round(stressed * 100, 2) if stressed is not None else None,
-            "tail_dependence_lite": round(tail_dependence, 2) if tail_dependence is not None else None,
-            "crisis_window_label": f"{bench} <= P10 weekly return"
-        })
-        return base
-    except Exception as e:
-        print(f"⚠️ compute_tail_meta 失敗: {e}", flush=True)
-        return base
-
-
-(active_tickers, asset_values, prices_df, stock_meta, ticker_to_yf=None, tw_bench="^TWII", us_bench="SPY"):
-    ticker_to_yf = ticker_to_yf or {}
-    base = {
-        "benchmark": None,
-        "sample_weeks": 0,
-        "conditional_correlation": None,
-        "crisis_window_correlation": None,
-        "downside_beta": None,
-        "joint_downside_hit_rate": None,
-        "co_drawdown_frequency": None,
-        "rolling_cvar_26w": None,
-        "rolling_cvar_52w": None,
-        "stressed_cvar": None,
-        "tail_dependence_lite": None,
-        "crisis_window_label": None
-    }
-
-    try:
-        available = []
-        tw_value = 0.0
-        non_tw_value = 0.0
-
-        for t in active_tickers:
-            val = float(asset_values.get(t, 0.0) or 0.0)
-            if val <= 0:
-                continue
-            yf_t = ticker_to_yf.get(t, t)
-            if yf_t in prices_df.columns:
-                available.append((t, yf_t))
-
-            if str(yf_t).endswith(".TW") or "台股" in str(stock_meta.get(t, {}).get("category", "")):
-                tw_value += val
-            else:
-                non_tw_value += val
-
-        if len(available) < 1:
-            return base
-
-        bench = tw_bench if tw_value > non_tw_value else us_bench
-        if bench not in prices_df.columns:
-            bench = us_bench if us_bench in prices_df.columns else (tw_bench if tw_bench in prices_df.columns else None)
-        if bench is None:
-            return base
-
-        original_tickers = [t for t, _ in available]
-        yf_cols = [yf_t for _, yf_t in available]
 
         weekly_prices = prices_df[yf_cols + [bench]].resample("W-FRI").last().dropna(how="all")
         weekly_returns = weekly_prices.pct_change().dropna(how="any")
         if len(weekly_returns) < 8:
             return base
 
-        values = np.array([float(asset_values.get(t, 0.0) or 0.0) for t in original_tickers], dtype=float)
-        weight_sum = values.sum()
+        weights = pd.Series({c: float(grouped_values[c]) for c in yf_cols}, dtype=float)
+        weight_sum = float(weights.sum())
         if weight_sum <= 0:
             return base
-        weights = values / weight_sum
+        weights = weights / weight_sum
 
-        port = weekly_returns[yf_cols].mul(weights, axis=1).sum(axis=1)
+        ret_sub = weekly_returns[yf_cols].copy()
+        port = ret_sub.mul(weights.reindex(ret_sub.columns).fillna(0.0), axis=1).sum(axis=1)
         bench_s = weekly_returns[bench]
 
         aligned = pd.concat([port.rename("port"), bench_s.rename("bench")], axis=1).dropna()
@@ -1232,7 +1103,7 @@ try:
                     ff5_url = domain_kf + "/pages/faculty/ken.french/ftp/F-F_Research_Data_5_Factors_2x3_daily_CSV.zip"
                     mom_url = domain_kf + "/pages/faculty/ken.french/ftp/F-F_Momentum_Factor_daily_CSV.zip"
                     
-                                        def parse_french_csv(content):
+                    def parse_french_csv(content):
                         with zipfile.ZipFile(io.BytesIO(content)) as z:
                             with z.open(z.namelist()[0]) as f:
                                 lines = [line.decode('utf-8', errors='ignore') for line in f.readlines()]
@@ -1244,7 +1115,7 @@ try:
                                 return df.dropna().apply(pd.to_numeric, errors='coerce').dropna() / 100.0
 
                     def fetch_french_zip(url):
-                        resp = requests.get(url, timeout=20, headers={"User-Agent": "Mozilla/5.0"})
+                        resp = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
                         resp.raise_for_status()
                         if not resp.content.startswith(b"PK"):
                             raise ValueError("Ken French 回傳的不是 zip 檔")
