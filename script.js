@@ -43,63 +43,100 @@ createApp({
             croInsight.value = null;
 
             const payload = {
-                return_metrics: {
-                    time_weighted_return_twr: stats.value.annRet + '%',
-                    money_weighted_return_mwr: stats.value.mwr + '%',
-                    log_return: stats.value.annLogRet + '%',
-                    alpha_jensen: stats.value.alpha + '%'
-                },
-                risk_efficiency: {
-                    portfolio_beta: riskParams.value.beta,
-                    portfolio_volatility: stats.value.annVol + '%',
-                    sharpe_ratio: stats.value.sharpe,
-                    sortino_ratio: stats.value.sortino,
-                    treynor_ratio: stats.value.treynor
-                },
-                asymmetry_and_win_rate: {
-                    omega_ratio: stats.value.omega,
-                    profit_factor_pf: stats.value.profitFactor,
-                    skewness: stats.value.skew,
-                    kurtosis: stats.value.kurt
-                },
-                catastrophic_risk: {
-                    max_drawdown_mdd: stats.value.mdd + '%',
-                    ulcer_index_ui: stats.value.ulcer,
-                    time_under_water_tuw_days: stats.value.tuw,
-                    calmar_ratio: stats.value.calmar,
-                    value_at_risk_var_95: stats.value.var95 + '%',
-                    cvar_95: stats.value.cvar95 + '%'
-                },
-                systemic_correlation: sysCorr.value.toFixed(2)
-            };
+    return_metrics: {
+        time_weighted_return_twr: stats.value.annRet + '%',
+        money_weighted_return_mwr: stats.value.mwr + '%',
+        log_return: stats.value.annLogRet + '%',
+        alpha_jensen: stats.value.alpha + '%'
+    },
+    risk_efficiency: {
+        portfolio_beta: riskParams.value.beta,
+        portfolio_volatility: stats.value.annVol + '%',
+        sharpe_ratio: stats.value.sharpe,
+        sortino_ratio: stats.value.sortino,
+        treynor_ratio: stats.value.treynor
+    },
+    asymmetry_and_win_rate: {
+        omega_ratio: stats.value.omega,
+        profit_factor_pf: stats.value.profitFactor,
+        skewness: stats.value.skew,
+        kurtosis: stats.value.kurt
+    },
+    catastrophic_risk: {
+        max_drawdown_mdd: stats.value.mdd + '%',
+        ulcer_index_ui: stats.value.ulcer,
+        time_under_water_tuw_days: stats.value.tuw,
+        calmar_ratio: stats.value.calmar,
+        value_at_risk_var_95: stats.value.var95 + '%',
+        cvar_95: stats.value.cvar95 + '%'
+    },
+    systemic_correlation: sysCorr.value.toFixed(2),
+
+    regime_rebalance_monitor: {
+        trim_candidates: rebalanceMonitor.value.trimCount,
+        high_priority_alerts: rebalanceMonitor.value.alertCount,
+        leverage_vol_drag_30d: rebalanceMonitor.value.volDrag30d + '%',
+        leverage_vol_drag_90d: rebalanceMonitor.value.volDrag90d + '%',
+        rebalance_alerts: rebalanceMonitor.value.alerts.slice(0, 5)
+    },
+
+    portfolio_xray: {
+        pc1_explained: xrayStats.value.pca.pc1Explained + '%',
+        pc1_to_pc3_cumulative: xrayStats.value.pca.pc3CumExplained + '%',
+        usd_exposure_pct: xrayStats.value.fx.netFxExposurePct + '%',
+        fx_1pct_nav_impact_twd: xrayStats.value.fx.usdNavImpact1pct,
+        top_risk_contributors: xrayStats.value.mrcTable.slice(0, 5)
+    },
+
+    tail_crash_radar: {
+        conditional_correlation: tailStatsLite.value.conditionalCorr,
+        crisis_correlation: tailStatsLite.value.crisisCorr,
+        downside_beta: tailStatsLite.value.downsideBeta,
+        stressed_cvar: tailStatsLite.value.stressedCvar + '%',
+        joint_downside_hit_rate: tailStatsLite.value.jointDownsideHitRate + '%',
+        co_drawdown_frequency: tailStatsLite.value.coDrawdownFrequency + '%',
+        tail_dependence_lite: tailStatsLite.value.tailDependenceLite,
+        rolling_cvar_26w: tailStatsLite.value.rollingCvar26w + '%',
+        rolling_cvar_52w: tailStatsLite.value.rollingCvar52w + '%',
+        crisis_window_label: tailStatsLite.value.crisisWindowLabel,
+        tail_sample_count: tailStatsLite.value.tailSampleCount,
+        crisis_sample_count: tailStatsLite.value.crisisSampleCount,
+        co_drawdown_threshold: tailStatsLite.value.coDrawdownThreshold + '%',
+        tail_threshold_quantile: 'P' + tailStatsLite.value.tailThresholdQuantile
+    }
+};
 
             const promptText = `
-            [SYSTEM_DIRECTIVE]
-            Task: Act as a coldly rational, highly analytical Quant Chief Risk Officer (CRO) for a family office.
-            Tone: Brutally honest, strictly data-driven, and logically flawless. Zero tolerance for financial contradictions.
-            Constraint: Output strictly in Traditional Chinese. Max 6 bullet points. No pleasantries.
+[SYSTEM_DIRECTIVE]
+Task: Act as a coldly rational, highly analytical Quant Chief Risk Officer (CRO) for a family office.
+Tone: Brutally honest, strictly data-driven, and logically flawless. Zero tolerance for financial contradictions.
+Constraint: Output strictly in Traditional Chinese. Max 8 bullet points. No pleasantries.
 
-            [LOGICAL_GUARDRAILS]
-            - DO NOT confuse "Diversification/Rotation" with "Hedging".
-            - TRUE HEDGING means moving to cash, bonds, or negative-beta assets.
-            - DO NOT suggest buying high-beta, risk-on assets (like Crypto or Tech stocks) as a "hedge" against market crashes. 
+[LOGICAL_GUARDRAILS]
+- DO NOT confuse "Diversification/Rotation" with "Hedging".
+- TRUE HEDGING means moving to cash, bonds, or negative-beta assets.
+- DO NOT suggest buying high-beta, risk-on assets as a hedge.
+- If Portfolio X-Ray, Rebalance Monitor, and Tail / Crash Radar are present, you MUST use them explicitly.
+- Treat tail metrics with low sample counts cautiously. If tail_sample_count or crisis_sample_count is small, explicitly mention that the signal direction matters more than the exact magnitude.
 
-            [ANALYSIS_RULES]
-            You MUST evaluate the portfolio holistically by crossing different metrics. Provide a bulleted list analyzing the following aspects:
+[ANALYSIS_RULES]
+You MUST analyze the portfolio holistically using all modules below:
 
-            1. **【資金效率與選股 (TWR vs MWR & Alpha)】**: Compare MWR and TWR. Is market timing adding value? Look at Jensen's Alpha—is the portfolio beating the market after adjusting for Beta?
-            2. **【風險報酬定價 (Sharpe, Sortino & Treynor)】**: Are we taking on too much Volatility or Beta for the returns we get? (e.g., negative Sharpe means cash is better).
-            3. **【勝率與肥尾風險 (Omega, PF, Skew, Kurt)】**: Cross-analyze Omega Ratio and Profit Factor. Look at Kurtosis (>3 means fat tails) and Skewness. Warn explicitly about black swan risks if Kurtosis is high.
-            4. **【深淵與痛苦指數 (MDD, UI, TUW & Calmar)】**: Analyze the Time Under Water (TUW) and Ulcer Index (UI). Is the user enduring long drawdowns for meager returns?
-            5. **【極端下行曝險 (VaR, CVaR & Correlation)】**: Look at the 95% CVaR and Systemic Correlation. If Correlation is > 0.75, warn that diversification is failing. 
-            6. **【CRO 總結與戰略指令】**: Give ONE definitive, logically sound tactical instruction. If the goal is protection, explicitly advise De-Risking (cash/bonds). If the goal is efficiency, advise Sector Rotation. Never mix the two.
+1. 【資金效率與選股】Compare TWR vs MWR and Jensen's Alpha. Judge whether timing and selection are adding value or destroying value.
+2. 【風險報酬定價】Use Sharpe, Sortino, Treynor, Beta, and Volatility. State whether the portfolio is being paid enough for the risk it is taking.
+3. 【Portfolio X-Ray】Use PC1 explained, PC1-3 cumulative explained, USD exposure, FX impact, and top risk contributors. Judge whether the portfolio is truly diversified or only appears diversified.
+4. 【Regime / Rebalance Monitor】Use trim candidates, high-priority alerts, leverage volatility drag, and rebalance alerts. Judge whether risk is drifting because the user failed to rebalance.
+5. 【Tail / Crash Radar】Use conditional correlation, crisis correlation, downside beta, stressed CVaR, joint downside hit rate, co-drawdown frequency, tail dependence lite, and rolling CVaR. Judge how fragile the portfolio becomes in bad states.
+6. 【肥尾與痛苦結構】Use Kurtosis, Skewness, MDD, UI, TUW, and Calmar. Judge whether the portfolio is psychologically and statistically survivable.
+7. 【真正的風險來源排序】Name the top 3 real risks now. Prioritize concentration, rebalance drift, tail fragility, leverage drag, and false diversification where applicable.
+8. 【CRO 最終指令】Give ONE definitive tactical instruction using Buy / Hold / Trim / Cut / Hedge / Raise Cash. The instruction must be logically consistent with the data.
 
-            [OUTPUT_FORMAT]
-            - **[維度名稱]**: [一針見血的解讀與具體、符合金融邏輯的調倉建議]
+[OUTPUT_FORMAT]
+- **[維度名稱]**: [一針見血的解讀與具體調整建議]
 
-            [INPUT_DATA]
-            ${JSON.stringify(payload, null, 2)}
-            `;
+[INPUT_DATA]
+${JSON.stringify(payload, null, 2)}
+`;
 
             const model_pipeline = ["gemini-3.1-pro-preview", "gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"];
             let success = false;
