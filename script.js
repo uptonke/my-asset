@@ -815,98 +815,152 @@ createApp({
             alerts: []
         });
 
-        const tailStatsLite = ref({
-            conditionalCorr: '0.00',
-            crisisCorr: '0.00',
-            downsideBeta: '0.00',
-            stressedCvar: '0.00',
+       const tailStatsLite = ref({
+    conditionalCorr: '-',
+    crisisCorr: '-',
+    downsideBeta: '-',
+    stressedCvar: '-',
+    jointDownsideHitRate: '-',
+    coDrawdownFrequency: '-',
+    tailDependenceLite: '-',
+    rollingCvar26w: '-',
+    rollingCvar52w: '-',
+    crisisWindowLabel: '-'
+});
+
+function fmtNum(val, digits = 2) {
+    const n = Number(val);
+    return Number.isFinite(n) ? n.toFixed(digits) : '-';
+}
+
+function fmtPctMaybe(val, digits = 2) {
+    const n = Number(val);
+    return Number.isFinite(n) ? n.toFixed(digits) : '-';
+}
+
+watch([groupedHoldings, portfolioStats, stats, sysCorr, chaosMeta], () => {
+    let trims = 0;
+    let alertCount = 0;
+    let fxExposure = 0;
+    const mrcTemp = [];
+    const alertList = [];
+
+    const portVol = parseFloat(stats.value.annVol) / 100 || 0.15;
+    const marketVol = parseFloat(riskParams.value.sm) / 100 || 0.15;
+    const portBeta = parseFloat(portfolioStats.value.beta) || 1.0;
+
+    for (const cat in groupedHoldings.value) {
+        groupedHoldings.value[cat].items.forEach(item => {
+            if (item.isUSD) fxExposure += item.totalWeight;
+
+            const drift = Math.abs((item.totalWeight * 100) - item.blendedWeight);
+            if (item.totalWeight > 0.20 || drift > 5) trims++;
+
+            if (drift > 10 || item.totalWeight > 0.30) {
+                alertCount++;
+                alertList.push(
+                    `[${item.ticker}] 權重 ${(item.totalWeight * 100).toFixed(1)}% 嚴重偏離綜合目標，或單一佔比過高 (>30%)。`
+                );
+            }
+
+            const assetBeta = parseFloat(item.beta) || 1.0;
+            const covProxy = assetBeta * portBeta * Math.pow(marketVol, 2);
+            const mrc = portVol > 0 ? (item.totalWeight * covProxy) / portVol : 0;
+            const rcPercent = portVol > 0 ? (mrc / portVol) * 100 : 0;
+
+            mrcTemp.push({
+                ticker: item.ticker,
+                weightPct: (item.totalWeight * 100).toFixed(1),
+                riskPct: rcPercent.toFixed(1),
+                mrc: (mrc * 100).toFixed(2),
+                rc: rcPercent.toFixed(1)
+            });
+        });
+    }
+
+    mrcTemp.sort((a, b) => parseFloat(b.riskPct) - parseFloat(a.riskPct));
+
+    const backendXray = chaosMeta.value?.xray_meta || {};
+    const backendTail = chaosMeta.value?.tail_meta || {};
+
+    if (backendXray?.mrc_table?.length) {
+        xrayStats.value = {
+            mrcTable: backendXray.mrc_table.map(row => ({
+                ticker: row.ticker,
+                weightPct: fmtNum(row.weight_pct, 1),
+                riskPct: fmtNum(row.risk_pct, 1),
+                mrc: fmtNum(row.mrc, 2),
+                rc: fmtNum(row.rc, 2)
+            })),
+            pca: {
+                pc1Explained: fmtNum(backendXray?.pca?.pc1_explained, 1),
+                pc3CumExplained: fmtNum(backendXray?.pca?.pc3_cum_explained, 1)
+            },
+            fx: {
+                netFxExposurePct: fmtNum(backendXray?.fx?.net_fx_exposure_pct, 1),
+                usdNavImpact1pct: fmtNum(backendXray?.fx?.usd_nav_impact_1pct_twd, 0)
+            }
+        };
+    } else {
+        const pc1Proxy = (sysCorr.value * 100) || 65.0;
+        xrayStats.value = {
+            mrcTable: mrcTemp,
+            pca: {
+                pc1Explained: pc1Proxy.toFixed(1),
+                pc3CumExplained: Math.min((pc1Proxy + 15), 98).toFixed(1)
+            },
+            fx: {
+                netFxExposurePct: (fxExposure * 100).toFixed(1),
+                usdNavImpact1pct: (fxExposure * 1).toFixed(2)
+            }
+        };
+    }
+
+    rebalanceMonitor.value = {
+        trimCount: trims,
+        alertCount: alertCount,
+        volDrag30d: ((0.5 * Math.pow(portVol, 2) * (30 / 365)) * 100).toFixed(2),
+        volDrag90d: ((0.5 * Math.pow(portVol, 2) * (90 / 365)) * 100).toFixed(2),
+        alerts: alertList
+    };
+
+    if (backendTail && (
+        backendTail.conditional_correlation !== null ||
+        backendTail.crisis_window_correlation !== null ||
+        backendTail.downside_beta !== null ||
+        backendTail.stressed_cvar !== null
+    )) {
+        tailStatsLite.value = {
+            conditionalCorr: fmtNum(backendTail.conditional_correlation, 2),
+            crisisCorr: fmtNum(backendTail.crisis_window_correlation, 2),
+            downsideBeta: fmtNum(backendTail.downside_beta, 2),
+            stressedCvar: fmtPctMaybe(backendTail.stressed_cvar, 2),
+            jointDownsideHitRate: fmtPctMaybe(backendTail.joint_downside_hit_rate, 2),
+            coDrawdownFrequency: fmtPctMaybe(backendTail.co_drawdown_frequency, 2),
+            tailDependenceLite: fmtPctMaybe(backendTail.tail_dependence_lite, 2),
+            rollingCvar26w: fmtPctMaybe(backendTail.rolling_cvar_26w, 2),
+            rollingCvar52w: fmtPctMaybe(backendTail.rolling_cvar_52w, 2),
+            crisisWindowLabel: backendTail.crisis_window_label || '-'
+        };
+    } else {
+        const baseCvar = parseFloat(stats.value.cvar95) || 0;
+        const currentSysCorr = sysCorr.value || 0.6;
+
+        tailStatsLite.value = {
+            conditionalCorr: Math.min((currentSysCorr * 1.15), 0.99).toFixed(2),
+            crisisCorr: Math.min((currentSysCorr * 1.30), 0.99).toFixed(2),
+            downsideBeta: (portBeta * 1.2).toFixed(2),
+            stressedCvar: (baseCvar * 1.5).toFixed(2),
             jointDownsideHitRate: '-',
             coDrawdownFrequency: '-',
-            tailDependenceLite: 'Lite Proxy',
-            rollingCvar26w: '0.00',
-            rollingCvar52w: '0.00',
+            tailDependenceLite: '-',
+            rollingCvar26w: (baseCvar * 0.9).toFixed(2),
+            rollingCvar52w: (baseCvar * 1.05).toFixed(2),
             crisisWindowLabel: 'Benchmark < q20 或 VIX 飆升'
-        });
+        };
+    }
 
-        watch([groupedHoldings, portfolioStats, stats, sysCorr], () => {
-            let trims = 0;
-            let alertCount = 0;
-            let fxExposure = 0;
-            const mrcTemp = [];
-            const alertList = [];
-            
-            const portVol = parseFloat(stats.value.annVol) / 100 || 0.15;
-            const marketVol = parseFloat(riskParams.value.sm) / 100 || 0.15;
-            const portBeta = parseFloat(portfolioStats.value.beta) || 1.0;
-
-            for (const cat in groupedHoldings.value) {
-                groupedHoldings.value[cat].items.forEach(item => {
-                    if (item.isUSD) fxExposure += item.totalWeight;
-
-                    const drift = Math.abs((item.totalWeight * 100) - item.blendedWeight);
-                    if (item.totalWeight > 0.20 || drift > 5) {
-                        trims++;
-                    }
-                    if (drift > 10 || item.totalWeight > 0.30) {
-                        alertCount++;
-                        alertList.push(`[${item.ticker}] 權重 ${(item.totalWeight*100).toFixed(1)}% 嚴重偏離綜合目標，或單一佔比過高 (>30%)。`);
-                    }
-
-                    const assetBeta = parseFloat(item.beta) || 1.0;
-                    const covProxy = assetBeta * portBeta * Math.pow(marketVol, 2);
-                    const mrc = portVol > 0 ? (item.totalWeight * covProxy) / portVol : 0;
-                    const rcPercent = portVol > 0 ? (mrc / portVol) * 100 : 0;
-
-                    mrcTemp.push({
-                        ticker: item.ticker,
-                        weightPct: (item.totalWeight * 100).toFixed(1),
-                        riskPct: rcPercent.toFixed(1),
-                        mrc: (mrc * 100).toFixed(2),
-                        rc: rcPercent.toFixed(1)
-                    });
-                });
-            }
-            mrcTemp.sort((a, b) => parseFloat(b.riskPct) - parseFloat(a.riskPct));
-
-            const pc1Proxy = (sysCorr.value * 100) || 65.0;
-
-            xrayStats.value = {
-                mrcTable: mrcTemp,
-                pca: {
-                    pc1Explained: pc1Proxy.toFixed(1),
-                    pc3CumExplained: Math.min((pc1Proxy + 15), 98).toFixed(1)
-                },
-                fx: {
-                    netFxExposurePct: (fxExposure * 100).toFixed(1),
-                    usdNavImpact1pct: (fxExposure * 1).toFixed(2)
-                }
-            };
-
-            rebalanceMonitor.value = {
-                trimCount: trims,
-                alertCount: alertCount,
-                volDrag30d: ((0.5 * Math.pow(portVol, 2) * (30 / 365)) * 100).toFixed(2),
-                volDrag90d: ((0.5 * Math.pow(portVol, 2) * (90 / 365)) * 100).toFixed(2),
-                alerts: alertList
-            };
-
-            const baseCvar = parseFloat(stats.value.cvar95) || 0;
-            const currentSysCorr = sysCorr.value || 0.6;
-
-            tailStatsLite.value = {
-                conditionalCorr: Math.min((currentSysCorr * 1.15), 0.99).toFixed(2),
-                crisisCorr: Math.min((currentSysCorr * 1.30), 0.99).toFixed(2),
-                downsideBeta: (portBeta * 1.2).toFixed(2),
-                stressedCvar: (baseCvar * 1.5).toFixed(2),
-                jointDownsideHitRate: '需後端時序',
-                coDrawdownFrequency: '需後端時序',
-                tailDependenceLite: 'Lite Proxy',
-                rollingCvar26w: (baseCvar * 0.9).toFixed(2),
-                rollingCvar52w: (baseCvar * 1.05).toFixed(2),
-                crisisWindowLabel: 'Benchmark < q20 或 VIX 飆升'
-            };
-
-        }, { deep: true, immediate: true });
+}, { deep: true, immediate: true });
 
         const aiInsights = computed(() => {
             const val = totalStockValueTwd.value;
