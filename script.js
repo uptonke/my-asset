@@ -825,7 +825,11 @@ createApp({
     tailDependenceLite: '-',
     rollingCvar26w: '-',
     rollingCvar52w: '-',
-    crisisWindowLabel: '-'
+    crisisWindowLabel: '-',
+    tailSampleCount: '-',
+    crisisSampleCount: '-',
+    coDrawdownThreshold: '-',
+    tailThresholdQuantile: '-'
 });
 
 function fmtNum(val, digits = 2) {
@@ -924,43 +928,49 @@ watch([groupedHoldings, portfolioStats, stats, sysCorr, chaosMeta], () => {
         alerts: alertList
     };
 
-    if (backendTail && (
-        backendTail.conditional_correlation !== null ||
-        backendTail.crisis_window_correlation !== null ||
-        backendTail.downside_beta !== null ||
-        backendTail.stressed_cvar !== null
-    )) {
-        tailStatsLite.value = {
-            conditionalCorr: fmtNum(backendTail.conditional_correlation, 2),
-            crisisCorr: fmtNum(backendTail.crisis_window_correlation, 2),
-            downsideBeta: fmtNum(backendTail.downside_beta, 2),
-            stressedCvar: fmtPctMaybe(backendTail.stressed_cvar, 2),
-            jointDownsideHitRate: fmtPctMaybe(backendTail.joint_downside_hit_rate, 2),
-            coDrawdownFrequency: fmtPctMaybe(backendTail.co_drawdown_frequency, 2),
-            tailDependenceLite: fmtPctMaybe(backendTail.tail_dependence_lite, 2),
-            rollingCvar26w: fmtPctMaybe(backendTail.rolling_cvar_26w, 2),
-            rollingCvar52w: fmtPctMaybe(backendTail.rolling_cvar_52w, 2),
-            crisisWindowLabel: backendTail.crisis_window_label || '-'
-        };
-    } else {
-        const baseCvar = parseFloat(stats.value.cvar95) || 0;
-        const currentSysCorr = sysCorr.value || 0.6;
+    const baseCvar = parseFloat(stats.value.cvar95) || 0;
+const currentSysCorr = sysCorr.value || 0.6;
 
-        tailStatsLite.value = {
-            conditionalCorr: Math.min((currentSysCorr * 1.15), 0.99).toFixed(2),
-            crisisCorr: Math.min((currentSysCorr * 1.30), 0.99).toFixed(2),
-            downsideBeta: (portBeta * 1.2).toFixed(2),
-            stressedCvar: (baseCvar * 1.5).toFixed(2),
-            jointDownsideHitRate: '-',
-            coDrawdownFrequency: '-',
-            tailDependenceLite: '-',
-            rollingCvar26w: (baseCvar * 0.9).toFixed(2),
-            rollingCvar52w: (baseCvar * 1.05).toFixed(2),
-            crisisWindowLabel: 'Benchmark < q20 或 VIX 飆升'
-        };
-    }
-
-}, { deep: true, immediate: true });
+if (backendTail && (
+    backendTail.conditional_correlation !== null ||
+    backendTail.crisis_window_correlation !== null ||
+    backendTail.downside_beta !== null ||
+    backendTail.stressed_cvar !== null
+)) {
+    tailStatsLite.value = {
+        conditionalCorr: fmtNum(backendTail.conditional_correlation, 2),
+        crisisCorr: fmtNum(backendTail.crisis_window_correlation, 2),
+        downsideBeta: fmtNum(backendTail.downside_beta, 2),
+        stressedCvar: fmtPctMaybe(backendTail.stressed_cvar, 2),
+        jointDownsideHitRate: fmtPctMaybe(backendTail.joint_downside_hit_rate, 2),
+        coDrawdownFrequency: fmtPctMaybe(backendTail.co_drawdown_frequency, 2),
+        tailDependenceLite: fmtPctMaybe(backendTail.tail_dependence_lite, 2),
+        rollingCvar26w: fmtPctMaybe(backendTail.rolling_cvar_26w, 2),
+        rollingCvar52w: fmtPctMaybe(backendTail.rolling_cvar_52w, 2),
+        crisisWindowLabel: backendTail.crisis_window_label || '-',
+        tailSampleCount: backendTail.tail_sample_count ?? '-',
+        crisisSampleCount: backendTail.crisis_sample_count ?? '-',
+        coDrawdownThreshold: fmtNum(backendTail.co_drawdown_threshold, 1),
+        tailThresholdQuantile: fmtNum((backendTail.tail_threshold_quantile ?? 0) * 100, 0)
+    };
+} else {
+    tailStatsLite.value = {
+        conditionalCorr: Math.min((currentSysCorr * 1.15), 0.99).toFixed(2),
+        crisisCorr: Math.min((currentSysCorr * 1.30), 0.99).toFixed(2),
+        downsideBeta: (portBeta * 1.2).toFixed(2),
+        stressedCvar: (baseCvar * 1.5).toFixed(2),
+        jointDownsideHitRate: '-',
+        coDrawdownFrequency: '-',
+        tailDependenceLite: '-',
+        rollingCvar26w: (baseCvar * 0.9).toFixed(2),
+        rollingCvar52w: (baseCvar * 1.05).toFixed(2),
+        crisisWindowLabel: 'Benchmark < q20 或 VIX 飆升',
+        tailSampleCount: '-',
+        crisisSampleCount: '-',
+        coDrawdownThreshold: '-10.0',
+        tailThresholdQuantile: '5'
+    };
+}
 
         const aiInsights = computed(() => {
             const val = totalStockValueTwd.value;
