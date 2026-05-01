@@ -519,18 +519,46 @@ createApp({
                 const liquidityScore = typeof rawLiquidityScore === 'number' ? rawLiquidityScore.toFixed(2) : rawLiquidityScore;
                 const contagionScore = typeof rawContagionScore === 'number' ? rawContagionScore.toFixed(2) : rawContagionScore;
 
-                groups[h.category].items.push({ 
-                    ...h, isUSD, 
-                    riskLevel: meta.risk || 'High', beta: meta.beta || 1.0, stdDev: meta.std || 20.0,
-                    techSignals: { rsiVal: rsi.toFixed(1), rsiText: rsiSignal, rsiColor: rsiColor, macdVal: macdH.toFixed(3), macdText: macdSignal, macdColor: macdColor },
-                    fetchedPrice: effectiveNativePrice, avgCostTwd: h.totalCostTwd / h.shares, 
-                    currentPriceTwd: currentPriceTwd, marketValueTwd: mvTwd, unrealizedPLTwd: mvTwd - h.totalCostTwd, 
-                    returnRate: cumulativeReturn * 100, annualizedReturnRate: annualizedReturn * 100,
-                    targetWeight: cloudTargetWeight, mcWeight: mcWeight, blendedWeight: finalBlendedWeight
-                });
-                groups[h.category].totalValue += mvTwd; 
-                groups[h.category].totalCost += h.totalCostTwd;
-            });
+                const rawLiquidityScore = meta.liquidity_score ?? meta.liquidityScore ?? '-';
+const rawContagionScore = meta.contagion_score ?? meta.contagionScore ?? '-';
+
+const liquidityScore =
+    typeof rawLiquidityScore === 'number'
+        ? rawLiquidityScore.toFixed(2)
+        : rawLiquidityScore;
+
+const contagionScore =
+    typeof rawContagionScore === 'number'
+        ? rawContagionScore.toFixed(2)
+        : rawContagionScore;
+
+groups[h.category].items.push({
+    ...h,
+    isUSD,
+    riskLevel: meta.risk || 'High',
+    beta: meta.beta || 1.0,
+    stdDev: meta.std || 20.0,
+    liquidityScore,
+    contagionScore,
+    techSignals: {
+        rsiVal: rsi.toFixed(1),
+        rsiText: rsiSignal,
+        rsiColor: rsiColor,
+        macdVal: macdH.toFixed(3),
+        macdText: macdSignal,
+        macdColor: macdColor
+    },
+    fetchedPrice: effectiveNativePrice,
+    avgCostTwd: h.totalCostTwd / h.shares,
+    currentPriceTwd: currentPriceTwd,
+    marketValueTwd: mvTwd,
+    unrealizedPLTwd: mvTwd - h.totalCostTwd,
+    returnRate: cumulativeReturn * 100,
+    annualizedReturnRate: annualizedReturn * 100,
+    targetWeight: cloudTargetWeight,
+    mcWeight: mcWeight,
+    blendedWeight: finalBlendedWeight
+});
 
             for (const cat in groups) {
                 let groupTotalInvested = 0;
