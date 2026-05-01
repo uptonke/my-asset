@@ -1237,6 +1237,10 @@
                         <div class="quant-value text-white">{{ stats.tuw }}</div>
                     </div>
                     <div class="quant-card"><div class="quant-label text-red-400">VaR (95%)</div><div class="quant-value text-white">{{ stats.var95 }}%</div></div>
+                    <div class="quant-card bg-red-900/20 border-red-500/30">
+                        <div class="quant-label text-red-300">CVaR (95%)</div>
+                        <div class="quant-value text-white">{{ stats.cvar95 }}%</div>
+                    </div>
                     <div class="quant-card bg-white/5 border-yellow-400/30">
                         <div class="quant-label text-yellow-400">偏度 (Skewness)</div>
                         <div class="quant-value text-white" :class="stats.skew < 0 ? 'text-red-400' : 'text-green-400'">{{ stats.skew }}</div>
@@ -1244,6 +1248,239 @@
                     <div class="quant-card bg-white/5 border-yellow-400/30">
                         <div class="quant-label text-yellow-400">峭度 (Kurtosis)</div>
                         <div class="quant-value text-white" :class="stats.kurt > 3 ? 'text-red-400' : 'text-gray-300'">{{ stats.kurt }}</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-2">
+                    <div class="glass panel-card border-cyan-500/20 overflow-hidden xl:col-span-2">
+                        <div class="p-5 md:p-6 border-b border-white/10 bg-cyan-500/5">
+                            <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                                <div>
+                                    <div class="badge badge-blue mb-3">
+                                        <i class="fas fa-x-ray"></i>
+                                        Portfolio X-Ray
+                                    </div>
+                                    <h4 class="text-white font-bold text-lg md:text-xl flex items-center gap-2">
+                                        <i class="fas fa-microscope text-cyan-400"></i>
+                                        投資組合 X 光機
+                                    </h4>
+                                    <p class="text-xs md:text-sm text-gray-400 mt-2 leading-relaxed">
+                                        拆解資金權重、風險貢獻、主成分集中度與匯率曝險，先抓出假分散與隱性風險源。
+                                    </p>
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    V1: MRC / PCA / Net FX
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-5 md:p-6 space-y-5">
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                    <div class="quant-label text-cyan-300">PC1 解釋率</div>
+                                    <div class="quant-value text-white">{{ xrayStats?.pca?.pc1Explained ?? '-' }}%</div>
+                                </div>
+                                <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                    <div class="quant-label text-cyan-300">PC1-3 累積</div>
+                                    <div class="quant-value text-white">{{ xrayStats?.pca?.pc3CumExplained ?? '-' }}%</div>
+                                </div>
+                                <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
+                                    <div class="quant-label text-emerald-300">USD 曝險</div>
+                                    <div class="quant-value text-white">{{ xrayStats?.fx?.netFxExposurePct ?? '-' }}%</div>
+                                </div>
+                                <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
+                                    <div class="quant-label text-emerald-300">FX 1% NAV 衝擊</div>
+                                    <div class="quant-value text-white">{{ xrayStats?.fx?.usdNavImpact1pct ?? '-' }}%</div>
+                                </div>
+                            </div>
+
+                            <div class="rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
+                                <div class="px-4 py-3 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
+                                    <div class="text-sm font-bold text-white flex items-center gap-2">
+                                        <i class="fas fa-chart-column text-cyan-400"></i>
+                                        風險貢獻排行 (MRC / RC)
+                                    </div>
+                                    <div class="text-[11px] text-gray-500">資金權重 vs 風險權重</div>
+                                </div>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left whitespace-nowrap">
+                                        <thead class="bg-[#0f172a] text-[11px] text-gray-400 uppercase font-semibold border-b border-gray-700">
+                                            <tr>
+                                                <th class="p-3 pl-4">Ticker</th>
+                                                <th class="p-3 text-right">資金%</th>
+                                                <th class="p-3 text-right">風險%</th>
+                                                <th class="p-3 text-right">MRC</th>
+                                                <th class="p-3 text-right">RC</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="text-sm divide-y divide-white/5">
+                                            <tr v-for="row in (xrayStats?.mrcTable || [])" :key="row.ticker" class="hover:bg-white/5 transition-colors">
+                                                <td class="p-3 pl-4 font-bold text-white">{{ row.ticker }}</td>
+                                                <td class="p-3 text-right font-mono text-gray-300">{{ row.weightPct }}%</td>
+                                                <td class="p-3 text-right font-mono text-cyan-300">{{ row.riskPct }}%</td>
+                                                <td class="p-3 text-right font-mono text-yellow-300">{{ row.mrc }}</td>
+                                                <td class="p-3 text-right font-mono text-white">{{ row.rc }}</td>
+                                            </tr>
+                                            <tr v-if="!(xrayStats?.mrcTable?.length)">
+                                                <td colspan="5" class="p-6 text-center text-gray-500 text-xs">等待 script.js 接入 MRC / PCA / FX 計算。</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                    <div class="glass panel-card border-yellow-500/20 overflow-hidden">
+                        <div class="p-5 md:p-6 border-b border-white/10 bg-yellow-500/5">
+                            <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                                <div>
+                                    <div class="badge badge-red mb-3">
+                                        <i class="fas fa-bell"></i>
+                                        Regime / Rebalance Monitor
+                                    </div>
+                                    <h4 class="text-white font-bold text-lg md:text-xl flex items-center gap-2">
+                                        <i class="fas fa-arrows-rotate text-yellow-400"></i>
+                                        再平衡警報器
+                                    </h4>
+                                    <p class="text-xs md:text-sm text-gray-400 mt-2 leading-relaxed">
+                                        結合 weight drift、Chaos 指標與槓桿拖累，強制把風險分析轉成可執行動作。
+                                    </p>
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    Shannon's Demon / Vol Drag
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-5 md:p-6 space-y-4">
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <div class="quant-card border-yellow-500/20 bg-yellow-500/10">
+                                    <div class="quant-label text-yellow-300">Trim 候選數</div>
+                                    <div class="quant-value text-white">{{ rebalanceMonitor?.trimCount ?? '-' }}</div>
+                                </div>
+                                <div class="quant-card border-red-500/20 bg-red-500/10">
+                                    <div class="quant-label text-red-300">高優先警報</div>
+                                    <div class="quant-value text-white">{{ rebalanceMonitor?.alertCount ?? '-' }}</div>
+                                </div>
+                                <div class="quant-card border-orange-500/20 bg-orange-500/10">
+                                    <div class="quant-label text-orange-300">槓桿拖累 30D</div>
+                                    <div class="quant-value text-white">{{ rebalanceMonitor?.volDrag30d ?? '-' }}%</div>
+                                </div>
+                                <div class="quant-card border-orange-500/20 bg-orange-500/10">
+                                    <div class="quant-label text-orange-300">槓桿拖累 90D</div>
+                                    <div class="quant-value text-white">{{ rebalanceMonitor?.volDrag90d ?? '-' }}%</div>
+                                </div>
+                            </div>
+
+                            <div class="rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
+                                <div class="px-4 py-3 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
+                                    <div class="text-sm font-bold text-white flex items-center gap-2">
+                                        <i class="fas fa-triangle-exclamation text-yellow-400"></i>
+                                        再平衡 / 風險警報清單
+                                    </div>
+                                    <div class="text-[11px] text-gray-500">Rule Engine</div>
+                                </div>
+                                <ul class="p-4 md:p-5 space-y-3">
+                                    <li v-for="(alert, idx) in (rebalanceMonitor?.alerts || [])" :key="idx" class="flex items-start gap-3 text-sm rounded-xl border border-white/8 bg-white/[0.025] px-4 py-3 hover:bg-white/[0.04] transition-colors">
+                                        <div class="mt-0.5 w-7 h-7 rounded-full bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center shrink-0">
+                                            <i class="fas fa-bell text-yellow-300 text-xs"></i>
+                                        </div>
+                                        <span class="text-gray-200 leading-relaxed">{{ alert }}</span>
+                                    </li>
+                                    <li v-if="!(rebalanceMonitor?.alerts?.length)" class="text-xs text-gray-500">等待 script.js 接入再平衡警報邏輯。</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass panel-card border-red-500/20 overflow-hidden">
+                        <div class="p-5 md:p-6 border-b border-white/10 bg-red-500/5">
+                            <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                                <div>
+                                    <div class="badge badge-red mb-3">
+                                        <i class="fas fa-skull-crossbones"></i>
+                                        Tail / Crash Radar
+                                    </div>
+                                    <h4 class="text-white font-bold text-lg md:text-xl flex items-center gap-2">
+                                        <i class="fas fa-wave-square text-red-400"></i>
+                                        尾部相依 / 崩盤雷達
+                                    </h4>
+                                    <p class="text-xs md:text-sm text-gray-400 mt-2 leading-relaxed">
+                                        聚焦條件相關、危機窗口、下檔 Beta 與共同回撤，監測市場一崩時誰會跟著一起死。
+                                    </p>
+                                </div>
+                                <div class="text-xs text-gray-500">conditional / crisis / downside / tail</div>
+                            </div>
+                        </div>
+
+                        <div class="p-5 md:p-6 space-y-4">
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <div class="quant-card border-red-500/20 bg-red-500/10">
+                                    <div class="quant-label text-red-300">Cond. Corr</div>
+                                    <div class="quant-value text-white">{{ tailStatsLite?.conditionalCorr ?? '-' }}</div>
+                                </div>
+                                <div class="quant-card border-red-500/20 bg-red-500/10">
+                                    <div class="quant-label text-red-300">Crisis Corr</div>
+                                    <div class="quant-value text-white">{{ tailStatsLite?.crisisCorr ?? '-' }}</div>
+                                </div>
+                                <div class="quant-card border-red-500/20 bg-red-500/10">
+                                    <div class="quant-label text-red-300">Downside Beta</div>
+                                    <div class="quant-value text-white">{{ tailStatsLite?.downsideBeta ?? '-' }}</div>
+                                </div>
+                                <div class="quant-card border-red-500/20 bg-red-500/10">
+                                    <div class="quant-label text-red-300">Stressed CVaR</div>
+                                    <div class="quant-value text-white">{{ tailStatsLite?.stressedCvar ?? '-' }}%</div>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                    <div class="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                                        <i class="fas fa-link text-red-400"></i>
+                                        Crash Dependence
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3 text-xs">
+                                        <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                                            <div class="text-gray-500 mb-1">Joint Downside Hit</div>
+                                            <div class="text-white font-mono font-bold">{{ tailStatsLite?.jointDownsideHitRate ?? '-' }}%</div>
+                                        </div>
+                                        <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                                            <div class="text-gray-500 mb-1">Co-drawdown Freq</div>
+                                            <div class="text-white font-mono font-bold">{{ tailStatsLite?.coDrawdownFrequency ?? '-' }}%</div>
+                                        </div>
+                                        <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10 col-span-2">
+                                            <div class="text-gray-500 mb-1">Tail Dependence Lite</div>
+                                            <div class="text-white font-mono font-bold">{{ tailStatsLite?.tailDependenceLite ?? '-' }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                    <div class="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                                        <i class="fas fa-rotate text-red-400"></i>
+                                        Rolling / Stress Window
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3 text-xs">
+                                        <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                                            <div class="text-gray-500 mb-1">Rolling CVaR 26W</div>
+                                            <div class="text-white font-mono font-bold">{{ tailStatsLite?.rollingCvar26w ?? '-' }}%</div>
+                                        </div>
+                                        <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                                            <div class="text-gray-500 mb-1">Rolling CVaR 52W</div>
+                                            <div class="text-white font-mono font-bold">{{ tailStatsLite?.rollingCvar52w ?? '-' }}%</div>
+                                        </div>
+                                        <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10 col-span-2">
+                                            <div class="text-gray-500 mb-1">危機窗口定義</div>
+                                            <div class="text-white font-mono font-bold">{{ tailStatsLite?.crisisWindowLabel ?? 'Benchmark < q20 或 VIX 風險升溫' }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

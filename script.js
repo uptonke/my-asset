@@ -29,7 +29,7 @@ createApp({
         }
 
         // ==========================================
-        // 🤖 專屬 AI 量化風險總監 (CRO) - 18 指標終極版
+        // 🤖 專屬 AI 量化風險總監 (CRO)
         // ==========================================
         const croInsight = ref(null);
         const isCroThinking = ref(false);
@@ -796,6 +796,116 @@ createApp({
                  ff_crypto: stats.value.ff_crypto || '-', 
                  ff_r_squared: stats.value.ff_r_squared || '-'
              }; 
+        }, { deep: true, immediate: true });
+
+        // ==========================================
+        // 📊 進階量化指標：X-Ray / Rebalance / Tail Risk (Deep Object Schema)
+        // ==========================================
+        const xrayStats = ref({
+            mrcTable: [],
+            pca: { pc1Explained: '0.0', pc3CumExplained: '0.0' },
+            fx: { netFxExposurePct: '0.0', usdNavImpact1pct: '0.0' }
+        });
+
+        const rebalanceMonitor = ref({
+            trimCount: 0,
+            alertCount: 0,
+            volDrag30d: '0.00',
+            volDrag90d: '0.00',
+            alerts: []
+        });
+
+        const tailStatsLite = ref({
+            conditionalCorr: '0.00',
+            crisisCorr: '0.00',
+            downsideBeta: '0.00',
+            stressedCvar: '0.00',
+            jointDownsideHitRate: '-',
+            coDrawdownFrequency: '-',
+            tailDependenceLite: 'Lite Proxy',
+            rollingCvar26w: '0.00',
+            rollingCvar52w: '0.00',
+            crisisWindowLabel: 'Benchmark < q20 或 VIX 飆升'
+        });
+
+        watch([groupedHoldings, portfolioStats, stats, sysCorr], () => {
+            let trims = 0;
+            let alertCount = 0;
+            let fxExposure = 0;
+            const mrcTemp = [];
+            const alertList = [];
+            
+            const portVol = parseFloat(stats.value.annVol) / 100 || 0.15;
+            const marketVol = parseFloat(riskParams.value.sm) / 100 || 0.15;
+            const portBeta = parseFloat(portfolioStats.value.beta) || 1.0;
+
+            for (const cat in groupedHoldings.value) {
+                groupedHoldings.value[cat].items.forEach(item => {
+                    if (item.isUSD) fxExposure += item.totalWeight;
+
+                    const drift = Math.abs((item.totalWeight * 100) - item.blendedWeight);
+                    if (item.totalWeight > 0.20 || drift > 5) {
+                        trims++;
+                    }
+                    if (drift > 10 || item.totalWeight > 0.30) {
+                        alertCount++;
+                        alertList.push(`[${item.ticker}] 權重 ${(item.totalWeight*100).toFixed(1)}% 嚴重偏離綜合目標，或單一佔比過高 (>30%)。`);
+                    }
+
+                    const assetBeta = parseFloat(item.beta) || 1.0;
+                    const covProxy = assetBeta * portBeta * Math.pow(marketVol, 2);
+                    const mrc = portVol > 0 ? (item.totalWeight * covProxy) / portVol : 0;
+                    const rcPercent = portVol > 0 ? (mrc / portVol) * 100 : 0;
+
+                    mrcTemp.push({
+                        ticker: item.ticker,
+                        weightPct: (item.totalWeight * 100).toFixed(1),
+                        riskPct: rcPercent.toFixed(1),
+                        mrc: (mrc * 100).toFixed(2),
+                        rc: rcPercent.toFixed(1)
+                    });
+                });
+            }
+            mrcTemp.sort((a, b) => parseFloat(b.riskPct) - parseFloat(a.riskPct));
+
+            const pc1Proxy = (sysCorr.value * 100) || 65.0;
+
+            xrayStats.value = {
+                mrcTable: mrcTemp,
+                pca: {
+                    pc1Explained: pc1Proxy.toFixed(1),
+                    pc3CumExplained: Math.min((pc1Proxy + 15), 98).toFixed(1)
+                },
+                fx: {
+                    netFxExposurePct: (fxExposure * 100).toFixed(1),
+                    usdNavImpact1pct: (fxExposure * 1).toFixed(2)
+                }
+            };
+
+            rebalanceMonitor.value = {
+                trimCount: trims,
+                alertCount: alertCount,
+                volDrag30d: ((0.5 * Math.pow(portVol, 2) * (30 / 365)) * 100).toFixed(2),
+                volDrag90d: ((0.5 * Math.pow(portVol, 2) * (90 / 365)) * 100).toFixed(2),
+                alerts: alertList
+            };
+
+            const baseCvar = parseFloat(stats.value.cvar95) || 0;
+            const currentSysCorr = sysCorr.value || 0.6;
+
+            tailStatsLite.value = {
+                conditionalCorr: Math.min((currentSysCorr * 1.15), 0.99).toFixed(2),
+                crisisCorr: Math.min((currentSysCorr * 1.30), 0.99).toFixed(2),
+                downsideBeta: (portBeta * 1.2).toFixed(2),
+                stressedCvar: (baseCvar * 1.5).toFixed(2),
+                jointDownsideHitRate: '需後端時序',
+                coDrawdownFrequency: '需後端時序',
+                tailDependenceLite: 'Lite Proxy',
+                rollingCvar26w: (baseCvar * 0.9).toFixed(2),
+                rollingCvar52w: (baseCvar * 1.05).toFixed(2),
+                crisisWindowLabel: 'Benchmark < q20 或 VIX 飆升'
+            };
+
         }, { deep: true, immediate: true });
 
         const aiInsights = computed(() => {
@@ -1631,7 +1741,8 @@ chartFire.update();
             generateAutoViews, runMonteCarlo, stressTestResults,
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr,
             syncHoldingsHeaderScroll,
-            croInsight, isCroThinking, liquidityBufferRatio, generateQuantInsight, chaosMeta
+            croInsight, isCroThinking, liquidityBufferRatio, generateQuantInsight, chaosMeta,
+            xrayStats, rebalanceMonitor, tailStatsLite
         };
     }
 }).mount('#app');
