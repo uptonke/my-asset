@@ -970,7 +970,7 @@ if (backendTail && (
         coDrawdownThreshold: '-10.0',
         tailThresholdQuantile: '5'
     };
-}
+    }, { deep: true, immediate: true });
 
         const aiInsights = computed(() => {
             const val = totalStockValueTwd.value;
