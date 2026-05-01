@@ -73,12 +73,19 @@ createApp({
     systemic_correlation: sysCorr.value.toFixed(2),
 
     regime_rebalance_monitor: {
-        trim_candidates: rebalanceMonitor.value.trimCount,
-        high_priority_alerts: rebalanceMonitor.value.alertCount,
-        leverage_vol_drag_30d: rebalanceMonitor.value.volDrag30d + '%',
-        leverage_vol_drag_90d: rebalanceMonitor.value.volDrag90d + '%',
-        rebalance_alerts: rebalanceMonitor.value.alerts.slice(0, 5)
-    },
+    trim_candidates: rebalanceMonitor.value.trimCount,
+    high_priority_alerts: rebalanceMonitor.value.alertCount,
+    leverage_vol_drag_30d: rebalanceMonitor.value.volDrag30d + '%',
+    leverage_vol_drag_90d: rebalanceMonitor.value.volDrag90d + '%',
+
+    buffer_floor_pct: rebalanceMonitor.value.bufferFloorPct + '%',
+    current_buffer_pct: rebalanceMonitor.value.currentBufferPct + '%',
+    buffer_gap_pct: rebalanceMonitor.value.bufferGapPct + '%',
+    buffer_blocking_risk_buys: rebalanceMonitor.value.bufferBlockingRiskBuys ? 'YES' : 'NO',
+    hard_buffer_tickers: (rebalanceMonitor.value.hardBufferTickers || []).join(' + '),
+
+    rebalance_alerts: rebalanceMonitor.value.alerts.slice(0, 5)
+},
 
     portfolio_xray: {
         pc1_explained: xrayStats.value.pca.pc1Explained + '%',
@@ -89,21 +96,42 @@ createApp({
     },
 
     tail_crash_radar: {
-        conditional_correlation: tailStatsLite.value.conditionalCorr,
-        crisis_correlation: tailStatsLite.value.crisisCorr,
-        downside_beta: tailStatsLite.value.downsideBeta,
-        stressed_cvar: tailStatsLite.value.stressedCvar + '%',
-        joint_downside_hit_rate: tailStatsLite.value.jointDownsideHitRate + '%',
-        co_drawdown_frequency: tailStatsLite.value.coDrawdownFrequency + '%',
-        tail_dependence_lite: tailStatsLite.value.tailDependenceLite,
-        rolling_cvar_26w: tailStatsLite.value.rollingCvar26w + '%',
-        rolling_cvar_52w: tailStatsLite.value.rollingCvar52w + '%',
-        crisis_window_label: tailStatsLite.value.crisisWindowLabel,
-        tail_sample_count: tailStatsLite.value.tailSampleCount,
-        crisis_sample_count: tailStatsLite.value.crisisSampleCount,
-        co_drawdown_threshold: tailStatsLite.value.coDrawdownThreshold + '%',
-        tail_threshold_quantile: 'P' + tailStatsLite.value.tailThresholdQuantile
-    }
+    conditional_correlation: tailStatsLite.value.conditionalCorr,
+    crisis_correlation: tailStatsLite.value.crisisCorr,
+    downside_beta: tailStatsLite.value.downsideBeta,
+    stressed_cvar: tailStatsLite.value.stressedCvar + '%',
+    joint_downside_hit_rate: tailStatsLite.value.jointDownsideHitRate + '%',
+    co_drawdown_frequency: tailStatsLite.value.coDrawdownFrequency + '%',
+    tail_dependence_lite: tailStatsLite.value.tailDependenceLite,
+    rolling_cvar_26w: tailStatsLite.value.rollingCvar26w + '%',
+    rolling_cvar_52w: tailStatsLite.value.rollingCvar52w + '%',
+    crisis_window_label: tailStatsLite.value.crisisWindowLabel,
+    tail_sample_count: tailStatsLite.value.tailSampleCount,
+    crisis_sample_count: tailStatsLite.value.crisisSampleCount,
+    co_drawdown_threshold: tailStatsLite.value.coDrawdownThreshold + '%',
+    tail_threshold_quantile: 'P' + tailStatsLite.value.tailThresholdQuantile
+},
+
+jump_diffusion: {
+    jd_var95: tailStatsLite.value.jdVar95 === '-' ? 'N/A' : tailStatsLite.value.jdVar95 + '%',
+    jd_es95: tailStatsLite.value.jdEs95 === '-' ? 'N/A' : tailStatsLite.value.jdEs95 + '%',
+    jd_crash_prob: tailStatsLite.value.jdCrashProb === '-' ? 'N/A' : tailStatsLite.value.jdCrashProb + '%',
+    jd_tail_loss: tailStatsLite.value.jdTailLoss === '-' ? 'N/A' : tailStatsLite.value.jdTailLoss + '%',
+    jd_horizon_weeks: tailStatsLite.value.jdHorizonWeeks,
+    jd_effective_lambda: tailStatsLite.value.jdEffectiveLambda,
+    jd_effective_jump_mean: tailStatsLite.value.jdEffectiveJumpMean,
+    jd_effective_jump_std: tailStatsLite.value.jdEffectiveJumpStd
+},
+
+evt_tail: {
+    evt_var95: tailStatsLite.value.evtVar95 === '-' ? 'N/A' : tailStatsLite.value.evtVar95 + '%',
+    evt_es95: tailStatsLite.value.evtEs95 === '-' ? 'N/A' : tailStatsLite.value.evtEs95 + '%',
+    evt_shape_xi: tailStatsLite.value.evtShapeXi,
+    evt_scale_beta: tailStatsLite.value.evtScaleBeta,
+    evt_threshold: tailStatsLite.value.evtThreshold === '-' ? 'N/A' : tailStatsLite.value.evtThreshold + '%',
+    evt_exceedance_count: tailStatsLite.value.evtExceedanceCount,
+    evt_alpha_conf: tailStatsLite.value.evtAlphaConf === '-' ? 'N/A' : 'P' + tailStatsLite.value.evtAlphaConf
+}
 };
 
             const promptText = `
@@ -117,7 +145,11 @@ Constraint: Output strictly in Traditional Chinese. Max 8 bullet points. No plea
 - TRUE HEDGING means moving to cash, bonds, or negative-beta assets.
 - DO NOT suggest buying high-beta, risk-on assets as a hedge.
 - If Portfolio X-Ray, Rebalance Monitor, and Tail / Crash Radar are present, you MUST use them explicitly.
-- Treat tail metrics with low sample counts cautiously. If tail_sample_count or crisis_sample_count is small, explicitly mention that the signal direction matters more than the exact magnitude.
+- If jump_diffusion is present, you MUST explicitly judge discontinuous crash risk using jd_var95, jd_es95, jd_crash_prob, and jd_tail_loss. Do not ignore it just because historical CVaR exists.
+- If evt_tail is present, you MUST explicitly judge whether historical tail risk is being understated using evt_var95, evt_es95, evt_shape_xi, evt_threshold, and evt_exceedance_count.
+- Treat tail metrics with low sample counts cautiously. If tail_sample_count, crisis_sample_count, or evt_exceedance_count is small, explicitly mention that the signal direction matters more than the exact magnitude.
+- If regime_rebalance_monitor shows buffer_blocking_risk_buys = YES, you MUST treat Buffer Floor as a hard constraint, not a soft suggestion.
+- When buffer_gap_pct > 0, DO NOT recommend buying high-beta or risk-on assets first. The portfolio must replenish hard buffer assets before any discretionary risk-on add.
 
 [ANALYSIS_RULES]
 You MUST analyze the portfolio holistically using all modules below:
@@ -125,11 +157,14 @@ You MUST analyze the portfolio holistically using all modules below:
 1. 【資金效率與選股】Compare TWR vs MWR and Jensen's Alpha. Judge whether timing and selection are adding value or destroying value.
 2. 【風險報酬定價】Use Sharpe, Sortino, Treynor, Beta, and Volatility. State whether the portfolio is being paid enough for the risk it is taking.
 3. 【Portfolio X-Ray】Use PC1 explained, PC1-3 cumulative explained, USD exposure, FX impact, and top risk contributors. Judge whether the portfolio is truly diversified or only appears diversified.
-4. 【Regime / Rebalance Monitor】Use trim candidates, high-priority alerts, leverage volatility drag, and rebalance alerts. Judge whether risk is drifting because the user failed to rebalance.
+4. 【Regime / Rebalance Monitor】Use trim candidates, high-priority alerts, leverage volatility drag, buffer_floor_pct, current_buffer_pct, buffer_gap_pct, buffer_blocking_risk_buys, hard_buffer_tickers, and rebalance alerts. Judge whether risk is drifting because the user failed to rebalance, and whether the portfolio is currently constrained by a Buffer Floor shortfall.
 5. 【Tail / Crash Radar】Use conditional correlation, crisis correlation, downside beta, stressed CVaR, joint downside hit rate, co-drawdown frequency, tail dependence lite, and rolling CVaR. Judge how fragile the portfolio becomes in bad states.
-6. 【肥尾與痛苦結構】Use Kurtosis, Skewness, MDD, UI, TUW, and Calmar. Judge whether the portfolio is psychologically and statistically survivable.
-7. 【真正的風險來源排序】Name the top 3 real risks now. Prioritize concentration, rebalance drift, tail fragility, leverage drag, and false diversification where applicable.
-8. 【CRO 最終指令】Give ONE definitive tactical instruction using Buy / Hold / Trim / Cut / Hedge / Raise Cash. The instruction must be logically consistent with the data.
+6. 【Jump-Diffusion / EVT】If jump_diffusion or evt_tail is present, you MUST explicitly compare historical tail metrics vs jump-adjusted tail metrics vs EVT-implied tail metrics. State whether historical CVaR is understating discontinuous crash risk or fat-tail risk. Use jd_var95, jd_es95, jd_crash_prob, jd_tail_loss, evt_var95, evt_es95, evt_shape_xi, evt_threshold, and evt_exceedance_count.
+7. 【肥尾與痛苦結構】Use Kurtosis, Skewness, MDD, UI, TUW, and Calmar. Judge whether the portfolio is psychologically and statistically survivable.
+8. 【真正的風險來源排序】Name the top 3 real risks now. Prioritize concentration, rebalance drift, tail fragility, leverage drag, false diversification, and jump/EVT tail underestimation where applicable.
+9. 【CRO 最終指令】Give ONE definitive tactical instruction using Buy / Hold / Trim / Cut / Hedge / Raise Cash. The instruction must be logically consistent with the data.
+If buffer_blocking_risk_buys = YES, the final tactical instruction must prioritize Raise Cash / Hold / Trim / add hard buffer assets, and must not recommend risk-on accumulation first.
+
 
 [OUTPUT_FORMAT]
 - **[維度名稱]**: [一針見血的解讀與具體調整建議]
@@ -871,9 +906,27 @@ ${JSON.stringify(payload, null, 2)}
     tailSampleCount: '-',
     crisisSampleCount: '-',
     coDrawdownThreshold: '-',
-    tailThresholdQuantile: '-'
-});
+    tailThresholdQuantile: '-',
 
+    // Jump-Diffusion
+    jdVar95: '-',
+    jdEs95: '-',
+    jdCrashProb: '-',
+    jdTailLoss: '-',
+    jdHorizonWeeks: '-',
+    jdEffectiveLambda: '-',
+    jdEffectiveJumpMean: '-',
+    jdEffectiveJumpStd: '-',
+
+    // EVT
+    evtVar95: '-',
+    evtEs95: '-',
+    evtShapeXi: '-',
+    evtScaleBeta: '-',
+    evtThreshold: '-',
+    evtExceedanceCount: '-',
+    evtAlphaConf: '-'
+});
 function fmtNum(val, digits = 2) {
     const n = Number(val);
     return Number.isFinite(n) ? n.toFixed(digits) : '-';
@@ -976,20 +1029,18 @@ const resolvedBufferFloorPct =
         ? fmtNum(backendRebalance.buffer_floor_pct, 1)
         : fallbackBufferFloorPct;
 
+const backendCurrent = Number(backendRebalance.current_buffer_pct);
+const fallbackCurrent = Number(fallbackCurrentBufferPct);
+
 const resolvedCurrentBufferPct =
-    backendRebalance.current_buffer_pct !== undefined && backendRebalance.current_buffer_pct !== null
-        ? fmtNum(backendRebalance.current_buffer_pct, 1)
-        : fallbackCurrentBufferPct;
+    Number.isFinite(backendCurrent) && Math.abs(backendCurrent - fallbackCurrent) < 2
+        ? backendCurrent.toFixed(1)
+        : fallbackCurrent.toFixed(1);
 
 const resolvedBufferGapPct =
-    backendRebalance.buffer_gap_pct !== undefined && backendRebalance.buffer_gap_pct !== null
-        ? fmtNum(backendRebalance.buffer_gap_pct, 1)
-        : Math.max(0, parseFloat(resolvedBufferFloorPct) - parseFloat(resolvedCurrentBufferPct)).toFixed(1);
+    Math.max(0, parseFloat(resolvedBufferFloorPct) - parseFloat(resolvedCurrentBufferPct)).toFixed(1);
 
-const resolvedBufferBlocking =
-    backendRebalance.buffer_blocking_risk_buys !== undefined && backendRebalance.buffer_blocking_risk_buys !== null
-        ? !!backendRebalance.buffer_blocking_risk_buys
-        : parseFloat(resolvedBufferGapPct) > 0.05;
+const resolvedBufferBlocking = parseFloat(resolvedBufferGapPct) > 0.05;
 
 const resolvedHardBufferTickers =
     Array.isArray(backendRebalance.hard_buffer_tickers) && backendRebalance.hard_buffer_tickers.length
@@ -1022,7 +1073,9 @@ if (backendTail && (
     backendTail.conditional_correlation !== null ||
     backendTail.crisis_window_correlation !== null ||
     backendTail.downside_beta !== null ||
-    backendTail.stressed_cvar !== null
+    backendTail.stressed_cvar !== null ||
+    backendTail.jd_var95 !== null ||
+    backendTail.evt_var95 !== null
 )) {
     tailStatsLite.value = {
         conditionalCorr: fmtNum(backendTail.conditional_correlation, 2),
@@ -1038,7 +1091,26 @@ if (backendTail && (
         tailSampleCount: backendTail.tail_sample_count ?? '-',
         crisisSampleCount: backendTail.crisis_sample_count ?? '-',
         coDrawdownThreshold: fmtNum(backendTail.co_drawdown_threshold, 1),
-        tailThresholdQuantile: fmtNum((backendTail.tail_threshold_quantile ?? 0) * 100, 0)
+        tailThresholdQuantile: fmtNum((backendTail.tail_threshold_quantile ?? 0) * 100, 0),
+
+        // Jump-Diffusion
+        jdVar95: fmtPctMaybe(backendTail.jd_var95, 2),
+        jdEs95: fmtPctMaybe(backendTail.jd_es95, 2),
+        jdCrashProb: fmtPctMaybe(backendTail.jd_crash_prob, 2),
+        jdTailLoss: fmtPctMaybe(backendTail.jd_tail_loss, 2),
+        jdHorizonWeeks: backendTail.jd_horizon_weeks ?? '-',
+        jdEffectiveLambda: fmtNum(backendTail.jd_effective_lambda, 2),
+        jdEffectiveJumpMean: fmtNum(backendTail.jd_effective_jump_mean, 4),
+        jdEffectiveJumpStd: fmtNum(backendTail.jd_effective_jump_std, 4),
+
+        // EVT
+        evtVar95: fmtPctMaybe(backendTail.evt_var95, 2),
+        evtEs95: fmtPctMaybe(backendTail.evt_es95, 2),
+        evtShapeXi: fmtNum(backendTail.evt_shape_xi, 4),
+        evtScaleBeta: fmtNum(backendTail.evt_scale_beta, 6),
+        evtThreshold: fmtPctMaybe(backendTail.evt_threshold, 2),
+        evtExceedanceCount: backendTail.evt_exceedance_count ?? '-',
+        evtAlphaConf: fmtNum((backendTail.evt_alpha_conf ?? 0) * 100, 0)
     };
 } else {
     tailStatsLite.value = {
@@ -1055,7 +1127,26 @@ if (backendTail && (
         tailSampleCount: '-',
         crisisSampleCount: '-',
         coDrawdownThreshold: '-10.0',
-        tailThresholdQuantile: '5'
+        tailThresholdQuantile: '5',
+
+        // Jump-Diffusion fallback
+        jdVar95: '-',
+        jdEs95: '-',
+        jdCrashProb: '-',
+        jdTailLoss: '-',
+        jdHorizonWeeks: '-',
+        jdEffectiveLambda: '-',
+        jdEffectiveJumpMean: '-',
+        jdEffectiveJumpStd: '-',
+
+        // EVT fallback
+        evtVar95: '-',
+        evtEs95: '-',
+        evtShapeXi: '-',
+        evtScaleBeta: '-',
+        evtThreshold: '-',
+        evtExceedanceCount: '-',
+        evtAlphaConf: '-'
     };
 }
 }, { deep: true, immediate: true });
