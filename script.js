@@ -1678,24 +1678,43 @@ chartFire.update();
     const rf = parseFloat(riskParams.value.rf) || 0;
     const rm = parseFloat(riskParams.value.rm) || 0;
 
-    chartSML.data.datasets = [
-        {
-            label: 'Assets',
-            data: points,
-            backgroundColor: '#60a5fa'
-        },
-        {
-            type: 'line',
-            label: 'SML',
-            data: [
-                { x: 0, y: rf },
-                { x: 2, y: rf + 2 * (rm - rf) }
-            ],
-            borderColor: '#fbbf24',
-            pointRadius: 0,
-            tension: 0
-        }
-    ];
+    const portfolioSmlPoint = {
+    x: parseFloat(portfolioStats.value.beta) || 0,
+    y: capPlotReturn(parseFloat(stats.value.annRet) || 0),
+    rawY: parseFloat(stats.value.annRet) || 0,
+    name: 'Portfolio'
+};
+
+chartSML.data.datasets = [
+    {
+        label: 'Assets',
+        data: points,
+        backgroundColor: '#60a5fa',
+        pointRadius: 4,
+        pointHoverRadius: 5
+    },
+    {
+        label: 'Portfolio',
+        data: [portfolioSmlPoint],
+        backgroundColor: '#f43f5e',
+        borderColor: '#ffffff',
+        borderWidth: 2,
+        pointRadius: 8,
+        pointHoverRadius: 10,
+        pointStyle: 'circle'
+    },
+    {
+        type: 'line',
+        label: 'SML',
+        data: [
+            { x: 0, y: rf },
+            { x: 2, y: rf + 2 * (rm - rf) }
+        ],
+        borderColor: '#fbbf24',
+        pointRadius: 0,
+        tension: 0
+    }
+];
 
     chartSML.update();
 }
@@ -1719,24 +1738,44 @@ chartFire.update();
     const rm = parseFloat(riskParams.value.rm) || 0;
     const sm = parseFloat(riskParams.value.sm) || 15;
 
-    chartCML.data.datasets = [
-        {
-            label: 'Assets',
-            data: points,
-            backgroundColor: '#a78bfa'
-        },
-        {
-            type: 'line',
-            label: 'CML',
-            data: [
-                { x: 0, y: rf },
-                { x: Math.min(sm * 2, 40), y: rf + 2 * (rm - rf) }
-            ],
-            borderColor: '#34d399',
-            pointRadius: 0,
-            tension: 0
-        }
-    ];
+    const portfolioCmlPoint = {
+    x: capPlotStdDev(parseFloat(stats.value.annVol) || 0),
+    rawX: parseFloat(stats.value.annVol) || 0,
+    y: capPlotReturn(parseFloat(stats.value.annRet) || 0),
+    rawY: parseFloat(stats.value.annRet) || 0,
+    name: 'Portfolio'
+};
+
+chartCML.data.datasets = [
+    {
+        label: 'Assets',
+        data: points,
+        backgroundColor: '#a78bfa',
+        pointRadius: 4,
+        pointHoverRadius: 5
+    },
+    {
+        label: 'Portfolio',
+        data: [portfolioCmlPoint],
+        backgroundColor: '#f43f5e',
+        borderColor: '#ffffff',
+        borderWidth: 2,
+        pointRadius: 8,
+        pointHoverRadius: 10,
+        pointStyle: 'circle'
+    },
+    {
+        type: 'line',
+        label: 'CML',
+        data: [
+            { x: 0, y: rf },
+            { x: Math.min(sm * 2, 40), y: rf + 2 * (rm - rf) }
+        ],
+        borderColor: '#34d399',
+        pointRadius: 0,
+        tension: 0
+    }
+];
 
     chartCML.update();
 }

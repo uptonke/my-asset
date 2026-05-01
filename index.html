@@ -603,27 +603,28 @@
         <div id="holdingsHeaderScroll" class="overflow-hidden">
             <table class="w-max min-w-full text-left whitespace-nowrap excel-table text-[12px]">
                 <colgroup>
-    <col style="width: 96px;">
-    <col style="width: 78px;">
-    <col style="width: 68px;">
-    <col style="width: 68px;">
-    <col style="width: 82px;">
-    <col style="width: 90px;">
-    <col style="width: 90px;">
-    <col style="width: 98px;">
-    <col style="width: 98px;">
-    <col style="width: 108px;">
-    <col style="width: 110px;">
-    <col style="width: 86px;">
-    <col style="width: 94px;">
-    <col style="width: 82px;">
-    <col style="width: 76px;">
-    <col style="width: 72px;">
-    <col style="width: 92px;">
-    <col style="width: 86px;">
-    <col style="width: 86px;">
-    <col style="width: 86px;">
+    <col style="width: 96px;">   <!-- 代號 -->
+    <col style="width: 78px;">   <!-- 風險 -->
+    <col style="width: 72px;">   <!-- Beta -->
+    <col style="width: 72px;">   <!-- SD -->
+    <col style="width: 86px;">   <!-- 持有股數 -->
+    <col style="width: 94px;">   <!-- 均價 -->
+    <col style="width: 94px;">   <!-- 現價 -->
+    <col style="width: 102px;">  <!-- 成本 -->
+    <col style="width: 102px;">  <!-- 現值 -->
+    <col style="width: 112px;">  <!-- 未實現損益 -->
+    <col style="width: 116px;">  <!-- 技術訊號 -->
+    <col style="width: 92px;">   <!-- 累積報酬 -->
+    <col style="width: 98px;">   <!-- 年化 -->
+    <col style="width: 84px;">   <!-- 現有權重 -->
+    <col style="width: 82px;">   <!-- 雲端% -->
+    <col style="width: 74px;">   <!-- MC% -->
+    <col style="width: 98px;">   <!-- 綜合目標% -->
+    <col style="width: 96px;">   <!-- 落差 -->
+    <col style="width: 108px;">  <!-- 流動性脆弱度 -->
+    <col style="width: 128px;">  <!-- 風險傳染敏感度 -->
 </colgroup>
+
                 <thead class="bg-[#111827]/95 backdrop-blur-md border-b border-white/10 shadow-sm">
                     <tr>
                         <th class="pl-4">代號</th>
@@ -644,8 +645,8 @@
                         <th class="px-1.5 py-2 text-right text-purple-400" title="MC理論極限權重">MC%</th>
                         <th class="px-1.5 py-2 text-right text-yellow-400 font-bold" title="50%雲端 + 50%MC">綜合目標%</th>
                         <th class="px-1.5 py-2 text-right" title="與綜合目標的偏離度">落差 (Drift)</th>
-                        <th class="px-1.5 py-2 text-right text-cyan-300" title="流動性脆弱度">流動性脆弱度數字越低流動性越好</th>
-                        <th class="px-1.5 py-2 text-right text-red-300" title="恐慌傳染度">風險傳染敏感度</th>
+                        <th class="px-1.5 py-2 text-right text-cyan-300 whitespace-nowrap" title="流動性脆弱度">流動性脆弱度</th>
+                        <th class="px-1.5 py-2 text-right text-red-300 whitespace-nowrap" title="恐慌傳染度">風險傳染敏感度</th>
                     </tr>
                 </thead>
             </table>
@@ -656,26 +657,26 @@
     <div id="holdingsBodyScroll" @scroll="syncHoldingsHeaderScroll" class="w-full overflow-x-auto rounded-b-2xl">
         <table class="w-max min-w-full text-left whitespace-nowrap excel-table text-[12px] holdings-body-table">
             <colgroup>
-    <col style="width: 96px;">
-    <col style="width: 78px;">
-    <col style="width: 68px;">
-    <col style="width: 68px;">
-    <col style="width: 82px;">
-    <col style="width: 90px;">
-    <col style="width: 90px;">
-    <col style="width: 98px;">
-    <col style="width: 98px;">
-    <col style="width: 108px;">
-    <col style="width: 110px;">
-    <col style="width: 86px;">
-    <col style="width: 94px;">
-    <col style="width: 82px;">
-    <col style="width: 76px;">
-    <col style="width: 72px;">
-    <col style="width: 92px;">
-    <col style="width: 86px;">
-    <col style="width: 86px;">
-    <col style="width: 86px;">
+    <col style="width: 96px;">   <!-- 代號 -->
+    <col style="width: 78px;">   <!-- 風險 -->
+    <col style="width: 72px;">   <!-- Beta -->
+    <col style="width: 72px;">   <!-- SD -->
+    <col style="width: 86px;">   <!-- 持有股數 -->
+    <col style="width: 94px;">   <!-- 均價 -->
+    <col style="width: 94px;">   <!-- 現價 -->
+    <col style="width: 102px;">  <!-- 成本 -->
+    <col style="width: 102px;">  <!-- 現值 -->
+    <col style="width: 112px;">  <!-- 未實現損益 -->
+    <col style="width: 116px;">  <!-- 技術訊號 -->
+    <col style="width: 92px;">   <!-- 累積報酬 -->
+    <col style="width: 98px;">   <!-- 年化 -->
+    <col style="width: 84px;">   <!-- 現有權重 -->
+    <col style="width: 82px;">   <!-- 雲端% -->
+    <col style="width: 74px;">   <!-- MC% -->
+    <col style="width: 98px;">   <!-- 綜合目標% -->
+    <col style="width: 96px;">   <!-- 落差 -->
+    <col style="width: 108px;">  <!-- 流動性脆弱度 -->
+    <col style="width: 128px;">  <!-- 風險傳染敏感度 -->
 </colgroup>
 
             <tbody class="text-[13px]">
@@ -777,16 +778,16 @@
                                 {{ stock.weightGap > 0 ? '+' : '' }}{{ stock.weightGap.toFixed(1) }}%
                             </span>
                         </td>
-                        <td class="p-2 text-right font-mono text-cyan-300 font-bold">
-                            <span class="px-2 py-1 rounded border border-cyan-500/20 bg-cyan-500/10">
-                                {{ stock.liquidityScore ?? '-' }}
-                            </span>
-                        </td>
-                        <td class="p-2 text-right font-mono text-red-300 font-bold">
-                            <span class="px-2 py-1 rounded border border-red-500/20 bg-red-500/10">
-                                {{ stock.contagionScore ?? '-' }}
-                            </span>
-                        </td>
+                        <td class="p-2 text-right font-mono text-cyan-300 font-bold min-w-[108px]">
+    <span class="px-2 py-1 rounded border border-cyan-500/20 bg-cyan-500/10">
+        {{ stock.liquidityScore ?? '-' }}
+    </span>
+</td>
+<td class="p-2 text-right font-mono text-red-300 font-bold min-w-[128px]">
+    <span class="px-2 py-1 rounded border border-red-500/20 bg-red-500/10">
+        {{ stock.contagionScore ?? '-' }}
+    </span>
+</td>
                     </tr>
                 </template>
             </tbody>
