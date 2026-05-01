@@ -609,19 +609,23 @@ def compute_xray_meta(active_tickers, asset_values, stock_meta, returns_df, tick
 def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticker_to_yf=None, tw_bench="^TWII", us_bench="SPY"):
     ticker_to_yf = ticker_to_yf or {}
     base = {
-        "benchmark": None,
-        "sample_weeks": 0,
-        "conditional_correlation": None,
-        "crisis_window_correlation": None,
-        "downside_beta": None,
-        "joint_downside_hit_rate": None,
-        "co_drawdown_frequency": None,
-        "rolling_cvar_26w": None,
-        "rolling_cvar_52w": None,
-        "stressed_cvar": None,
-        "tail_dependence_lite": None,
-        "crisis_window_label": None
-    }
+    "benchmark": None,
+    "sample_weeks": 0,
+    "conditional_correlation": None,
+    "crisis_window_correlation": None,
+    "downside_beta": None,
+    "joint_downside_hit_rate": None,
+    "co_drawdown_frequency": None,
+    "rolling_cvar_26w": None,
+    "rolling_cvar_52w": None,
+    "stressed_cvar": None,
+    "tail_dependence_lite": None,
+    "crisis_window_label": None,
+    "tail_sample_count": 0,
+    "crisis_sample_count": 0,
+    "co_drawdown_threshold": -10.0,
+    "tail_threshold_quantile": 0.05
+}
 
     try:
         tw_value = 0.0
@@ -686,6 +690,12 @@ def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticke
         cond_mask = bench_s <= q20_b
         crisis_mask = bench_s <= q10_b
         downside_mask = bench_s < 0
+        tail_b_mask = bench_s <= q05_b
+
+        tail_sample_count = int(tail_b_mask.sum())
+        crisis_sample_count = int(crisis_mask.sum())
+        co_drawdown_threshold = -10.0
+        tail_threshold_quantile = 0.05
 
         conditional_corr = safe_corr(port[cond_mask], bench_s[cond_mask])
         crisis_corr = safe_corr(port[crisis_mask], bench_s[crisis_mask])
@@ -709,24 +719,27 @@ def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticke
         stressed = compute_cvar(port[crisis_mask], q=0.05) if crisis_mask.sum() >= 3 else compute_cvar(port.tail(52), q=0.05)
 
         tail_dependence = None
-        tail_b_mask = bench_s <= q05_b
-        if tail_b_mask.sum() >= 1:
+        if tail_sample_count >= 1:
             tail_dependence = float(((port[tail_b_mask] <= q05_p).mean()) * 100)
 
         base.update({
-            "benchmark": bench,
-            "sample_weeks": int(len(aligned)),
-            "conditional_correlation": round(conditional_corr, 4) if conditional_corr is not None else None,
-            "crisis_window_correlation": round(crisis_corr, 4) if crisis_corr is not None else None,
-            "downside_beta": round(downside_beta, 4) if downside_beta is not None else None,
-            "joint_downside_hit_rate": round(joint_hit, 2),
-            "co_drawdown_frequency": round(co_dd, 2),
-            "rolling_cvar_26w": round(rolling_26 * 100, 2) if rolling_26 is not None else None,
-            "rolling_cvar_52w": round(rolling_52 * 100, 2) if rolling_52 is not None else None,
-            "stressed_cvar": round(stressed * 100, 2) if stressed is not None else None,
-            "tail_dependence_lite": round(tail_dependence, 2) if tail_dependence is not None else None,
-            "crisis_window_label": f"{bench} <= P10 weekly return"
-        })
+    "benchmark": bench,
+    "sample_weeks": int(len(aligned)),
+    "conditional_correlation": round(conditional_corr, 4) if conditional_corr is not None else None,
+    "crisis_window_correlation": round(crisis_corr, 4) if crisis_corr is not None else None,
+    "downside_beta": round(downside_beta, 4) if downside_beta is not None else None,
+    "joint_downside_hit_rate": round(joint_hit, 2),
+    "co_drawdown_frequency": round(co_dd, 2),
+    "rolling_cvar_26w": round(rolling_26 * 100, 2) if rolling_26 is not None else None,
+    "rolling_cvar_52w": round(rolling_52 * 100, 2) if rolling_52 is not None else None,
+    "stressed_cvar": round(stressed * 100, 2) if stressed is not None else None,
+    "tail_dependence_lite": round(tail_dependence, 2) if tail_dependence is not None else None,
+    "crisis_window_label": f"{bench} <= P10 weekly return",
+    "tail_sample_count": tail_sample_count,
+    "crisis_sample_count": crisis_sample_count,
+    "co_drawdown_threshold": co_drawdown_threshold,
+    "tail_threshold_quantile": tail_threshold_quantile
+})
         return base
     except Exception as e:
         print(f"⚠️ compute_tail_meta 失敗: {e}", flush=True)
@@ -1081,6 +1094,7 @@ try:
                 current_shares[t] = current_shares.get(t, 0) + (float(tx.get("shares", 0)) * (-1 if str(tx.get("type", "buy")).lower() in ["sell", "賣出"] else 1))
 
             active_tickers = [t for t, s in current_shares.items() if s > 0.0001]
+            pipeline_tickers = active_tickers[:]
             ticker_to_yf = dict(zip(all_tickers, yf_tickers))
             valid_investable = [yf_t for t in active_tickers if (yf_t := ticker_to_yf.get(t)) and yf_t in returns.columns and yf_t not in [tw_bench, us_bench]]
             
@@ -1187,8 +1201,8 @@ try:
                 stock_meta[t]["contagion_score"] = float(stock_meta[t].get("contagion_score", 0.0) or 0.0)
 
             print("🧠 開始計算各別標的風險參數並寫入資料庫...", flush=True)
-            for i, original_ticker in enumerate(all_tickers):
-                yf_ticker = yf_tickers[i]
+            for original_ticker in pipeline_tickers:
+                yf_ticker = ticker_to_yf.get(original_ticker, "")
                 if original_ticker in sheet_prices: stock_meta[original_ticker]["last_price"] = sheet_prices[original_ticker]
                 
                 if yf_ticker in returns.columns:
@@ -1219,7 +1233,7 @@ try:
 
             print("\n⚖️ 啟動自動再平衡引擎：計算目標權重落差與交易訊號...", flush=True)
             portfolio_value, asset_values, rebalance_signals = 0.0, {}, []
-            for t in all_tickers:
+            for t in pipeline_tickers:
                 shares = current_shares.get(t, 0)
                 lp = stock_meta.get(t, {}).get("last_price", 0.0)
                 if lp == 0.0 and yf_tickers and yf_tickers[all_tickers.index(t)] in prices_df.columns:
@@ -1274,7 +1288,7 @@ try:
 
             print(f"💰 當前投資組合總淨值估算: {portfolio_value:,.2f}")
             if portfolio_value > 0:
-                for t in all_tickers:
+                for t in pipeline_tickers:
                     tw = stock_meta.get(t, {}).get("target_weight", 0.0)
                     cw = asset_values.get(t, 0.0) / portfolio_value
                     if abs(tw - cw) > 0.01:
