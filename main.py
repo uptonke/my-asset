@@ -448,6 +448,281 @@ def build_chaos_packet(macro_payload, active_tickers, asset_values, stock_meta, 
         "fragile_nodes": fragile_nodes
     }
 
+
+def safe_corr(a, b):
+    try:
+        s1 = pd.Series(a).dropna()
+        s2 = pd.Series(b).dropna()
+        aligned = pd.concat([s1, s2], axis=1).dropna()
+        if len(aligned) < 3:
+            return None
+        val = aligned.iloc[:, 0].corr(aligned.iloc[:, 1])
+        if pd.isna(val):
+            return None
+        return float(val)
+    except Exception:
+        return None
+
+
+def compute_cvar(series, q=0.05):
+    try:
+        s = pd.Series(series).dropna().astype(float)
+        if len(s) == 0:
+            return None
+        cutoff = s.quantile(q)
+        tail = s[s <= cutoff]
+        if len(tail) == 0:
+            return float(cutoff)
+        return float(tail.mean())
+    except Exception:
+        return None
+
+
+def compute_drawdown_series(return_series):
+    try:
+        s = pd.Series(return_series).dropna().astype(float)
+        if len(s) == 0:
+            return pd.Series(dtype=float)
+        wealth = (1 + s).cumprod()
+        peak = wealth.cummax()
+        dd = wealth / peak - 1.0
+        return dd
+    except Exception:
+        return pd.Series(dtype=float)
+
+
+def compute_xray_meta(active_tickers, asset_values, stock_meta, returns_df, ticker_to_yf=None):
+    ticker_to_yf = ticker_to_yf or {}
+    base = {
+        "mrc_table": [],
+        "pca": {
+            "pc1_explained": None,
+            "pc3_cum_explained": None
+        },
+        "fx": {
+            "net_fx_exposure_pct": None,
+            "usd_nav_impact_1pct_twd": None,
+            "usd_exposure_value_twd": None
+        },
+        "lookthrough_overlap": {
+            "status": "missing_holdings_source",
+            "note": "ETF constituent holdings source not connected yet."
+        }
+    }
+
+    try:
+        available = []
+        for t in active_tickers:
+            yf_t = ticker_to_yf.get(t, t)
+            if yf_t in returns_df.columns and float(asset_values.get(t, 0.0) or 0.0) > 0:
+                available.append((t, yf_t))
+
+        total_value = sum(float(asset_values.get(t, 0.0) or 0.0) for t in active_tickers)
+        if total_value <= 0:
+            return base
+
+        # --- FX exposure ---
+        usd_value = 0.0
+        for t in active_tickers:
+            meta = stock_meta.get(t, {})
+            cat = str(meta.get("category", ""))
+            yf_t = ticker_to_yf.get(t, t)
+            is_usd = (
+                "美股" in cat or "加密" in cat or
+                str(t).upper().endswith("-USD") or
+                str(yf_t).upper().endswith("-USD")
+            )
+            if is_usd:
+                usd_value += float(asset_values.get(t, 0.0) or 0.0)
+
+        base["fx"] = {
+            "net_fx_exposure_pct": round((usd_value / total_value) * 100, 2),
+            "usd_nav_impact_1pct_twd": round(usd_value * 0.01, 2),
+            "usd_exposure_value_twd": round(usd_value, 2)
+        }
+
+        # --- MRC / PCA ---
+        if len(available) < 2:
+            return base
+
+        original_tickers = [t for t, _ in available]
+        yf_cols = [yf_t for _, yf_t in available]
+        sub_returns = returns_df[yf_cols].dropna(how="all")
+        if sub_returns.empty:
+            return base
+
+        cov_df = sub_returns.cov() * 252.0
+        corr_df = sub_returns.corr().replace([np.inf, -np.inf], np.nan).fillna(0.0)
+
+        values = np.array([float(asset_values.get(t, 0.0) or 0.0) for t in original_tickers], dtype=float)
+        weight_sum = values.sum()
+        if weight_sum <= 0:
+            return base
+        weights = values / weight_sum
+
+        cov = cov_df.values
+        sigma_w = cov.dot(weights)
+        port_var = float(weights.T.dot(sigma_w))
+        port_vol = math.sqrt(port_var) if port_var > 0 else 0.0
+
+        mrc_table = []
+        if port_vol > 0:
+            for i, t in enumerate(original_tickers):
+                mrc = float(sigma_w[i] / port_vol)
+                rc = float(weights[i] * mrc)
+                risk_pct = float((rc / port_vol) * 100) if port_vol > 0 else None
+                mrc_table.append({
+                    "ticker": t,
+                    "weight_pct": round(float(weights[i] * 100), 2),
+                    "risk_pct": round(risk_pct, 2) if risk_pct is not None else None,
+                    "mrc": round(mrc * 100, 4),
+                    "rc": round(rc * 100, 4)
+                })
+            mrc_table = sorted(mrc_table, key=lambda x: x.get("risk_pct") or 0, reverse=True)
+
+        eigvals = np.linalg.eigvalsh(corr_df.values)
+        eigvals = np.array(sorted([float(v) for v in eigvals if not np.isnan(v)], reverse=True))
+        if len(eigvals) > 0 and eigvals.sum() > 0:
+            pc1 = float(eigvals[0] / eigvals.sum() * 100)
+            pc3 = float(eigvals[:min(3, len(eigvals))].sum() / eigvals.sum() * 100)
+        else:
+            pc1 = None
+            pc3 = None
+
+        base["mrc_table"] = mrc_table
+        base["pca"] = {
+            "pc1_explained": round(pc1, 2) if pc1 is not None else None,
+            "pc3_cum_explained": round(pc3, 2) if pc3 is not None else None
+        }
+        return base
+    except Exception as e:
+        print(f"⚠️ compute_xray_meta 失敗: {e}", flush=True)
+        return base
+
+
+def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticker_to_yf=None, tw_bench="^TWII", us_bench="SPY"):
+    ticker_to_yf = ticker_to_yf or {}
+    base = {
+        "benchmark": None,
+        "sample_weeks": 0,
+        "conditional_correlation": None,
+        "crisis_window_correlation": None,
+        "downside_beta": None,
+        "joint_downside_hit_rate": None,
+        "co_drawdown_frequency": None,
+        "rolling_cvar_26w": None,
+        "rolling_cvar_52w": None,
+        "stressed_cvar": None,
+        "tail_dependence_lite": None,
+        "crisis_window_label": None
+    }
+
+    try:
+        available = []
+        tw_value = 0.0
+        non_tw_value = 0.0
+
+        for t in active_tickers:
+            val = float(asset_values.get(t, 0.0) or 0.0)
+            if val <= 0:
+                continue
+            yf_t = ticker_to_yf.get(t, t)
+            if yf_t in prices_df.columns:
+                available.append((t, yf_t))
+
+            if str(yf_t).endswith(".TW") or "台股" in str(stock_meta.get(t, {}).get("category", "")):
+                tw_value += val
+            else:
+                non_tw_value += val
+
+        if len(available) < 1:
+            return base
+
+        bench = tw_bench if tw_value > non_tw_value else us_bench
+        if bench not in prices_df.columns:
+            bench = us_bench if us_bench in prices_df.columns else (tw_bench if tw_bench in prices_df.columns else None)
+        if bench is None:
+            return base
+
+        original_tickers = [t for t, _ in available]
+        yf_cols = [yf_t for _, yf_t in available]
+
+        weekly_prices = prices_df[yf_cols + [bench]].resample("W-FRI").last().dropna(how="all")
+        weekly_returns = weekly_prices.pct_change().dropna(how="any")
+        if len(weekly_returns) < 8:
+            return base
+
+        values = np.array([float(asset_values.get(t, 0.0) or 0.0) for t in original_tickers], dtype=float)
+        weight_sum = values.sum()
+        if weight_sum <= 0:
+            return base
+        weights = values / weight_sum
+
+        port = weekly_returns[yf_cols].mul(weights, axis=1).sum(axis=1)
+        bench_s = weekly_returns[bench]
+
+        aligned = pd.concat([port.rename("port"), bench_s.rename("bench")], axis=1).dropna()
+        if len(aligned) < 8:
+            return base
+
+        port = aligned["port"]
+        bench_s = aligned["bench"]
+
+        q20_b = float(bench_s.quantile(0.20))
+        q10_b = float(bench_s.quantile(0.10))
+        q05_b = float(bench_s.quantile(0.05))
+        q20_p = float(port.quantile(0.20))
+        q05_p = float(port.quantile(0.05))
+
+        cond_mask = bench_s <= q20_b
+        crisis_mask = bench_s <= q10_b
+        downside_mask = bench_s < 0
+
+        conditional_corr = safe_corr(port[cond_mask], bench_s[cond_mask])
+        crisis_corr = safe_corr(port[crisis_mask], bench_s[crisis_mask])
+
+        downside_beta = None
+        if downside_mask.sum() >= 3:
+            bench_down = bench_s[downside_mask]
+            port_down = port[downside_mask]
+            bench_var = float(bench_down.var())
+            if bench_var > 0:
+                downside_beta = float(port_down.cov(bench_down) / bench_var)
+
+        joint_hit = float((((bench_s <= q20_b) & (port <= q20_p)).mean()) * 100)
+
+        dd_port = compute_drawdown_series(port)
+        dd_bench = compute_drawdown_series(bench_s)
+        co_dd = float((((dd_port <= -0.10) & (dd_bench <= -0.10)).mean()) * 100)
+
+        rolling_26 = compute_cvar(port.tail(26), q=0.05)
+        rolling_52 = compute_cvar(port.tail(52), q=0.05)
+        stressed = compute_cvar(port[crisis_mask], q=0.05) if crisis_mask.sum() >= 3 else compute_cvar(port.tail(52), q=0.05)
+
+        tail_dependence = None
+        tail_b_mask = bench_s <= q05_b
+        if tail_b_mask.sum() >= 1:
+            tail_dependence = float(((port[tail_b_mask] <= q05_p).mean()) * 100)
+
+        base.update({
+            "benchmark": bench,
+            "sample_weeks": int(len(aligned)),
+            "conditional_correlation": round(conditional_corr, 4) if conditional_corr is not None else None,
+            "crisis_window_correlation": round(crisis_corr, 4) if crisis_corr is not None else None,
+            "downside_beta": round(downside_beta, 4) if downside_beta is not None else None,
+            "joint_downside_hit_rate": round(joint_hit, 2),
+            "co_drawdown_frequency": round(co_dd, 2),
+            "rolling_cvar_26w": round(rolling_26 * 100, 2) if rolling_26 is not None else None,
+            "rolling_cvar_52w": round(rolling_52 * 100, 2) if rolling_52 is not None else None,
+            "stressed_cvar": round(stressed * 100, 2) if stressed is not None else None,
+            "tail_dependence_lite": round(tail_dependence, 2) if tail_dependence is not None else None,
+            "crisis_window_label": f"{bench} <= P10 weekly return"
+        })
+        return base
+    except Exception as e:
+        print(f"⚠️ compute_tail_meta 失敗: {e}", flush=True)
+        return base
+
 try:
     print("   ⏳ 正在抓取公債殖利率...", flush=True)
     try:
@@ -673,7 +948,27 @@ try:
             "vix_shock": 0.0,
             "hy_spread_shock": 0.0
         },
-        "fragile_nodes": []
+        "fragile_nodes": [],
+        "xray_meta": {
+            "mrc_table": [],
+            "pca": {"pc1_explained": None, "pc3_cum_explained": None},
+            "fx": {"net_fx_exposure_pct": None, "usd_nav_impact_1pct_twd": None, "usd_exposure_value_twd": None},
+            "lookthrough_overlap": {"status": "missing_holdings_source", "note": "ETF constituent holdings source not connected yet."}
+        },
+        "tail_meta": {
+            "benchmark": None,
+            "sample_weeks": 0,
+            "conditional_correlation": None,
+            "crisis_window_correlation": None,
+            "downside_beta": None,
+            "joint_downside_hit_rate": None,
+            "co_drawdown_frequency": None,
+            "rolling_cvar_26w": None,
+            "rolling_cvar_52w": None,
+            "stressed_cvar": None,
+            "tail_dependence_lite": None,
+            "crisis_window_label": None
+        }
     }
     if existing.data:
         supabase.table("portfolio_db").update({"macro_meta": macro_payload, "chaos_meta": empty_chaos_packet}).eq("id", target_id).execute()
@@ -866,6 +1161,15 @@ try:
                                 supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
                 except Exception as e: print(f"⚠️ 8因子迴歸失敗: {e}", flush=True)
 
+            # 先為所有 active_tickers 保底寫入 Chaos / X-Ray 需要的欄位，避免因技術因子資料不足而缺 key
+            for t in active_tickers:
+                yf_t = ticker_to_yf.get(t, "")
+                if t not in stock_meta:
+                    stock_meta[t] = {}
+                stock_meta[t]["theme_tag"] = infer_theme_tag(t, stock_meta.get(t, {}))
+                stock_meta[t]["liquidity_score"] = compute_liquidity_score(t, yf_t, stock_meta.get(t, {}))
+                stock_meta[t]["contagion_score"] = float(stock_meta[t].get("contagion_score", 0.0) or 0.0)
+
             print("🧠 開始計算各別標的風險參數並寫入資料庫...", flush=True)
             for i, original_ticker in enumerate(all_tickers):
                 yf_ticker = yf_tickers[i]
@@ -926,6 +1230,26 @@ try:
                 liquidity_buffer_ratio=liquidity_buffer_ratio,
                 ticker_to_yf=ticker_to_yf
             )
+
+            xray_meta = compute_xray_meta(
+                active_tickers=active_tickers,
+                asset_values=asset_values,
+                stock_meta=stock_meta,
+                returns_df=returns,
+                ticker_to_yf=ticker_to_yf
+            )
+            tail_meta = compute_tail_meta(
+                active_tickers=active_tickers,
+                asset_values=asset_values,
+                prices_df=prices_df,
+                stock_meta=stock_meta,
+                ticker_to_yf=ticker_to_yf,
+                tw_bench=tw_bench,
+                us_bench=us_bench
+            )
+
+            chaos_packet["xray_meta"] = xray_meta
+            chaos_packet["tail_meta"] = tail_meta
 
             supabase.table("portfolio_db").update({
                 "stock_meta": stock_meta,
