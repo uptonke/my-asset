@@ -644,8 +644,8 @@
                         <th class="px-1.5 py-2 text-right text-purple-400" title="MC理論極限權重">MC%</th>
                         <th class="px-1.5 py-2 text-right text-yellow-400 font-bold" title="50%雲端 + 50%MC">綜合目標%</th>
                         <th class="px-1.5 py-2 text-right" title="與綜合目標的偏離度">落差 (Drift)</th>
-                        <th class="px-1.5 py-2 text-right text-cyan-300" title="流動性脆弱度">流動性</th>
-                        <th class="px-1.5 py-2 text-right text-red-300" title="恐慌傳染度">傳染度</th>
+                        <th class="px-1.5 py-2 text-right text-cyan-300" title="流動性脆弱度">流動性脆弱度數字越低流動性越好</th>
+                        <th class="px-1.5 py-2 text-right text-red-300" title="恐慌傳染度">風險傳染敏感度</th>
                     </tr>
                 </thead>
             </table>
@@ -1309,8 +1309,8 @@
                                                 <th class="p-3 pl-4">Ticker</th>
                                                 <th class="p-3 text-right">資金%</th>
                                                 <th class="p-3 text-right">風險%</th>
-                                                <th class="p-3 text-right">MRC</th>
-                                                <th class="p-3 text-right">RC</th>
+                                                <th class="p-3 text-right">MRC邊際風險貢獻度</th>
+                                                <th class="p-3 text-right">RC風險貢獻度</th>
                                             </tr>
                                         </thead>
                                         <tbody class="text-sm divide-y divide-white/5">
@@ -1476,6 +1476,27 @@
                                         <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10 col-span-2">
                                             <div class="text-gray-500 mb-1">危機窗口定義</div>
                                             <div class="text-white font-mono font-bold">{{ tailStatsLite?.crisisWindowLabel ?? 'Benchmark < q20 或 VIX 風險升溫' }}</div>
+                                            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10 mt-3">
+    <div class="text-gray-500 mb-2">樣本 / 門檻註解</div>
+    <div class="grid grid-cols-2 gap-3 text-xs">
+        <div>
+            <div class="text-gray-500 mb-1">Tail Sample Count</div>
+            <div class="text-white font-mono font-bold">{{ tailStatsLite?.tailSampleCount ?? '-' }}</div>
+        </div>
+        <div>
+            <div class="text-gray-500 mb-1">Crisis Sample Count</div>
+            <div class="text-white font-mono font-bold">{{ tailStatsLite?.crisisSampleCount ?? '-' }}</div>
+        </div>
+        <div>
+            <div class="text-gray-500 mb-1">Co-drawdown Threshold</div>
+            <div class="text-white font-mono font-bold">{{ tailStatsLite?.coDrawdownThreshold ?? '-' }}%</div>
+        </div>
+        <div>
+            <div class="text-gray-500 mb-1">Tail Threshold Quantile</div>
+            <div class="text-white font-mono font-bold">P{{ tailStatsLite?.tailThresholdQuantile ?? '-' }}</div>
+        </div>
+    </div>
+</div>
                                         </div>
                                     </div>
                                 </div>
