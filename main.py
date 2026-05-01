@@ -293,6 +293,11 @@ def sigmoid(x):
 def clamp(x, lo, hi):
     return max(lo, min(hi, x))
 
+HARD_BUFFER_TICKERS = {"SHY", "BOXX"}
+
+def is_hard_buffer_ticker(ticker: str) -> bool:
+    return str(ticker or "").strip().upper() in HARD_BUFFER_TICKERS
+
 
 def infer_theme_tag(ticker, meta):
     t = str(ticker).upper()
@@ -1281,21 +1286,115 @@ try:
             chaos_packet["xray_meta"] = xray_meta
             chaos_packet["tail_meta"] = tail_meta
 
+            # ==========================================
+            # 🌟 [START] 再平衡引擎 & Buffer Floor 斷路器機制
+            # ==========================================
+            print(f"\n💰 當前投資組合總淨值估算: {portfolio_value:,.2f}")
+            
+            rebalance_signals = []
+            
+            if portfolio_value > 0:
+                # ===== Buffer Floor 規則 =====
+                buffer_floor_wt = max(0.0, min(float(liquidity_buffer_ratio or 0.0) / 100.0, 0.80))
+            
+                available_buffer_names = [t for t in all_tickers if is_hard_buffer_ticker(t)]
+                if not available_buffer_names:
+                    available_buffer_names = ["SHY", "BOXX"]
+            
+                current_buffer_value = sum(asset_values.get(t, 0.0) for t in available_buffer_names)
+                current_buffer_wt = current_buffer_value / portfolio_value if portfolio_value > 0 else 0.0
+            
+                buffer_gap_wt = max(0.0, buffer_floor_wt - current_buffer_wt)
+                buffer_gap_value = portfolio_value * buffer_gap_wt
+            
+                # 平分給 SHY / BOXX；若其中某檔不存在，也照樣生成 signal
+                per_buffer_fill_wt = (buffer_gap_wt / len(available_buffer_names)) if available_buffer_names else 0.0
+            
+                print(
+                    f"🛡️ Buffer Floor 檢查 -> 目標: {buffer_floor_wt*100:.1f}%, "
+                    f"目前: {current_buffer_wt*100:.1f}%, 缺口: {buffer_gap_wt*100:.1f}%"
+                )
+            
+                sell_signals = []
+                buffer_buy_signals = []
+                risk_buy_signals = []
+            
+                for t in all_tickers:
+                    base_tw = float(stock_meta.get(t, {}).get("target_weight", 0.0) or 0.0)
+                    cw = asset_values.get(t, 0.0) / portfolio_value if portfolio_value > 0 else 0.0
+            
+                    # hard buffer ticker 額外承接 buffer floor 缺口
+                    effective_tw = base_tw
+                    if is_hard_buffer_ticker(t):
+                        effective_tw = max(base_tw, cw + per_buffer_fill_wt)
+            
+                    delta_w = effective_tw - cw
+                    if abs(delta_w) <= 0.01:
+                        continue
+            
+                    action_str = "BUY (加碼)" if delta_w > 0 else "SELL (減碼)"
+                    trade_amount = round((portfolio_value * effective_tw) - asset_values.get(t, 0.0), 2)
+            
+                    signal = {
+                        "ticker": t,
+                        "action": action_str,
+                        "current_weight": f"{cw*100:.2f}%",
+                        "target_weight": f"{effective_tw*100:.2f}%",
+                        "delta_weight": f"{delta_w*100:.2f}%",
+                        "trade_amount": trade_amount
+                    }
+            
+                    # 1. 先保留所有 SELL (生出子彈)
+                    if delta_w < 0:
+                        sell_signals.append(signal)
+                        print(f"   [{t}] {action_str} -> 目標: {effective_tw*100:.1f}%, 當前: {cw*100:.1f}%")
+                        continue
+            
+                    # 2. 如果 buffer 不足，先只允許補 buffer，凍結其他風險資產的 BUY
+                    if buffer_gap_wt > 0.0001:
+                        if is_hard_buffer_ticker(t):
+                            signal["reason"] = "補足硬緩衝 (SHY / BOXX) 至最低安全邊際"
+                            buffer_buy_signals.append(signal)
+                            print(f"   [{t}] {action_str} -> 目標: {effective_tw*100:.1f}%, 當前: {cw*100:.1f}% [⚠️ 優先補 Buffer]")
+                        else:
+                            # 風險資產 BUY 被斷路器擋掉，只做記錄
+                            print(f"   [{t}] BUY 遭系統暫停 🛑 -> Buffer 缺口尚未補足 (目標 {buffer_floor_wt*100:.1f}%)")
+                        continue
+            
+                    # 3. buffer 已足，才放行一般風險資產 BUY
+                    risk_buy_signals.append(signal)
+                    print(f"   [{t}] {action_str} -> 目標: {effective_tw*100:.1f}%, 當前: {cw*100:.1f}%")
+            
+                # 排序：優先賣出變現 -> 補滿 Buffer -> 最後才買入風險資產
+                rebalance_signals = sell_signals + buffer_buy_signals + risk_buy_signals
+            
+                # 額外寫回 metadata，讓前端 UI 與 AI 可直接拿來讀
+                rebalance_meta = {
+                    "buffer_floor_pct": round(buffer_floor_wt * 100, 2),
+                    "current_buffer_pct": round(current_buffer_wt * 100, 2),
+                    "buffer_gap_pct": round(buffer_gap_wt * 100, 2),
+                    "buffer_gap_value": round(buffer_gap_value, 2),
+                    "buffer_blocking_risk_buys": bool(buffer_gap_wt > 0.0001),
+                    "hard_buffer_tickers": available_buffer_names
+                }
+            else:
+                rebalance_meta = {
+                    "buffer_floor_pct": round(float(liquidity_buffer_ratio or 0.0), 2),
+                    "current_buffer_pct": 0.0,
+                    "buffer_gap_pct": 0.0,
+                    "buffer_gap_value": 0.0,
+                    "buffer_blocking_risk_buys": False,
+                    "hard_buffer_tickers": ["SHY", "BOXX"]
+                }
+
+            # 🚀 第一波寫入：同步 Metadata 與基礎的 rebalance_meta
             supabase.table("portfolio_db").update({
                 "stock_meta": stock_meta,
-                "chaos_meta": chaos_packet
+                "chaos_meta": chaos_packet,
+                "rebalance_meta": rebalance_meta
             }).eq("id", target_id).execute()
 
-            print(f"💰 當前投資組合總淨值估算: {portfolio_value:,.2f}")
-            if portfolio_value > 0:
-                for t in pipeline_tickers:
-                    tw = stock_meta.get(t, {}).get("target_weight", 0.0)
-                    cw = asset_values.get(t, 0.0) / portfolio_value
-                    if abs(tw - cw) > 0.01:
-                        action_str = "BUY (加碼)" if tw > cw else "SELL (減碼)"
-                        print(f"   [{t}] {action_str} -> 目標: {tw*100:.1f}%, 當前: {cw*100:.1f}%")
-                        rebalance_signals.append({"ticker": t, "action": action_str, "current_weight": f"{cw*100:.2f}%", "target_weight": f"{tw*100:.2f}%", "delta_weight": f"{(tw-cw)*100:.2f}%", "trade_amount": round((portfolio_value * tw) - asset_values.get(t, 0.0), 2)})
-
+            # 🤖 AI 執行報告生成
             if rebalance_signals and GEMINI_API_KEY:
                 print("🤖 喚醒 AI 撰寫再平衡交易執行報告...", flush=True)
                 try:
@@ -1314,6 +1413,7 @@ try:
                     [INPUT_DATA]
                     Macro Summary: {macro_payload.get('ai_analysis', {}).get('summary', '無')}
                     Execution List: {json.dumps(rebalance_signals, ensure_ascii=False)}
+                    Buffer Status: Gap {rebalance_meta['buffer_gap_pct']}%, Blocks Risk Buys: {rebalance_meta['buffer_blocking_risk_buys']}
 
                     [OUTPUT_SCHEMA]
                     {{
@@ -1323,9 +1423,17 @@ try:
                     """
                     rb_match = re.search(r'\{.*\}', client.models.generate_content(model="gemini-3-flash-preview", contents=rebalance_prompt).text, re.DOTALL)
                     if rb_match:
-                        supabase.table("portfolio_db").update({"rebalance_meta": {"signals": rebalance_signals, "ai_execution_plan": json.loads(rb_match.group(0))}}).eq("id", target_id).execute()
+                        # 將 AI 產生的計畫 Merge 回原本的 rebalance_meta 中，不覆蓋掉 buffer 資料
+                        rebalance_meta["signals"] = rebalance_signals
+                        rebalance_meta["ai_execution_plan"] = json.loads(rb_match.group(0))
+                        
+                        # 🚀 第二波寫入：補上 AI 報告
+                        supabase.table("portfolio_db").update({
+                            "rebalance_meta": rebalance_meta
+                        }).eq("id", target_id).execute()
                         print("✅ 再平衡交易清單與 AI 執行報告已成功同步至 Supabase！")
-                except Exception as e: print(f"⚠️ AI 執行報告生成失敗: {e}")
+                except Exception as e: 
+                    print(f"⚠️ AI 執行報告生成失敗: {e}")
 
 except Exception as e:
     print(f"🔥 股票管線致命錯誤:\n{traceback.format_exc()}", flush=True)

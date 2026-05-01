@@ -844,13 +844,18 @@ ${JSON.stringify(payload, null, 2)}
             fx: { netFxExposurePct: '0.0', usdNavImpact1pct: '0.0' }
         });
 
-        const rebalanceMonitor = ref({
-            trimCount: 0,
-            alertCount: 0,
-            volDrag30d: '0.00',
-            volDrag90d: '0.00',
-            alerts: []
-        });
+       const rebalanceMonitor = ref({
+    trimCount: 0,
+    alertCount: 0,
+    volDrag30d: '0.00',
+    volDrag90d: '0.00',
+    bufferFloorPct: '0.0',
+    currentBufferPct: '0.0',
+    bufferGapPct: '0.0',
+    bufferBlockingRiskBuys: false,
+    hardBufferTickers: ['SHY', 'BOXX'],
+    alerts: []
+});
 
        const tailStatsLite = ref({
     conditionalCorr: '-',
@@ -879,7 +884,7 @@ function fmtPctMaybe(val, digits = 2) {
     return Number.isFinite(n) ? n.toFixed(digits) : '-';
 }
 
-watch([groupedHoldings, portfolioStats, stats, sysCorr, chaosMeta], () => {
+watch([groupedHoldings, portfolioStats, stats, sysCorr, chaosMeta, cloudRebalanceMeta, liquidityBufferRatio], () => {
     let trims = 0;
     let alertCount = 0;
     let fxExposure = 0;
@@ -957,13 +962,58 @@ watch([groupedHoldings, portfolioStats, stats, sysCorr, chaosMeta], () => {
         };
     }
 
-    rebalanceMonitor.value = {
-        trimCount: trims,
-        alertCount: alertCount,
-        volDrag30d: ((0.5 * Math.pow(portVol, 2) * (30 / 365)) * 100).toFixed(2),
-        volDrag90d: ((0.5 * Math.pow(portVol, 2) * (90 / 365)) * 100).toFixed(2),
-        alerts: alertList
-    };
+    const backendRebalance = cloudRebalanceMeta.value || {};
+
+const fallbackBufferFloorPct = (parseFloat(liquidityBufferRatio.value) || 0).toFixed(1);
+
+let fallbackCurrentBufferPct = '0.0';
+if (typeof getSleeveStats === 'function') {
+    fallbackCurrentBufferPct = ((getSleeveStats().hardBufferWeight || 0) * 100).toFixed(1);
+}
+
+const resolvedBufferFloorPct =
+    backendRebalance.buffer_floor_pct !== undefined && backendRebalance.buffer_floor_pct !== null
+        ? fmtNum(backendRebalance.buffer_floor_pct, 1)
+        : fallbackBufferFloorPct;
+
+const resolvedCurrentBufferPct =
+    backendRebalance.current_buffer_pct !== undefined && backendRebalance.current_buffer_pct !== null
+        ? fmtNum(backendRebalance.current_buffer_pct, 1)
+        : fallbackCurrentBufferPct;
+
+const resolvedBufferGapPct =
+    backendRebalance.buffer_gap_pct !== undefined && backendRebalance.buffer_gap_pct !== null
+        ? fmtNum(backendRebalance.buffer_gap_pct, 1)
+        : Math.max(0, parseFloat(resolvedBufferFloorPct) - parseFloat(resolvedCurrentBufferPct)).toFixed(1);
+
+const resolvedBufferBlocking =
+    backendRebalance.buffer_blocking_risk_buys !== undefined && backendRebalance.buffer_blocking_risk_buys !== null
+        ? !!backendRebalance.buffer_blocking_risk_buys
+        : parseFloat(resolvedBufferGapPct) > 0.05;
+
+const resolvedHardBufferTickers =
+    Array.isArray(backendRebalance.hard_buffer_tickers) && backendRebalance.hard_buffer_tickers.length
+        ? backendRebalance.hard_buffer_tickers
+        : ['SHY', 'BOXX'];
+
+if (resolvedBufferBlocking) {
+    alertList.unshift(
+        `硬緩衝不足：目前 ${resolvedCurrentBufferPct}% / 目標 ${resolvedBufferFloorPct}% ，風險資產買入已暫停，請優先補足 ${resolvedHardBufferTickers.join(' + ')}。`
+    );
+}
+
+rebalanceMonitor.value = {
+    trimCount: trims,
+    alertCount: alertCount,
+    volDrag30d: ((0.5 * Math.pow(portVol, 2) * (30 / 365)) * 100).toFixed(2),
+    volDrag90d: ((0.5 * Math.pow(portVol, 2) * (90 / 365)) * 100).toFixed(2),
+    bufferFloorPct: resolvedBufferFloorPct,
+    currentBufferPct: resolvedCurrentBufferPct,
+    bufferGapPct: resolvedBufferGapPct,
+    bufferBlockingRiskBuys: resolvedBufferBlocking,
+    hardBufferTickers: resolvedHardBufferTickers,
+    alerts: alertList
+};
 
     const baseCvar = parseFloat(stats.value.cvar95) || 0;
 const currentSysCorr = sysCorr.value || 0.6;
@@ -1178,6 +1228,32 @@ async function saveData() {
         }
 
         const mcRisk = ref('neutral'); const macroRegime = ref('Normal'); const enableBlackSwan = ref(false); const enableInflation = ref(false);
+        const bufferPresets = [0, 5, 8, 10];
+
+function clampLiquidityBuffer(val) {
+    const n = Number(val);
+    if (!Number.isFinite(n)) return 0;
+    return Math.max(0, Math.min(80, Math.round(n)));
+}
+
+async function applyLiquidityBuffer(val) {
+    const nextVal = clampLiquidityBuffer(val);
+    if (nextVal === liquidityBufferRatio.value) {
+        if (showMCModal.value) nextTick(() => runMonteCarlo());
+        return;
+    }
+
+    liquidityBufferRatio.value = nextVal;
+    await saveData();
+
+    if (showMCModal.value) {
+        nextTick(() => runMonteCarlo());
+    }
+}
+
+async function nudgeLiquidityBuffer(delta) {
+    await applyLiquidityBuffer((Number(liquidityBufferRatio.value) || 0) + delta);
+}
         
         function calculateBlackLitterman(assets, rm, rf, sm, views = []) {
             const n = assets.length; const math = window.math; const varianceM = Math.pow(sm, 2);
@@ -1218,121 +1294,364 @@ async function saveData() {
             return posterior_excess.map(p => p + rf);
         }
 
+        const HARD_BUFFER_TICKERS = ['SHY', 'BOXX'];
+const DEFENSIVE_TICKERS = ['USMV'];
+
+function normTicker(t) {
+    return String(t || '').trim().toUpperCase();
+}
+
+function isHardBufferAsset(item) {
+    return HARD_BUFFER_TICKERS.includes(normTicker(item?.ticker));
+}
+
+function isDefensiveAsset(item) {
+    return DEFENSIVE_TICKERS.includes(normTicker(item?.ticker));
+}
+
+function getAllHoldingItems() {
+    const out = [];
+    for (const cat in groupedHoldings.value) {
+        groupedHoldings.value[cat].items.forEach(item => out.push(item));
+    }
+    return out;
+}
+
+function getSleeveStats() {
+    const totalVal = totalStockValueTwd.value || 0;
+    const allItems = getAllHoldingItems();
+
+    const hardBufferValue = allItems
+        .filter(isHardBufferAsset)
+        .reduce((sum, item) => sum + (parseFloat(item.marketValueTwd) || 0), 0);
+
+    const defensiveValue = allItems
+        .filter(isDefensiveAsset)
+        .reduce((sum, item) => sum + (parseFloat(item.marketValueTwd) || 0), 0);
+
+    return {
+        totalVal,
+        hardBufferWeight: totalVal > 0 ? hardBufferValue / totalVal : 0,
+        defensiveWeight: totalVal > 0 ? defensiveValue / totalVal : 0
+    };
+}
+
+function getJumpParams(item) {
+    const t = normTicker(item?.ticker);
+    const cat = String(item?.category || '');
+
+    const isCrypto =
+        t.endsWith('-USD') ||
+        cat.includes('加密');
+
+    const isLeveraged =
+        ['SSO', '00631L', '00675L'].includes(t);
+
+    if (isHardBufferAsset(item)) {
+        return { lambda: 0.4, mean: -0.03, std: 0.02, skewPenalty: 0.2, kurtBoost: 0.5 };
+    }
+
+    if (isDefensiveAsset(item)) {
+        return { lambda: 0.7, mean: -0.05, std: 0.03, skewPenalty: 0.4, kurtBoost: 1.0 };
+    }
+
+    if (isCrypto || isLeveraged) {
+        return { lambda: 2.0, mean: -0.18, std: 0.08, skewPenalty: 1.6, kurtBoost: 4.5 };
+    }
+
+    return { lambda: 1.2, mean: -0.10, std: 0.05, skewPenalty: 0.9, kurtBoost: 2.2 };
+}
+
         function runMonteCarlo() {
-            const ctx = document.getElementById('mcChart');
-            if(chartMC) chartMC.destroy(); 
+    const ctx = document.getElementById('mcChart');
+    if (chartMC) chartMC.destroy();
 
-            const assets = mcAvailableAssets.value;
-            if(assets.length < 2) { alert("⚠️ 需要至少 2 檔合格標的 (Beta 與 SD 需大於 0) 才能進行蒙地卡羅多樣化模擬！"); showMCModal.value = false; return; }
+    const allMcAssets = mcAvailableAssets.value || [];
+    const riskyAssets = allMcAssets.filter(item => !isHardBufferAsset(item));
 
-            const n_assets = assets.length; const minWeight = 0.03; const maxWeight = 0.20; const n_portfolios = 5000;
-            const baseRm = (parseFloat(riskParams.value.rm) || 10.0) / 100; const baseSm = (parseFloat(riskParams.value.sm) || 15.0) / 100; const baseRf = (parseFloat(riskParams.value.rf) || 1.5) / 100;
+    if (riskyAssets.length < 2) {
+        alert("⚠️ 需要至少 2 檔非 hard buffer 標的 (Beta 與 SD 需大於 0) 才能進行蒙地卡羅模擬。");
+        showMCModal.value = false;
+        return;
+    }
 
-            const regimeParams = {
-                Normal: { rm: baseRm, sm: baseSm, rf: baseRf, stressCorr: 0, m_skew: -0.5, m_kurt_ex: 1.0 },
-                Bull:   { rm: baseRm + 0.05, sm: baseSm * 0.8, rf: baseRf, stressCorr: 0, m_skew: 0.2, m_kurt_ex: 0.5 },
-                Bear:   { rm: baseRm - 0.10, sm: baseSm * 1.5, rf: baseRf * 0.5, stressCorr: 0.5, m_skew: -1.0, m_kurt_ex: 2.0 },
-                Crisis: { rm: baseRm - 0.20, sm: baseSm * 2.0, rf: 0.001, stressCorr: 1.0, m_skew: -2.5, m_kurt_ex: 5.0 }
-            };
-            const { rm, sm, rf, stressCorr, m_skew, m_kurt_ex } = regimeParams[macroRegime.value] || regimeParams['Normal'];
-            const bl_expected_returns = calculateBlackLitterman(assets, rm, rf, sm, blViews.value);
+    const { hardBufferWeight: currentHardBufferWeight, defensiveWeight: currentDefensiveWeight } = getSleeveStats();
 
-            const mcPoints = []; let bestScore = -999999; let maxScoreForColor = -999999; let minScoreForColor = 999999; let bestPort = null;
-            let riskAversionA = 0;
-            if (mcRisk.value === 'averse') riskAversionA = 10; else if (mcRisk.value === 'aggressive') riskAversionA = 1; 
+    const targetHardBufferWeight = Math.max(0, Math.min((parseFloat(liquidityBufferRatio.value) || 0) / 100, 0.80));
+    const riskyBudget = 1 - targetHardBufferWeight;
 
-            for (let p = 0; p < n_portfolios; p++) {
-                let weights = Array(n_assets).fill(minWeight); let remaining = 1.0 - (minWeight * n_assets);
-                
-                if (remaining > 0) {
-                    let randValues = Array.from({length: n_assets}, () => Math.pow(Math.random(), 3));
-                    let sumRand = randValues.reduce((a,b)=>a+b, 0);
-                    for(let i=0; i<n_assets; i++) { weights[i] += (randValues[i] / sumRand) * remaining; }
-                    
-                    let needsRebalance = true; let iterations = 0;
-                    while(needsRebalance && iterations < 5) {
-                        needsRebalance = false; let excess = 0; let validReceivers = [];
-                        for(let i=0; i<n_assets; i++) {
-                            if(weights[i] > maxWeight) { excess += (weights[i] - maxWeight); weights[i] = maxWeight; needsRebalance = true; } 
-                            else if (weights[i] < maxWeight - 0.001) { validReceivers.push(i); }
-                        }
-                        if(excess > 0 && validReceivers.length > 0) {
-                            let share = excess / validReceivers.length;
-                            validReceivers.forEach(i => weights[i] += share);
-                        }
-                        iterations++;
+    if (riskyBudget <= 0.05) {
+        alert("⚠️ 流動性緩衝比例過高，幾乎沒有剩餘風險資產可配置。");
+        return;
+    }
+
+    const n_assets = riskyAssets.length;
+    const n_portfolios = 5000;
+
+    let minWeightAbs = 0.03;
+    let maxWeightAbs = 0.20;
+
+    if (minWeightAbs * n_assets > riskyBudget) minWeightAbs = 0.0;
+    maxWeightAbs = Math.min(maxWeightAbs, riskyBudget);
+
+    const baseRm = (parseFloat(riskParams.value.rm) || 10.0) / 100;
+    const baseSm = (parseFloat(riskParams.value.sm) || 15.0) / 100;
+    const baseRf = (parseFloat(riskParams.value.rf) || 1.5) / 100;
+
+    const regimeParams = {
+        Normal: { rm: baseRm, sm: baseSm, rf: baseRf, stressCorr: 0,   m_skew: -0.5, m_kurt_ex: 1.0 },
+        Bull:   { rm: baseRm + 0.05, sm: baseSm * 0.8, rf: baseRf,     stressCorr: 0,   m_skew: 0.2,  m_kurt_ex: 0.5 },
+        Bear:   { rm: baseRm - 0.10, sm: baseSm * 1.5, rf: baseRf*0.5, stressCorr: 0.5, m_skew: -1.0, m_kurt_ex: 2.0 },
+        Crisis: { rm: baseRm - 0.20, sm: baseSm * 2.0, rf: 0.001,      stressCorr: 1.0, m_skew: -2.5, m_kurt_ex: 5.0 }
+    };
+
+    const { rm, sm, rf, stressCorr, m_skew, m_kurt_ex } =
+        regimeParams[macroRegime.value] || regimeParams['Normal'];
+
+    const bl_expected_returns = calculateBlackLitterman(riskyAssets, rm, rf, sm, blViews.value);
+
+    const mcPoints = [];
+    let bestScore = -999999;
+    let maxScoreForColor = -999999;
+    let minScoreForColor = 999999;
+    let bestPort = null;
+
+    let riskAversionA = 0;
+    if (mcRisk.value === 'averse') riskAversionA = 10;
+    else if (mcRisk.value === 'aggressive') riskAversionA = 1;
+
+    for (let p = 0; p < n_portfolios; p++) {
+        let weights = Array(n_assets).fill(minWeightAbs);
+        let remaining = riskyBudget - (minWeightAbs * n_assets);
+
+        if (remaining > 0) {
+            const randValues = Array.from({ length: n_assets }, () => Math.pow(Math.random(), 3));
+            const sumRand = randValues.reduce((a, b) => a + b, 0) || 1;
+
+            for (let i = 0; i < n_assets; i++) {
+                weights[i] += (randValues[i] / sumRand) * remaining;
+            }
+
+            let needsRebalance = true;
+            let iterations = 0;
+
+            while (needsRebalance && iterations < 6) {
+                needsRebalance = false;
+                let excess = 0;
+                const validReceivers = [];
+
+                for (let i = 0; i < n_assets; i++) {
+                    if (weights[i] > maxWeightAbs) {
+                        excess += (weights[i] - maxWeightAbs);
+                        weights[i] = maxWeightAbs;
+                        needsRebalance = true;
+                    } else if (weights[i] < maxWeightAbs - 0.0001) {
+                        validReceivers.push(i);
                     }
                 }
 
-                let p_ret = 0; let p_beta = 0; let weighted_vol_sum = 0; 
-                weights.forEach((w, i) => { const e_r = bl_expected_returns[i] || 0; p_ret += w * e_r; p_beta += w * (parseFloat(assets[i].beta) || 1.0); weighted_vol_sum += w * ((parseFloat(assets[i].stdDev) || 20.0) / 100); });
-
-                let sys_var = Math.pow(p_beta, 2) * Math.pow(sm, 2); let idio_var = 0;
-                weights.forEach((w, i) => {
-                    const sig_i = (parseFloat(assets[i].stdDev) || 20.0) / 100; const beta_i = parseFloat(assets[i].beta) || 1.0;
-                    let idio_i = Math.pow(sig_i, 2) - Math.pow(beta_i * sm, 2); if(idio_i < 0) idio_i = 0; idio_var += Math.pow(w, 2) * idio_i;
-                });
-                
-                let standard_vol = Math.sqrt(sys_var + idio_var); let p_vol = standard_vol * (1 - stressCorr) + weighted_vol_sum * stressCorr;
-                if (p_vol === 0 || isNaN(p_vol)) continue;
-
-                let p_skew = (Math.pow(p_beta, 3) * Math.pow(sm, 3) * m_skew) / Math.pow(p_vol, 3);
-                let p_kurt_ex = (Math.pow(p_beta, 4) * Math.pow(sm, 4) * m_kurt_ex) / Math.pow(p_vol, 4);
-
-                if (enableBlackSwan.value) {
-                    const expected_jumps_yr = 0.005 * 252; const jump_mean = -0.15; const jump_std = 0.05;   
-                    p_ret += (expected_jumps_yr * jump_mean);
-                    p_vol = Math.sqrt(Math.pow(p_vol, 2) + expected_jumps_yr * (Math.pow(jump_mean, 2) + Math.pow(jump_std, 2)));
-                    p_skew -= 1.5; p_kurt_ex += 4.0;
+                if (excess > 0 && validReceivers.length > 0) {
+                    const share = excess / validReceivers.length;
+                    validReceivers.forEach(i => {
+                        weights[i] += share;
+                    });
                 }
 
-                let rf_effective = rf; 
-                if (enableInflation.value) { p_ret -= 0.025; p_vol = Math.sqrt(Math.pow(p_vol, 2) + Math.pow(0.015, 2)); rf_effective = rf - 0.025; }
-
-                const p_sharpe = (p_ret - rf_effective) / p_vol;
-                const p_asr = p_sharpe * (1 + (p_skew / 6) * p_sharpe - (p_kurt_ex / 24) * Math.pow(p_sharpe, 2));
-
-                let currentScore = mcRisk.value === 'neutral' ? p_asr : mcRisk.value === 'averse' ? p_ret - (0.5 * riskAversionA * Math.pow(p_vol, 2)) + (0.05 * p_skew) - (0.02 * p_kurt_ex) : p_ret - (0.5 * riskAversionA * Math.pow(p_vol, 2)) + (0.02 * p_skew);
-
-                if (!isNaN(currentScore)) {
-                    mcPoints.push({ x: p_vol * 100, y: p_ret * 100, sharpe: p_asr, score: currentScore, weights });
-                    if (currentScore > maxScoreForColor) maxScoreForColor = currentScore; if (currentScore < minScoreForColor) minScoreForColor = currentScore;
-                    if (currentScore > bestScore) { bestScore = currentScore; bestPort = { ret: p_ret, vol: p_vol, sharpe: p_asr, skew: p_skew, kurt: p_kurt_ex, weights }; }
-                }
+                iterations++;
             }
-
-            if(!bestPort) { alert("運算失敗，請檢查標的風險參數是否異常。"); return; }
-
-            const wList = []; const totalVal = totalStockValueTwd.value; 
-            bestPort.weights.forEach((w, i) => { 
-                const optW = w * 100; const curW = totalVal > 0 ? (assets[i].marketValueTwd / totalVal) * 100 : 0;
-                wList.push({ ticker: assets[i].ticker, opt: optW.toFixed(2), cur: curW.toFixed(2), diff: (optW - curW).toFixed(2) }); 
-            });
-            wList.sort((a,b) => parseFloat(b.opt) - parseFloat(a.opt));
-
-            mcOptimal.value = { ret: (bestPort.ret * 100).toFixed(2), vol: (bestPort.vol * 100).toFixed(2), sharpe: bestPort.sharpe.toFixed(3), skew: bestPort.skew.toFixed(2), kurt: bestPort.kurt.toFixed(2), weights: wList };
-
-            chartMC = new Chart(ctx, {
-                type: 'scatter',
-                data: {
-                    datasets: [
-                        {
-                            label: 'Simulated Portfolios', data: mcPoints,
-                            backgroundColor: (context) => {
-                                const val = context.raw?.score; if (val === undefined || isNaN(val)) return '#3b82f6';
-                                if (maxScoreForColor <= minScoreForColor) return 'rgba(59, 130, 246, 0.4)'; 
-                                let ratio = (val - minScoreForColor) / (maxScoreForColor - minScoreForColor);
-                                if (isNaN(ratio) || ratio < 0 || ratio > 1) ratio = 0.5;
-                                return `rgba(${Math.round(255*ratio)}, ${Math.round(150*ratio)}, 200, 0.4)`;
-                            },
-                            pointRadius: 2
-                        },
-                        { label: 'Optimal Portfolio', data: [{ x: bestPort.vol * 100, y: bestPort.ret * 100 }], backgroundColor: '#fbbf24', pointRadius: 8, borderColor: '#fff', borderWidth: 2 }
-                    ]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { tooltip: { callbacks: { label: (ctx) => `Vol: ${ctx.raw.x.toFixed(2)}%, Ret: ${ctx.raw.y.toFixed(2)}%` } } }, scales: { x: { title: {display: true, text: 'Volatility (σ%)'} }, y: { title: {display: true, text: 'Expected Return (%)'} } } }
-            });
         }
+
+        const weightSum = weights.reduce((a, b) => a + b, 0);
+        if (weightSum <= 0) continue;
+        weights = weights.map(w => (w / weightSum) * riskyBudget);
+
+        let p_ret = targetHardBufferWeight * rf;
+        let p_beta = 0;
+        let weighted_vol_sum = 0;
+
+        weights.forEach((w, i) => {
+            const e_r = bl_expected_returns[i] || 0;
+            const beta_i = parseFloat(riskyAssets[i].beta) || 1.0;
+            const sig_i = (parseFloat(riskyAssets[i].stdDev) || 20.0) / 100;
+
+            p_ret += w * e_r;
+            p_beta += w * beta_i;
+            weighted_vol_sum += w * sig_i;
+        });
+
+        let sys_var = Math.pow(p_beta, 2) * Math.pow(sm, 2);
+        let idio_var = 0;
+
+        weights.forEach((w, i) => {
+            const sig_i = (parseFloat(riskyAssets[i].stdDev) || 20.0) / 100;
+            const beta_i = parseFloat(riskyAssets[i].beta) || 1.0;
+            let idio_i = Math.pow(sig_i, 2) - Math.pow(beta_i * sm, 2);
+            if (idio_i < 0) idio_i = 0;
+            idio_var += Math.pow(w, 2) * idio_i;
+        });
+
+        const standard_vol = Math.sqrt(sys_var + idio_var);
+        let p_vol = standard_vol * (1 - stressCorr) + weighted_vol_sum * stressCorr;
+        if (!Number.isFinite(p_vol) || p_vol <= 0) continue;
+
+        let p_skew = (Math.pow(p_beta, 3) * Math.pow(sm, 3) * m_skew) / Math.pow(p_vol, 3);
+        let p_kurt_ex = (Math.pow(p_beta, 4) * Math.pow(sm, 4) * m_kurt_ex) / Math.pow(p_vol, 4);
+
+        let jumpTailLoss = 0;
+
+        if (enableBlackSwan.value) {
+            let jumpVariance = 0;
+            let jumpSkewPenalty = 0;
+            let jumpKurtBoost = 0;
+
+            weights.forEach((w, i) => {
+                const jp = getJumpParams(riskyAssets[i]);
+                const riskyShare = riskyBudget > 0 ? (w / riskyBudget) : 0;
+
+                jumpTailLoss += w * jp.lambda * Math.abs(jp.mean);
+                jumpVariance += Math.pow(w, 2) * jp.lambda * (Math.pow(jp.mean, 2) + Math.pow(jp.std, 2));
+                jumpSkewPenalty += riskyShare * jp.skewPenalty;
+                jumpKurtBoost += riskyShare * jp.kurtBoost;
+            });
+
+            p_ret -= jumpTailLoss;
+            p_vol = Math.sqrt(Math.pow(p_vol, 2) + jumpVariance);
+            p_skew -= jumpSkewPenalty;
+            p_kurt_ex += jumpKurtBoost;
+        }
+
+        let rf_effective = rf;
+        if (enableInflation.value) {
+            p_ret -= 0.025;
+            p_vol = Math.sqrt(Math.pow(p_vol, 2) + Math.pow(0.015, 2));
+            rf_effective = rf - 0.025;
+        }
+
+        const p_sharpe = (p_ret - rf_effective) / p_vol;
+        const p_asr = p_sharpe * (
+            1 +
+            (p_skew / 6) * p_sharpe -
+            (p_kurt_ex / 24) * Math.pow(p_sharpe, 2)
+        );
+
+        let currentScore = 0;
+        if (mcRisk.value === 'neutral') {
+            currentScore = p_asr;
+        } else if (mcRisk.value === 'averse') {
+            currentScore = p_ret - (0.5 * riskAversionA * Math.pow(p_vol, 2));
+        } else {
+            currentScore = p_ret - (0.15 * p_vol);
+        }
+
+        if (Number.isFinite(currentScore)) {
+            mcPoints.push({
+                x: p_vol * 100,
+                y: p_ret * 100,
+                score: currentScore
+            });
+
+            if (currentScore > maxScoreForColor) maxScoreForColor = currentScore;
+            if (currentScore < minScoreForColor) minScoreForColor = currentScore;
+
+            if (currentScore > bestScore) {
+                bestScore = currentScore;
+                bestPort = {
+                    ret: p_ret,
+                    vol: p_vol,
+                    sharpe: p_asr,
+                    skew: p_skew,
+                    kurt: p_kurt_ex,
+                    weights,
+                    jumpTailLoss,
+                    hardBufferTargetWeight: targetHardBufferWeight,
+                    hardBufferCurrentWeight: currentHardBufferWeight,
+                    defensiveCurrentWeight: currentDefensiveWeight
+                };
+            }
+        }
+    }
+
+    if (!bestPort) {
+        alert("運算失敗，請檢查標的風險參數是否異常。");
+        return;
+    }
+
+    const wList = [];
+    const totalVal = totalStockValueTwd.value || 0;
+
+    bestPort.weights.forEach((w, i) => {
+        const optW = w * 100;
+        const curW = totalVal > 0 ? (riskyAssets[i].marketValueTwd / totalVal) * 100 : 0;
+        wList.push({
+            ticker: riskyAssets[i].ticker,
+            opt: optW.toFixed(2),
+            cur: curW.toFixed(2),
+            diff: (optW - curW).toFixed(2)
+        });
+    });
+
+    wList.sort((a, b) => parseFloat(b.opt) - parseFloat(a.opt));
+
+    mcOptimal.value = {
+        ret: (bestPort.ret * 100).toFixed(2),
+        vol: (bestPort.vol * 100).toFixed(2),
+        sharpe: bestPort.sharpe.toFixed(3),
+        skew: bestPort.skew.toFixed(2),
+        kurt: bestPort.kurt.toFixed(2),
+        weights: wList,
+
+        hardBufferTargetPct: (bestPort.hardBufferTargetWeight * 100).toFixed(2),
+        hardBufferCurrentPct: (bestPort.hardBufferCurrentWeight * 100).toFixed(2),
+        hardBufferGapPct: ((bestPort.hardBufferTargetWeight - bestPort.hardBufferCurrentWeight) * 100).toFixed(2),
+        defensiveSleevePct: (bestPort.defensiveCurrentWeight * 100).toFixed(2),
+        bufferFloorRespected: bestPort.hardBufferCurrentWeight >= bestPort.hardBufferTargetWeight - 1e-6,
+        jumpTailLossPct: (bestPort.jumpTailLoss * 100).toFixed(2)
+    };
+
+    chartMC = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+            datasets: [
+                {
+                    label: 'Simulated Portfolios',
+                    data: mcPoints,
+                    backgroundColor: (context) => {
+                        const val = context.raw?.score;
+                        if (val === undefined || isNaN(val)) return '#3b82f6';
+                        if (maxScoreForColor <= minScoreForColor) return 'rgba(59, 130, 246, 0.4)';
+                        let ratio = (val - minScoreForColor) / (maxScoreForColor - minScoreForColor);
+                        if (isNaN(ratio) || ratio < 0 || ratio > 1) ratio = 0.5;
+                        return `rgba(${Math.round(255 * ratio)}, ${Math.round(150 * ratio)}, 200, 0.4)`;
+                    },
+                    pointRadius: 2
+                },
+                {
+                    label: 'Optimal Portfolio',
+                    data: [{ x: bestPort.vol * 100, y: bestPort.ret * 100 }],
+                    backgroundColor: '#fbbf24',
+                    pointRadius: 8,
+                    borderColor: '#fff',
+                    borderWidth: 2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => `Vol: ${ctx.raw.x.toFixed(2)}%, Ret: ${ctx.raw.y.toFixed(2)}%`
+                    }
+                }
+            },
+            scales: {
+                x: { title: { display: true, text: 'Volatility (σ%)' } },
+                y: { title: { display: true, text: 'Expected Return (%)' } }
+            }
+        }
+    });
+}
         
         function getTypeColor(type) { return type==='Buy'?'text-red-400':'text-green-400'; }
         function getCategoryColorCode(cat) { return '#3b82f6'; }
@@ -1863,6 +2182,22 @@ chartCML.data.datasets = [
         });
 
         watch([exchangeRate, sheetUrl, riskParams, quantStartDate, dataFrequency, fireTargets, correlationMatrix], () => updateCharts(), { deep: true });
+        watch(liquidityBufferRatio, async (newVal, oldVal) => {
+    const clamped = clampLiquidityBuffer(newVal);
+    if (clamped !== newVal) {
+        liquidityBufferRatio.value = clamped;
+        return;
+    }
+
+    updateCharts();
+
+    if (oldVal !== undefined && newVal !== oldVal) {
+        await saveData();
+        if (showMCModal.value) {
+            nextTick(() => runMonteCarlo());
+        }
+    }
+});
 
         // 🚨 終極修正：將所有在 HTML 呼叫的函數與變數都暴露給 Vue
         return { 
@@ -1882,7 +2217,7 @@ chartCML.data.datasets = [
             generateAutoViews, runMonteCarlo, stressTestResults,
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr,
             syncHoldingsHeaderScroll,
-            croInsight, isCroThinking, liquidityBufferRatio, generateQuantInsight, chaosMeta,
+            croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
             xrayStats, rebalanceMonitor, tailStatsLite
         };
     }
