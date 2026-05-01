@@ -244,6 +244,8 @@ createApp({
         
         const exchangeRate = ref(32.5);
         const sheetUrl = ref('');
+        const liquidityBufferRatio = ref(0);
+        const chaosMeta = ref(null);
         
         const cloudAiAnalysis = ref(null);
         const correlationMatrix = ref(null);
@@ -277,76 +279,92 @@ createApp({
         });
 
         async function loadDataFromCloud() {
-            isDbSyncing.value = true;
-            try {
-                const { data, error } = await supabase.from('portfolio_db').select('*').eq('id', 1).single();
-                if (error && error.code !== 'PGRST116') throw error; 
+    isDbSyncing.value = true;
+    try {
+        const { data, error } = await supabase.from('portfolio_db').select('*').eq('id', 1).single();
+        if (error && error.code !== 'PGRST116') throw error;
 
-                if (data) {
-                    transactions.value = data.ledger_data || [];
-                    realHistoryData.value = data.history_data || [];
-                    stockMeta.value = data.stock_meta || {};
-                    
-                    if (data.macro_meta) {
-                        const macroData = data.macro_meta;
-                        
-                        if (macroData.hy_spread > 5.0 && macroData.yield_curve < 0.5) macroRegime.value = 'Crisis';
-                        else if (macroData.hy_spread > 4.0 || macroData.btc_1m_mom < -15) macroRegime.value = 'Bear';
-                        else if (macroData.yield_curve > 0 && macroData.hy_spread < 3.5 && macroData.btc_1m_mom > 5) macroRegime.value = 'Bull';
-                        else macroRegime.value = 'Normal';
-                        
-                        if (macroData.market_rf) riskParams.value.rf = macroData.market_rf;
-                        if (macroData.market_rm) riskParams.value.rm = macroData.market_rm;
-                        if (macroData.market_sm) riskParams.value.sm = macroData.market_sm;
-                        if (macroData.ai_analysis) cloudAiAnalysis.value = macroData.ai_analysis;
-                        if (macroData.corr_matrix) correlationMatrix.value = macroData.corr_matrix;
-                        if (macroData.sys_corr) sysCorr.value = macroData.sys_corr;
+        if (data) {
+            transactions.value = data.ledger_data || [];
+            realHistoryData.value = data.history_data || [];
+            stockMeta.value = data.stock_meta || {};
 
-                        if (macroData.fama_french) {
-                            stats.value.ff_alpha = macroData.fama_french.alpha;
-                            stats.value.ff_mkt_beta = macroData.fama_french.mkt_beta;
-                            stats.value.ff_smb = macroData.fama_french.smb;
-                            stats.value.ff_hml = macroData.fama_french.hml;
-                            stats.value.ff_rmw = macroData.fama_french.rmw;
-                            stats.value.ff_cma = macroData.fama_french.cma;
-                            stats.value.ff_wml = macroData.fama_french.wml;
-                            stats.value.ff_r_squared = macroData.fama_french.r_squared;
-                            stats.value.ff_tw_mkt = macroData.fama_french.tw_mkt;
-                            stats.value.ff_crypto = macroData.fama_french.crypto;
-                        }
-                    }
-                    
-                    if (data.rebalance_meta) cloudRebalanceMeta.value = data.rebalance_meta;
-                    if (data.cro_insight) croInsight.value = data.cro_insight;
+            if (data.macro_meta) {
+                const macroData = data.macro_meta;
 
-                    if (data.settings) {
-                        if (data.settings.exchangeRate) exchangeRate.value = parseFloat(data.settings.exchangeRate);
-                        if (data.settings.sheetUrl) sheetUrl.value = data.settings.sheetUrl;
-                        if (data.settings.fireTargets) fireTargets.value = data.settings.fireTargets;
-                        if (data.settings.priceMap) priceMap.value = data.settings.priceMap;
-                    }
-                } 
+                if (macroData.hy_spread > 5.0 && macroData.yield_curve < 0.5) macroRegime.value = 'Crisis';
+                else if (macroData.hy_spread > 4.0 || macroData.btc_1m_mom < -15) macroRegime.value = 'Bear';
+                else if (macroData.yield_curve > 0 && macroData.hy_spread < 3.5 && macroData.btc_1m_mom > 5) macroRegime.value = 'Bull';
+                else macroRegime.value = 'Normal';
 
-                await localforage.setItem('ledgerData', JSON.stringify(transactions.value));
-                await localforage.setItem('historyData', JSON.stringify(realHistoryData.value));
-                await localforage.setItem('stockMeta', JSON.stringify(stockMeta.value));
-                await localforage.setItem('settings', JSON.stringify({ exchangeRate: exchangeRate.value, sheetUrl: sheetUrl.value, fireTargets: fireTargets.value, priceMap: priceMap.value }));
+                if (macroData.market_rf) riskParams.value.rf = macroData.market_rf;
+                if (macroData.market_rm) riskParams.value.rm = macroData.market_rm;
+                if (macroData.market_sm) riskParams.value.sm = macroData.market_sm;
+                if (macroData.ai_analysis) cloudAiAnalysis.value = macroData.ai_analysis;
+                if (macroData.corr_matrix) correlationMatrix.value = macroData.corr_matrix;
+                if (macroData.sys_corr) sysCorr.value = macroData.sys_corr;
 
-            } catch (err) {
-                transactions.value = JSON.parse(await localforage.getItem('ledgerData') || '[]');
-                realHistoryData.value = JSON.parse(await localforage.getItem('historyData') || '[]');
-                stockMeta.value = JSON.parse(await localforage.getItem('stockMeta') || '{}');
-                const localSettings = JSON.parse(await localforage.getItem('settings') || '{}');
-                if(localSettings.exchangeRate) exchangeRate.value = localSettings.exchangeRate;
-                if(localSettings.sheetUrl) sheetUrl.value = localSettings.sheetUrl;
-                if(localSettings.fireTargets) fireTargets.value = localSettings.fireTargets;
-                if(localSettings.priceMap) priceMap.value = localSettings.priceMap;
-            } finally {
-                isDbSyncing.value = false;
-                isAppReady.value = true; 
-                nextTick(() => updateCharts());
+                if (macroData.fama_french) {
+                    stats.value.ff_alpha = macroData.fama_french.alpha;
+                    stats.value.ff_mkt_beta = macroData.fama_french.mkt_beta;
+                    stats.value.ff_smb = macroData.fama_french.smb;
+                    stats.value.ff_hml = macroData.fama_french.hml;
+                    stats.value.ff_rmw = macroData.fama_french.rmw;
+                    stats.value.ff_cma = macroData.fama_french.cma;
+                    stats.value.ff_wml = macroData.fama_french.wml;
+                    stats.value.ff_r_squared = macroData.fama_french.r_squared;
+                    stats.value.ff_tw_mkt = macroData.fama_french.tw_mkt;
+                    stats.value.ff_crypto = macroData.fama_french.crypto;
+                }
+            }
+
+            if (data.rebalance_meta) cloudRebalanceMeta.value = data.rebalance_meta;
+            if (data.cro_insight) croInsight.value = data.cro_insight;
+            if (data.chaos_meta) chaosMeta.value = data.chaos_meta;
+
+            if (data.settings) {
+                if (data.settings.exchangeRate) exchangeRate.value = parseFloat(data.settings.exchangeRate);
+                if (data.settings.sheetUrl) sheetUrl.value = data.settings.sheetUrl;
+                if (data.settings.fireTargets) fireTargets.value = data.settings.fireTargets;
+                if (data.settings.priceMap) priceMap.value = data.settings.priceMap;
+                if (data.settings.liquidityBufferRatio !== undefined && data.settings.liquidityBufferRatio !== null) {
+                    liquidityBufferRatio.value = parseFloat(data.settings.liquidityBufferRatio) || 0;
+                }
             }
         }
+
+        await localforage.setItem('ledgerData', JSON.stringify(transactions.value));
+        await localforage.setItem('historyData', JSON.stringify(realHistoryData.value));
+        await localforage.setItem('stockMeta', JSON.stringify(stockMeta.value));
+        await localforage.setItem('chaosMeta', JSON.stringify(chaosMeta.value));
+        await localforage.setItem('settings', JSON.stringify({
+            exchangeRate: exchangeRate.value,
+            sheetUrl: sheetUrl.value,
+            fireTargets: fireTargets.value,
+            priceMap: priceMap.value,
+            liquidityBufferRatio: liquidityBufferRatio.value
+        }));
+
+    } catch (err) {
+        transactions.value = JSON.parse(await localforage.getItem('ledgerData') || '[]');
+        realHistoryData.value = JSON.parse(await localforage.getItem('historyData') || '[]');
+        stockMeta.value = JSON.parse(await localforage.getItem('stockMeta') || '{}');
+        chaosMeta.value = JSON.parse(await localforage.getItem('chaosMeta') || 'null');
+
+        const localSettings = JSON.parse(await localforage.getItem('settings') || '{}');
+        if (localSettings.exchangeRate) exchangeRate.value = localSettings.exchangeRate;
+        if (localSettings.sheetUrl) sheetUrl.value = localSettings.sheetUrl;
+        if (localSettings.fireTargets) fireTargets.value = localSettings.fireTargets;
+        if (localSettings.priceMap) priceMap.value = localSettings.priceMap;
+        if (localSettings.liquidityBufferRatio !== undefined && localSettings.liquidityBufferRatio !== null) {
+            liquidityBufferRatio.value = parseFloat(localSettings.liquidityBufferRatio) || 0;
+        }
+    } finally {
+        isDbSyncing.value = false;
+        isAppReady.value = true;
+        nextTick(() => updateCharts());
+    }
+}
 
         const txForm = ref({ date: new Date().toISOString().split('T')[0], type: 'Buy', category: '美股', ticker: '', price: null, shares: null });
         const historyForm = ref({ date: new Date().toISOString().split('T')[0], assets: null, cost: null });
@@ -361,11 +379,16 @@ createApp({
         }, { immediate: true });
 
         function updateMeta(stock) {
-            if(stock.ticker) {
-                stockMeta.value[stock.ticker] = { risk: stock.riskLevel, beta: stock.beta, std: stock.stdDev };
-                saveData(); 
-            }
-        }
+    if (stock.ticker) {
+        stockMeta.value[stock.ticker] = {
+            ...(stockMeta.value[stock.ticker] || {}),
+            risk: stock.riskLevel,
+            beta: stock.beta,
+            std: stock.stdDev
+        };
+        saveData();
+    }
+}
 
         async function fetchPrices() {
             if (!sheetUrl.value) { alert('請輸入 Google Sheet 網址'); return; }
@@ -490,6 +513,11 @@ createApp({
                 }
                 let finalBlendedWeight = cloudTargetWeight;
                 if (mcOptimal.value) finalBlendedWeight = (cloudTargetWeight * 0.5) + (mcWeight * 0.5);
+
+                const rawLiquidityScore = meta.liquidity_score ?? meta.liquidityScore ?? '-';
+                const rawContagionScore = meta.contagion_score ?? meta.contagionScore ?? '-';
+                const liquidityScore = typeof rawLiquidityScore === 'number' ? rawLiquidityScore.toFixed(2) : rawLiquidityScore;
+                const contagionScore = typeof rawContagionScore === 'number' ? rawContagionScore.toFixed(2) : rawContagionScore;
 
                 groups[h.category].items.push({ 
                     ...h, isUSD, 
@@ -815,26 +843,48 @@ createApp({
             if(confirm('確定刪除此快照?')) { realHistoryData.value = realHistoryData.value.filter(h=>h.date!==date); saveData(); updateCharts(); } 
         }
 
+        
         let syncTimer = null;
-        async function saveData() { 
-            await localforage.setItem('ledgerData', JSON.stringify(transactions.value)); 
-            await localforage.setItem('historyData', JSON.stringify(realHistoryData.value));
-            await localforage.setItem('stockMeta', JSON.stringify(stockMeta.value));
-            await localforage.setItem('settings', JSON.stringify({ exchangeRate: exchangeRate.value, sheetUrl: sheetUrl.value, fireTargets: fireTargets.value, priceMap: priceMap.value }));
+async function saveData() {
+    await localforage.setItem('ledgerData', JSON.stringify(transactions.value));
+    await localforage.setItem('historyData', JSON.stringify(realHistoryData.value));
+    await localforage.setItem('stockMeta', JSON.stringify(stockMeta.value));
+    await localforage.setItem('chaosMeta', JSON.stringify(chaosMeta.value));
+    await localforage.setItem('settings', JSON.stringify({
+        exchangeRate: exchangeRate.value,
+        sheetUrl: sheetUrl.value,
+        fireTargets: fireTargets.value,
+        priceMap: priceMap.value,
+        liquidityBufferRatio: liquidityBufferRatio.value
+    }));
 
-            isDbSyncing.value = true;
-            if (syncTimer) clearTimeout(syncTimer);
-            
-            syncTimer = setTimeout(async () => {
-                try {
-                    const { error } = await supabase.from('portfolio_db').upsert({
-                        id: 1, ledger_data: transactions.value, history_data: realHistoryData.value, stock_meta: stockMeta.value,
-                        settings: { exchangeRate: exchangeRate.value, sheetUrl: sheetUrl.value, fireTargets: fireTargets.value, priceMap: priceMap.value }
-                    }, { onConflict: 'id' }); 
-                    if (error) throw error;
-                } catch (e) { console.error("❌ Supabase 同步失敗", e); } finally { isDbSyncing.value = false; }
-            }, 1500); 
+    isDbSyncing.value = true;
+    if (syncTimer) clearTimeout(syncTimer);
+
+    syncTimer = setTimeout(async () => {
+        try {
+            const { error } = await supabase.from('portfolio_db').upsert({
+                id: 1,
+                ledger_data: transactions.value,
+                history_data: realHistoryData.value,
+                stock_meta: stockMeta.value,
+                settings: {
+                    exchangeRate: exchangeRate.value,
+                    sheetUrl: sheetUrl.value,
+                    fireTargets: fireTargets.value,
+                    priceMap: priceMap.value,
+                    liquidityBufferRatio: liquidityBufferRatio.value
+                }
+            }, { onConflict: 'id' });
+
+            if (error) throw error;
+        } catch (e) {
+            console.error("❌ Supabase 同步失敗", e);
+        } finally {
+            isDbSyncing.value = false;
         }
+    }, 1500);
+}
 
         function exportAll() { const data = { ledger: transactions.value, history: realHistoryData.value, stockMeta: stockMeta.value }; const link = document.createElement("a"); link.href = URL.createObjectURL(new Blob([JSON.stringify(data)], {type: "application/json"})); link.download = "backup.json"; link.click(); }
         function importData(event) {
@@ -1558,7 +1608,7 @@ chartFire.update();
             generateAutoViews, runMonteCarlo, stressTestResults,
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr,
             syncHoldingsHeaderScroll,
-            croInsight, isCroThinking, generateQuantInsight
+            croInsight, isCroThinking, liquidityBufferRatio, generateQuantInsight, chaosMeta
         };
     }
 }).mount('#app');

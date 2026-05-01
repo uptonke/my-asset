@@ -282,6 +282,172 @@ def map_to_yf_ticker(ticker, tw_bench="^TWII"):
 
     return t
 
+
+def sigmoid(x):
+    try:
+        return 1.0 / (1.0 + math.exp(-x))
+    except Exception:
+        return 0.5
+
+
+def clamp(x, lo, hi):
+    return max(lo, min(hi, x))
+
+
+def infer_theme_tag(ticker, meta):
+    t = str(ticker).upper()
+    category = str(meta.get("category", ""))
+
+    if "BTC" in t or "ETH" in t or "加密" in category:
+        return "crypto"
+    if t.endswith(".TW") or "台股" in category:
+        return "tw_equity"
+    if "SOXX" in t or "NVDA" in t or "TSM" in t or "科技" in category or "半導體" in category:
+        return "tech"
+    if "SPY" in t or "QQQ" in t or "VOO" in t or "IVV" in t:
+        return "us_index"
+    if "基金" in category:
+        return "fund"
+    return "other"
+
+
+def compute_liquidity_score(original_ticker, yf_ticker, stock_meta_row):
+    t = str(original_ticker).upper()
+    category = str(stock_meta_row.get("category", ""))
+
+    # 分數越高 = 壓力市況下越脆弱 / 越不易脫手
+    if "BTC" in t or "ETH" in t or "加密" in category:
+        return 0.90
+    if str(yf_ticker).endswith(".TW"):
+        return 0.55
+    if "SOXX" in t or "QQQ" in t or "NVDA" in t or "TSM" in t:
+        return 0.45
+    if "SPY" in t or "VOO" in t or "IVV" in t:
+        return 0.20
+    if "基金" in category:
+        return 0.35
+    return 0.40
+
+
+def compute_contagion_scores(active_tickers, corr_matrix, stock_meta, ticker_to_yf=None):
+    scores = {}
+
+    if not active_tickers:
+        return scores
+
+    ticker_to_yf = ticker_to_yf or {}
+
+    for t in active_tickers:
+        row_key = ticker_to_yf.get(t, t)
+        row = corr_matrix.get(row_key, {}) if isinstance(corr_matrix, dict) else {}
+        liq_t = float(stock_meta.get(t, {}).get("liquidity_score", 0.4))
+        theme_t = stock_meta.get(t, {}).get("theme_tag", "other")
+
+        total = 0.0
+        for other in active_tickers:
+            if other == t:
+                continue
+
+            other_key = ticker_to_yf.get(other, other)
+            corr_val = 0.0
+            if isinstance(row, dict):
+                corr_val = abs(float(row.get(other_key, 0.0) or 0.0))
+
+            liq_o = float(stock_meta.get(other, {}).get("liquidity_score", 0.4))
+            theme_o = stock_meta.get(other, {}).get("theme_tag", "other")
+            same_theme_boost = 1.15 if theme_t == theme_o else 1.0
+
+            total += corr_val * ((liq_t + liq_o) / 2.0) * same_theme_boost
+
+        denom = max(1, len(active_tickers) - 1)
+        scores[t] = round(total / denom, 4)
+
+    return scores
+
+
+def build_chaos_packet(macro_payload, active_tickers, asset_values, stock_meta, liquidity_buffer_ratio=0.0, ticker_to_yf=None):
+    if not active_tickers:
+        return {
+            "liquidity_run_probability": 0.0,
+            "stressed_var95": 0.0,
+            "stressed_es95": 0.0,
+            "contagion_loss_pct": 0.0,
+            "fire_sale_loss_pct": 0.0,
+            "scenario": {
+                "corr_spike": 0.0,
+                "vix_shock": 0.0,
+                "hy_spread_shock": 0.0
+            },
+            "fragile_nodes": []
+        }
+
+    total_value = sum(max(0.0, float(v)) for v in asset_values.values())
+    if total_value <= 0:
+        total_value = 1.0
+
+    hy_spread = float(macro_payload.get("hy_spread", 0.0) or 0.0)
+    vix = float(macro_payload.get("vix", 0.0) or 0.0)
+    pcr = float(macro_payload.get("put_call_ratio", 1.0) or 1.0)
+    sys_corr_val = float(macro_payload.get("sys_corr", 0.0) or 0.0)
+
+    # 前端輸入 0~100
+    liquidity_buffer = float(liquidity_buffer_ratio or 0.0) / 100.0
+
+    run_raw = (
+        -2.2
+        + 0.55 * max(0.0, hy_spread - 3.0)
+        + 0.08 * max(0.0, vix - 18.0)
+        + 1.20 * max(0.0, pcr - 0.95)
+        + 2.50 * sys_corr_val
+        - 3.50 * liquidity_buffer
+    )
+    liquidity_run_probability = round(sigmoid(run_raw) * 100, 2)
+
+    weighted_liq = 0.0
+    for t in active_tickers:
+        w = float(asset_values.get(t, 0.0)) / total_value
+        liq = float(stock_meta.get(t, {}).get("liquidity_score", 0.4))
+        weighted_liq += w * liq
+
+    fire_sale_loss_pct = round(
+        max(0.0, weighted_liq * (0.8 + sys_corr_val) * (liquidity_run_probability / 100.0) * 12.0),
+        2
+    )
+
+    corr_matrix = macro_payload.get("corr_matrix", {}) or {}
+    contagion_scores = compute_contagion_scores(active_tickers, corr_matrix, stock_meta, ticker_to_yf=ticker_to_yf)
+
+    weighted_contagion = 0.0
+    for t in active_tickers:
+        w = float(asset_values.get(t, 0.0)) / total_value
+        weighted_contagion += w * float(contagion_scores.get(t, 0.0))
+
+    contagion_loss_pct = round(weighted_contagion * (0.5 + sys_corr_val) * 18.0, 2)
+
+    stressed_var95 = round(
+        5.0 + 0.18 * max(0.0, vix - 15.0) + 0.9 * max(0.0, hy_spread - 2.5) + 5.0 * sys_corr_val,
+        2
+    )
+    stressed_es95 = round(stressed_var95 + fire_sale_loss_pct + contagion_loss_pct, 2)
+
+    fragile_nodes = [
+        k for k, _ in sorted(contagion_scores.items(), key=lambda x: x[1], reverse=True)[:3]
+    ]
+
+    return {
+        "liquidity_run_probability": liquidity_run_probability,
+        "stressed_var95": stressed_var95,
+        "stressed_es95": stressed_es95,
+        "contagion_loss_pct": contagion_loss_pct,
+        "fire_sale_loss_pct": fire_sale_loss_pct,
+        "scenario": {
+            "corr_spike": round(sys_corr_val, 2),
+            "vix_shock": round(vix, 2),
+            "hy_spread_shock": round(hy_spread, 2)
+        },
+        "fragile_nodes": fragile_nodes
+    }
+
 try:
     print("   ⏳ 正在抓取公債殖利率...", flush=True)
     try:
@@ -496,8 +662,23 @@ try:
     print("🚀 正在同步總經數據至 Supabase...", flush=True)
     target_id = 1
     existing = supabase.table("portfolio_db").select("id").limit(1).execute()
-    if existing.data: supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
-    else: supabase.table("portfolio_db").insert({"id": target_id, "macro_meta": macro_payload}).execute()
+    empty_chaos_packet = {
+        "liquidity_run_probability": 0.0,
+        "stressed_var95": 0.0,
+        "stressed_es95": 0.0,
+        "contagion_loss_pct": 0.0,
+        "fire_sale_loss_pct": 0.0,
+        "scenario": {
+            "corr_spike": 0.0,
+            "vix_shock": 0.0,
+            "hy_spread_shock": 0.0
+        },
+        "fragile_nodes": []
+    }
+    if existing.data:
+        supabase.table("portfolio_db").update({"macro_meta": macro_payload, "chaos_meta": empty_chaos_packet}).eq("id", target_id).execute()
+    else:
+        supabase.table("portfolio_db").insert({"id": target_id, "macro_meta": macro_payload, "chaos_meta": empty_chaos_packet}).execute()
 
 except Exception as e:
     print(f"🔥 總經數據處理致命錯誤:\n{traceback.format_exc()}", flush=True)
@@ -708,11 +889,13 @@ try:
                         "std": std_val,
                         "rsi": round(ta.rsi(stock_close).iloc[-1] if ta.rsi(stock_close) is not None else 50.0, 2), 
                         "macd_h": round(ta.macd(stock_close).iloc[-1, 1] if ta.macd(stock_close) is not None else 0.0, 4),
-                        "target_weight": tw_val
+                        "target_weight": tw_val,
+                        "theme_tag": infer_theme_tag(original_ticker, stock_meta.get(original_ticker, {})),
+                        "liquidity_score": compute_liquidity_score(original_ticker, yf_ticker, stock_meta.get(original_ticker, {}))
                     })
                     print(f"✅ [{original_ticker}] 更新 -> Beta: {beta_val:.2f}, Std: {std_val:.1f}%, 目標權重: {tw_val*100:.2f}%")
 
-            supabase.table("portfolio_db").update({"stock_meta": stock_meta}).eq("id", target_id).execute()
+            # stock_meta 會在 contagion_score 與 chaos_meta 計算完成後一起同步
 
             print("\n⚖️ 啟動自動再平衡引擎：計算目標權重落差與交易訊號...", flush=True)
             portfolio_value, asset_values, rebalance_signals = 0.0, {}, []
@@ -723,6 +906,31 @@ try:
                     lp = float(prices_df[yf_tickers[all_tickers.index(t)]].dropna().iloc[-1])
                 val = max(0, shares * lp)
                 asset_values[t], portfolio_value = val, portfolio_value + val
+
+            liquidity_buffer_ratio = (
+                db_record.get("settings", {}).get("liquidityBufferRatio", 0.0)
+                if isinstance(db_record.get("settings", {}), dict) else 0.0
+            )
+
+            contagion_scores = compute_contagion_scores(active_tickers, corr_matrix, stock_meta, ticker_to_yf=ticker_to_yf)
+            for t, score in contagion_scores.items():
+                if t not in stock_meta:
+                    stock_meta[t] = {}
+                stock_meta[t]["contagion_score"] = score
+
+            chaos_packet = build_chaos_packet(
+                macro_payload=macro_payload,
+                active_tickers=active_tickers,
+                asset_values=asset_values,
+                stock_meta=stock_meta,
+                liquidity_buffer_ratio=liquidity_buffer_ratio,
+                ticker_to_yf=ticker_to_yf
+            )
+
+            supabase.table("portfolio_db").update({
+                "stock_meta": stock_meta,
+                "chaos_meta": chaos_packet
+            }).eq("id", target_id).execute()
 
             print(f"💰 當前投資組合總淨值估算: {portfolio_value:,.2f}")
             if portfolio_value > 0:

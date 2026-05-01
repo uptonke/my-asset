@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>股票紀錄 v11.6 (Supabase Enterprise Edition)</title>
+    <title>股票紀錄 v11.7 (Chaos UI Ready)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -76,7 +76,7 @@
                 <div class="min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
                         <h1 class="font-bold text-lg md:text-xl tracking-wide text-white truncate">Stock Portfolio</h1>
-                        <span class="text-xs bg-yellow-600 px-2 py-0.5 rounded text-black font-bold">v11.6</span>
+                        <span class="text-xs bg-yellow-600 px-2 py-0.5 rounded text-black font-bold">v11.7</span>
                         <i v-if="isDbSyncing" class="fas fa-cloud-upload-alt animate-bounce text-blue-400 text-sm" title="雲端同步中"></i>
                     </div>
                     <p class="text-xs text-gray-400 mt-1">投資儀表板 / Portfolio Dashboard</p>
@@ -152,6 +152,20 @@
                 <div class="flex items-center gap-2 bg-black/20 py-2.5 px-3 rounded-xl border border-white/10">
                     <span class="text-gray-400 text-xs shrink-0">USD/TWD</span>
                     <input v-model.number="exchangeRate" type="number" step="0.01" class="w-20 bg-transparent text-center font-mono font-bold text-green-400 focus:outline-none border-b border-gray-600">
+                </div>
+
+                <div class="flex items-center gap-2 bg-black/20 py-2.5 px-3 rounded-xl border border-cyan-500/20 min-w-[150px]">
+                    <i class="fas fa-shield-halved text-cyan-400 shrink-0"></i>
+                    <span class="text-gray-400 text-xs shrink-0">流動性緩衝%</span>
+                    <input
+                        v-model.number="liquidityBufferRatio"
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        class="w-14 bg-transparent text-center font-mono font-bold text-cyan-300 focus:outline-none border-b border-gray-600"
+                        placeholder="0"
+                    >
                 </div>
 
                 <div class="flex items-center gap-2 bg-black/20 py-2.5 px-3 rounded-xl border border-white/10 min-w-0 sm:w-[320px] xl:w-[360px]">
@@ -232,6 +246,120 @@
                 <div class="bg-gray-800 h-2 rounded-full overflow-hidden">
                     <div class="h-full rounded-full transition-all duration-500"
                          :style="{ width: ((val / totalStockValueTwd) * 100) + '%', backgroundColor: getCategoryColorCode(cat) }"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+                <div class="glass panel-card border-cyan-500/20 mt-6 mb-6 overflow-hidden">
+    <div class="p-5 md:p-6 border-b border-white/10 bg-cyan-500/5">
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div>
+                <div class="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border border-cyan-500/20 bg-cyan-500/10 text-cyan-300">
+                    <i class="fas fa-biohazard"></i>
+                    Chaos Risk Overview
+                </div>
+                <h3 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-shield-halved text-cyan-400"></i>
+                    流動性擠兌 / 恐慌傳染監控
+                </h3>
+                <p class="text-xs md:text-sm text-gray-400 mt-2 leading-relaxed">
+                    在一般 VaR / CVaR 之外，額外觀察流動性折價、相關性收斂與恐慌傳染造成的壓力擴散。
+                </p>
+            </div>
+
+            <div class="text-xs text-gray-400 flex items-center gap-2">
+                <i class="fas fa-circle text-cyan-400"></i>
+                Buffer: <span class="text-cyan-300 font-bold font-mono">{{ liquidityBufferRatio || 0 }}%</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="p-5 md:p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div class="rounded-2xl border border-red-500/20 bg-red-500/10 p-4">
+        <div class="text-[11px] uppercase tracking-wider text-red-300 font-bold mb-2">Liquidity Run</div>
+        <div class="text-2xl font-bold font-mono text-red-400">
+            {{ chaosMeta?.liquidity_run_probability ?? '-' }}%
+        </div>
+        <div class="text-xs text-gray-500 mt-2">流動性擠兌機率</div>
+    </div>
+
+    <div class="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4">
+        <div class="text-[11px] uppercase tracking-wider text-yellow-300 font-bold mb-2">Stressed VaR 95</div>
+        <div class="text-2xl font-bold font-mono text-yellow-300">
+            {{ chaosMeta?.stressed_var95 ?? '-' }}%
+        </div>
+        <div class="text-xs text-gray-500 mt-2">壓力後 VaR</div>
+    </div>
+
+    <div class="rounded-2xl border border-orange-500/20 bg-orange-500/10 p-4">
+        <div class="text-[11px] uppercase tracking-wider text-orange-300 font-bold mb-2">Stressed ES 95</div>
+        <div class="text-2xl font-bold font-mono text-orange-300">
+            {{ chaosMeta?.stressed_es95 ?? '-' }}%
+        </div>
+        <div class="text-xs text-gray-500 mt-2">尾部風險放大量</div>
+    </div>
+
+    <div class="rounded-2xl border border-purple-500/20 bg-purple-500/10 p-4">
+        <div class="text-[11px] uppercase tracking-wider text-purple-300 font-bold mb-2">Contagion Loss</div>
+        <div class="text-2xl font-bold font-mono text-purple-300">
+            {{ chaosMeta?.contagion_loss_pct ?? '-' }}%
+        </div>
+        <div class="text-xs text-gray-500 mt-2">恐慌傳染額外損失</div>
+    </div>
+</div>
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-4">
+            <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div class="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                    <i class="fas fa-burst text-cyan-400"></i>
+                    壓力情境
+                </div>
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                    <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                        <div class="text-gray-500 mb-1">相關性收斂</div>
+                        <div class="text-white font-mono font-bold">
+                            {{ chaosMeta?.scenario?.corr_spike ?? '-' }}
+                        </div>
+                    </div>
+                    <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                        <div class="text-gray-500 mb-1">VIX Shock</div>
+                        <div class="text-white font-mono font-bold">
+                            {{ chaosMeta?.scenario?.vix_shock ?? '-' }}
+                        </div>
+                    </div>
+                    <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                        <div class="text-gray-500 mb-1">HY Spread</div>
+                        <div class="text-white font-mono font-bold">
+                            {{ chaosMeta?.scenario?.hy_spread_shock ?? '-' }}
+                        </div>
+                    </div>
+                    <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                        <div class="text-gray-500 mb-1">Fire-sale Loss</div>
+                        <div class="text-white font-mono font-bold">
+                            {{ chaosMeta?.fire_sale_loss_pct ?? '-' }}%
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div class="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                    <i class="fas fa-triangle-exclamation text-red-400"></i>
+                    最脆弱節點
+                </div>
+                <div v-if="chaosMeta?.fragile_nodes && chaosMeta.fragile_nodes.length" class="flex flex-wrap gap-2">
+                    <span
+                        v-for="node in chaosMeta.fragile_nodes"
+                        :key="node"
+                        class="px-3 py-1.5 rounded-full text-xs font-bold bg-red-500/10 text-red-300 border border-red-500/20"
+                    >
+                        {{ node }}
+                    </span>
+                </div>
+                <div v-else class="text-xs text-gray-500">
+                    尚無傳染節點資料
                 </div>
             </div>
         </div>
@@ -493,6 +621,8 @@
     <col style="width: 72px;">
     <col style="width: 92px;">
     <col style="width: 86px;">
+    <col style="width: 86px;">
+    <col style="width: 86px;">
 </colgroup>
                 <thead class="bg-[#111827]/95 backdrop-blur-md border-b border-white/10 shadow-sm">
                     <tr>
@@ -514,6 +644,8 @@
                         <th class="px-1.5 py-2 text-right text-purple-400" title="MC理論極限權重">MC%</th>
                         <th class="px-1.5 py-2 text-right text-yellow-400 font-bold" title="50%雲端 + 50%MC">綜合目標%</th>
                         <th class="px-1.5 py-2 text-right" title="與綜合目標的偏離度">落差 (Drift)</th>
+                        <th class="px-1.5 py-2 text-right text-cyan-300" title="流動性脆弱度">流動性</th>
+                        <th class="px-1.5 py-2 text-right text-red-300" title="恐慌傳染度">傳染度</th>
                     </tr>
                 </thead>
             </table>
@@ -542,12 +674,14 @@
     <col style="width: 72px;">
     <col style="width: 92px;">
     <col style="width: 86px;">
+    <col style="width: 86px;">
+    <col style="width: 86px;">
 </colgroup>
 
             <tbody class="text-[13px]">
                 <template v-for="(group, catName) in groupedHoldings" :key="catName">
                     <tr class="group-header">
-                        <td colspan="18" class="py-3 border-y border-white/10 bg-white/[0.04]">
+                        <td colspan="20" class="py-3 border-y border-white/10 bg-white/[0.04]">
                             <div class="flex justify-between items-center px-5">
                                <div>
                                    <i class="fas fa-folder-open mr-2 text-blue-400"></i>
@@ -641,6 +775,16 @@
                         <td class="p-2 text-right font-mono font-bold text-lg">
                             <span :class="stock.weightGap > 3 ? 'text-green-400' : (stock.weightGap < -3 ? 'text-red-400' : 'text-gray-500')">
                                 {{ stock.weightGap > 0 ? '+' : '' }}{{ stock.weightGap.toFixed(1) }}%
+                            </span>
+                        </td>
+                        <td class="p-2 text-right font-mono text-cyan-300 font-bold">
+                            <span class="px-2 py-1 rounded border border-cyan-500/20 bg-cyan-500/10">
+                                {{ stock.liquidityScore ?? '-' }}
+                            </span>
+                        </td>
+                        <td class="p-2 text-right font-mono text-red-300 font-bold">
+                            <span class="px-2 py-1 rounded border border-red-500/20 bg-red-500/10">
+                                {{ stock.contagionScore ?? '-' }}
                             </span>
                         </td>
                     </tr>
@@ -784,7 +928,7 @@
     </div>
 </div>
                                         
-                                        <div class="grid grid-cols-3 gap-2">
+                                        <div class="grid grid-cols-2 gap-2">
                                             <div class="bg-black/30 p-2 rounded-lg flex flex-col items-center">
                                                 <span class="text-gray-500 mb-1">Beta (β)</span>
                                                 <input v-model.number="stock.beta" @change="updateMeta(stock)" class="w-full bg-transparent text-center border-b border-gray-600 focus:border-yellow-400 outline-none text-yellow-400 font-mono font-bold" placeholder="1.0">
@@ -799,6 +943,18 @@
                                                     <option value="High" class="bg-gray-800">High</option>
                                                     <option value="Low" class="bg-gray-800">Low</option>
                                                 </select>
+                                            </div>
+                                            <div class="bg-black/30 p-2 rounded-lg flex flex-col items-center">
+                                                <span class="text-gray-500 mb-1">流動性</span>
+                                                <span class="text-cyan-300 font-mono font-bold text-sm">
+                                                    {{ stock.liquidityScore ?? '-' }}
+                                                </span>
+                                            </div>
+                                            <div class="bg-black/30 p-2 rounded-lg flex flex-col items-center col-span-2">
+                                                <span class="text-gray-500 mb-1">恐慌傳染度</span>
+                                                <span class="text-red-300 font-mono font-bold text-sm">
+                                                    {{ stock.contagionScore ?? '-' }}
+                                                </span>
                                             </div>
                                         </div>
                                         
