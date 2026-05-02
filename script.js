@@ -45,7 +45,7 @@ createApp({
             const payload = {
     return_metrics: {
         time_weighted_return_twr: stats.value.annRet + '%',
-        money_weighted_return_mwr: stats.value.mwr + '%',
+        money_weighted_return_mwr: stats.value.mwr === '-' ? 'N/A' : stats.value.mwr + '%',
         log_return: stats.value.annLogRet + '%',
         alpha_jensen: stats.value.alpha + '%'
     },
@@ -704,23 +704,33 @@ ${JSON.stringify(payload, null, 2)}
         });
 
         const enrichedHistory = computed(() => {
-            const sorted = [...filteredHistory.value].sort((a,b) => new Date(a.date) - new Date(b.date));
-            return sorted.map((item, index) => {
-                let dailyReturn = null;
-                if (index > 0) {
-                    const prev = sorted[index - 1]; let injection = 0; let hasTx = false;
-                    transactions.value.forEach(tx => {
-                        const txDate = new Date(tx.date);
-                        if (txDate > new Date(prev.date) && txDate <= new Date(item.date)) { injection += -tx.totalCashFlow; hasTx = true; }
-                    });
-                    const netFlow = (new Date(item.date) <= new Date('2026-04-11')) ? (item.cost - prev.cost) : (hasTx ? injection : (item.cost - prev.cost));
-                    const denom = prev.assets + (netFlow / 2);
-                    if (denom > 0) dailyReturn = (item.assets - prev.assets - netFlow) / denom; else dailyReturn = 0;
-                }
-                return { ...item, dailyReturn };
-            }).reverse();
-        });
+    const sorted = [...filteredHistory.value].sort((a, b) => new Date(a.date) - new Date(b.date));
 
+    return sorted.map((item, index) => {
+        let dailyReturn = null;
+        let withdrawal = 0;
+
+        if (index > 0) {
+            const prev = sorted[index - 1];
+
+            // 假設：Cost_{t-1} - Cost_t = 當期「外部現金流」
+            // 正值 = 提領 / Withdraw
+            // 負值 = 入金 / Deposit
+            // 因此本欄位不是單純 NAV return，而是 cash-flow-adjusted period return
+            withdrawal = (prev.cost || 0) - (item.cost || 0);
+
+            dailyReturn = prev.assets > 0
+                ? ((item.assets + withdrawal) / prev.assets) - 1
+                : 0;
+        }
+
+        return {
+            ...item,
+            dailyReturn,
+            withdrawal
+        };
+    }).reverse();
+});
         const stressTestResults = computed(() => {
             const currentBeta = parseFloat(portfolioStats.value.beta) || 1.0;
             const historicalScenarios = [
@@ -742,6 +752,63 @@ ${JSON.stringify(payload, null, 2)}
             });
         });
 
+        function xnpv(rate, cashflows) {
+    if (rate <= -0.999999) return Infinity;
+    const d0 = new Date(cashflows[0].date);
+    return cashflows.reduce((sum, cf) => {
+        const dt = (new Date(cf.date) - d0) / (1000 * 60 * 60 * 24);
+        return sum + cf.amount / Math.pow(1 + rate, dt / 365.25);
+    }, 0);
+}
+
+function dxnpv(rate, cashflows) {
+    if (rate <= -0.999999) return Infinity;
+    const d0 = new Date(cashflows[0].date);
+    return cashflows.reduce((sum, cf) => {
+        const dt = (new Date(cf.date) - d0) / (1000 * 60 * 60 * 24);
+        const yr = dt / 365.25;
+        return sum - (yr * cf.amount) / Math.pow(1 + rate, yr + 1);
+    }, 0);
+}
+
+function xirr(cashflows, guess = 0.1) {
+    let rate = guess;
+
+    for (let i = 0; i < 100; i++) {
+        const f = xnpv(rate, cashflows);
+        const df = dxnpv(rate, cashflows);
+
+        if (!Number.isFinite(f) || !Number.isFinite(df) || Math.abs(df) < 1e-12) break;
+
+        const next = rate - f / df;
+        if (Math.abs(next - rate) < 1e-10) return next;
+        rate = next;
+    }
+
+    let low = -0.9999;
+    let high = 10.0;
+    let fLow = xnpv(low, cashflows);
+    let fHigh = xnpv(high, cashflows);
+
+    if (!Number.isFinite(fLow) || !Number.isFinite(fHigh) || fLow * fHigh > 0) return null;
+
+    for (let i = 0; i < 200; i++) {
+        const mid = (low + high) / 2;
+        const fMid = xnpv(mid, cashflows);
+
+        if (Math.abs(fMid) < 1e-10) return mid;
+        if (fLow * fMid < 0) {
+            high = mid;
+            fHigh = fMid;
+        } else {
+            low = mid;
+            fLow = fMid;
+        }
+    }
+
+    return (low + high) / 2;
+}
+
         watch([enrichedHistory, riskParams, dataFrequency], () => {
              const h = [...enrichedHistory.value].reverse(); 
              
@@ -749,98 +816,136 @@ ${JSON.stringify(payload, null, 2)}
 
              const returns = h.slice(1).map(item => item.dailyReturn);
 
-             let cumIndex = 1.0; let peakIndex = 1.0; let maxDrawdown = 0;
-             let peakDate = new Date(h[0].date); let maxTuwDays = 0; let sqDrawdownSum = 0;
+let cumIndex = 1.0; let peakIndex = 1.0; let maxDrawdown = 0;
+let peakDate = new Date(h[0].date); let maxTuwDays = 0; let sqDrawdownSum = 0;
 
-             returns.forEach((r, idx) => {
-                 cumIndex = cumIndex * (1 + r);
-                 const currentDate = new Date(h[idx + 1].date); 
-                 if (cumIndex > peakIndex) { peakIndex = cumIndex; peakDate = currentDate; } 
-                 else {
-                     const tuw = (currentDate - peakDate) / (1000 * 60 * 60 * 24);
-                     if (tuw > maxTuwDays) maxTuwDays = tuw;
-                 }
-                 const dd = peakIndex > 0 ? (peakIndex - cumIndex) / peakIndex : 0;
-                 if (dd > maxDrawdown) maxDrawdown = dd; 
-                 sqDrawdownSum += Math.pow(dd * 100, 2);
-             });
+returns.forEach((r, idx) => {
+    cumIndex = cumIndex * (1 + r);
+    const currentDate = new Date(h[idx + 1].date); 
+    if (cumIndex > peakIndex) { peakIndex = cumIndex; peakDate = currentDate; } 
+    else {
+        const tuw = (currentDate - peakDate) / (1000 * 60 * 60 * 24);
+        if (tuw > maxTuwDays) maxTuwDays = tuw;
+    }
+    const dd = peakIndex > 0 ? (peakIndex - cumIndex) / peakIndex : 0;
+    if (dd > maxDrawdown) maxDrawdown = dd; 
+    sqDrawdownSum += Math.pow(dd * 100, 2);
+});
 
-             const cumTwr = returns.reduce((acc, r) => acc * (1 + r), 1) - 1;
-             const factor = dataFrequency.value === 'Weekly' ? Math.sqrt(52) : Math.sqrt(252);
-             const years = returns.length / (dataFrequency.value === 'Weekly' ? 52 : 252);
-             const annRet = years > 0 ? (Math.pow(1 + cumTwr, 1 / years) - 1) : 0;
-             const annLogRet = Math.log(1 + annRet) || 0;
+const totalDays = (new Date(h[h.length - 1].date) - new Date(h[0].date)) / (1000 * 60 * 60 * 24);
+const years = totalDays > 0 ? totalDays / 365.25 : 0;
+const periodsPerYear = years > 0 ? (returns.length / years) : 52.0;
 
-             let mwr = 0; const beginVal = h[0].assets; const endVal = h[h.length - 1].assets;
-             let netCashFlow = 0; let timeWeightedCashFlow = 0;
-             const totalDays = (new Date(h[h.length - 1].date) - new Date(h[0].date)) / (1000 * 60 * 60 * 24);
-             
-             if (totalDays > 0) {
-                 for (let i = 1; i < h.length; i++) {
-                     const prev = h[i-1]; const curr = h[i];
-                     const daysFromStart = (new Date(curr.date) - new Date(h[0].date)) / (1000 * 60 * 60 * 24);
-                     const weight = (totalDays - daysFromStart) / totalDays;
-                     let flow = curr.cost - prev.cost; 
-                     netCashFlow += flow; timeWeightedCashFlow += flow * weight;
-                 }
-                 const dietzDenom = beginVal + timeWeightedCashFlow;
-                 if (dietzDenom > 0) {
-                     const totalMWR = (endVal - beginVal - netCashFlow) / dietzDenom;
-                     mwr = years > 0 ? (Math.pow(1 + totalMWR, 1 / years) - 1) : 0;
-                 }
-             }
+const cumTwr = returns.reduce((acc, r) => acc * (1 + r), 1) - 1;
+const annRet = years > 0 ? (Math.pow(1 + cumTwr, 1 / years) - 1) : 0;
+const annLogRet = years > 0 ? (Math.log(1 + cumTwr) / years) : 0;
+const factor = Math.sqrt(periodsPerYear);
 
-             const avgR = returns.reduce((a,b)=>a+b,0)/returns.length;
-             const stdSample = Math.sqrt(returns.reduce((a,b) => a + Math.pow(b-avgR, 2), 0) / (returns.length - 1));
-             const annVol = stdSample * factor || 0;
+// === 真 MWR / XIRR ===
+let mwr = null;
+const cashflows = [];
 
-             const rf = riskParams.value.rf / 100; const rm = riskParams.value.rm / 100; const beta = riskParams.value.beta || 1;
-             const sharpe = annVol > 0 ? (annRet - rf) / annVol : 0;
-             const treynor = beta !== 0 ? (annRet - rf) / beta : 0;
-             
-             const downsideReturns = returns.filter(r => r < 0);
-             const downsideDev = Math.sqrt(downsideReturns.length > 0 ? downsideReturns.reduce((a,b) => a + Math.pow(b, 2), 0) / returns.length : 0) * factor; 
-             const sortino = downsideDev > 0 ? (annRet - rf) / downsideDev : 0;
-             const calmar = Math.abs(maxDrawdown) > 0 ? annRet / Math.abs(maxDrawdown) : 0;
+if (h.length >= 2) {
+    // 初始投入
+    cashflows.push({
+        date: h[0].date,
+        amount: -(h[0].cost || 0)
+    });
 
-             const ulcerIndex = Math.sqrt(sqDrawdownSum / returns.length) || 0;
-             const sumGainsAbs = returns.filter(r => r > 0).reduce((a,b)=>a+b, 0);
-             const sumLossesAbs = Math.abs(returns.filter(r => r < 0).reduce((a,b)=>a+b, 0));
-             const profitFactor = sumLossesAbs === 0 ? (sumGainsAbs > 0 ? 999 : 0) : (sumGainsAbs / sumLossesAbs);
+    // 中間提領 / 入金
+    for (let i = 1; i < h.length; i++) {
+        const cf = (h[i - 1].cost || 0) - (h[i].cost || 0);
+        if (Math.abs(cf) > 0) {
+            cashflows.push({
+                date: h[i].date,
+                amount: cf
+            });
+        }
+    }
 
-             const rf_period = rf / (dataFrequency.value === 'Weekly' ? 52 : 252);
-             const omegaGains = returns.reduce((a, r) => a + Math.max(r - rf_period, 0), 0);
-             const omegaLosses = returns.reduce((a, r) => a + Math.max(rf_period - r, 0), 0);
-             const omegaRatio = omegaLosses === 0 ? (omegaGains > 0 ? 999 : 0) : (omegaGains / omegaLosses);
+    // 最後 NAV 加到最後一期
+    const endDate = h[h.length - 1].date;
+    const endVal = h[h.length - 1].assets || 0;
 
-             const expectedRet = rf + beta * (rm - rf);
-             const alpha = annRet - expectedRet;
+    if (cashflows.length > 0 && cashflows[cashflows.length - 1].date === endDate) {
+        cashflows[cashflows.length - 1].amount += endVal;
+    } else {
+        cashflows.push({
+            date: endDate,
+            amount: endVal
+        });
+    }
 
-             const sortedReturns = [...returns].sort((a,b) => a-b);
-             const idx95 = Math.floor(sortedReturns.length * 0.05);
-             const var95 = sortedReturns[idx95] || 0;
-             
-             let cvar95 = 0;
-             if (idx95 > 0) {
-                 const worstReturns = sortedReturns.slice(0, idx95);
-                 cvar95 = worstReturns.reduce((a,b) => a+b, 0) / worstReturns.length;
-             } else cvar95 = var95;
+    mwr = xirr(cashflows, 0.10);
+}
 
-             const n = returns.length;
-             const stdPop = Math.sqrt(returns.reduce((a,b)=>a+Math.pow(b-avgR, 2),0)/n) || 1; 
-             let sumCubed = 0; let sumQuart = 0;
-             returns.forEach(r => { sumCubed += Math.pow(r - avgR, 3); sumQuart += Math.pow(r - avgR, 4); });
-             
-             let skewVal = ((sumCubed / n) / Math.pow(stdPop, 3));
-             let kurtVal = (((sumQuart / n) / Math.pow(stdPop, 4)) - 3);
-             
-             if(isNaN(skewVal)) skewVal = 0;
-             if(isNaN(kurtVal)) kurtVal = 0;
+const avgR = returns.reduce((a, b) => a + b, 0) / returns.length;
+const stdSample = Math.sqrt(
+    returns.reduce((a, b) => a + Math.pow(b - avgR, 2), 0) / (returns.length - 1)
+);
+const annVol = stdSample * factor || 0;
+const rf = riskParams.value.rf / 100;
+const rm = riskParams.value.rm / 100;
+const beta = riskParams.value.beta || 1;
+
+const sharpe = annVol > 0 ? (annRet - rf) / annVol : 0;
+const treynor = beta !== 0 ? (annRet - rf) / beta : 0;
+
+const downsideReturns = returns.filter(r => r < 0);
+const downsideDev = Math.sqrt(
+    downsideReturns.length > 0
+        ? downsideReturns.reduce((a, b) => a + Math.pow(b, 2), 0) / returns.length
+        : 0
+) * factor;
+const sortino = downsideDev > 0 ? (annRet - rf) / downsideDev : 0;
+
+const calmar = Math.abs(maxDrawdown) > 0 ? annRet / Math.abs(maxDrawdown) : 0;
+
+const ulcerIndex = Math.sqrt(sqDrawdownSum / returns.length) || 0;
+
+const sumGainsAbs = returns.filter(r => r > 0).reduce((a, b) => a + b, 0);
+const sumLossesAbs = Math.abs(returns.filter(r => r < 0).reduce((a, b) => a + b, 0));
+const profitFactor = sumLossesAbs === 0 ? (sumGainsAbs > 0 ? 999 : 0) : (sumGainsAbs / sumLossesAbs);
+
+const rf_period = rf / periodsPerYear;
+const omegaGains = returns.reduce((a, r) => a + Math.max(r - rf_period, 0), 0);
+const omegaLosses = returns.reduce((a, r) => a + Math.max(rf_period - r, 0), 0);
+const omegaRatio = omegaLosses === 0 ? (omegaGains > 0 ? 999 : 0) : (omegaGains / omegaLosses);
+
+const expectedRet = rf + beta * (rm - rf);
+const alpha = annRet - expectedRet;
+
+const sortedReturns = [...returns].sort((a, b) => a - b);
+const idx95 = Math.floor(sortedReturns.length * 0.05);
+const var95 = sortedReturns[idx95] || 0;
+
+let cvar95 = 0;
+if (idx95 > 0) {
+    const worstReturns = sortedReturns.slice(0, idx95);
+    cvar95 = worstReturns.reduce((a, b) => a + b, 0) / worstReturns.length;
+} else {
+    cvar95 = var95;
+}
+
+const n = returns.length;
+const stdPop = Math.sqrt(returns.reduce((a, b) => a + Math.pow(b - avgR, 2), 0) / n) || 1;
+let sumCubed = 0;
+let sumQuart = 0;
+returns.forEach(r => {
+    sumCubed += Math.pow(r - avgR, 3);
+    sumQuart += Math.pow(r - avgR, 4);
+});
+
+let skewVal = (sumCubed / n) / Math.pow(stdPop, 3);
+let kurtVal = (sumQuart / n) / Math.pow(stdPop, 4) - 3;
+
+if (isNaN(skewVal)) skewVal = 0;
+if (isNaN(kurtVal)) kurtVal = 0;
 
              stats.value = { 
                  annRet: (annRet*100).toFixed(2), 
                  annLogRet: (annLogRet*100).toFixed(2), 
-                 mwr: (mwr*100).toFixed(2),             
+                 mwr: mwr === null ? '-' : (mwr * 100).toFixed(2),            
                  annVol: (annVol*100).toFixed(2), 
                  sharpe: sharpe.toFixed(2), 
                  sortino: sortino.toFixed(2), 
@@ -1453,6 +1558,137 @@ function getJumpParams(item) {
     return { lambda: 1.2, mean: -0.10, std: 0.05, skewPenalty: 0.9, kurtBoost: 2.2 };
 }
 
+function getJumpParamsForAsset(asset) {
+    const t = String(asset?.ticker || '').trim().toUpperCase();
+    const category = String(asset?.category || '');
+
+    const isCrypto = t.endsWith('-USD') || category.includes('加密') || t.includes('BTC') || t.includes('ETH');
+    const isLeveraged = ['SSO', '00631L', '00675L'].includes(t);
+    const isDefensive = ['USMV'].includes(t);
+    const isHardBuffer = ['SHY', 'BOXX'].includes(t);
+
+    if (isHardBuffer) {
+        return { lambda: 0.4, mean: -0.03, std: 0.02 };
+    }
+    if (isDefensive) {
+        return { lambda: 0.7, mean: -0.05, std: 0.03 };
+    }
+    if (isCrypto || isLeveraged) {
+        return { lambda: 2.0, mean: -0.18, std: 0.08 };
+    }
+    return { lambda: 1.2, mean: -0.10, std: 0.05 };
+}
+
+function getEffectiveJumpParams(assets, weights) {
+    let effLambda = 0;
+    let effMean = 0;
+    let effStd = 0;
+
+    weights.forEach((w, i) => {
+        const jp = getJumpParamsForAsset(assets[i]);
+        effLambda += w * jp.lambda;
+        effMean += w * jp.mean;
+        effStd += w * jp.std;
+    });
+
+    return {
+        lambda: effLambda,
+        mean: effMean,
+        std: effStd
+    };
+}
+
+function simulateJumpDiffusionMoments({
+    muWeekly,
+    sigmaWeekly,
+    jumpLambdaAnnual,
+    jumpMean,
+    jumpStd,
+    horizonWeeks = 13,
+    nSims = 400,
+    seed = 42
+}) {
+    const rng = (() => {
+        let s = seed;
+        return () => {
+            s = (s * 1664525 + 1013904223) % 4294967296;
+            return s / 4294967296;
+        };
+    })();
+
+    function randn() {
+        let u = 0, v = 0;
+        while (u === 0) u = rng();
+        while (v === 0) v = rng();
+        return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    }
+
+    function poisson(lambda) {
+        const L = Math.exp(-lambda);
+        let k = 0;
+        let p = 1;
+        do {
+            k++;
+            p *= rng();
+        } while (p > L);
+        return k - 1;
+    }
+
+    const lambdaWeekly = Math.max(0, jumpLambdaAnnual / 52);
+    const simReturns = [];
+
+    for (let s = 0; s < nSims; s++) {
+        let wealth = 1.0;
+
+        for (let w = 0; w < horizonWeeks; w++) {
+            const z = randn();
+            const jumpCount = poisson(lambdaWeekly);
+
+            let jumpComponent = 0;
+            if (jumpCount > 0) {
+                jumpComponent =
+                    jumpCount * jumpMean +
+                    Math.sqrt(jumpCount) * jumpStd * randn();
+            }
+
+            let stepRet = muWeekly + sigmaWeekly * z + jumpComponent;
+            stepRet = Math.max(-0.95, Math.min(3.0, stepRet));
+            wealth *= (1 + stepRet);
+        }
+
+        simReturns.push(wealth - 1);
+    }
+
+    const n = simReturns.length;
+    const mean = simReturns.reduce((a, b) => a + b, 0) / n;
+    const variance = simReturns.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / Math.max(1, n - 1);
+    const std = Math.sqrt(variance);
+
+    const m3 = simReturns.reduce((a, b) => a + Math.pow(b - mean, 3), 0) / n;
+    const m4 = simReturns.reduce((a, b) => a + Math.pow(b - mean, 4), 0) / n;
+
+    const skew = std > 0 ? m3 / Math.pow(std, 3) : 0;
+    const kurtEx = std > 0 ? (m4 / Math.pow(std, 4)) - 3 : 0;
+
+    const sorted = [...simReturns].sort((a, b) => a - b);
+    const idx05 = Math.max(0, Math.floor(sorted.length * 0.05));
+    const q05 = sorted[idx05] ?? mean;
+
+    const tail = sorted.slice(0, idx05 + 1);
+    const es05 = tail.length > 0
+        ? tail.reduce((a, b) => a + b, 0) / tail.length
+        : q05;
+
+    return {
+        mean,
+        std,
+        skew,
+        kurtEx,
+        q05,
+        es05
+    };
+}
+
         function runMonteCarlo() {
     const ctx = document.getElementById('mcChart');
     if (chartMC) chartMC.destroy();
@@ -1590,26 +1826,32 @@ function getJumpParams(item) {
 
         let jumpTailLoss = 0;
 
-        if (enableBlackSwan.value) {
-            let jumpVariance = 0;
-            let jumpSkewPenalty = 0;
-            let jumpKurtBoost = 0;
+if (enableBlackSwan.value) {
+    const jp = getEffectiveJumpParams(riskyAssets, weights);
 
-            weights.forEach((w, i) => {
-                const jp = getJumpParams(riskyAssets[i]);
-                const riskyShare = riskyBudget > 0 ? (w / riskyBudget) : 0;
+    // 原本 p_ret / p_vol 是年化，先轉成週頻
+    const muWeekly = p_ret / 52;
+    const sigmaWeekly = p_vol / Math.sqrt(52);
 
-                jumpTailLoss += w * jp.lambda * Math.abs(jp.mean);
-                jumpVariance += Math.pow(w, 2) * jp.lambda * (Math.pow(jp.mean, 2) + Math.pow(jp.std, 2));
-                jumpSkewPenalty += riskyShare * jp.skewPenalty;
-                jumpKurtBoost += riskyShare * jp.kurtBoost;
-            });
+    const jdSim = simulateJumpDiffusionMoments({
+        muWeekly,
+        sigmaWeekly,
+        jumpLambdaAnnual: jp.lambda,
+        jumpMean: jp.mean,
+        jumpStd: jp.std,
+        horizonWeeks: 13,
+        nSims: 300,
+        seed: 42
+    });
 
-            p_ret -= jumpTailLoss;
-            p_vol = Math.sqrt(Math.pow(p_vol, 2) + jumpVariance);
-            p_skew -= jumpSkewPenalty;
-            p_kurt_ex += jumpKurtBoost;
-        }
+    // 13 週分布 → 年化近似
+    p_ret = Math.pow(1 + jdSim.mean, 52 / 13) - 1;
+    p_vol = jdSim.std * Math.sqrt(52 / 13);
+    p_skew = jdSim.skew;
+    p_kurt_ex = jdSim.kurtEx;
+
+    jumpTailLoss = Math.abs(Math.min(jdSim.mean, 0));
+}
 
         let rf_effective = rf;
         if (enableInflation.value) {

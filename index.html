@@ -158,14 +158,15 @@
                     <i class="fas fa-shield-halved text-cyan-400 shrink-0"></i>
                     <span class="text-gray-400 text-xs shrink-0">流動性緩衝%</span>
                     <input
-                        v-model.number="liquidityBufferRatio"
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="1"
-                        class="w-14 bg-transparent text-center font-mono font-bold text-cyan-300 focus:outline-none border-b border-gray-600"
-                        placeholder="0"
-                    >
+    :value="liquidityBufferRatio"
+    @change="applyLiquidityBuffer($event.target.value)"
+    type="number"
+    min="0"
+    max="80"
+    step="1"
+    class="w-14 bg-transparent text-center font-mono font-bold text-cyan-300 focus:outline-none border-b border-gray-600"
+    placeholder="0"
+>
                 </div>
 
                 <div class="flex items-center gap-2 bg-black/20 py-2.5 px-3 rounded-xl border border-white/10 min-w-0 sm:w-[320px] xl:w-[360px]">
@@ -1840,7 +1841,7 @@
                 <div class="glass rounded-xl flex flex-col mt-4 transition-all duration-300 border border-gray-700/50 hover:border-gray-500/50">
                     <div class="p-4 cursor-pointer flex justify-between items-center bg-gray-800/30 hover:bg-gray-800/60 transition-colors" @click="isHistoryExpanded = !isHistoryExpanded">
                         <h3 class="font-bold text-white flex items-center gap-2">
-                            <i class="fas fa-list-alt text-blue-400"></i> 快照歷史紀錄 (TWR 精算明細)
+                            <i class="fas fa-list-alt text-blue-400"></i> 快照歷史紀錄（現金流調整後報酬明細 Cash-Flow-Adjusted Return Detail）
                             <span class="text-xs font-normal text-gray-500 ml-2 hidden sm:inline">{{ enrichedHistory.length }} 筆資料</span>
                         </h3>
                         <div class="flex items-center gap-3">
@@ -1859,7 +1860,7 @@
                                        <th class="p-3 pl-6">日期</th>
                                        <th class="p-3 text-right">總資產 (NAV)</th>
                                        <th class="p-3 text-right">總成本 (Cost)</th>
-                                       <th class="p-3 text-right">週期報酬 (Return)</th>
+                                       <th class="p-3 text-right">現金流調整後區間報酬 (Cash-Flow-Adjusted Period Return)</th>
                                        <th class="p-3 text-center">動作</th>
                                    </tr>
                                 </thead>
@@ -1869,7 +1870,7 @@
                                         <td class="p-3 text-right font-mono text-white">{{ formatNumber(h.assets) }}</td>
                                         <td class="p-3 text-right font-mono text-gray-500">{{ formatNumber(h.cost) }}</td>
                                         <td class="p-3 text-right font-mono font-bold" :class="h.dailyReturn >= 0 ? 'text-red-400' : 'text-green-400'">
-                                            {{ h.dailyReturn ? (h.dailyReturn * 100).toFixed(2) + '%' : '-' }}
+                                            {{ h.dailyReturn === null ? '-' : (h.dailyReturn * 100).toFixed(2) + '%' }}
                                         </td>
                                         <td class="p-3 text-center">
                                             <button @click.stop="removeHistoryByDate(h.date)" class="text-gray-600 hover:text-red-500 transition-colors w-8 h-8 rounded-full hover:bg-red-500/10">
