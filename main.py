@@ -855,6 +855,7 @@ def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticke
         bench_s = weekly_returns[bench]
 
         aligned = pd.concat([port.rename("port"), bench_s.rename("bench")], axis=1).dropna()
+        print(f"DEBUG: 對齊後的有效樣本天數為 {len(aligned)} 天")
         if len(aligned) < 8:
             return base
 
