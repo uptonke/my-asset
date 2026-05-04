@@ -324,7 +324,7 @@
                 <div class="text-gray-500 mb-1">JD Crash Prob</div>
                 <div class="font-mono font-bold"
                      :class="parseFloat(chaosMeta?.jump_diffusion?.jd_crash_prob ?? chaosMeta?.tail_meta?.jd_crash_prob ?? 0) >= 10 ? 'text-red-300' : 'text-white'">
-                    {{ chaosMeta?.jump_diffusion?.jd_crash_prob ?? chaosMeta?.tail_meta?.jd_crash_prob ?? '-' }}%
+                    {{ chaosMeta?.jump_diffusion?.jd_crash_prob ?? chaosMeta?.tail_meta?.jd_crash_prob ?? '-' }}
                 </div>
             </div>
 
@@ -1300,7 +1300,8 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-2">
+                <!-- 組合 X 光機與 Jump Diffusion -->
+                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
                     <div class="glass panel-card border-cyan-500/20 overflow-hidden xl:col-span-2">
                         <div class="p-5 md:p-6 border-b border-white/10 bg-cyan-500/5">
                             <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
@@ -1379,10 +1380,139 @@
                             </div>
                         </div>
                     </div>
+                    
+                    <div class="glass panel-card border-orange-500/20 overflow-hidden xl:col-span-1 flex flex-col">
+                        <div class="p-5 md:p-6 border-b border-white/10 bg-orange-500/5">
+                            <div class="flex flex-col gap-2">
+                                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border border-orange-500/20 bg-orange-500/10 text-orange-300 w-max mb-1">
+                                    <i class="fas fa-meteor"></i>
+                                    Tail Risk Model
+                                </div>
+                                <h4 class="text-white font-bold text-lg md:text-xl flex items-center gap-2">
+                                    <i class="fas fa-burst text-orange-400"></i>
+                                    Jump-Diffusion & EVT
+                                </h4>
+                                <p class="text-[11px] md:text-xs text-gray-400 mt-1 leading-relaxed">
+                                    衡量跳躍崩跌機率與極端肥尾風險分佈，補充傳統常態分配的盲區。
+                                </p>
+                            </div>
+                        </div>
 
+                        <div class="p-5 md:p-6 flex-1 bg-black/20">
+                            <div class="grid grid-cols-2 gap-3 text-xs">
+                                <!-- Jump-Diffusion 區塊 -->
+                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                                    <div class="text-gray-500 mb-1">JD VaR 95</div>
+                                    <div class="text-white font-mono font-bold">
+                                        {{ tailStatsLite.jdVar95 === '-' ? '-' : tailStatsLite.jdVar95 + '%' }}
+                                    </div>
+                                </div>
+
+                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                                    <div class="text-gray-500 mb-1">JD ES 95</div>
+                                    <div class="text-white font-mono font-bold">
+                                        {{ tailStatsLite.jdEs95 === '-' ? '-' : tailStatsLite.jdEs95 + '%' }}
+                                    </div>
+                                </div>
+
+                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                                    <div class="text-gray-500 mb-1">Crash Prob</div>
+                                    <div class="text-white font-mono font-bold">
+                                        {{ tailStatsLite.jdCrashProb === '-' ? '-' : tailStatsLite.jdCrashProb + '%' }}
+                                    </div>
+                                </div>
+
+                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                                    <div class="text-gray-500 mb-1">Tail Loss</div>
+                                    <div class="text-white font-mono font-bold">
+                                        {{ tailStatsLite.jdTailLoss === '-' ? '-' : tailStatsLite.jdTailLoss + '%' }}
+                                    </div>
+                                </div>
+
+                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                                    <div class="text-gray-500 mb-1">λ (Annual Freq)</div>
+                                    <div class="text-white font-mono font-bold">
+                                        {{ tailStatsLite.jdEffectiveLambda }}
+                                    </div>
+                                </div>
+
+                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                                    <div class="text-gray-500 mb-1">Horizon</div>
+                                    <div class="text-white font-mono font-bold">
+                                        {{ tailStatsLite.jdHorizonWeeks }}
+                                    </div>
+                                </div>
+
+                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10 col-span-2">
+                                    <div class="text-gray-500 mb-1">Jump Signature</div>
+                                    <div class="text-white font-mono font-bold">
+                                        μj {{ tailStatsLite.jdEffectiveJumpMean }} / σj {{ tailStatsLite.jdEffectiveJumpStd }}
+                                    </div>
+                                </div>
+
+                                <!-- EVT 區塊分隔線 -->
+                                <div class="col-span-2 border-b border-white/5 my-1"></div>
+
+                                <!-- EVT / POT-GPD 區塊 -->
+                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                                    <div class="text-gray-500 mb-1">EVT VaR 95</div>
+                                    <div class="text-white font-mono font-bold">
+                                        {{ tailStatsLite.evtVar95 === '-' ? '-' : tailStatsLite.evtVar95 + '%' }}
+                                    </div>
+                                </div>
+
+                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                                    <div class="text-gray-500 mb-1">EVT ES 95</div>
+                                    <div class="text-white font-mono font-bold">
+                                        {{ tailStatsLite.evtEs95 === '-' ? '-' : tailStatsLite.evtEs95 + '%' }}
+                                    </div>
+                                </div>
+
+                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                                    <div class="text-gray-500 mb-1">Shape ξ</div>
+                                    <div class="text-white font-mono font-bold">
+                                        {{ tailStatsLite.evtShapeXi }}
+                                    </div>
+                                </div>
+
+                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                                    <div class="text-gray-500 mb-1">Scale β</div>
+                                    <div class="text-white font-mono font-bold">
+                                        {{ tailStatsLite.evtScaleBeta }}
+                                    </div>
+                                </div>
+
+                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                                    <div class="text-gray-500 mb-1">Threshold</div>
+                                    <div class="text-white font-mono font-bold">
+                                        {{ tailStatsLite.evtThreshold === '-' ? '-' : tailStatsLite.evtThreshold + '%' }}
+                                    </div>
+                                </div>
+
+                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                                    <div class="text-gray-500 mb-1">Exceedances</div>
+                                    <div class="text-white font-mono font-bold">
+                                        {{ tailStatsLite.evtExceedanceCount }}
+                                    </div>
+                                </div>
+
+                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10 col-span-2">
+                                    <div class="text-gray-500 mb-1">Confidence / Tail Fit</div>
+                                    <div class="text-white font-mono font-bold">
+                                        {{ tailStatsLite.evtAlphaConf === '-' ? '-' : 'P' + tailStatsLite.evtAlphaConf }}
+                                    </div>
+                                </div>
+
+                                <!-- 底部註解 -->
+                                <div class="col-span-2 text-[10px] text-gray-400 mt-1 leading-relaxed px-1">
+                                    <i class="fas fa-info-circle text-orange-400 mr-1"></i> ξ > 0 代表肥尾更明顯；歷史 CVaR 可能低估真正極端風險。
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
                     <div class="glass panel-card border-yellow-500/20 overflow-hidden">
                         <div class="p-5 md:p-6 border-b border-white/10 bg-yellow-500/5">
                             <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
@@ -1510,7 +1640,7 @@
                                         聚焦條件相關、危機窗口、下檔 Beta 與共同回撤，監測市場一崩時誰會跟著一起死。
                                     </p>
                                 </div>
-                                <div class="text-xs text-gray-500">conditional / crisis / downside / jump / EVT</div>
+                                <div class="text-xs text-gray-500">conditional / crisis / downside</div>
                             </div>
                         </div>
 
@@ -1602,129 +1732,6 @@
                         </div>
                     </div>
                 </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div class="rounded-2xl border border-orange-500/20 bg-orange-500/10 p-4">
-        <div class="text-sm font-bold text-white mb-3 flex items-center gap-2">
-            <i class="fas fa-burst text-orange-400"></i>
-            Jump-Diffusion
-        </div>
-
-        <div class="grid grid-cols-2 gap-3 text-xs">
-            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">JD VaR 95</div>
-                <div class="text-white font-mono font-bold">
-                    {{ tailStatsLite?.jdVar95 ?? '-' }}%
-                </div>
-            </div>
-
-            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">JD ES 95</div>
-                <div class="text-white font-mono font-bold">
-                    {{ tailStatsLite?.jdEs95 ?? '-' }}%
-                </div>
-            </div>
-
-            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">Crash Prob</div>
-                <div class="font-mono font-bold"
-                     :class="parseFloat(tailStatsLite?.jdCrashProb || 0) >= 15 ? 'text-red-300' : 'text-white'">
-                    {{ tailStatsLite?.jdCrashProb ?? '-' }}%
-                </div>
-            </div>
-
-            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">Tail Loss</div>
-                <div class="font-mono font-bold text-orange-300">
-                    {{ tailStatsLite?.jdTailLoss ?? '-' }}%
-                </div>
-            </div>
-
-            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">λ (Annual Jump Freq)</div>
-                <div class="text-white font-mono font-bold">
-                    {{ tailStatsLite?.jdEffectiveLambda ?? '-' }}
-                </div>
-            </div>
-
-            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">Horizon</div>
-                <div class="text-white font-mono font-bold">
-                    {{ tailStatsLite?.jdHorizonWeeks ?? '-' }}W
-                </div>
-            </div>
-
-            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10 col-span-2">
-                <div class="text-gray-500 mb-1">Jump Signature</div>
-                <div class="text-white font-mono font-bold">
-                    μj {{ tailStatsLite?.jdEffectiveJumpMean ?? '-' }} / σj {{ tailStatsLite?.jdEffectiveJumpStd ?? '-' }}
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="rounded-2xl border border-purple-500/20 bg-purple-500/10 p-4">
-        <div class="text-sm font-bold text-white mb-3 flex items-center gap-2">
-            <i class="fas fa-chart-area text-purple-400"></i>
-            EVT / POT-GPD
-        </div>
-
-        <div class="grid grid-cols-2 gap-3 text-xs">
-            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">EVT VaR 95</div>
-                <div class="text-white font-mono font-bold">
-                    {{ tailStatsLite?.evtVar95 ?? '-' }}%
-                </div>
-            </div>
-
-            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">EVT ES 95</div>
-                <div class="text-white font-mono font-bold">
-                    {{ tailStatsLite?.evtEs95 ?? '-' }}%
-                </div>
-            </div>
-
-            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">Shape ξ</div>
-                <div class="font-mono font-bold"
-                     :class="parseFloat(tailStatsLite?.evtShapeXi || 0) > 0 ? 'text-red-300' : 'text-white'">
-                    {{ tailStatsLite?.evtShapeXi ?? '-' }}
-                </div>
-            </div>
-
-            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">Scale β</div>
-                <div class="text-white font-mono font-bold">
-                    {{ tailStatsLite?.evtScaleBeta ?? '-' }}
-                </div>
-            </div>
-
-            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">Threshold</div>
-                <div class="text-white font-mono font-bold">
-                    {{ tailStatsLite?.evtThreshold ?? '-' }}%
-                </div>
-            </div>
-
-            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">Exceedances</div>
-                <div class="text-white font-mono font-bold">
-                    {{ tailStatsLite?.evtExceedanceCount ?? '-' }}
-                </div>
-            </div>
-
-            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10 col-span-2">
-    <div class="text-gray-500 mb-1">Confidence / Tail Fit</div>
-    <div class="text-white font-mono font-bold">
-        {{ tailStatsLite?.evtAlphaConf && tailStatsLite?.evtAlphaConf !== '-' ? 'P' + tailStatsLite?.evtAlphaConf : '-' }}
-    </div>
-    <div class="text-[10px] text-gray-500 mt-2 leading-relaxed">
-        ξ > 0 代表肥尾更明顯；歷史 CVaR 可能低估真正極端風險。
-    </div>
-</div>
-        </div>
-    </div>
-</div>
 
 
 

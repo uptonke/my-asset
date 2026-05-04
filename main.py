@@ -1426,7 +1426,7 @@ try:
                     download_list.append(target)
 
             print(f"⏳ 正在向 Yahoo Finance 請求 {len(download_list)} 檔標的歷史資料...", flush=True)        
-            prices_df = safe_download_close(download_list, period="1y", progress=False)
+            prices_df = safe_download_close(download_list, period="10y", progress=False) 
             returns = prices_df.pct_change().dropna()
 
             print("⚖️ 正在過濾真實庫存標的...", flush=True)

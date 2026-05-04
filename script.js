@@ -1033,11 +1033,13 @@ if (isNaN(kurtVal)) kurtVal = 0;
     evtAlphaConf: '-'
 });
 function fmtNum(val, digits = 2) {
+    if (val === null || val === undefined || val === '') return '-';
     const n = Number(val);
     return Number.isFinite(n) ? n.toFixed(digits) : '-';
 }
 
 function fmtPctMaybe(val, digits = 2) {
+    if (val === null || val === undefined || val === '') return '-';
     const n = Number(val);
     return Number.isFinite(n) ? n.toFixed(digits) : '-';
 }
