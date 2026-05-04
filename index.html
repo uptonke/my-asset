@@ -16,7 +16,9 @@
           'bg-purple-600', 'border-purple-600', 'text-purple-400', 'text-purple-500',
           'bg-orange-600', 'border-orange-600', 'text-orange-400', 'text-orange-500',
           'bg-cyan-600', 'border-cyan-600', 'text-cyan-400', 'text-cyan-500',
-          'bg-gray-800', 'border-gray-700', 'text-gray-300', 'text-gray-400', 'text-gray-500'
+          'bg-gray-800', 'border-gray-700', 'text-gray-300', 'text-gray-400', 'text-gray-500',
+          'bg-emerald-900/30', 'text-emerald-400', 'border-emerald-800/50',
+          'bg-blue-900/30', 'border-blue-800/50', 'bg-red-900/30', 'border-red-800/50'
         ]
       }
     </script>
@@ -1240,10 +1242,21 @@
                         <div class="quant-label text-gray-400">年化標準差 (Vol)</div>
                         <div class="quant-value text-white">{{ stats.annVol }}%</div>
                     </div>
-                    <div class="quant-card">
-                        <div class="quant-label text-yellow-400">夏普 (Sharpe)</div>
-                        <div class="quant-value text-white">{{ stats.sharpe }}</div>
+                    
+                    <!-- 夏普與 PSR 卡片 -->
+                    <div class="quant-card relative overflow-hidden group">
+                        <div class="quant-label text-yellow-400" title="風險調整後報酬 (搭配 PSR 檢定)">夏普 (Sharpe)</div>
+                        <div class="quant-value text-white flex items-center justify-center gap-2">
+                            <span>{{ stats.sharpe }}</span>
+                            <span v-if="stats.psr !== '-'" 
+                                  class="text-[10px] font-mono px-1.5 py-0.5 rounded border shadow-sm flex items-center"
+                                  :class="parseFloat(stats.psr) >= 95 ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800/50' : (parseFloat(stats.psr) >= 80 ? 'bg-blue-900/30 text-blue-400 border-blue-800/50' : 'bg-red-900/30 text-red-400 border-red-800/50')"
+                                  title="Probabilistic Sharpe Ratio (歷史防禦力檢定)">
+                                PSR {{ stats.psr }}%
+                            </span>
+                        </div>
                     </div>
+
                     <div class="quant-card">
                         <div class="quant-label text-yellow-400">索提諾 (Sortino)</div>
                         <div class="quant-value text-white">{{ stats.sortino }}</div>
@@ -2111,13 +2124,43 @@
                             </h4>
                             <div v-if="mcOptimal" class="space-y-2">
                                 <div class="flex justify-between text-xs text-gray-300 border-b border-gray-600 pb-1">
-                                    <span>{{ enableInflation ? '實質報酬 (Real)' : '預期報酬' }}</span>
-                                    <span class="font-mono text-green-400">{{ mcOptimal.ret }}%</span>
-                                </div>
-                                <div class="flex justify-between text-xs text-gray-300 border-b border-gray-600 pb-1"><span>標準差</span><span class="font-mono text-red-400">{{ mcOptimal.vol }}%</span></div>
-                                <div class="flex justify-between text-xs text-gray-300 border-b border-gray-600 pb-1"><span title="調整後夏普值 (含高階動差)">Sharpe / ASR</span><span class="font-mono text-yellow-400 font-bold">{{ mcOptimal.sharpe }}</span></div>
-                                <div class="flex justify-between text-xs text-gray-300 border-b border-gray-600 pb-1"><span>偏度 (Skew)</span><span class="font-mono" :class="mcOptimal.skew >= 0 ? 'text-green-400' : 'text-red-400'">{{ mcOptimal.skew }}</span></div>
-                                <div class="flex justify-between text-xs text-gray-300 border-b border-gray-600 pb-3"><span>超額峭度 (Ex. Kurt)</span><span class="font-mono text-orange-400">{{ mcOptimal.kurt }}</span></div>
+    <span>{{ enableInflation ? '實質報酬 (Real)' : '預期報酬' }}</span>
+    <span class="font-mono text-green-400">{{ mcOptimal.ret }}%</span>
+</div>
+<div class="flex justify-between text-xs text-gray-300 border-b border-gray-600 pb-1">
+    <span>標準差</span>
+    <span class="font-mono text-red-400">{{ mcOptimal.vol }}%</span>
+</div>
+<div class="flex justify-between text-xs text-gray-300 border-b border-gray-600 pb-1">
+    <span title="調整後夏普值 (含高階動差)">Sharpe / ASR (現實夏普)</span>
+    <span class="font-mono text-yellow-400 font-bold">{{ mcOptimal.sharpe }}</span>
+</div>
+
+<div class="flex justify-between text-xs text-gray-300 border-b border-gray-600 pb-1">
+    <span>Sharpe Raw (實驗室夏普)</span>
+    <span class="font-mono text-white font-bold">{{ mcOptimal.sharpeRaw ?? '-' }}</span>
+</div>
+<div class="flex justify-between text-xs text-gray-300 border-b border-gray-600 pb-1">
+    <span>PSR (底盤檢驗越高越好)</span>
+    <span class="font-mono text-cyan-300 font-bold">{{ mcOptimal.psr ? mcOptimal.psr + '%' : '-' }}</span>
+</div>
+<div class="flex justify-between text-xs text-gray-300 border-b border-gray-600 pb-1">
+    <span>DSR (作弊檢測器)</span>
+    <span class="font-mono text-purple-300 font-bold">{{ mcOptimal.dsr ? mcOptimal.dsr + '%' : '-' }}</span>
+</div>
+<div class="flex justify-between text-[11px] text-gray-500 border-b border-gray-600 pb-3">
+    <span>Trials / N</span>
+    <span class="font-mono">{{ mcOptimal.dsrTrials ?? '-' }} / {{ mcOptimal.dsrSampleN ?? '-' }}</span>
+</div>
+
+<div class="flex justify-between text-xs text-gray-300 border-b border-gray-600 pb-1">
+    <span>偏度 (Skew)</span>
+    <span class="font-mono" :class="mcOptimal.skew >= 0 ? 'text-green-400' : 'text-red-400'">{{ mcOptimal.skew }}</span>
+</div>
+<div class="flex justify-between text-xs text-gray-300 border-b border-gray-600 pb-3">
+    <span>超額峭度 (Ex. Kurt)</span>
+    <span class="font-mono text-orange-400">{{ mcOptimal.kurt }}</span>
+</div>
                                 
                                  <div class="mt-4 p-3 bg-slate-900/40 border border-slate-700 rounded-lg">
     <h5 class="text-[10px] text-gray-400 uppercase tracking-wider mb-3 border-b border-slate-700 pb-1">
@@ -2153,7 +2196,7 @@
 
         <div class="flex justify-between text-gray-300">
             <span>Jump Tail Loss</span>
-            <span class="font-mono text-orange-400">-{{ mcOptimal.jumpTailLossPct }}%</span>
+            <span class="font-mono text-orange-400">{{ mcOptimal.jumpTailLossPct }}%</span>
         </div>
     </div>
 
@@ -2200,6 +2243,6 @@
     </main>
 </div>
 
-<script src="script.js?v=11.6"></script>
+<script src="script.js?v=11.7"></script>
 </body>
 </html>

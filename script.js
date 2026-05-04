@@ -50,12 +50,18 @@ createApp({
         alpha_jensen: stats.value.alpha + '%'
     },
     risk_efficiency: {
-        portfolio_beta: riskParams.value.beta,
-        portfolio_volatility: stats.value.annVol + '%',
-        sharpe_ratio: stats.value.sharpe,
-        sortino_ratio: stats.value.sortino,
-        treynor_ratio: stats.value.treynor
-    },
+    portfolio_beta: riskParams.value.beta,
+    portfolio_volatility: stats.value.annVol + '%',
+    historical_sharpe: stats.value.sharpe,
+    historical_psr: stats.value.psr === '-' ? 'N/A' : stats.value.psr + '%',
+    mc_sharpe_raw: mcOptimal.value?.sharpeRaw ?? 'N/A',
+    mc_psr: mcOptimal.value?.psr ? mcOptimal.value.psr + '%' : 'N/A',
+    mc_dsr: mcOptimal.value?.dsr ? mcOptimal.value.dsr + '%' : 'N/A',
+    mc_dsr_trials: mcOptimal.value?.dsrTrials ?? 'N/A',
+    mc_dsr_sample_n: mcOptimal.value?.dsrSampleN ?? 'N/A',
+    sortino_ratio: stats.value.sortino,
+    treynor_ratio: stats.value.treynor
+},
     asymmetry_and_win_rate: {
         omega_ratio: stats.value.omega,
         profit_factor_pf: stats.value.profitFactor,
@@ -150,12 +156,18 @@ Constraint: Output strictly in Traditional Chinese. Max 8 bullet points. No plea
 - Treat tail metrics with low sample counts cautiously. If tail_sample_count, crisis_sample_count, or evt_exceedance_count is small, explicitly mention that the signal direction matters more than the exact magnitude.
 - If regime_rebalance_monitor shows buffer_blocking_risk_buys = YES, you MUST treat Buffer Floor as a hard constraint, not a soft suggestion.
 - When buffer_gap_pct > 0, DO NOT recommend buying high-beta or risk-on assets first. The portfolio must replenish hard buffer assets before any discretionary risk-on add.
+- If risk_efficiency contains historical_psr, mc_psr, or mc_dsr, you MUST explicitly discuss whether the portfolio's apparent Sharpe is statistically credible.
+- Do not treat a high raw Sharpe as strong evidence if DSR is materially lower.
+- If PSR or DSR is N/A, say so explicitly rather than inferring significance.
 
 [ANALYSIS_RULES]
 You MUST analyze the portfolio holistically using all modules below:
 
 1. 【資金效率與選股】Compare TWR vs MWR and Jensen's Alpha. Judge whether timing and selection are adding value or destroying value.
-2. 【風險報酬定價】Use Sharpe, Sortino, Treynor, Beta, and Volatility. State whether the portfolio is being paid enough for the risk it is taking.
+2. 【風險報酬定價】Use historical_sharpe, historical_psr, mc_sharpe_raw, mc_psr, mc_dsr, Sortino, Treynor, Beta, and Volatility.
+State whether the portfolio is being paid enough for the risk it is taking.
+If PSR or DSR is present, explicitly judge whether the observed Sharpe is statistically credible or likely inflated by selection / optimization.
+Treat DSR as more important than raw Sharpe when Monte Carlo optimization has tested many candidate portfolios.
 3. 【Portfolio X-Ray】Use PC1 explained, PC1-3 cumulative explained, USD exposure, FX impact, and top risk contributors. Judge whether the portfolio is truly diversified or only appears diversified.
 4. 【Regime / Rebalance Monitor】Use trim candidates, high-priority alerts, leverage volatility drag, buffer_floor_pct, current_buffer_pct, buffer_gap_pct, buffer_blocking_risk_buys, hard_buffer_tickers, and rebalance alerts. Judge whether risk is drifting because the user failed to rebalance, and whether the portfolio is currently constrained by a Buffer Floor shortfall.
 5. 【Tail / Crash Radar】Use conditional correlation, crisis correlation, downside beta, stressed CVaR, joint downside hit rate, co-drawdown frequency, tail dependence lite, and rolling CVaR. Judge how fragile the portfolio becomes in bad states.
@@ -342,7 +354,7 @@ ${JSON.stringify(payload, null, 2)}
         const stockMeta = ref({});
 
         const stats = ref({ 
-            annRet:'0.00', annLogRet:'0.00', mwr:'0.00', annVol:'0.00', sharpe:'0.00', sortino:'0.00', treynor:'0.00', 
+            annRet:'0.00', annLogRet:'0.00', mwr:'0.00', annVol:'0.00', sharpe:'0.00', psr: '-', sortino:'0.00', treynor:'0.00', 
             alpha:'0.00', var95:'0.00', cvar95:'0.00', mdd:'0.00', calmar:'0.00', skew:'0.00', kurt:'0.00', 
             tuw: '0', ulcer: '0.00', omega: '0.00', profitFactor: '0.00', 
             ff_alpha: '-', ff_mkt_beta: '-', ff_smb: '-', ff_hml: '-', 
@@ -942,12 +954,28 @@ let kurtVal = (sumQuart / n) / Math.pow(stdPop, 4) - 3;
 if (isNaN(skewVal)) skewVal = 0;
 if (isNaN(kurtVal)) kurtVal = 0;
 
+// ==========================================
+// 🎯 新增：計算真實投組的 PSR (Probabilistic Sharpe Ratio)
+// ==========================================
+const sampleN = returns.length;
+// 👇 將年化 Sharpe 退回週頻率 (除以 factor，也就是 √52)
+const periodSharpe = sharpe / factor; 
+
+const psr_hist = computePSR({
+    sr: periodSharpe, 
+    srBenchmark: 0,
+    skew: skewVal,
+    exKurt: kurtVal,
+    nObs: sampleN
+});
+
              stats.value = { 
                  annRet: (annRet*100).toFixed(2), 
                  annLogRet: (annLogRet*100).toFixed(2), 
                  mwr: mwr === null ? '-' : (mwr * 100).toFixed(2),            
                  annVol: (annVol*100).toFixed(2), 
                  sharpe: sharpe.toFixed(2), 
+                 psr: psr_hist === null ? '-' : (psr_hist * 100).toFixed(2), // 👈 將真實歷史 PSR 寫入 stats
                  sortino: sortino.toFixed(2), 
                  treynor: treynor.toFixed(4),            
                  alpha: (alpha * 100).toFixed(2),
@@ -1690,6 +1718,51 @@ function simulateJumpDiffusionMoments({
         es05
     };
 }
+function normCdf(x) {
+    const t = 1 / (1 + 0.2316419 * Math.abs(x));
+    const d = 0.3989423 * Math.exp(-x * x / 2);
+    let prob = d * t * (
+        0.3193815 +
+        t * (-0.3565638 +
+        t * (1.781478 +
+        t * (-1.821256 +
+        t * 1.330274)))
+    );
+    prob = 1 - prob;
+    return x >= 0 ? prob : 1 - prob;
+}
+
+function sharpeStdErrApprox(sr, skew, exKurt, nObs) {
+    if (!Number.isFinite(sr) || !Number.isFinite(nObs) || nObs <= 1) return null;
+
+    const kurt = (Number.isFinite(exKurt) ? exKurt : 0) + 3; // 轉成常規 kurtosis
+    const denom = Math.max(
+        1e-12,
+        1 - (skew || 0) * sr + ((kurt - 1) / 4) * sr * sr
+    );
+
+    return Math.sqrt(denom / Math.max(1, nObs - 1));
+}
+
+function computePSR({ sr, srBenchmark = 0, skew = 0, exKurt = 0, nObs = 0 }) {
+    const se = sharpeStdErrApprox(sr, skew, exKurt, nObs);
+    if (!Number.isFinite(se) || se <= 0) return null;
+    const z = (sr - srBenchmark) / se;
+    return normCdf(z);
+}
+
+function computeDSR({ sr, skew = 0, exKurt = 0, nObs = 0, nTrials = 1 }) {
+    const se = sharpeStdErrApprox(sr, skew, exKurt, nObs);
+    if (!Number.isFinite(se) || se <= 0) return null;
+
+    const effectiveTrials = Math.max(1, nTrials);
+    const srStar = effectiveTrials > 1
+        ? se * Math.sqrt(2 * Math.log(effectiveTrials))
+        : 0;
+
+    const z = (sr - srStar) / se;
+    return normCdf(z);
+}
 
         function runMonteCarlo() {
     const ctx = document.getElementById('mcChart');
@@ -1754,7 +1827,7 @@ function simulateJumpDiffusionMoments({
         let remaining = riskyBudget - (minWeightAbs * n_assets);
 
         if (remaining > 0) {
-            const randValues = Array.from({ length: n_assets }, () => Math.pow(Math.random(), 3));
+            const randValues = Array.from({ length: n_assets }, () => -Math.log(Math.random()));
             const sumRand = randValues.reduce((a, b) => a + b, 0) || 1;
 
             for (let i = 0; i < n_assets; i++) {
@@ -1828,32 +1901,30 @@ function simulateJumpDiffusionMoments({
 
         let jumpTailLoss = 0;
 
-if (enableBlackSwan.value) {
-    const jp = getEffectiveJumpParams(riskyAssets, weights);
+            if (enableBlackSwan.value) {
+                const jp = getEffectiveJumpParams(riskyAssets, weights);
 
-    // 原本 p_ret / p_vol 是年化，先轉成週頻
-    const muWeekly = p_ret / 52;
-    const sigmaWeekly = p_vol / Math.sqrt(52);
+                // 【解析解 (Analytical Moments) 替換原本的內部 MC 模擬】
+                // 計算 Merton 模型下的跳躍補償期望值與變異數 (年化)
+                const jumpExpectedReturn = jp.lambda * jp.mean;
+                const jumpVariance = jp.lambda * (Math.pow(jp.mean, 2) + Math.pow(jp.std, 2));
 
-    const jdSim = simulateJumpDiffusionMoments({
-        muWeekly,
-        sigmaWeekly,
-        jumpLambdaAnnual: jp.lambda,
-        jumpMean: jp.mean,
-        jumpStd: jp.std,
-        horizonWeeks: 13,
-        nSims: 300,
-        seed: 42
-    });
+                // 1. 直接疊加報酬率與波動率
+                p_ret = p_ret + jumpExpectedReturn;
+                p_vol = Math.sqrt(Math.pow(p_vol, 2) + jumpVariance);
 
-    // 13 週分布 → 年化近似
-    p_ret = Math.pow(1 + jdSim.mean, 52 / 13) - 1;
-    p_vol = jdSim.std * Math.sqrt(52 / 13);
-    p_skew = jdSim.skew;
-    p_kurt_ex = jdSim.kurtEx;
+                // 2. 估算高階動差 (直接使用解析解推導，完美反映肥尾與左傾)
+                // 跳躍造成的偏度 = [lambda * E(J^3)] / p_vol^3
+                const m3_jump = jp.lambda * (Math.pow(jp.mean, 3) + 3 * jp.mean * Math.pow(jp.std, 2));
+                p_skew = p_skew + (m3_jump / Math.pow(p_vol, 3));
 
-    jumpTailLoss = Math.abs(Math.min(jdSim.mean, 0));
-}
+                // 跳躍造成的超額峰度 = [lambda * E(J^4)] / p_vol^4
+                const m4_jump = jp.lambda * (Math.pow(jp.mean, 4) + 6 * Math.pow(jp.mean, 2) * Math.pow(jp.std, 2) + 3 * Math.pow(jp.std, 4));
+                p_kurt_ex = p_kurt_ex + (m4_jump / Math.pow(p_vol, 4));
+
+                // 3. 抓取尾部風險概估 (單純量化跳躍帶來的預期損失拖累)
+                jumpTailLoss = Math.abs(jumpExpectedReturn);
+            }
 
         let rf_effective = rf;
         if (enableInflation.value) {
@@ -1863,47 +1934,49 @@ if (enableBlackSwan.value) {
         }
 
         const p_sharpe = (p_ret - rf_effective) / p_vol;
-        const p_asr = p_sharpe * (
-            1 +
-            (p_skew / 6) * p_sharpe -
-            (p_kurt_ex / 24) * Math.pow(p_sharpe, 2)
-        );
+const p_asr = p_sharpe * (
+    1 +
+    (p_skew / 6) * p_sharpe -
+    (p_kurt_ex / 24) * Math.pow(p_sharpe, 2)
+);
 
-        let currentScore = 0;
-        if (mcRisk.value === 'neutral') {
-            currentScore = p_asr;
-        } else if (mcRisk.value === 'averse') {
-            currentScore = p_ret - (0.5 * riskAversionA * Math.pow(p_vol, 2));
-        } else {
-            currentScore = p_ret - (0.15 * p_vol);
-        }
+let currentScore = 0;
 
-        if (Number.isFinite(currentScore)) {
-            mcPoints.push({
-                x: p_vol * 100,
-                y: p_ret * 100,
-                score: currentScore
-            });
+if (mcRisk.value === 'neutral') {
+    currentScore = p_asr;
+} else if (mcRisk.value === 'averse') {
+    currentScore = p_ret - (0.5 * riskAversionA * Math.pow(p_vol, 2));
+} else {
+    currentScore = p_ret - (0.15 * p_vol);
+}
 
-            if (currentScore > maxScoreForColor) maxScoreForColor = currentScore;
-            if (currentScore < minScoreForColor) minScoreForColor = currentScore;
+if (Number.isFinite(currentScore)) {
+    mcPoints.push({
+        x: p_vol * 100,
+        y: p_ret * 100,
+        score: currentScore
+    });
 
-            if (currentScore > bestScore) {
-                bestScore = currentScore;
-                bestPort = {
-                    ret: p_ret,
-                    vol: p_vol,
-                    sharpe: p_asr,
-                    skew: p_skew,
-                    kurt: p_kurt_ex,
-                    weights,
-                    jumpTailLoss,
-                    hardBufferTargetWeight: targetHardBufferWeight,
-                    hardBufferCurrentWeight: currentHardBufferWeight,
-                    defensiveCurrentWeight: currentDefensiveWeight
-                };
-            }
-        }
+    if (currentScore > maxScoreForColor) maxScoreForColor = currentScore;
+    if (currentScore < minScoreForColor) minScoreForColor = currentScore;
+
+    if (currentScore > bestScore) {
+        bestScore = currentScore;
+        bestPort = {
+            ret: p_ret,
+            vol: p_vol,
+            sharpeRaw: p_sharpe,
+            sharpeAdj: p_asr,
+            skew: p_skew,
+            kurt: p_kurt_ex,
+            weights,
+            jumpTailLoss,
+            hardBufferTargetWeight: targetHardBufferWeight,
+            hardBufferCurrentWeight: currentHardBufferWeight,
+            defensiveCurrentWeight: currentDefensiveWeight
+        };
+    }
+}
     }
 
     if (!bestPort) {
@@ -1927,21 +2000,66 @@ if (enableBlackSwan.value) {
 
     wList.sort((a, b) => parseFloat(b.opt) - parseFloat(a.opt));
 
-    mcOptimal.value = {
-        ret: (bestPort.ret * 100).toFixed(2),
-        vol: (bestPort.vol * 100).toFixed(2),
-        sharpe: bestPort.sharpe.toFixed(3),
-        skew: bestPort.skew.toFixed(2),
-        kurt: bestPort.kurt.toFixed(2),
-        weights: wList,
+    const sampleN = Math.max(
+    2,
+    enrichedHistory.value.filter(x => x.dailyReturn !== null).length
+);
 
-        hardBufferTargetPct: (bestPort.hardBufferTargetWeight * 100).toFixed(2),
-        hardBufferCurrentPct: (bestPort.hardBufferCurrentWeight * 100).toFixed(2),
-        hardBufferGapPct: ((bestPort.hardBufferTargetWeight - bestPort.hardBufferCurrentWeight) * 100).toFixed(2),
-        defensiveSleevePct: (bestPort.defensiveCurrentWeight * 100).toFixed(2),
-        bufferFloorRespected: bestPort.hardBufferCurrentWeight >= bestPort.hardBufferTargetWeight - 1e-6,
-        jumpTailLossPct: (bestPort.jumpTailLoss * 100).toFixed(2)
-    };
+const effectiveTrials = Math.max(1, mcPoints.length);
+
+// 👇 同樣將 MC 算出的年化 Sharpe 退回週頻率
+const mcPeriodSharpe = bestPort.sharpeRaw / Math.sqrt(52);
+
+const psr = computePSR({
+    sr: mcPeriodSharpe,
+    srBenchmark: 0,
+    skew: bestPort.skew,
+    exKurt: bestPort.kurt,
+    nObs: sampleN
+});
+
+const dsr = computeDSR({
+    sr: mcPeriodSharpe,
+    skew: bestPort.skew,
+    exKurt: bestPort.kurt,
+    nObs: sampleN,
+    nTrials: effectiveTrials
+});
+const safeHardBufferGap = Math.max(
+    0,
+    (bestPort.hardBufferTargetWeight - bestPort.hardBufferCurrentWeight) * 100
+);
+
+const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
+    ? 0
+    : Math.abs(bestPort.jumpTailLoss);
+
+    mcOptimal.value = {
+    ret: (bestPort.ret * 100).toFixed(2),
+    vol: (bestPort.vol * 100).toFixed(2),
+
+    // 顯示層：保留你原本的 ASR
+    sharpe: bestPort.sharpeAdj.toFixed(3),
+
+    // 新增：raw Sharpe / PSR / DSR
+    sharpeRaw: bestPort.sharpeRaw.toFixed(3),
+    psr: psr === null ? '-' : (psr * 100).toFixed(3),
+    dsr: dsr === null ? '-' : (dsr * 100).toFixed(3),
+    dsrTrials: effectiveTrials,
+    dsrSampleN: sampleN,
+
+    skew: bestPort.skew.toFixed(2),
+    kurt: bestPort.kurt.toFixed(2),
+    weights: wList,
+
+    hardBufferTargetPct: (bestPort.hardBufferTargetWeight * 100).toFixed(2),
+    hardBufferCurrentPct: (bestPort.hardBufferCurrentWeight * 100).toFixed(2),
+    hardBufferGapPct: safeHardBufferGap.toFixed(2),
+    defensiveSleevePct: (bestPort.defensiveCurrentWeight * 100).toFixed(2),
+    bufferFloorRespected: bestPort.hardBufferCurrentWeight >= bestPort.hardBufferTargetWeight - 1e-6,
+
+    jumpTailLossPct: (safeJumpTailLoss * 100).toFixed(2)
+};
 
     chartMC = new Chart(ctx, {
         type: 'scatter',
