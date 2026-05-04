@@ -116,6 +116,7 @@ def build_regime_packet(macro_payload):
     }
     stage = choose_stage(scores)
     return {"raw": raw, "scores": scores, "stage_candidate": stage, "total_score": sum(scores.values()), "confidence_hint": 0.85}
+
 DEFAULT_MACRO = {
     "y10": 4.2,
     "y3m": 5.0,
@@ -247,12 +248,14 @@ def relative_momentum_pct(df, lhs, rhs=None, default=0.0):
         return default
 
 
+# ==========================================
+# 🌟 方案 A: 淨化 Proxy，確保每一檔都是獨一無二的 Ticker
+# ==========================================
 PROXY_TICKER_MAP = {
-    "統一奔騰": "00981A.TW",
-    "安聯台灣科技": "0052.TW",
-    "加密貨幣": "BTC-USD",
+    "統一奔騰": "0052.TW",        # 替換為富邦科技，避免跟 00981A 撞車，解決奇異矩陣與權重破表
+    "安聯台灣科技": "0053.TW",    # 替換為元大電子，避開 0052 可能的資料失真與 83.4% 波動率 Bug
+    "加密貨幣": "ETH-USD",       # 替換為以太幣，避免跟 BTC-USD 撞車
 }
-
 
 def normalize_ticker(raw):
     return str(raw).strip().upper() if raw is not None else ""
@@ -321,7 +324,6 @@ def compute_liquidity_score(original_ticker, yf_ticker, stock_meta_row):
     t = str(original_ticker).upper()
     category = str(stock_meta_row.get("category", ""))
 
-    # 分數越高 = 壓力市況下越脆弱 / 越不易脫手
     if "BTC" in t or "ETH" in t or "加密" in category:
         return 0.90
     if str(yf_ticker).endswith(".TW"):
@@ -396,7 +398,6 @@ def build_chaos_packet(macro_payload, active_tickers, asset_values, stock_meta, 
     pcr = float(macro_payload.get("put_call_ratio", 1.0) or 1.0)
     sys_corr_val = float(macro_payload.get("sys_corr", 0.0) or 0.0)
 
-    # 前端輸入 0~100
     liquidity_buffer = float(liquidity_buffer_ratio or 0.0) / 100.0
 
     run_raw = (
@@ -565,7 +566,6 @@ def simulate_jump_diffusion_tail(port_returns, active_tickers, asset_values, sto
             jump_component = np.zeros(n_sims, dtype=float)
             has_jump = jump_counts > 0
             if np.any(has_jump):
-                # 近似：k 次 jump 的總和 ~ Normal(k*mean, sqrt(k)*std)
                 k = jump_counts[has_jump].astype(float)
                 jump_component[has_jump] = (
                     k * eff_jump_mean +
@@ -680,7 +680,6 @@ def compute_xray_meta(active_tickers, asset_values, stock_meta, returns_df, tick
         if total_value <= 0:
             return base
 
-        # --- FX exposure ---
         usd_value = 0.0
         for t in active_tickers:
             meta = stock_meta.get(t, {})
@@ -700,7 +699,6 @@ def compute_xray_meta(active_tickers, asset_values, stock_meta, returns_df, tick
             "usd_exposure_value_twd": round(usd_value, 2)
         }
 
-        # --- 合併映射到同一 yf ticker 的多個原始標的 ---
         grouped_values = {}
         label_map = {}
         for t in active_tickers:
@@ -791,7 +789,6 @@ def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticke
         "co_drawdown_threshold": -10.0,
         "tail_threshold_quantile": 0.05,
 
-        # === 新增：Jump-Diffusion ===
         "jd_var95": None,
         "jd_es95": None,
         "jd_crash_prob": None,
@@ -801,7 +798,6 @@ def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticke
         "jd_effective_jump_mean": None,
         "jd_effective_jump_std": None,
 
-        # === 新增：EVT / POT-GPD ===
         "evt_var95": None,
         "evt_es95": None,
         "evt_shape_xi": None,
@@ -925,7 +921,6 @@ def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticke
             "tail_threshold_quantile": tail_threshold_quantile
         })
 
-        # === 新增：Jump-Diffusion ===
         jd_meta = simulate_jump_diffusion_tail(
             port_returns=port,
             active_tickers=active_tickers,
@@ -937,7 +932,6 @@ def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticke
         )
         base.update(jd_meta)
 
-        # === 新增：EVT (POT + GPD) ===
         evt_meta = compute_evt_tail(
             port_returns=port,
             threshold_q=0.10,
@@ -945,123 +939,6 @@ def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticke
         )
         base.update(evt_meta)
 
-        return base
-    except Exception as e:
-        print(f"⚠️ compute_tail_meta 失敗: {e}", flush=True)
-        return base
-    try:
-        tw_value = 0.0
-        non_tw_value = 0.0
-        grouped_values = {}
-
-        for t in active_tickers:
-            val = float(asset_values.get(t, 0.0) or 0.0)
-            if val <= 0:
-                continue
-            yf_t = ticker_to_yf.get(t, t)
-            if yf_t not in prices_df.columns:
-                continue
-            grouped_values[yf_t] = grouped_values.get(yf_t, 0.0) + val
-
-            if str(yf_t).endswith(".TW") or "台股" in str(stock_meta.get(t, {}).get("category", "")):
-                tw_value += val
-            else:
-                non_tw_value += val
-
-        if len(grouped_values) < 1:
-            return base
-
-        bench = tw_bench if tw_value > non_tw_value else us_bench
-        if bench not in prices_df.columns:
-            bench = us_bench if us_bench in prices_df.columns else (tw_bench if tw_bench in prices_df.columns else None)
-        if bench is None:
-            return base
-
-        yf_cols = [c for c in grouped_values.keys() if c in prices_df.columns and c != bench]
-        if len(yf_cols) < 1:
-            return base
-
-        weekly_prices = prices_df[yf_cols + [bench]].resample("W-FRI").last().dropna(how="all")
-        weekly_returns = weekly_prices.pct_change().dropna(how="any")
-        if len(weekly_returns) < 8:
-            return base
-
-        weights = pd.Series({c: float(grouped_values[c]) for c in yf_cols}, dtype=float)
-        weight_sum = float(weights.sum())
-        if weight_sum <= 0:
-            return base
-        weights = weights / weight_sum
-
-        ret_sub = weekly_returns[yf_cols].copy()
-        port = ret_sub.mul(weights.reindex(ret_sub.columns).fillna(0.0), axis=1).sum(axis=1)
-        bench_s = weekly_returns[bench]
-
-        aligned = pd.concat([port.rename("port"), bench_s.rename("bench")], axis=1).dropna()
-        if len(aligned) < 8:
-            return base
-
-        port = aligned["port"]
-        bench_s = aligned["bench"]
-
-        q20_b = float(bench_s.quantile(0.20))
-        q10_b = float(bench_s.quantile(0.10))
-        q05_b = float(bench_s.quantile(0.05))
-        q20_p = float(port.quantile(0.20))
-        q05_p = float(port.quantile(0.05))
-
-        cond_mask = bench_s <= q20_b
-        crisis_mask = bench_s <= q10_b
-        downside_mask = bench_s < 0
-        tail_b_mask = bench_s <= q05_b
-
-        tail_sample_count = int(tail_b_mask.sum())
-        crisis_sample_count = int(crisis_mask.sum())
-        co_drawdown_threshold = -10.0
-        tail_threshold_quantile = 0.05
-
-        conditional_corr = safe_corr(port[cond_mask], bench_s[cond_mask])
-        crisis_corr = safe_corr(port[crisis_mask], bench_s[crisis_mask])
-
-        downside_beta = None
-        if downside_mask.sum() >= 3:
-            bench_down = bench_s[downside_mask]
-            port_down = port[downside_mask]
-            bench_var = float(bench_down.var())
-            if bench_var > 0:
-                downside_beta = float(port_down.cov(bench_down) / bench_var)
-
-        joint_hit = float((((bench_s <= q20_b) & (port <= q20_p)).mean()) * 100)
-
-        dd_port = compute_drawdown_series(port)
-        dd_bench = compute_drawdown_series(bench_s)
-        co_dd = float((((dd_port <= -0.10) & (dd_bench <= -0.10)).mean()) * 100)
-
-        rolling_26 = compute_cvar(port.tail(26), q=0.05)
-        rolling_52 = compute_cvar(port.tail(52), q=0.05)
-        stressed = compute_cvar(port[crisis_mask], q=0.05) if crisis_mask.sum() >= 3 else compute_cvar(port.tail(52), q=0.05)
-
-        tail_dependence = None
-        if tail_sample_count >= 1:
-            tail_dependence = float(((port[tail_b_mask] <= q05_p).mean()) * 100)
-
-        base.update({
-    "benchmark": bench,
-    "sample_weeks": int(len(aligned)),
-    "conditional_correlation": round(conditional_corr, 4) if conditional_corr is not None else None,
-    "crisis_window_correlation": round(crisis_corr, 4) if crisis_corr is not None else None,
-    "downside_beta": round(downside_beta, 4) if downside_beta is not None else None,
-    "joint_downside_hit_rate": round(joint_hit, 2),
-    "co_drawdown_frequency": round(co_dd, 2),
-    "rolling_cvar_26w": round(rolling_26 * 100, 2) if rolling_26 is not None else None,
-    "rolling_cvar_52w": round(rolling_52 * 100, 2) if rolling_52 is not None else None,
-    "stressed_cvar": round(stressed * 100, 2) if stressed is not None else None,
-    "tail_dependence_lite": round(tail_dependence, 2) if tail_dependence is not None else None,
-    "crisis_window_label": f"{bench} <= P10 weekly return",
-    "tail_sample_count": tail_sample_count,
-    "crisis_sample_count": crisis_sample_count,
-    "co_drawdown_threshold": co_drawdown_threshold,
-    "tail_threshold_quantile": tail_threshold_quantile
-})
         return base
     except Exception as e:
         print(f"⚠️ compute_tail_meta 失敗: {e}", flush=True)
@@ -1426,7 +1303,10 @@ try:
                     download_list.append(target)
 
             print(f"⏳ 正在向 Yahoo Finance 請求 {len(download_list)} 檔標的歷史資料...", flush=True)        
-            prices_df = safe_download_close(download_list, period="10y", progress=False) 
+            # ==========================================
+            # 🌟 方案 A: 延長歷史資料長度至 10 年，讓 EVT 與 JD 模型有足夠樣本配適
+            # ==========================================
+            prices_df = safe_download_close(download_list, period="10y", progress=False)
             returns = prices_df.pct_change().dropna()
 
             print("⚖️ 正在過濾真實庫存標的...", flush=True)
@@ -1482,8 +1362,8 @@ try:
                     mom_data = parse_french_csv(fetch_french_zip(mom_url))
                     ff_data = pd.concat([ff5_data, mom_data], axis=1).dropna()
                     
-                    # 🌟 新增：獨立抓取台股大盤與比特幣資料作為客製化因子
-                    custom_factors_df = safe_download_close(["^TWII", "BTC-USD"], period="2y", progress=False).pct_change().dropna()
+                    # 🌟 方案 A: 將因子與母體價格同樣對齊至 10 年，確保迴歸有足夠交集
+                    custom_factors_df = safe_download_close(["^TWII", "BTC-USD"], period="10y", progress=False).pct_change().dropna()
                     # 確保欄位名稱正確
                     if "^TWII" in custom_factors_df.columns and "BTC-USD" in custom_factors_df.columns:
                         custom_factors = custom_factors_df[["^TWII", "BTC-USD"]].rename(columns={"^TWII": "TW_Mkt", "BTC-USD": "Crypto"})
@@ -1502,7 +1382,7 @@ try:
                             daily_port_return.index = pd.to_datetime(daily_port_return.index).tz_localize(None)
                             daily_port_return.name = 'Port_Ret'
 
-                            # 🌟 將所有資料降頻為「週報酬 (Weekly)」吸收時差與假日錯位
+                            # 將所有資料降頻為「週報酬 (Weekly)」吸收時差與假日錯位
                             weekly_port = daily_port_return.resample('W-FRI').apply(lambda x: (1 + x).prod() - 1)
                             weekly_ff = ff_data.resample('W-FRI').apply(lambda x: (1 + x).prod() - 1)
                             weekly_custom = custom_factors.resample('W-FRI').apply(lambda x: (1 + x).prod() - 1)
@@ -1526,15 +1406,14 @@ try:
                                     "rmw": float(round(results.params['RMW'], 2)),
                                     "cma": float(round(results.params['CMA'], 2)),
                                     "wml": float(round(results.params['Mom'], 2)),
-                                    "tw_mkt": float(round(results.params.get('TW_Mkt_RF', 0), 2)), # 🌟 台股因子
-                                    "crypto": float(round(results.params.get('Crypto_RF', 0), 2)), # 🌟 加密貨幣因子
+                                    "tw_mkt": float(round(results.params.get('TW_Mkt_RF', 0), 2)), 
+                                    "crypto": float(round(results.params.get('Crypto_RF', 0), 2)), 
                                     "r_squared": float(round(results.rsquared, 2))
                                 }
                                 print(f"✅ 8因子運算成功: R²={results.rsquared:.2f}, TW_β={results.params.get('TW_Mkt_RF', 0):.2f}, Crypto_β={results.params.get('Crypto_RF', 0):.2f}")
                                 supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
                 except Exception as e: print(f"⚠️ 8因子迴歸失敗: {e}", flush=True)
 
-            # 先為所有 active_tickers 保底寫入 Chaos / X-Ray 需要的欄位，避免因技術因子資料不足而缺 key
             for t in active_tickers:
                 yf_t = ticker_to_yf.get(t, "")
                 if t not in stock_meta:
@@ -1571,8 +1450,6 @@ try:
                         "liquidity_score": compute_liquidity_score(original_ticker, yf_ticker, stock_meta.get(original_ticker, {}))
                     })
                     print(f"✅ [{original_ticker}] 更新 -> Beta: {beta_val:.2f}, Std: {std_val:.1f}%, 目標權重: {tw_val*100:.2f}%")
-
-            # stock_meta 會在 contagion_score 與 chaos_meta 計算完成後一起同步
 
             print("\n⚖️ 啟動自動再平衡引擎：計算目標權重落差與交易訊號...", flush=True)
             portfolio_value, asset_values, rebalance_signals = 0.0, {}, []
@@ -1648,7 +1525,6 @@ try:
             rebalance_signals = []
             
             if portfolio_value > 0:
-                # ===== Buffer Floor 規則 =====
                 buffer_floor_wt = max(0.0, min(float(liquidity_buffer_ratio or 0.0) / 100.0, 0.80))
             
                 available_buffer_names = [t for t in all_tickers if is_hard_buffer_ticker(t)]
@@ -1661,7 +1537,6 @@ try:
                 buffer_gap_wt = max(0.0, buffer_floor_wt - current_buffer_wt)
                 buffer_gap_value = portfolio_value * buffer_gap_wt
             
-                # 平分給 SHY / BOXX；若其中某檔不存在，也照樣生成 signal
                 per_buffer_fill_wt = (buffer_gap_wt / len(available_buffer_names)) if available_buffer_names else 0.0
             
                 print(
@@ -1677,7 +1552,6 @@ try:
                     base_tw = float(stock_meta.get(t, {}).get("target_weight", 0.0) or 0.0)
                     cw = asset_values.get(t, 0.0) / portfolio_value if portfolio_value > 0 else 0.0
             
-                    # hard buffer ticker 額外承接 buffer floor 缺口
                     effective_tw = base_tw
                     if is_hard_buffer_ticker(t):
                         effective_tw = max(base_tw, cw + per_buffer_fill_wt)
@@ -1698,31 +1572,25 @@ try:
                         "trade_amount": trade_amount
                     }
             
-                    # 1. 先保留所有 SELL (生出子彈)
                     if delta_w < 0:
                         sell_signals.append(signal)
                         print(f"   [{t}] {action_str} -> 目標: {effective_tw*100:.1f}%, 當前: {cw*100:.1f}%")
                         continue
             
-                    # 2. 如果 buffer 不足，先只允許補 buffer，凍結其他風險資產的 BUY
                     if buffer_gap_wt > 0.0001:
                         if is_hard_buffer_ticker(t):
                             signal["reason"] = "補足硬緩衝 (SHY / BOXX) 至最低安全邊際"
                             buffer_buy_signals.append(signal)
                             print(f"   [{t}] {action_str} -> 目標: {effective_tw*100:.1f}%, 當前: {cw*100:.1f}% [⚠️ 優先補 Buffer]")
                         else:
-                            # 風險資產 BUY 被斷路器擋掉，只做記錄
                             print(f"   [{t}] BUY 遭系統暫停 🛑 -> Buffer 缺口尚未補足 (目標 {buffer_floor_wt*100:.1f}%)")
                         continue
             
-                    # 3. buffer 已足，才放行一般風險資產 BUY
                     risk_buy_signals.append(signal)
                     print(f"   [{t}] {action_str} -> 目標: {effective_tw*100:.1f}%, 當前: {cw*100:.1f}%")
             
-                # 排序：優先賣出變現 -> 補滿 Buffer -> 最後才買入風險資產
                 rebalance_signals = sell_signals + buffer_buy_signals + risk_buy_signals
             
-                # 額外寫回 metadata，讓前端 UI 與 AI 可直接拿來讀
                 rebalance_meta = {
                     "buffer_floor_pct": round(buffer_floor_wt * 100, 2),
                     "current_buffer_pct": round(current_buffer_wt * 100, 2),
@@ -1741,14 +1609,12 @@ try:
                     "hard_buffer_tickers": ["SHY", "BOXX"]
                 }
 
-            # 🚀 第一波寫入：同步 Metadata 與基礎的 rebalance_meta
             supabase.table("portfolio_db").update({
                 "stock_meta": stock_meta,
                 "chaos_meta": chaos_packet,
                 "rebalance_meta": rebalance_meta
             }).eq("id", target_id).execute()
 
-            # 🤖 AI 執行報告生成
             if rebalance_signals and GEMINI_API_KEY:
                 print("🤖 喚醒 AI 撰寫再平衡交易執行報告...", flush=True)
                 try:
@@ -1777,11 +1643,9 @@ try:
                     """
                     rb_match = re.search(r'\{.*\}', client.models.generate_content(model="gemini-3-flash-preview", contents=rebalance_prompt).text, re.DOTALL)
                     if rb_match:
-                        # 將 AI 產生的計畫 Merge 回原本的 rebalance_meta 中，不覆蓋掉 buffer 資料
                         rebalance_meta["signals"] = rebalance_signals
                         rebalance_meta["ai_execution_plan"] = json.loads(rb_match.group(0))
                         
-                        # 🚀 第二波寫入：補上 AI 報告
                         supabase.table("portfolio_db").update({
                             "rebalance_meta": rebalance_meta
                         }).eq("id", target_id).execute()
