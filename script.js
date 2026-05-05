@@ -376,10 +376,24 @@ ${JSON.stringify(payload, null, 2)}
                     if (data.macro_meta) {
                         const macroData = data.macro_meta;
 
-                        if (macroData.hy_spread > 5.0 && macroData.yield_curve < 0.5) macroRegime.value = 'Crisis';
-                        else if (macroData.hy_spread > 4.0 || macroData.btc_1m_mom < -15) macroRegime.value = 'Bear';
-                        else if (macroData.yield_curve > 0 && macroData.hy_spread < 3.5 && macroData.btc_1m_mom > 5) macroRegime.value = 'Bull';
-                        else macroRegime.value = 'Normal';
+                        // 🧠 接收 Python 後端 21 因子引擎算出的 Regime
+    const backendStage = macroData.ai_analysis?.calculated_stage || '';
+
+    if (backendStage === 'expansion') {
+        macroRegime.value = 'Bull';       // 狂牛
+    } else if (backendStage === 'recession_risk') {
+        macroRegime.value = 'Crisis';     // 衰退危機
+    } else if (backendStage === 'stagflation' || backendStage === 'tight_liquidity') {
+        macroRegime.value = 'Bear';       // 停滯性通膨或流動性緊縮 -> 熊市防守
+    } else if (backendStage === 'neutral' || backendStage === 'mixed') {
+        macroRegime.value = 'Normal';     // 中性或多空分歧 -> 正常基準
+    } else {
+        // ⚠️ Fallback: 如果後端異常沒傳資料，才啟用前端備用邏輯
+        if (macroData.hy_spread > 5.0 && macroData.yield_curve < 0.5) macroRegime.value = 'Crisis';
+        else if (macroData.hy_spread > 4.0 || macroData.btc_1m_mom < -15) macroRegime.value = 'Bear';
+        else if (macroData.yield_curve > 0 && macroData.hy_spread < 3.5 && macroData.btc_1m_mom > 5) macroRegime.value = 'Bull';
+        else macroRegime.value = 'Normal';
+    }
 
                         if (macroData.market_rf) riskParams.value.rf = macroData.market_rf;
                         if (macroData.market_rm) riskParams.value.rm = macroData.market_rm;
