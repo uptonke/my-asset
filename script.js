@@ -2034,6 +2034,30 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
     ? 0
     : Math.abs(bestPort.jumpTailLoss);
 
+    // ==========================================
+    // 🎲 凱利公式 (Kelly Criterion) 曝險建議
+    // ==========================================
+    // 重新結算扣除通膨後的最終無風險利率
+    let final_rf_effective = rf;
+    if (enableInflation.value) {
+        final_rf_effective = rf - 0.025;
+    }
+    
+    const optRetExcess = bestPort.ret - final_rf_effective;
+    const optVar = Math.pow(bestPort.vol, 2);
+
+    let fullKelly = optVar > 0 ? (optRetExcess / optVar) : 0;
+    let halfKelly = fullKelly / 2;
+
+    if (bestPort.skew < -0.5 || safeJumpTailLoss > 0.05) {
+        halfKelly = halfKelly * 0.8; 
+    }
+
+    let recommendedBuffer = (1 - halfKelly) * 100;
+    recommendedBuffer = Math.max(0, Math.min(80, recommendedBuffer));
+
+    if (fullKelly < 0) recommendedBuffer = 100; 
+
     mcOptimal.value = {
     ret: (bestPort.ret * 100).toFixed(2),
     vol: (bestPort.vol * 100).toFixed(2),
@@ -2058,7 +2082,12 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
     defensiveSleevePct: (bestPort.defensiveCurrentWeight * 100).toFixed(2),
     bufferFloorRespected: bestPort.hardBufferCurrentWeight >= bestPort.hardBufferTargetWeight - 1e-6,
 
-    jumpTailLossPct: (safeJumpTailLoss * 100).toFixed(2)
+    jumpTailLossPct: (safeJumpTailLoss * 100).toFixed(2),
+    
+    // 新增 Kelly 輸出
+    fullKelly: (fullKelly * 100).toFixed(1),
+    halfKelly: (halfKelly * 100).toFixed(1),
+    recommendedBuffer: recommendedBuffer.toFixed(1)
 };
 
     chartMC = new Chart(ctx, {

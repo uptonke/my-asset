@@ -84,17 +84,30 @@ def score_sys_corr(v): return -3 if _num(v)>0.85 else -1 if _num(v)>0.70 else 2 
 
 def choose_stage(scores):
     vals = list(scores.values())
-    pos, neg, total = sum(1 for s in vals if s>0), sum(1 for s in vals if s<0), sum(vals)
-    if pos>=3 and neg>=3: return "mixed"
+    total = sum(vals)
+    pos, neg = sum(1 for s in vals if s>0), sum(1 for s in vals if s<0)
+
+    # 1. 優先判定明確的結構性狀態 (Extreme Regimes)
     if scores["yield_curve"]<=-1 and scores["hy_spread"]<=-1 and scores["vix"]<=-1: return "recession_risk"
+    # 你原本的狂牛條件
+    if scores["yield_curve"]>0 and scores["hy_spread"]>0 and scores["vix"]>0 and scores["btc_1m_mom"]>0: return "expansion"
+
+    # 2. 總分暴力壓制 (強烈多空)
+    if total >= 10: return "expansion"
+    if total <= -13: return "stagflation"
+    if -12 <= total <= -6: return "recession_risk"
+
+    # 3. 局部指標拉警報
     if scores["dxy"]<=-1 and scores["hy_spread"]<=-1: return "tight_liquidity"
     if (scores.get("oil_price",0)<0 or scores.get("dbc_mom",0)<0) and (scores["yield_curve"]<=0 or scores["vix"]<=0): return "stagflation"
-    if scores["yield_curve"]>0 and scores["hy_spread"]>0 and scores["vix"]>0 and scores["btc_1m_mom"]>0: return "expansion"
-    if total>=10: return "expansion"
-    if 3<=total<=9: return "neutral"
-    if -5<=total<=2: return "tight_liquidity"
-    if -12<=total<=-6: return "recession_risk"
-    if total<=-13: return "stagflation"
+
+    # 4. 多空極度分歧才判定為 Mixed
+    if pos >= 5 and neg >= 5: return "mixed"
+
+    # 5. 一般狀態
+    if 3 <= total <= 9: return "neutral"
+    if -5 <= total <= 2: return "tight_liquidity"
+    
     return "mixed"
 
 def build_regime_packet(macro_payload):
