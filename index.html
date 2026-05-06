@@ -1905,30 +1905,54 @@
                                        <th class="p-3 pl-6">日期</th>
                                        <th class="p-3 text-right">總資產 (NAV)</th>
                                        <th class="p-3 text-right">總成本 (Cost)</th>
+                                       <th class="p-3 text-right text-gray-400">外部現金流</th>
                                        <th class="p-3 text-right">現金流調整後區間報酬 (Cash-Flow-Adjusted Period Return)</th>
                                        <th class="p-3 text-center">動作</th>
                                    </tr>
                                 </thead>
                                 <tbody class="text-sm divide-y divide-white/5">
-                                    <tr v-for="(h, idx) in enrichedHistory" :key="h.date" class="hover:bg-white/5 transition-colors">
-                                        <td class="p-3 pl-6 font-mono text-blue-300">{{ h.date }}</td>
-                                        <td class="p-3 text-right font-mono text-white">{{ formatNumber(h.assets) }}</td>
-                                        <td class="p-3 text-right font-mono text-gray-500">{{ formatNumber(h.cost) }}</td>
-                                        <td class="p-3 text-right font-mono font-bold" :class="h.dailyReturn >= 0 ? 'text-red-400' : 'text-green-400'">
-                                            {{ h.dailyReturn === null ? '-' : (h.dailyReturn * 100).toFixed(2) + '%' }}
-                                        </td>
-                                        <td class="p-3 text-center">
-                                            <button @click.stop="removeHistoryByDate(h.date)" class="text-gray-600 hover:text-red-500 transition-colors w-8 h-8 rounded-full hover:bg-red-500/10">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    <tr v-if="enrichedHistory.length === 0">
-                                        <td colspan="5" class="p-6 text-center text-gray-500 text-xs">
-                                            尚無快照紀錄，請點擊上方「快照」按鈕建立第一筆資料。
-                                        </td>
-                                    </tr>
-                                </tbody>
+    <tr v-for="(h, idx) in enrichedHistory" :key="h.date" class="hover:bg-white/5 transition-colors">
+        <td class="p-3 pl-6 font-mono text-blue-300">{{ h.date }}</td>
+
+        <td class="p-3 text-right font-mono text-white">
+            {{ formatNumber(h.assets) }}
+        </td>
+
+        <td class="p-3 text-right font-mono text-gray-500">
+            {{ formatNumber(h.cost) }}
+        </td>
+
+        <td
+            class="p-3 text-right font-mono font-bold"
+            :class="(h.externalFlow || 0) > 0 ? 'text-cyan-300' : ((h.externalFlow || 0) < 0 ? 'text-orange-300' : 'text-gray-500')"
+        >
+            {{
+                (h.externalFlow || 0) === 0
+                    ? '0'
+                    : ((h.externalFlow || 0) > 0 ? '+' : '') + formatNumber(h.externalFlow || 0)
+            }}
+        </td>
+
+        <td class="p-3 text-right font-mono font-bold" :class="h.dailyReturn >= 0 ? 'text-red-400' : 'text-green-400'">
+            {{ h.dailyReturn === null ? '-' : (h.dailyReturn * 100).toFixed(2) + '%' }}
+        </td>
+
+        <td class="p-3 text-center">
+            <button
+                @click.stop="removeHistoryByDate(h.date)"
+                class="text-gray-600 hover:text-red-500 transition-colors w-8 h-8 rounded-full hover:bg-red-500/10"
+            >
+                <i class="fas fa-trash"></i>
+            </button>
+        </td>
+    </tr>
+
+    <tr v-if="enrichedHistory.length === 0">
+        <td colspan="6" class="p-6 text-center text-gray-500 text-xs">
+            尚無快照紀錄，請點擊上方「快照」按鈕建立第一筆資料。
+        </td>
+    </tr>
+</tbody>
                             </table>
                         </div>
                     </div>
@@ -2012,20 +2036,70 @@
                  </div>
             </section>
 
-            <div v-if="showHistoryModal" class="fixed inset-0 bg-black/90 flex items-center justify-center z-[100]">
-                <div class="glass p-6 rounded-xl w-full max-w-lg">
-                    <h3 class="text-lg font-bold text-white mb-4">補登資料</h3>
-                    <div class="space-y-3 mb-6">
-                        <div class="flex gap-2">
-                            <input v-model="historyForm.date" type="date" class="input-dark p-2 rounded flex-1">
-                            <input v-model.number="historyForm.assets" type="number" placeholder="NAV" class="input-dark p-2 rounded flex-1">
-                            <input v-model.number="historyForm.cost" type="number" placeholder="Cost" class="input-dark p-2 rounded flex-1">
-                        </div>
-                        <button @click="addHistoryRecord" class="w-full btn-gold text-black py-2 rounded font-bold">新增</button>
-                    </div>
-                    <button @click="showHistoryModal=false" class="w-full bg-gray-700 py-2 rounded text-white">關閉</button>
+           <div v-if="showHistoryModal" class="fixed inset-0 bg-black/90 flex items-center justify-center z-[100] p-4">
+    <div class="glass p-6 rounded-xl w-full max-w-2xl">
+        <h3 class="text-lg font-bold text-white mb-4">補登資料</h3>
+
+        <div class="space-y-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-[11px] text-gray-400 mb-1">日期</label>
+                    <input
+                        v-model="historyForm.date"
+                        type="date"
+                        class="input-dark p-2 rounded w-full"
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-[11px] text-gray-400 mb-1">NAV / 總資產</label>
+                    <input
+                        v-model.number="historyForm.assets"
+                        type="number"
+                        placeholder="NAV"
+                        class="input-dark p-2 rounded w-full"
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-[11px] text-gray-400 mb-1">Cost / 持倉成本</label>
+                    <input
+                        v-model.number="historyForm.cost"
+                        type="number"
+                        placeholder="Cost"
+                        class="input-dark p-2 rounded w-full"
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-[11px] text-gray-400 mb-1">External Flow / 外部現金流</label>
+                    <input
+                        v-model.number="historyForm.externalFlow"
+                        type="number"
+                        step="1"
+                        placeholder="0 = 無；入金填正數；出金填負數"
+                        class="input-dark p-2 rounded w-full"
+                    >
                 </div>
             </div>
+
+            <div class="text-[11px] text-gray-500 leading-relaxed bg-black/20 border border-white/10 rounded-lg px-3 py-2">
+                規則：<span class="text-white">入金填正數、出金填負數、內部換股一律填 0</span>
+            </div>
+
+            <button
+                @click="addHistoryRecord"
+                class="w-full btn-gold text-black py-2 rounded font-bold"
+            >
+                新增
+            </button>
+        </div>
+
+        <button @click="showHistoryModal=false" class="w-full bg-gray-700 py-2 rounded text-white">
+            關閉
+        </button>
+    </div>
+</div>
             
             <div v-if="showMCModal" class="fixed inset-0 bg-black/95 flex items-center justify-center z-[100] p-4">
                 <div class="glass p-4 md:p-6 rounded-xl w-full max-w-5xl h-[90vh] md:h-[85vh] flex flex-col">
