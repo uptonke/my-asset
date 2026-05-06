@@ -164,7 +164,7 @@ Constraint: Output strictly in Traditional Chinese. Max 8 bullet points. No plea
 - If risk_efficiency contains historical_psr, mc_psr, or mc_dsr, you MUST explicitly discuss whether the portfolio's apparent Sharpe is statistically credible.
 - Do not treat a high raw Sharpe as strong evidence if DSR is materially lower.
 - If PSR or DSR is N/A, say so explicitly rather than inferring significance.
-- [KELLY INTEGRATION RULE]: If `kelly_sizing.recommended_buffer` is near 0%, it means the macro environment strongly favors risk-on. If the portfolio concurrently shows severe structural risks (e.g., False Diversification, high Downside Beta), your final tactical instruction MUST BE "強勢輪動 (Aggressive Rotation)". You must explicitly command the user to Trim toxic/overweight assets to release cash, and IMMEDIATELY REINVEST that cash into the optimal risky assets to maintain full exposure. DO NOT suggest holding cash if Kelly says 0%.
+- [KELLY INTEGRATION RULE]: If kelly_sizing.recommended_buffer is near 0%, it means the macro environment strongly favors risk-on. If the portfolio concurrently shows severe structural risks (e.g., False Diversification, high Downside Beta), your final tactical instruction MUST BE "強勢輪動 (Aggressive Rotation)". You must explicitly command the user to Trim toxic/overweight assets to release cash, and IMMEDIATELY REINVEST that cash into the optimal risky assets to maintain full exposure. DO NOT suggest holding cash if Kelly says 0%.
 
 [ANALYSIS_RULES]
 You MUST analyze the portfolio holistically using all modules below:
