@@ -2051,7 +2051,7 @@
                             確認送出
                         </button>
                     </div>
-                 </div> <!-- 🟢 這裡就是你遺漏的左側面板結尾 </div> -->
+                 </div> 
 
                  <!-- 🔴 右側面板：交易流水帳 -->
                  <div class="flex-1 glass rounded-xl overflow-hidden flex flex-col">
@@ -2100,11 +2100,11 @@
             </section>
 
           <div v-if="showHistoryModal" class="fixed inset-0 bg-black/90 flex items-center justify-center z-[100] p-4">
-    <div class="glass p-6 rounded-xl w-full max-w-xl">
+    <div class="glass p-6 rounded-xl w-full max-w-4xl">
         <h3 class="text-lg font-bold text-white mb-4">補登資料</h3>
 
         <div class="space-y-4 mb-6">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
                     <label class="block text-[11px] text-gray-400 mb-1">日期</label>
                     <input v-model="historyForm.date" type="date" class="input-dark p-2 rounded w-full">
@@ -2119,12 +2119,16 @@
                     <label class="block text-[11px] text-gray-400 mb-1">Cost / 持倉成本</label>
                     <input v-model.number="historyForm.cost" type="number" placeholder="Cost" class="input-dark p-2 rounded w-full">
                 </div>
+                
+                <div>
+                    <label class="block text-[11px] text-gray-400 mb-1">外部現金流</label>
+                    <input v-model.number="historyForm.externalFlow" type="number" placeholder="入金正 / 出金負" class="input-dark p-2 rounded w-full text-cyan-300">
+                </div>
             </div>
 
             <div class="text-[11px] text-gray-500 leading-relaxed bg-black/20 border border-white/10 rounded-lg px-3 py-2">
-                外部出入金請改到 <span class="text-white font-bold">Ledger / 記帳</span> 裡新增
-                <span class="text-cyan-300 font-bold">Deposit</span> 或
-                <span class="text-orange-300 font-bold">Withdraw</span>。
+                💡 <strong class="text-white">如何輸入外部現金流？</strong><br>
+                若此區間有從銀行帳戶轉入資金，請在「外部現金流」輸入 <span class="text-cyan-300 font-bold">正數 (如 50000)</span>；若提款轉出，請輸入 <span class="text-orange-300 font-bold">負數 (如 -30000)</span>。這將確保 MWR (資金加權報酬) 的計算完全精準。
             </div>
 
             <button @click="addHistoryRecord" class="w-full btn-gold text-black py-2 rounded font-bold">
