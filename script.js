@@ -382,7 +382,6 @@ ${JSON.stringify(payload, null, 2)}
                     if (data.macro_meta) {
                         const macroData = data.macro_meta;
 
-                        // 🧠 接收 Python 後端 21 因子引擎算出的 Regime
     const backendStage = macroData.ai_analysis?.calculated_stage || '';
 
     if (backendStage === 'expansion') {
@@ -394,7 +393,6 @@ ${JSON.stringify(payload, null, 2)}
     } else if (backendStage === 'neutral' || backendStage === 'mixed') {
         macroRegime.value = 'Normal';     // 中性或多空分歧 -> 正常基準
     } else {
-        // ⚠️ Fallback: 如果後端異常沒傳資料，才啟用前端備用邏輯
         if (macroData.hy_spread > 5.0 && macroData.yield_curve < 0.5) macroRegime.value = 'Crisis';
         else if (macroData.hy_spread > 4.0 || macroData.btc_1m_mom < -15) macroRegime.value = 'Bear';
         else if (macroData.yield_curve > 0 && macroData.hy_spread < 3.5 && macroData.btc_1m_mom > 5) macroRegime.value = 'Bull';
@@ -471,7 +469,14 @@ ${JSON.stringify(payload, null, 2)}
         }
 
         const txForm = ref({ date: new Date().toISOString().split('T')[0], type: 'Buy', category: '美股', ticker: '', price: null, shares: null });
-        const historyForm = ref({ date: new Date().toISOString().split('T')[0], assets: null, cost: null });
+        
+        // 修正 1: 新增 externalFlow
+        const historyForm = ref({
+            date: new Date().toISOString().split('T')[0],
+            assets: null,
+            cost: null,
+            externalFlow: 0
+        });
 
         const displayHistory = computed(() => realHistoryData.value);
 
@@ -672,7 +677,6 @@ ${JSON.stringify(payload, null, 2)}
                     item.isOverweight = item.totalWeight > 0.20; 
                     item.weightGap = item.blendedWeight - (item.totalWeight * 100); 
 
-                    // 累加該分類下的總投入資金與加權持有天數
                     if (holdingDaysMap[item.ticker]) {
                         groupTotalInvested += holdingDaysMap[item.ticker].totalInvested;
                         groupWeightedDaysSum += holdingDaysMap[item.ticker].weightedDaysSum;
@@ -682,11 +686,9 @@ ${JSON.stringify(payload, null, 2)}
                 groups[cat].items.sort((a,b) => b.marketValueTwd - a.marketValueTwd);
                 groups[cat].unrealizedPL = groups[cat].totalValue - groups[cat].totalCost;
                 
-                // 計算分類累積報酬率
                 const groupCumulativeReturn = groups[cat].totalCost > 0 ? (groups[cat].unrealizedPL / groups[cat].totalCost) : 0;
                 groups[cat].returnRate = groupCumulativeReturn * 100;
 
-                // 計算分類年化報酬率 (CAGR)
                 let groupAnnualizedReturn = groupCumulativeReturn; 
                 if (groupTotalInvested > 0) {
                     const groupAvgDaysHeld = groupWeightedDaysSum / groupTotalInvested;
@@ -696,7 +698,6 @@ ${JSON.stringify(payload, null, 2)}
                     }
                 }
                 
-                // 離群值封頂限制 (最高 500%, 最低 -100%)
                 if (groupAnnualizedReturn > 5) groupAnnualizedReturn = 5;
                 if (groupAnnualizedReturn < -1) groupAnnualizedReturn = -1;
 
@@ -735,34 +736,39 @@ ${JSON.stringify(payload, null, 2)}
             return data.filter(h => new Date(h.date) >= new Date(quantStartDate.value));
         });
 
+        // 修正 3: enrichedHistory
         const enrichedHistory = computed(() => {
-    const sorted = [...filteredHistory.value].sort((a, b) => new Date(a.date) - new Date(b.date));
+            const sorted = [...filteredHistory.value]
+                .map(item => ({
+                    ...item,
+                    assets: Number(item.assets || 0),
+                    cost: Number(item.cost || 0),
+                    externalFlow: Number(item.externalFlow || 0)
+                }))
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-    return sorted.map((item, index) => {
-        let dailyReturn = null;
-        let withdrawal = 0;
+            return sorted.map((item, index) => {
+                let dailyReturn = null;
 
-        if (index > 0) {
-            const prev = sorted[index - 1];
+                if (index > 0) {
+                    const prev = sorted[index - 1];
 
-            // 假設：Cost_{t-1} - Cost_t = 當期「外部現金流」
-            // 正值 = 提領 / Withdraw
-            // 負值 = 入金 / Deposit
-            // 因此本欄位不是單純 NAV return，而是 cash-flow-adjusted period return
-            withdrawal = (prev.cost || 0) - (item.cost || 0);
+                    // TWR: 去除「外部現金流」後的 NAV 報酬
+                    // externalFlow > 0 = 入金；< 0 = 出金
+                    dailyReturn = prev.assets > 0
+                        ? ((item.assets - item.externalFlow) / prev.assets) - 1
+                        : 0;
+                }
 
-            dailyReturn = prev.assets > 0
-                ? ((item.assets + withdrawal) / prev.assets) - 1
-                : 0;
-        }
+                return {
+                    ...item,
+                    dailyReturn,
+                    // 保留舊欄位名稱 withdrawal，避免前端 HTML 若有綁定會爆掉
+                    withdrawal: -item.externalFlow
+                };
+            }).reverse();
+        });
 
-        return {
-            ...item,
-            dailyReturn,
-            withdrawal
-        };
-    }).reverse();
-});
         const stressTestResults = computed(() => {
             const currentBeta = parseFloat(portfolioStats.value.beta) || 1.0;
             const historicalScenarios = [
@@ -785,61 +791,61 @@ ${JSON.stringify(payload, null, 2)}
         });
 
         function xnpv(rate, cashflows) {
-    if (rate <= -0.999999) return Infinity;
-    const d0 = new Date(cashflows[0].date);
-    return cashflows.reduce((sum, cf) => {
-        const dt = (new Date(cf.date) - d0) / (1000 * 60 * 60 * 24);
-        return sum + cf.amount / Math.pow(1 + rate, dt / 365.25);
-    }, 0);
-}
-
-function dxnpv(rate, cashflows) {
-    if (rate <= -0.999999) return Infinity;
-    const d0 = new Date(cashflows[0].date);
-    return cashflows.reduce((sum, cf) => {
-        const dt = (new Date(cf.date) - d0) / (1000 * 60 * 60 * 24);
-        const yr = dt / 365.25;
-        return sum - (yr * cf.amount) / Math.pow(1 + rate, yr + 1);
-    }, 0);
-}
-
-function xirr(cashflows, guess = 0.1) {
-    let rate = guess;
-
-    for (let i = 0; i < 100; i++) {
-        const f = xnpv(rate, cashflows);
-        const df = dxnpv(rate, cashflows);
-
-        if (!Number.isFinite(f) || !Number.isFinite(df) || Math.abs(df) < 1e-12) break;
-
-        const next = rate - f / df;
-        if (Math.abs(next - rate) < 1e-10) return next;
-        rate = next;
-    }
-
-    let low = -0.9999;
-    let high = 10.0;
-    let fLow = xnpv(low, cashflows);
-    let fHigh = xnpv(high, cashflows);
-
-    if (!Number.isFinite(fLow) || !Number.isFinite(fHigh) || fLow * fHigh > 0) return null;
-
-    for (let i = 0; i < 200; i++) {
-        const mid = (low + high) / 2;
-        const fMid = xnpv(mid, cashflows);
-
-        if (Math.abs(fMid) < 1e-10) return mid;
-        if (fLow * fMid < 0) {
-            high = mid;
-            fHigh = fMid;
-        } else {
-            low = mid;
-            fLow = fMid;
+            if (rate <= -0.999999) return Infinity;
+            const d0 = new Date(cashflows[0].date);
+            return cashflows.reduce((sum, cf) => {
+                const dt = (new Date(cf.date) - d0) / (1000 * 60 * 60 * 24);
+                return sum + cf.amount / Math.pow(1 + rate, dt / 365.25);
+            }, 0);
         }
-    }
 
-    return (low + high) / 2;
-}
+        function dxnpv(rate, cashflows) {
+            if (rate <= -0.999999) return Infinity;
+            const d0 = new Date(cashflows[0].date);
+            return cashflows.reduce((sum, cf) => {
+                const dt = (new Date(cf.date) - d0) / (1000 * 60 * 60 * 24);
+                const yr = dt / 365.25;
+                return sum - (yr * cf.amount) / Math.pow(1 + rate, yr + 1);
+            }, 0);
+        }
+
+        function xirr(cashflows, guess = 0.1) {
+            let rate = guess;
+
+            for (let i = 0; i < 100; i++) {
+                const f = xnpv(rate, cashflows);
+                const df = dxnpv(rate, cashflows);
+
+                if (!Number.isFinite(f) || !Number.isFinite(df) || Math.abs(df) < 1e-12) break;
+
+                const next = rate - f / df;
+                if (Math.abs(next - rate) < 1e-10) return next;
+                rate = next;
+            }
+
+            let low = -0.9999;
+            let high = 10.0;
+            let fLow = xnpv(low, cashflows);
+            let fHigh = xnpv(high, cashflows);
+
+            if (!Number.isFinite(fLow) || !Number.isFinite(fHigh) || fLow * fHigh > 0) return null;
+
+            for (let i = 0; i < 200; i++) {
+                const mid = (low + high) / 2;
+                const fMid = xnpv(mid, cashflows);
+
+                if (Math.abs(fMid) < 1e-10) return mid;
+                if (fLow * fMid < 0) {
+                    high = mid;
+                    fHigh = fMid;
+                } else {
+                    low = mid;
+                    fLow = fMid;
+                }
+            }
+
+            return (low + high) / 2;
+        }
 
         watch([enrichedHistory, riskParams, dataFrequency], () => {
              const h = [...enrichedHistory.value].reverse(); 
@@ -873,31 +879,32 @@ const annRet = years > 0 ? (Math.pow(1 + cumTwr, 1 / years) - 1) : 0;
 const annLogRet = years > 0 ? (Math.log(1 + cumTwr) / years) : 0;
 const factor = Math.sqrt(periodsPerYear);
 
-// === 真 MWR / XIRR ===
+// 修正 4: 真 MWR / XIRR
 let mwr = null;
 const cashflows = [];
 
 if (h.length >= 2) {
-    // 初始投入
+    // 1. 用樣本起點 NAV 當作初始投入 (對投資人而言是資金流出，故為負值)
     cashflows.push({
         date: h[0].date,
-        amount: -(h[0].cost || 0)
+        amount: -(Number(h[0].assets) || 0)
     });
 
-    // 中間提領 / 入金
+    // 2. 中間只吃「真實外部現金流」
     for (let i = 1; i < h.length; i++) {
-        const cf = (h[i - 1].cost || 0) - (h[i].cost || 0);
+        const cf = Number(h[i].externalFlow || 0);
+
         if (Math.abs(cf) > 0) {
             cashflows.push({
                 date: h[i].date,
-                amount: cf
+                amount: -cf // 入金(+)轉為投資現金流出(-)；出金(-)轉為投資現金流入(+)
             });
         }
     }
 
-    // 最後 NAV 加到最後一期
+    // 3. 期末 NAV 視為最終收回
     const endDate = h[h.length - 1].date;
-    const endVal = h[h.length - 1].assets || 0;
+    const endVal = Number(h[h.length - 1].assets || 0);
 
     if (cashflows.length > 0 && cashflows[cashflows.length - 1].date === endDate) {
         cashflows[cashflows.length - 1].amount += endVal;
@@ -974,11 +981,7 @@ let kurtVal = (sumQuart / n) / Math.pow(stdPop, 4) - 3;
 if (isNaN(skewVal)) skewVal = 0;
 if (isNaN(kurtVal)) kurtVal = 0;
 
-// ==========================================
-// 🎯 新增：計算真實投組的 PSR (Probabilistic Sharpe Ratio)
-// ==========================================
 const sampleN = returns.length;
-// 👇 將年化 Sharpe 退回週頻率 (除以 factor，也就是 √52)
 const periodSharpe = sharpe / factor; 
 
 const psr_hist = computePSR({
@@ -995,7 +998,7 @@ const psr_hist = computePSR({
                  mwr: mwr === null ? '-' : (mwr * 100).toFixed(2),            
                  annVol: (annVol*100).toFixed(2), 
                  sharpe: sharpe.toFixed(2), 
-                 psr: psr_hist === null ? '-' : (psr_hist * 100).toFixed(2), // 👈 將真實歷史 PSR 寫入 stats
+                 psr: psr_hist === null ? '-' : (psr_hist * 100).toFixed(2), 
                  sortino: sortino.toFixed(2), 
                  treynor: treynor.toFixed(4),            
                  alpha: (alpha * 100).toFixed(2),
@@ -1439,19 +1442,35 @@ async function saveData() {
             saveData(); txForm.value.ticker=''; updateCharts(); 
         }
 
+        // 修正 2: snapshotToHistory
         function snapshotToHistory() {
             const date = snapshotDate.value || new Date().toISOString().split('T')[0];
             const assets = Math.round(totalStockValueTwd.value);
             const cost = Math.round(totalStockCostTwd.value);
 
             const idx = realHistoryData.value.findIndex(h => h.date === date);
+            const existingExternalFlow = idx >= 0 ? Number(realHistoryData.value[idx].externalFlow || 0) : 0;
+
+            const record = {
+                date,
+                assets,
+                cost,
+                externalFlow: existingExternalFlow
+            };
+
             if (idx >= 0) {
-                if(confirm(`日期 (${date}) 已有紀錄，要覆蓋嗎？`)) realHistoryData.value[idx] = { date, assets, cost };
-                else return;
-            } else realHistoryData.value.push({ date, assets, cost });
-            
-            saveData(); updateCharts();
-            if(!quantStartDate.value) quantStartDate.value = date;
+                if (confirm(`日期 (${date}) 已有紀錄，要覆蓋嗎？`)) {
+                    realHistoryData.value[idx] = record;
+                } else {
+                    return;
+                }
+            } else {
+                realHistoryData.value.push(record);
+            }
+
+            saveData();
+            updateCharts();
+            if (!quantStartDate.value) quantStartDate.value = date;
         }
 
         const quantDays = computed(() => {
@@ -1461,7 +1480,27 @@ async function saveData() {
              return Math.ceil((end - start) / (1000 * 60 * 60 * 24));
         });
 
-        function addHistoryRecord() { const { date, assets, cost } = historyForm.value; realHistoryData.value.push({ date, assets, cost }); saveData(); updateCharts(); }
+        // 修正 2: addHistoryRecord
+        function addHistoryRecord() {
+            const { date, assets, cost, externalFlow } = historyForm.value;
+
+            realHistoryData.value.push({
+                date,
+                assets: Number(assets),
+                cost: Number(cost),
+                externalFlow: Number(externalFlow || 0)
+            });
+
+            saveData();
+            updateCharts();
+
+            historyForm.value = {
+                date: new Date().toISOString().split('T')[0],
+                assets: null,
+                cost: null,
+                externalFlow: 0
+            };
+        }
 
         function openMonteCarlo() {
             showMCModal.value = true; mcOptimal.value = null; 
@@ -1755,7 +1794,7 @@ function normCdf(x) {
 function sharpeStdErrApprox(sr, skew, exKurt, nObs) {
     if (!Number.isFinite(sr) || !Number.isFinite(nObs) || nObs <= 1) return null;
 
-    const kurt = (Number.isFinite(exKurt) ? exKurt : 0) + 3; // 轉成常規 kurtosis
+    const kurt = (Number.isFinite(exKurt) ? exKurt : 0) + 3; 
     const denom = Math.max(
         1e-12,
         1 - (skew || 0) * sr + ((kurt - 1) / 4) * sr * sr
@@ -1803,7 +1842,7 @@ function computeDSR({ sr, skew = 0, exKurt = 0, nObs = 0, nTrials = 1 }) {
     const riskyBudget = 1 - targetHardBufferWeight;
 
     if (riskyBudget <= 0.05) {
-        alert("⚠️ 流動性緩衝比例過高，幾乎沒有剩餘風險資產可配置。");
+        alert("⚠️ 流ٹی性緩衝比例過高，幾乎沒有剩餘風險資產可配置。");
         return;
     }
 
@@ -1924,25 +1963,18 @@ function computeDSR({ sr, skew = 0, exKurt = 0, nObs = 0, nTrials = 1 }) {
             if (enableBlackSwan.value) {
                 const jp = getEffectiveJumpParams(riskyAssets, weights);
 
-                // 【解析解 (Analytical Moments) 替換原本的內部 MC 模擬】
-                // 計算 Merton 模型下的跳躍補償期望值與變異數 (年化)
                 const jumpExpectedReturn = jp.lambda * jp.mean;
                 const jumpVariance = jp.lambda * (Math.pow(jp.mean, 2) + Math.pow(jp.std, 2));
 
-                // 1. 直接疊加報酬率與波動率
                 p_ret = p_ret + jumpExpectedReturn;
                 p_vol = Math.sqrt(Math.pow(p_vol, 2) + jumpVariance);
 
-                // 2. 估算高階動差 (直接使用解析解推導，完美反映肥尾與左傾)
-                // 跳躍造成的偏度 = [lambda * E(J^3)] / p_vol^3
                 const m3_jump = jp.lambda * (Math.pow(jp.mean, 3) + 3 * jp.mean * Math.pow(jp.std, 2));
                 p_skew = p_skew + (m3_jump / Math.pow(p_vol, 3));
 
-                // 跳躍造成的超額峰度 = [lambda * E(J^4)] / p_vol^4
                 const m4_jump = jp.lambda * (Math.pow(jp.mean, 4) + 6 * Math.pow(jp.mean, 2) * Math.pow(jp.std, 2) + 3 * Math.pow(jp.std, 4));
                 p_kurt_ex = p_kurt_ex + (m4_jump / Math.pow(p_vol, 4));
 
-                // 3. 抓取尾部風險概估 (單純量化跳躍帶來的預期損失拖累)
                 jumpTailLoss = Math.abs(jumpExpectedReturn);
             }
 
@@ -2027,7 +2059,6 @@ if (Number.isFinite(currentScore)) {
 
 const effectiveTrials = Math.max(1, mcPoints.length);
 
-// 👇 同樣將 MC 算出的年化 Sharpe 退回週頻率
 const mcPeriodSharpe = bestPort.sharpeRaw / Math.sqrt(52);
 
 const psr = computePSR({
@@ -2054,10 +2085,6 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
     ? 0
     : Math.abs(bestPort.jumpTailLoss);
 
-    // ==========================================
-    // 🎲 凱利公式 (Kelly Criterion) 曝險建議
-    // ==========================================
-    // 重新結算扣除通膨後的最終無風險利率
     let final_rf_effective = rf;
     if (enableInflation.value) {
         final_rf_effective = rf - 0.025;
@@ -2081,30 +2108,21 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
     mcOptimal.value = {
     ret: (bestPort.ret * 100).toFixed(2),
     vol: (bestPort.vol * 100).toFixed(2),
-
-    // 顯示層：保留你原本的 ASR
     sharpe: bestPort.sharpeAdj.toFixed(3),
-
-    // 新增：raw Sharpe / PSR / DSR
     sharpeRaw: bestPort.sharpeRaw.toFixed(3),
     psr: psr === null ? '-' : (psr * 100).toFixed(3),
     dsr: dsr === null ? '-' : (dsr * 100).toFixed(3),
     dsrTrials: effectiveTrials,
     dsrSampleN: sampleN,
-
     skew: bestPort.skew.toFixed(2),
     kurt: bestPort.kurt.toFixed(2),
     weights: wList,
-
     hardBufferTargetPct: (bestPort.hardBufferTargetWeight * 100).toFixed(2),
     hardBufferCurrentPct: (bestPort.hardBufferCurrentWeight * 100).toFixed(2),
     hardBufferGapPct: safeHardBufferGap.toFixed(2),
     defensiveSleevePct: (bestPort.defensiveCurrentWeight * 100).toFixed(2),
     bufferFloorRespected: bestPort.hardBufferCurrentWeight >= bestPort.hardBufferTargetWeight - 1e-6,
-
     jumpTailLossPct: (safeJumpTailLoss * 100).toFixed(2),
-    
-    // 新增 Kelly 輸出
     fullKelly: (fullKelly * 100).toFixed(1),
     halfKelly: (halfKelly * 100).toFixed(1),
     recommendedBuffer: recommendedBuffer.toFixed(1)
@@ -2701,7 +2719,6 @@ chartCML.data.datasets = [
     }
 });
 
-        // 🚨 終極修正：將所有在 HTML 呼叫的函數與變數都暴露給 Vue
         return { 
             currentTab, showHistoryModal, isUpdating,
             transactions, groupedHoldings, categoryTotals, riskTotals, portfolioStats, 
