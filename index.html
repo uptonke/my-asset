@@ -1984,30 +1984,69 @@
                         </div>
                     </div>
                     <div>
-                        <label class="text-xs text-gray-400 mb-1 block">2. 交易內容 (TWD)</label>
-                        <div class="grid grid-cols-2 gap-2 mb-2">
-                            <input v-model="txForm.date" type="date" class="input-dark p-2 rounded text-xs col-span-2">
-                            <select v-model="txForm.type" class="input-dark p-2 rounded text-xs col-span-2">
-                                <option value="Buy">買入 (Buy)</option>
-                                <option value="Sell">賣出 (Sell)</option>
-                            </select>
-                        </div>
-                        <input v-model="txForm.ticker" placeholder="代號 / 名稱 (如 AAPL)" class="w-full input-dark p-2 rounded text-xs uppercase mb-2">
-                        <div class="grid grid-cols-2 gap-2 mb-2">
-                            <div>
-                                <label class="text-[10px] text-gray-500 block">成交單價 (TWD)</label>
-                                <input v-model.number="txForm.price" type="number" placeholder="台幣價格" class="w-full input-dark p-2 rounded text-xs">
-                            </div>
-                            <div>
-                                <label class="text-[10px] text-gray-500 block">數量</label>
-                                <input v-model.number="txForm.shares" type="number" placeholder="股數" class="w-full input-dark p-2 rounded text-xs">
-                            </div>
-                        </div>
-                        <div class="text-xs text-right text-gray-400 font-mono">
-                            總金額 (TWD): <span class="text-white font-bold">{{ formatNumber((txForm.price || 0) * (txForm.shares || 0)) }}</span>
-                        </div>
-                    </div>
-                    <button @click="addTransaction" class="w-full btn-purple text-white rounded-lg font-bold text-sm py-3 shadow-lg">確認送出</button>
+                    <div>
+    <label class="text-xs text-gray-400 mb-1 block">2. 交易內容 (TWD)</label>
+
+    <div class="grid grid-cols-2 gap-2 mb-2">
+        <input v-model="txForm.date" type="date" class="input-dark p-2 rounded text-xs col-span-2">
+
+        <select v-model="txForm.type" class="input-dark p-2 rounded text-xs col-span-2">
+            <option value="Buy">買入 (Buy)</option>
+            <option value="Sell">賣出 (Sell)</option>
+            <option value="Deposit">入金 (Deposit)</option>
+            <option value="Withdraw">出金 (Withdraw)</option>
+        </select>
+    </div>
+
+    <template v-if="txForm.type === 'Buy' || txForm.type === 'Sell'">
+        <input
+            v-model="txForm.ticker"
+            placeholder="代號 / 名稱 (如 AAPL)"
+            class="w-full input-dark p-2 rounded text-xs uppercase mb-2"
+        >
+
+        <div class="grid grid-cols-2 gap-2 mb-2">
+            <div>
+                <label class="text-[10px] text-gray-500 block">成交單價 (TWD)</label>
+                <input v-model.number="txForm.price" type="number" placeholder="台幣價格" class="w-full input-dark p-2 rounded text-xs">
+            </div>
+            <div>
+                <label class="text-[10px] text-gray-500 block">數量</label>
+                <input v-model.number="txForm.shares" type="number" placeholder="股數" class="w-full input-dark p-2 rounded text-xs">
+            </div>
+        </div>
+
+        <div class="text-xs text-right text-gray-400 font-mono">
+            總金額 (TWD):
+            <span class="text-white font-bold">
+                {{ formatNumber((txForm.price || 0) * (txForm.shares || 0)) }}
+            </span>
+        </div>
+    </template>
+
+    <template v-else>
+        <div class="mb-2">
+            <label class="text-[10px] text-gray-500 block">金額 (TWD)</label>
+            <input
+                v-model.number="txForm.amount"
+                type="number"
+                placeholder="輸入金額"
+                class="w-full input-dark p-2 rounded text-xs"
+            >
+        </div>
+
+        <div class="text-xs text-right text-gray-400 font-mono">
+            {{ txForm.type === 'Deposit' ? '入金金額' : '出金金額' }}:
+            <span class="text-white font-bold">
+                {{ formatNumber(txForm.amount || 0) }}
+            </span>
+        </div>
+    </template>
+</div>
+
+<button @click="addTransaction" class="w-full btn-purple text-white rounded-lg font-bold text-sm py-3 shadow-lg">
+    確認送出
+</button>
                  </div>
                  <div class="flex-1 glass rounded-xl overflow-hidden flex flex-col">
                     <div class="p-4 bg-gray-800/50 border-b border-gray-700">
@@ -2019,78 +2058,70 @@
                                 <tr><th class="p-3">日期</th><th class="p-3">類別</th><th class="p-3">名稱</th><th class="p-3 text-right">現金流 (TWD)</th><th class="p-3"></th></tr>
                             </thead>
                             <tbody class="text-sm divide-y divide-white/5">
-                                <tr v-for="(tx, idx) in reversedTransactions" :key="idx" class="hover:bg-white/5">
-                                    <td class="p-3 text-gray-400">{{ tx.date }}</td>
-                                    <td class="p-3 font-bold" :class="getTypeColor(tx.type)">{{ tx.type }}</td>
-                                    <td class="p-3 text-white">{{ tx.ticker || '-' }}</td>
-                                    <td class="p-3 text-right font-mono text-white">{{ formatNumber(tx.totalCashFlow) }}</td>
-                                    <td class="p-3 text-center">
-                                        <button @click="removeTransaction(tx)" class="text-gray-600 hover:text-red-500 transition-colors">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            </tbody>
+    <tr v-for="(tx, idx) in reversedTransactions" :key="idx" class="hover:bg-white/5">
+        <td class="p-3 text-gray-400">{{ tx.date }}</td>
+
+        <td class="p-3 font-bold" :class="getTypeColor(tx.type)">
+            {{ tx.type }}
+        </td>
+
+        <td class="p-3 text-white">
+            {{
+                tx.ticker ||
+                (tx.type === 'Deposit'
+                    ? '外部入金'
+                    : (tx.type === 'Withdraw' ? '外部出金' : '-'))
+            }}
+        </td>
+
+        <td
+            class="p-3 text-right font-mono font-bold"
+            :class="Number(tx.totalCashFlow || 0) >= 0 ? 'text-green-400' : 'text-red-400'"
+        >
+            {{ Number(tx.totalCashFlow || 0) > 0 ? '+' : '' }}{{ formatNumber(tx.totalCashFlow) }}
+        </td>
+
+        <td class="p-3 text-center">
+            <button @click="removeTransaction(tx)" class="text-gray-600 hover:text-red-500 transition-colors">
+                <i class="fas fa-times"></i>
+            </button>
+        </td>
+    </tr>
+</tbody>
                         </table>
                     </div>
                  </div>
             </section>
 
-           <div v-if="showHistoryModal" class="fixed inset-0 bg-black/90 flex items-center justify-center z-[100] p-4">
-    <div class="glass p-6 rounded-xl w-full max-w-2xl">
+          <div v-if="showHistoryModal" class="fixed inset-0 bg-black/90 flex items-center justify-center z-[100] p-4">
+    <div class="glass p-6 rounded-xl w-full max-w-xl">
         <h3 class="text-lg font-bold text-white mb-4">補登資料</h3>
 
         <div class="space-y-4 mb-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
                     <label class="block text-[11px] text-gray-400 mb-1">日期</label>
-                    <input
-                        v-model="historyForm.date"
-                        type="date"
-                        class="input-dark p-2 rounded w-full"
-                    >
+                    <input v-model="historyForm.date" type="date" class="input-dark p-2 rounded w-full">
                 </div>
 
                 <div>
                     <label class="block text-[11px] text-gray-400 mb-1">NAV / 總資產</label>
-                    <input
-                        v-model.number="historyForm.assets"
-                        type="number"
-                        placeholder="NAV"
-                        class="input-dark p-2 rounded w-full"
-                    >
+                    <input v-model.number="historyForm.assets" type="number" placeholder="NAV" class="input-dark p-2 rounded w-full">
                 </div>
 
                 <div>
                     <label class="block text-[11px] text-gray-400 mb-1">Cost / 持倉成本</label>
-                    <input
-                        v-model.number="historyForm.cost"
-                        type="number"
-                        placeholder="Cost"
-                        class="input-dark p-2 rounded w-full"
-                    >
-                </div>
-
-                <div>
-                    <label class="block text-[11px] text-gray-400 mb-1">External Flow / 外部現金流</label>
-                    <input
-                        v-model.number="historyForm.externalFlow"
-                        type="number"
-                        step="1"
-                        placeholder="0 = 無；入金填正數；出金填負數"
-                        class="input-dark p-2 rounded w-full"
-                    >
+                    <input v-model.number="historyForm.cost" type="number" placeholder="Cost" class="input-dark p-2 rounded w-full">
                 </div>
             </div>
 
             <div class="text-[11px] text-gray-500 leading-relaxed bg-black/20 border border-white/10 rounded-lg px-3 py-2">
-                規則：<span class="text-white">入金填正數、出金填負數、內部換股一律填 0</span>
+                外部出入金請改到 <span class="text-white font-bold">Ledger / 記帳</span> 裡新增
+                <span class="text-cyan-300 font-bold">Deposit</span> 或
+                <span class="text-orange-300 font-bold">Withdraw</span>。
             </div>
 
-            <button
-                @click="addHistoryRecord"
-                class="w-full btn-gold text-black py-2 rounded font-bold"
-            >
+            <button @click="addHistoryRecord" class="w-full btn-gold text-black py-2 rounded font-bold">
                 新增
             </button>
         </div>
