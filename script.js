@@ -468,16 +468,21 @@ ${JSON.stringify(payload, null, 2)}
             }
         }
 
-        const txForm = ref({ date: new Date().toISOString().split('T')[0], type: 'Buy', category: '美股', ticker: '', price: null, shares: null });
-        
-        // 修正 1: 新增 externalFlow
-        const historyForm = ref({
-            date: new Date().toISOString().split('T')[0],
-            assets: null,
-            cost: null,
-            externalFlow: 0
-        });
+        const txForm = ref({
+    date: new Date().toISOString().split('T')[0],
+    type: 'Buy',
+    category: '美股',
+    ticker: '',
+    price: null,
+    shares: null,
+    amount: null
+});
 
+const historyForm = ref({
+    date: new Date().toISOString().split('T')[0],
+    assets: null,
+    cost: null
+});
         const displayHistory = computed(() => realHistoryData.value);
 
         watch(displayHistory, (newVal) => {
@@ -565,8 +570,9 @@ ${JSON.stringify(payload, null, 2)}
             const today = new Date();
             
             transactions.value.forEach(tx => {
-                if(!tx.ticker || tx.type !== 'Buy') return;
-                const t = tx.ticker.toUpperCase();
+    if (tx.type === 'Deposit' || tx.type === 'Withdraw') return;
+    if (!tx.ticker) return;
+    const t = tx.ticker.toUpperCase();
                 const txDate = new Date(tx.date);
                 const daysHeld = Math.max(1, (today - txDate) / (1000 * 60 * 60 * 24)); 
                 const investedAmount = Math.abs(tx.totalCashFlow);
@@ -735,39 +741,52 @@ ${JSON.stringify(payload, null, 2)}
             if(!quantStartDate.value) return data;
             return data.filter(h => new Date(h.date) >= new Date(quantStartDate.value));
         });
+        const ledgerExternalFlowByDate = computed(() => {
+    const map = {};
+
+    transactions.value.forEach(tx => {
+        if (tx.type !== 'Deposit' && tx.type !== 'Withdraw') return;
+        if (!tx.date) return;
+
+        map[tx.date] = (map[tx.date] || 0) + Number(tx.totalCashFlow || 0);
+    });
+
+    return map;
+});
 
         // 修正 3: enrichedHistory
         const enrichedHistory = computed(() => {
-            const sorted = [...filteredHistory.value]
-                .map(item => ({
-                    ...item,
-                    assets: Number(item.assets || 0),
-                    cost: Number(item.cost || 0),
-                    externalFlow: Number(item.externalFlow || 0)
-                }))
-                .sort((a, b) => new Date(a.date) - new Date(b.date));
+    const sorted = [...filteredHistory.value]
+        .map(item => {
+            const externalFlow = Number(ledgerExternalFlowByDate.value[item.date] || 0);
 
-            return sorted.map((item, index) => {
-                let dailyReturn = null;
+            return {
+                ...item,
+                assets: Number(item.assets || 0),
+                cost: Number(item.cost || 0),
+                externalFlow
+            };
+        })
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-                if (index > 0) {
-                    const prev = sorted[index - 1];
+    return sorted.map((item, index) => {
+        let dailyReturn = null;
 
-                    // TWR: 去除「外部現金流」後的 NAV 報酬
-                    // externalFlow > 0 = 入金；< 0 = 出金
-                    dailyReturn = prev.assets > 0
-                        ? ((item.assets - item.externalFlow) / prev.assets) - 1
-                        : 0;
-                }
+        if (index > 0) {
+            const prev = sorted[index - 1];
 
-                return {
-                    ...item,
-                    dailyReturn,
-                    // 保留舊欄位名稱 withdrawal，避免前端 HTML 若有綁定會爆掉
-                    withdrawal: -item.externalFlow
-                };
-            }).reverse();
-        });
+            dailyReturn = prev.assets > 0
+                ? ((item.assets - item.externalFlow) / prev.assets) - 1
+                : 0;
+        }
+
+        return {
+            ...item,
+            dailyReturn,
+            withdrawal: -item.externalFlow
+        };
+    }).reverse();
+});
 
         const stressTestResults = computed(() => {
             const currentBeta = parseFloat(portfolioStats.value.beta) || 1.0;
@@ -1435,43 +1454,92 @@ async function saveData() {
         }
         
         function addTransaction() { 
-            const { date, type, category, ticker, price, shares } = txForm.value; 
-            if(!date) return; 
-            const finalFlow = (type === 'Buy' ? -1 : 1) * price * shares;
-            transactions.value.push({ date, type, category, ticker: ticker?.toUpperCase(), price, shares, totalCashFlow: finalFlow }); 
-            saveData(); txForm.value.ticker=''; updateCharts(); 
+        function addTransaction() {
+    const { date, type, category, ticker, price, shares, amount } = txForm.value;
+    if (!date || !type) return;
+
+    let record = null;
+
+    if (type === 'Buy' || type === 'Sell') {
+        if (!ticker || !price || !shares) {
+            alert('Buy / Sell 需要 ticker、price、shares');
+            return;
         }
+
+        const finalFlow = (type === 'Buy' ? -1 : 1) * Number(price) * Number(shares);
+
+        record = {
+            date,
+            type,
+            category,
+            ticker: ticker.toUpperCase(),
+            price: Number(price),
+            shares: Number(shares),
+            amount: null,
+            totalCashFlow: finalFlow
+        };
+    } else if (type === 'Deposit' || type === 'Withdraw') {
+        if (!amount) {
+            alert('Deposit / Withdraw 需要 amount');
+            return;
+        }
+
+        const signedAmount = type === 'Deposit'
+            ? Number(amount)
+            : -Number(amount);
+
+        record = {
+            date,
+            type,
+            category: 'Cash',
+            ticker: null,
+            price: null,
+            shares: null,
+            amount: Number(amount),
+            totalCashFlow: signedAmount
+        };
+    } else {
+        return;
+    }
+
+    transactions.value.push(record);
+    saveData();
+    updateCharts();
+
+    txForm.value = {
+        date: new Date().toISOString().split('T')[0],
+        type: 'Buy',
+        category: '美股',
+        ticker: '',
+        price: null,
+        shares: null,
+        amount: null
+    };
+}
 
         // 修正 2: snapshotToHistory
         function snapshotToHistory() {
-            const date = snapshotDate.value || new Date().toISOString().split('T')[0];
-            const assets = Math.round(totalStockValueTwd.value);
-            const cost = Math.round(totalStockCostTwd.value);
+    const date = snapshotDate.value || new Date().toISOString().split('T')[0];
+    const assets = Math.round(totalStockValueTwd.value);
+    const cost = Math.round(totalStockCostTwd.value);
 
-            const idx = realHistoryData.value.findIndex(h => h.date === date);
-            const existingExternalFlow = idx >= 0 ? Number(realHistoryData.value[idx].externalFlow || 0) : 0;
+    const idx = realHistoryData.value.findIndex(h => h.date === date);
+    const record = { date, assets, cost };
 
-            const record = {
-                date,
-                assets,
-                cost,
-                externalFlow: existingExternalFlow
-            };
-
-            if (idx >= 0) {
-                if (confirm(`日期 (${date}) 已有紀錄，要覆蓋嗎？`)) {
-                    realHistoryData.value[idx] = record;
-                } else {
-                    return;
-                }
-            } else {
-                realHistoryData.value.push(record);
-            }
-
-            saveData();
-            updateCharts();
-            if (!quantStartDate.value) quantStartDate.value = date;
+    if (idx >= 0) {
+        if (confirm(`日期 (${date}) 已有紀錄，要覆蓋嗎？`)) {
+            realHistoryData.value[idx] = record;
+        } else {
+            return;
         }
+    } else {
+        realHistoryData.value.push(record);
+    }
+
+    saveData();
+    updateCharts();
+    if (!quantStartDate.value) quantStartDate.value = date;
+}
 
         const quantDays = computed(() => {
              const h = filteredHistory.value; if(h.length < 2) return 0;
@@ -1482,25 +1550,23 @@ async function saveData() {
 
         // 修正 2: addHistoryRecord
         function addHistoryRecord() {
-            const { date, assets, cost, externalFlow } = historyForm.value;
+    const { date, assets, cost } = historyForm.value;
 
-            realHistoryData.value.push({
-                date,
-                assets: Number(assets),
-                cost: Number(cost),
-                externalFlow: Number(externalFlow || 0)
-            });
+    realHistoryData.value.push({
+        date,
+        assets: Number(assets),
+        cost: Number(cost)
+    });
 
-            saveData();
-            updateCharts();
+    saveData();
+    updateCharts();
 
-            historyForm.value = {
-                date: new Date().toISOString().split('T')[0],
-                assets: null,
-                cost: null,
-                externalFlow: 0
-            };
-        }
+    historyForm.value = {
+        date: new Date().toISOString().split('T')[0],
+        assets: null,
+        cost: null
+    };
+}
 
         function openMonteCarlo() {
             showMCModal.value = true; mcOptimal.value = null; 
@@ -2173,7 +2239,13 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
     });
 }
         
-        function getTypeColor(type) { return type==='Buy'?'text-red-400':'text-green-400'; }
+       function getTypeColor(type) {
+    if (type === 'Buy') return 'text-red-400';
+    if (type === 'Sell') return 'text-green-400';
+    if (type === 'Deposit') return 'text-cyan-300';
+    if (type === 'Withdraw') return 'text-orange-300';
+    return 'text-gray-300';
+}
         function getCategoryColorCode(cat) { return '#3b82f6'; }
         function formatNumber(n) { return new Intl.NumberFormat('zh-TW', {maximumFractionDigits:0}).format(n||0); }
         function formatPercent(n) { return ((n||0)*100).toFixed(1) + '%'; }
