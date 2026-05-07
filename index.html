@@ -186,74 +186,118 @@
 
             <!-- ===== Summary Tab ===== -->
             <section v-show="currentTab === 'summary'" class="animate-fade-in space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-5">
-    <div class="glass p-5 rounded-2xl border border-white/10 hover:border-yellow-500/30 transition-all duration-300">
-        <div class="flex items-center justify-between mb-3">
-            <div class="text-xs text-gray-400 font-bold uppercase tracking-wider">投資總市值</div>
-            <div class="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
-                <i class="fas fa-wallet text-yellow-400"></i>
-            </div>
-        </div>
-        <div class="text-2xl md:text-3xl font-bold text-white font-mono leading-none">
-            NT$ {{ formatNumber(totalStockValueTwd) }}
-        </div>
-        <div class="text-xs text-gray-500 mt-3">目前所有持倉的總價值</div>
-    </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-5">
+                    
+                    <!-- 1. 總資產淨值 (NAV) -->
+                    <div class="glass p-5 rounded-2xl border border-white/10 hover:border-yellow-500/30 transition-all duration-300">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="text-xs text-gray-400 font-bold uppercase tracking-wider">總資產淨值 (NAV)</div>
+                            <div class="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
+                                <i class="fas fa-wallet text-yellow-400"></i>
+                            </div>
+                        </div>
+                        <div class="text-2xl md:text-3xl font-bold text-white font-mono leading-none">
+                            NT$ {{ formatNumber(totalPortfolioNav) }}
+                        </div>
+                        <div class="text-[10px] text-gray-500 mt-3 flex justify-between font-bold">
+                            <span>股票市值: {{ formatNumber(totalStockValueTwd) }}</span>
+                        </div>
+                    </div>
 
-    <div class="glass p-5 rounded-2xl border border-white/10 hover:border-emerald-500/30 transition-all duration-300">
-        <div class="flex items-center justify-between mb-3">
-            <div class="text-xs text-gray-400 font-bold uppercase tracking-wider">投資總成本</div>
-            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-                <i class="fas fa-coins text-emerald-400"></i>
-            </div>
-        </div>
-        <div class="text-2xl md:text-3xl font-bold text-white font-mono leading-none">
-            NT$ {{ formatNumber(totalStockCostTwd) }}
-        </div>
-        <div class="text-xs text-gray-500 mt-3">累積投入本金</div>
-    </div>
+                    <!-- 2. 閒置現金防線 (Cash Balance) -->
+<div class="glass p-5 rounded-2xl border transition-all duration-300 relative overflow-hidden"
+     :class="isCashAlert ? 'border-red-500/50 bg-red-900/20 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'border-white/10 hover:border-cyan-500/30'">
 
-    <div class="glass p-5 rounded-2xl border border-white/10 transition-all duration-300"
-         :class="totalStockUnrealizedPL >= 0 ? 'hover:border-red-500/30' : 'hover:border-green-500/30'">
-        <div class="flex items-center justify-between mb-3">
-            <div class="text-xs text-gray-400 font-bold uppercase tracking-wider">未實現損益</div>
-            <div class="w-10 h-10 rounded-xl flex items-center justify-center border"
-                 :class="totalStockUnrealizedPL >= 0 ? 'bg-red-500/10 border-red-500/20' : 'bg-green-500/10 border-green-500/20'">
-                <i class="fas fa-chart-line" :class="totalStockUnrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'"></i>
-            </div>
+    <div v-if="isCashAlert" class="absolute inset-0 bg-red-500/10 animate-pulse pointer-events-none"></div>
+
+    <div class="relative z-10 flex items-center justify-between mb-3">
+        <div class="text-xs font-bold uppercase tracking-wider flex items-center gap-1"
+             :class="isCashAlert ? 'text-red-400' : 'text-cyan-400'">
+            <i v-if="isCashAlert" class="fas fa-triangle-exclamation animate-bounce"></i>
+            閒置現金 (Cash)
         </div>
-        <div class="text-2xl md:text-3xl font-bold font-mono leading-none"
-             :class="totalStockUnrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
-            {{ totalStockUnrealizedPL >= 0 ? '+' : '' }}{{ formatNumber(totalStockUnrealizedPL) }}
-        </div>
-        <div class="mt-3 inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold border"
-             :class="totalStockUnrealizedPL >= 0 ? 'text-red-400 border-red-500/20 bg-red-500/10' : 'text-green-400 border-green-500/20 bg-green-500/10'">
-            報酬率 {{ totalStockReturnRate }}%
+
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center border"
+             :class="isCashAlert ? 'bg-red-500/20 border-red-500/30' : 'bg-cyan-500/10 border-cyan-500/20'">
+            <i class="fas fa-money-bill-wave"
+               :class="isCashAlert ? 'text-red-400' : 'text-cyan-400'"></i>
         </div>
     </div>
 
-    <div class="glass p-5 rounded-2xl border border-white/10 md:col-span-2 xl:col-span-1">
-        <div class="flex items-center justify-between mb-4">
-            <div class="text-xs text-gray-400 font-bold uppercase tracking-wider">類別配置</div>
-            <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-                <i class="fas fa-chart-pie text-purple-400"></i>
-            </div>
-        </div>
+    <div class="relative z-10 text-2xl md:text-3xl font-bold font-mono leading-none"
+         :class="isCashNegative ? 'text-red-400' : 'text-cyan-300'">
+        NT$ {{ formatNumber(cashBalance) }}
+    </div>
 
-        <div class="space-y-3">
-            <div v-for="(val, cat) in categoryTotals" :key="cat">
-                <div class="flex justify-between text-xs mb-1.5">
-                    <span class="text-white font-medium">{{ cat }}</span>
-                    <span class="font-mono text-gray-300">{{ formatPercent(val / totalStockValueTwd) }}</span>
-                </div>
-                <div class="bg-gray-800 h-2 rounded-full overflow-hidden">
-                    <div class="h-full rounded-full transition-all duration-500"
-                         :style="{ width: ((val / totalStockValueTwd) * 100) + '%', backgroundColor: getCategoryColorCode(cat) }"></div>
-                </div>
-            </div>
-        </div>
+    <div class="relative z-10 text-[10px] mt-3 font-bold"
+         :class="isCashAlert ? 'text-red-400' : 'text-gray-500'">
+        {{
+            isCashNegative
+                ? '⚠️ 餘額為負，請檢查 Ledger！'
+                : (isCashTooHigh
+                    ? '⚠️ 比例大於50%，請確認是否漏記出金'
+                    : '由流水帳自動結算')
+        }}
     </div>
 </div>
+
+                    <!-- 3. 股票總成本 -->
+                    <div class="glass p-5 rounded-2xl border border-white/10 hover:border-emerald-500/30 transition-all duration-300">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="text-xs text-gray-400 font-bold uppercase tracking-wider">股票總成本</div>
+                            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                                <i class="fas fa-coins text-emerald-400"></i>
+                            </div>
+                        </div>
+                        <div class="text-2xl md:text-3xl font-bold text-white font-mono leading-none">
+                            NT$ {{ formatNumber(totalStockCostTwd) }}
+                        </div>
+                        <div class="text-[10px] text-gray-500 mt-3 font-bold">目前持倉的累積本金</div>
+                    </div>
+
+                    <!-- 4. 未實現損益 -->
+                    <div class="glass p-5 rounded-2xl border border-white/10 transition-all duration-300"
+                         :class="totalStockUnrealizedPL >= 0 ? 'hover:border-red-500/30' : 'hover:border-green-500/30'">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="text-xs text-gray-400 font-bold uppercase tracking-wider">股票未實現損益</div>
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center border"
+                                 :class="totalStockUnrealizedPL >= 0 ? 'bg-red-500/10 border-red-500/20' : 'bg-green-500/10 border-green-500/20'">
+                                <i class="fas fa-chart-line" :class="totalStockUnrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'"></i>
+                            </div>
+                        </div>
+                        <div class="text-2xl md:text-3xl font-bold font-mono leading-none"
+                             :class="totalStockUnrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
+                            {{ totalStockUnrealizedPL >= 0 ? '+' : '' }}{{ formatNumber(totalStockUnrealizedPL) }}
+                        </div>
+                        <div class="mt-3 inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold border"
+                             :class="totalStockUnrealizedPL >= 0 ? 'text-red-400 border-red-500/20 bg-red-500/10' : 'text-green-400 border-green-500/20 bg-green-500/10'">
+                            報酬率 {{ totalStockReturnRate }}%
+                        </div>
+                    </div>
+
+                    <!-- 5. 類別配置 -->
+                    <div class="glass p-5 rounded-2xl border border-white/10 md:col-span-2 lg:col-span-3 xl:col-span-1 flex flex-col justify-center">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="text-xs text-gray-400 font-bold uppercase tracking-wider">類別配置</div>
+                            <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+                                <i class="fas fa-chart-pie text-purple-400"></i>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div v-for="(val, cat) in categoryTotals" :key="cat">
+                                <div class="flex justify-between text-xs mb-1.5">
+                                    <span class="text-white font-medium">{{ cat }}</span>
+                                    <span class="font-mono text-gray-300">{{ formatPercent(val / totalStockValueTwd) }}</span>
+                                </div>
+                                <div class="bg-gray-800 h-2 rounded-full overflow-hidden">
+                                    <div class="h-full rounded-full transition-all duration-500"
+                                         :style="{ width: ((val / totalStockValueTwd) * 100) + '%', backgroundColor: getCategoryColorCode(cat) }"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="glass panel-card border-cyan-500/20 mt-6 mb-6 overflow-hidden">
     <div class="p-5 md:p-6 border-b border-white/10 bg-cyan-500/5">
@@ -1924,12 +1968,12 @@
 
         <td
             class="p-3 text-right font-mono font-bold"
-            :class="(h.externalFlow || 0) > 0 ? 'text-cyan-300' : ((h.externalFlow || 0) < 0 ? 'text-orange-300' : 'text-gray-500')"
+            :class="(h.computedFlow || 0) > 0 ? 'text-cyan-300' : ((h.computedFlow || 0) < 0 ? 'text-orange-300' : 'text-gray-500')"
         >
             {{
-                (h.externalFlow || 0) === 0
+                (h.computedFlow || 0) === 0
                     ? '0'
-                    : ((h.externalFlow || 0) > 0 ? '+' : '') + formatNumber(h.externalFlow || 0)
+                    : ((h.computedFlow || 0) > 0 ? '+' : '') + formatNumber(h.computedFlow || 0)
             }}
         </td>
 
@@ -1998,6 +2042,7 @@
                                     <option value="Sell">賣出 (Sell)</option>
                                     <option value="Deposit">入金 (Deposit)</option>
                                     <option value="Withdraw">出金 (Withdraw)</option>
+                                    <option value="Expense">費用/校正 (Expense)</option>
                                 </select>
                             </div>
 
@@ -2011,18 +2056,24 @@
                                 <div class="grid grid-cols-2 gap-2 mb-2">
                                     <div>
                                         <label class="text-[10px] text-gray-500 block">成交單價 (TWD)</label>
-                                        <input v-model.number="txForm.price" type="number" placeholder="台幣價格" class="w-full input-dark p-2 rounded text-xs">
+                                        <input v-model.number="txForm.price" type="number" :placeholder="(txForm.amount && txForm.shares) ? (txForm.amount / txForm.shares).toFixed(4) : '台幣價格'" class="w-full input-dark p-2 rounded text-xs">
                                     </div>
                                     <div>
                                         <label class="text-[10px] text-gray-500 block">數量</label>
                                         <input v-model.number="txForm.shares" type="number" placeholder="股數" class="w-full input-dark p-2 rounded text-xs">
                                     </div>
                                 </div>
+                                <div class="mt-3" v-if="txForm.type === 'Buy' || txForm.type === 'Sell'">
+    <label class="block text-xs text-gray-400 mb-1">實際收付淨額 (含手續費/稅)</label>
+    <input type="number" v-model="txForm.amount" 
+           class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500" 
+           :placeholder="'理論值: ' + (txForm.price && txForm.shares ? txForm.price * txForm.shares : '0') + ' (留空則帶入理論值)'">
+</div>
 
                                 <div class="text-xs text-right text-gray-400 font-mono">
                                     總金額 (TWD):
                                     <span class="text-white font-bold">
-                                        {{ formatNumber((txForm.price || 0) * (txForm.shares || 0)) }}
+                                        {{ txForm.amount ? formatNumber(txForm.amount) : formatNumber((txForm.price || 0) * (txForm.shares || 0)) }}
                                     </span>
                                 </div>
                             </template>
@@ -2052,6 +2103,92 @@
                         </button>
                     </div>
                  </div> 
+                 <!-- 🟡 中間面板：記帳 SOP -->
+<div class="w-full md:w-80 glass p-5 rounded-xl h-fit space-y-4 md:sticky md:top-24 self-start border border-cyan-500/20 bg-cyan-500/5">
+    <div class="border-b border-white/10 pb-3">
+        <div class="flex items-center gap-2 mb-2">
+            <div class="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                <i class="fas fa-book-open text-cyan-400"></i>
+            </div>
+            <div>
+                <h3 class="font-bold text-white text-lg leading-none">記帳 SOP</h3>
+                <p class="text-[11px] text-gray-400 mt-1">不要把內部調倉記成外部現金流</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 mt-3 text-xs">
+            <div class="rounded-lg border border-green-500/20 bg-green-500/10 px-3 py-2">
+                <div class="text-green-300 font-bold">Deposit</div>
+                <div class="text-gray-400 mt-1">外部入金</div>
+            </div>
+            <div class="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2">
+                <div class="text-red-300 font-bold">Withdraw</div>
+                <div class="text-gray-400 mt-1">外部出金</div>
+            </div>
+            <div class="rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-3 py-2">
+                <div class="text-yellow-300 font-bold">Buy</div>
+                <div class="text-gray-400 mt-1">買入資產</div>
+            </div>
+            <div class="rounded-lg border border-purple-500/20 bg-purple-500/10 px-3 py-2">
+                <div class="text-purple-300 font-bold">Sell</div>
+                <div class="text-gray-400 mt-1">賣出資產</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="space-y-3 text-xs leading-relaxed">
+        <div class="rounded-xl border border-white/10 bg-black/20 p-3">
+            <div class="text-cyan-300 font-bold mb-2">正確記法</div>
+            <ul class="space-y-2 text-gray-300">
+                <li>1. 銀行匯進投資帳戶 → <span class="font-bold text-green-300">Deposit</span></li>
+                <li>2. 用帳上資金買股票 / ETF / 幣 → <span class="font-bold text-yellow-300">Buy</span></li>
+                <li>3. 賣掉部位、錢先留在投資帳戶 → <span class="font-bold text-purple-300">Sell</span></li>
+                <li>4. 從投資帳戶領回銀行 / 生活帳戶 → <span class="font-bold text-red-300">Withdraw</span></li>
+            </ul>
+        </div>
+
+        <div class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3">
+            <div class="text-amber-300 font-bold mb-2">硬規則</div>
+            <ul class="space-y-2 text-gray-300">
+                <li>• <span class="text-white font-bold">Buy ≠ Deposit</span></li>
+                <li>• <span class="text-white font-bold">Sell ≠ Withdraw</span></li>
+                <li>• 換股 / 調倉不算外部現金流</li>
+                <li>• 先賣再出金；先入金再買入</li>
+                <li>• 每週固定按一次快照，不要亂補差額</li>
+            </ul>
+        </div>
+
+        <div class="rounded-xl border border-red-500/20 bg-red-500/10 p-3">
+            <div class="text-red-300 font-bold mb-2">常見錯法</div>
+            <ul class="space-y-2 text-gray-300">
+                <li>• 把買入記成入金 → 成本與倉位會失真</li>
+                <li>• 把賣出記成出金 → 持股不會正確減少</li>
+                <li>• 用 History 手動補外部現金流 → TWR / MWR 會歪</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="rounded-xl border p-3"
+         :class="cashBalance < 0 ? 'border-red-500/30 bg-red-500/10' : 'border-emerald-500/20 bg-emerald-500/10'">
+        <div class="flex items-center justify-between text-xs mb-2">
+            <span class="font-bold" :class="cashBalance < 0 ? 'text-red-300' : 'text-emerald-300'">
+                Ledger 即時檢查
+            </span>
+            <span class="font-mono text-gray-300">NAV {{ formatNumber(totalPortfolioNav) }}</span>
+        </div>
+
+        <div class="text-[11px] text-gray-300 leading-relaxed">
+            <template v-if="cashBalance < 0">
+                目前現金餘額為負：<span class="font-mono text-red-300">NT$ {{ formatNumber(cashBalance) }}</span><br>
+                代表你大概率有「先出金、後賣出」或漏記 <span class="font-bold text-white">Deposit / Sell</span>。
+            </template>
+            <template v-else>
+                目前現金餘額：<span class="font-mono text-emerald-300">NT$ {{ formatNumber(cashBalance) }}</span><br>
+                Ledger 現金層正常。
+            </template>
+        </div>
+    </div>
+</div>
 
                  <!-- 🔴 右側面板：交易流水帳 -->
                  <div class="flex-1 glass rounded-xl overflow-hidden flex flex-col">
@@ -2076,7 +2213,7 @@
                                             tx.ticker ||
                                             (tx.type === 'Deposit'
                                                 ? '外部入金'
-                                                : (tx.type === 'Withdraw' ? '外部出金' : '-'))
+                                                : tx.type === 'Withdraw' ? '外部出金' : (tx.type === 'Expense' ? '費用損耗' : '-'))
                                         }}
                                     </td>
 

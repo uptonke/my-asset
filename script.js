@@ -468,10 +468,16 @@ ${JSON.stringify(payload, null, 2)}
             }
         }
 
-        // 🟢 修正 1：txForm 新增 amount 屬性 (解決 Deposit/Withdraw 金額遺失問題)
-        const txForm = ref({ date: new Date().toISOString().split('T')[0], type: 'Buy', category: '美股', ticker: '', price: null, shares: null, amount: null });
+        const txForm = ref({
+    date: new Date().toISOString().split('T')[0],
+    type: 'Buy',
+    category: '美股',
+    ticker: '',
+    price: null,
+    shares: null,
+    amount: null
+});
         
-        // 🟢 修正 2：還原 historyForm，回歸單純歷史快照不需 externalFlow
         const historyForm = ref({
             date: new Date().toISOString().split('T')[0],
             assets: null,
@@ -712,6 +718,57 @@ ${JSON.stringify(payload, null, 2)}
         const totalStockValueTwd = computed(() => Object.values(categoryTotals.value).reduce((a,b)=>a+b,0));
         const portfolioStats = ref({ beta: 0, std: 0 });
 
+        // 堅固日期函數（可留可不留；若你後面別處會用到就一起補）
+function d2num(dStr) {
+    if (!dStr) return 0;
+    return parseInt(String(dStr).trim().split('T')[0].replace(/-/g, ''), 10);
+}
+
+// 只認外部出入金（可留可不留；主要給績效/現金流口徑用）
+function getTxFlow(tx) {
+    const tType = String(tx.type || '').toLowerCase();
+
+    if (
+        !tType.includes('deposit') &&
+        !tType.includes('withdraw') &&
+        !tType.includes('入金') &&
+        !tType.includes('出金')
+    ) {
+        return 0;
+    }
+
+    let amt = 0;
+    if (tx.amount) {
+        amt = Math.abs(Number(String(tx.amount).replace(/,/g, '')) || 0);
+    } else if (tx.totalCashFlow !== undefined && tx.totalCashFlow !== null) {
+        amt = Math.abs(Number(String(tx.totalCashFlow).replace(/,/g, '')) || 0);
+    }
+
+    return (tType.includes('withdraw') || tType.includes('出')) ? -amt : amt;
+}
+
+// 真實現金池：Deposit +, Withdraw -, Buy -, Sell +, Expense -
+const CASH_EPS = 0.01;
+
+const cashBalance = computed(() => {
+    const raw = transactions.value.reduce((sum, tx) => {
+        let flow = Number(tx.totalCashFlow) || 0;
+        if (String(tx.type).toLowerCase() === 'expense') flow = -Math.abs(flow);
+        return sum + flow;
+    }, 0);
+
+    // 避免浮點殘差造成 NT$ -0 / 假性負現金
+    return Math.abs(raw) < CASH_EPS ? 0 : raw;
+});
+
+const totalPortfolioNav = computed(() => {
+    const safeCash = Math.max(0, cashBalance.value);
+    return totalStockValueTwd.value + safeCash;
+});
+
+const isCashNegative = computed(() => cashBalance.value < -CASH_EPS);
+const isCashTooHigh = computed(() => totalPortfolioNav.value > 0 && cashBalance.value > totalPortfolioNav.value * 0.5);
+const isCashAlert = computed(() => isCashNegative.value || isCashTooHigh.value);
         watch([groupedHoldings, totalStockValueTwd], () => {
             let totalBeta = 0; let totalStd = 0; const totalVal = totalStockValueTwd.value;
             if(totalVal > 0) {
@@ -1041,6 +1098,28 @@ const psr_hist = computePSR({
                  ff_crypto: stats.value.ff_crypto || '-', 
                  ff_r_squared: stats.value.ff_r_squared || '-'
              }; 
+
+             // 【CRO 防禦機制：資料異常監控】
+             nextTick(() => {
+                 let warningMsgs = [];
+             
+                 // 2. 暴增/暴跌的報酬率檢測
+                 if (h.length >= 2) {
+                     const latestReturn = h[h.length - 1].dailyReturn;
+                     if (latestReturn > 0.15) { 
+                         warningMsgs.push(`🚨 偵測到單期異常暴漲 (+${(latestReturn*100).toFixed(1)}%)！請檢查快照是否遺漏了交易紀錄。`);
+                     } else if (latestReturn < -0.15) { 
+                         warningMsgs.push(`🚨 偵測到單期異常暴跌 (${(latestReturn*100).toFixed(1)}%)！請檢查快照是否遺漏了交易紀錄。`);
+                     }
+                 }
+             
+                 // 觸發警報
+                 if (warningMsgs.length > 0) {
+                     console.warn("CRO System Warning:", warningMsgs);
+                     alert("🤖 CRO 風控系統警告：\n\n" + warningMsgs.join('\n\n')); 
+                 }
+             });
+
         }, { deep: true, immediate: true });
 
         // ==========================================
@@ -1451,53 +1530,95 @@ async function saveData() {
             }; reader.readAsText(file);
         }
         
-        // 🟢 修正 6：修復 addTransaction 的 Bug，確保手動輸入入金/出金時抓得到 amount
-        function addTransaction() { 
-            const { date, type, category, ticker, price, shares, amount } = txForm.value; 
-            if(!date) return; 
-            
-            let finalFlow = 0;
-            if (type === 'Buy' || type === 'Sell') {
-                if (!price || !shares) { alert('請填寫單價與股數'); return; }
-                finalFlow = (type === 'Buy' ? -1 : 1) * price * shares;
-            } else {
-                if (!amount) { alert('請填寫金額'); return; }
-                finalFlow = (type === 'Deposit' ? 1 : -1) * amount;
-            }
-            
-            transactions.value.push({ 
-                date, 
-                type, 
-                category, 
-                ticker: (type === 'Buy' || type === 'Sell') ? ticker?.toUpperCase() : '', 
-                price, 
-                shares, 
-                amount,
-                totalCashFlow: finalFlow 
-            }); 
-            
-            saveData(); 
-            txForm.value.ticker = ''; 
-            txForm.value.price = null;
-            txForm.value.shares = null;
-            txForm.value.amount = null;
-            updateCharts(); 
+        function addTransaction() {
+    const { date, type, category, ticker, price, shares, amount } = txForm.value;
+    if (!date) return;
+
+    let finalPrice = null;
+    let finalShares = null;
+    let actualTotal = null;
+    let finalFlow = 0;
+
+    if (type === 'Buy' || type === 'Sell') {
+        finalShares = Number(shares);
+
+        if (!finalShares || finalShares <= 0) {
+            alert('請填寫有效股數');
+            return;
         }
+
+        const inputPrice = price !== null && price !== '' ? Number(price) : null;
+        const inputAmount = amount !== null && amount !== '' ? Number(amount) : null;
+
+        if ((!inputPrice || inputPrice <= 0) && (!inputAmount || inputAmount <= 0)) {
+            alert('買賣至少要填「單價」或「總金額」其中一個');
+            return;
+        }
+
+        if (inputPrice && inputPrice > 0) {
+            finalPrice = inputPrice;
+            actualTotal = inputAmount && inputAmount > 0 ? inputAmount : inputPrice * finalShares;
+        } else {
+            actualTotal = inputAmount;
+            finalPrice = actualTotal / finalShares;
+        }
+
+        finalFlow = (type === 'Buy' ? -1 : 1) * actualTotal;
+    } else if (type === 'Deposit' || type === 'Withdraw') {
+        actualTotal = Number(amount);
+
+        if (!actualTotal || actualTotal <= 0) {
+            alert('請填寫有效金額');
+            return;
+        }
+
+        finalFlow = (type === 'Deposit' ? 1 : -1) * actualTotal;
+    } else {
+        alert('未知交易類型');
+        return;
+    }
+
+    transactions.value.push({
+        date,
+        type,
+        category,
+        ticker: (type === 'Buy' || type === 'Sell') ? ticker?.toUpperCase() : '',
+        price: finalPrice,
+        shares: finalShares,
+        amount: actualTotal,
+        totalCashFlow: finalFlow
+    });
+
+    saveData();
+
+    txForm.value.ticker = '';
+    txForm.value.price = null;
+    txForm.value.shares = null;
+    txForm.value.amount = null;
+
+    updateCharts();
+}
 
         function snapshotToHistory() {
-            const date = snapshotDate.value || new Date().toISOString().split('T')[0];
-            const assets = Math.round(totalStockValueTwd.value);
-            const cost = Math.round(totalStockCostTwd.value);
+    const date = snapshotDate.value || new Date().toISOString().split('T')[0];
+    const assets = Math.round(totalPortfolioNav.value);
+    const cost = Math.round(totalStockCostTwd.value);
 
-            const idx = realHistoryData.value.findIndex(h => h.date === date);
-            if (idx >= 0) {
-                if(confirm(`日期 (${date}) 已有紀錄，要覆蓋嗎？`)) realHistoryData.value[idx] = { date, assets, cost };
-                else return;
-            } else realHistoryData.value.push({ date, assets, cost });
-            
-            saveData(); updateCharts();
-            if(!quantStartDate.value) quantStartDate.value = date;
+    const idx = realHistoryData.value.findIndex(h => h.date === date);
+    if (idx >= 0) {
+        if (confirm(`日期 (${date}) 已有紀錄，要覆蓋嗎？`)) {
+            realHistoryData.value[idx] = { date, assets, cost };
+        } else {
+            return;
         }
+    } else {
+        realHistoryData.value.push({ date, assets, cost });
+    }
+
+    saveData();
+    updateCharts();
+    if (!quantStartDate.value) quantStartDate.value = date;
+}
 
         const quantDays = computed(() => {
              const h = filteredHistory.value; if(h.length < 2) return 0;
@@ -2204,7 +2325,7 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
     });
 }
         
-        function getTypeColor(type) { return type==='Buy'?'text-red-400':'text-green-400'; }
+        function getTypeColor(type) { return (type==='Buy' || type==='Expense') ? 'text-red-400' : 'text-green-400'; }
         function getCategoryColorCode(cat) { return '#3b82f6'; }
         function formatNumber(n) { return new Intl.NumberFormat('zh-TW', {maximumFractionDigits:0}).format(n||0); }
         function formatPercent(n) { return ((n||0)*100).toFixed(1) + '%'; }
@@ -2768,7 +2889,7 @@ chartCML.data.datasets = [
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
-            xrayStats, rebalanceMonitor, tailStatsLite
+            xrayStats, rebalanceMonitor, tailStatsLite, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
         };
     }
 }).mount('#app');
