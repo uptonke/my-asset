@@ -60,6 +60,19 @@ def _num(x, default=None):
     try: return float(x)
     except Exception: return default
 
+
+def safe_float(value, default=0.0):
+    if value is None:
+        return default
+    try:
+        if isinstance(value, str):
+            value = value.strip().replace(",", "")
+            if value == "":
+                return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
 def score_yield_curve(v): return 2 if _num(v)>1 else 1 if _num(v)>0 else -1 if _num(v)>-0.5 else -2
 def score_hy_spread(v): return -2 if _num(v)>5 else -1 if _num(v)>=3 else 1 if _num(v)>=1.5 else 2
 def score_vix(v, z=0): return -2 if _num(v)>30 or _num(z)>2.5 else -1 if _num(v)>=20 or _num(z)>1.5 else 1 if _num(v)>=12 else 2
@@ -1029,8 +1042,13 @@ try:
         vvix_z = DEFAULT_MACRO["vvix_z"]
 
     try:
-        pcr_data = yf.Ticker("^PCR").history(period="1y")['Close'].dropna()
-        pcr, pcr_z = float(pcr_data.iloc[-1]), float(calc_z_score(pcr_data))
+        pcr_hist = safe_download_close("^PCR", period="1y", progress=False)
+        pcr_series = pcr_hist.iloc[:, 0].dropna() if not pcr_hist.empty else pd.Series(dtype=float)
+        if pcr_series.empty:
+            raise ValueError("^PCR 無有效資料")
+        pcr = safe_float(pcr_series.iloc[-1], DEFAULT_MACRO["pcr"])
+        pcr_z_raw = calc_z_score(pcr_series)
+        pcr_z = safe_float(pcr_z_raw, DEFAULT_MACRO["pcr_z"])
     except Exception as e:
         print(f"   ⚠️ ^PCR 可能已下市或抓取失敗: {e}", flush=True)
         pcr, pcr_z = DEFAULT_MACRO["pcr"], DEFAULT_MACRO["pcr_z"]
@@ -1089,12 +1107,17 @@ try:
             db_record = response.data[0]
             for tx in db_record.get("ledger_data", []):
                 t = str(tx.get("ticker", "")).strip().upper()
+                tx_type = str(tx.get("type", "")).strip().lower()
                 if not t:
                     continue
-                s = float(tx.get("shares", 0))
-                if str(tx.get("type", "buy")).lower() in ["sell", "賣出"]:
+                if tx_type not in ["buy", "買入", "sell", "賣出"]:
+                    continue
+                s = safe_float(tx.get("shares"), 0.0)
+                if s == 0:
+                    continue
+                if tx_type in ["sell", "賣出"]:
                     s = -s
-                current_shares[t] = current_shares.get(t, 0) + s
+                current_shares[t] = current_shares.get(t, 0.0) + s
 
             active_tickers = [t for t, s in current_shares.items() if s > 0.0001]
 
@@ -1327,8 +1350,16 @@ try:
             current_shares = {}
             for tx in ledger_data:
                 t = str(tx.get("ticker", "")).strip().upper()
-                if not t: continue
-                current_shares[t] = current_shares.get(t, 0) + (float(tx.get("shares", 0)) * (-1 if str(tx.get("type", "buy")).lower() in ["sell", "賣出"] else 1))
+                tx_type = str(tx.get("type", "")).strip().lower()
+                if not t:
+                    continue
+                if tx_type not in ["buy", "買入", "sell", "賣出"]:
+                    continue
+                shares = safe_float(tx.get("shares"), 0.0)
+                if shares == 0:
+                    continue
+                sign = -1 if tx_type in ["sell", "賣出"] else 1
+                current_shares[t] = current_shares.get(t, 0.0) + (shares * sign)
 
             active_tickers = [t for t, s in current_shares.items() if s > 0.0001]
             pipeline_tickers = active_tickers[:]
