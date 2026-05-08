@@ -367,6 +367,20 @@
                     <div v-for="item in doNotDoList" :key="item" class="rounded-xl border border-white/8 bg-white/[0.025] px-4 py-3 text-sm text-gray-200">{{ item }}</div>
                 </div>
             </div>
+
+            <div class="rounded-2xl border border-white/10 bg-black/20 p-4 md:p-5 decision-allocation-card">
+                <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-4">
+                    <div>
+                        <div class="text-[11px] uppercase tracking-[0.18em] text-yellow-400 font-bold">Asset Allocation</div>
+                        <div class="text-sm md:text-base font-bold text-white mt-1">資產配置</div>
+                        <div class="text-xs text-gray-400 mt-2">把配置圖塞回今日決策中心內，先看警報與治理，再看目前風險資產分布。</div>
+                    </div>
+                    <div class="text-[11px] text-gray-500">決策中心內嵌配置圖</div>
+                </div>
+                <div class="relative min-h-[320px] md:min-h-[380px]">
+                    <canvas id="allocationChart"></canvas>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -407,22 +421,6 @@
                 </div>
             </div>
         </div>
-    </div>
-</div>
-
-<div class="glass chart-card p-5 md:p-6 mt-6 allocation-below-summary-card flex flex-col">
-    <div class="mb-4 flex flex-col md:flex-row md:items-start md:justify-between gap-3">
-        <div>
-            <h4 class="panel-title">
-                <i class="fas fa-chart-pie text-yellow-400"></i>
-                資產配置
-            </h4>
-            <p class="panel-subtitle">目前投資組合的類別分布，移至決策中心 / 警報中心下方便於先看全局再看配置。</p>
-        </div>
-        <div class="text-[11px] text-gray-500">先看治理與警報，再看配置結構。</div>
-    </div>
-    <div class="relative min-h-[360px] md:min-h-[420px] flex-1">
-        <canvas id="allocationChart"></canvas>
     </div>
 </div>
 
@@ -875,6 +873,7 @@
             {{ opt.label }}
         </button>
     </div>
+    <div class="text-[11px] text-gray-500 mt-2 leading-relaxed">回撤疊圖（Drawdown Overlay）＝把回撤曲線疊加到 NAV 圖上，拿來一起看最大跌幅、目前仍在水下多少，以及修復進度。</div>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
         <div class="terminal-mini-stat soft">
             <div class="terminal-mini-label">NAV vs 短期</div>
@@ -1570,6 +1569,185 @@
                     </div>
                 </div>
 
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-6 gap-3 mt-4">
+                    <div class="quant-card">
+                        <div class="quant-label text-blue-400" title="時間加權報酬 (評估選股能力)">年化 TWR</div>
+                        <div class="quant-value text-white">{{ stats.annRet }}%</div>
+                    </div>
+                    <div class="quant-card border-blue-900/30 bg-blue-900/10">
+                        <div class="quant-label text-blue-300" title="資金加權報酬 (評估擇時進出能力)">年化 MWR</div>
+                        <div class="quant-value text-white">{{ stats.mwr }}%</div>
+                    </div>
+                    <div class="quant-card border-blue-900/30 bg-blue-900/10">
+                        <div class="quant-label text-blue-300" title="連續複利 LN(1+TWR)">Log Return</div>
+                        <div class="quant-value text-white">{{ stats.annLogRet }}%</div>
+                    </div>
+                    
+                    <div class="quant-card">
+                        <div class="quant-label text-gray-400">年化標準差 (Vol)</div>
+                        <div class="quant-value text-white">{{ stats.annVol }}%</div>
+                    </div>
+                    
+                    <!-- 夏普與 PSR 卡片 -->
+                    <div class="quant-card relative overflow-hidden group">
+                        <div class="quant-label text-yellow-400" title="風險調整後報酬 (搭配 PSR 檢定)">夏普 (Sharpe)</div>
+                        <div class="quant-value text-white flex items-center justify-center gap-2">
+                            <span>{{ stats.sharpe }}</span>
+                            <span v-if="stats.psr !== '-'" 
+                                  class="text-[10px] font-mono px-1.5 py-0.5 rounded border shadow-sm flex items-center"
+                                  :class="parseFloat(stats.psr) >= 95 ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800/50' : (parseFloat(stats.psr) >= 80 ? 'bg-blue-900/30 text-blue-400 border-blue-800/50' : 'bg-red-900/30 text-red-400 border-red-800/50')"
+                                  title="Probabilistic Sharpe Ratio (歷史防禦力檢定)">
+                                PSR {{ stats.psr }}%
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="quant-card">
+                        <div class="quant-label text-yellow-400">索提諾 (Sortino)</div>
+                        <div class="quant-value text-white">{{ stats.sortino }}</div>
+                    </div>
+                    <div class="quant-card border-yellow-900/30 bg-yellow-900/10">
+                        <div class="quant-label text-yellow-300" title="每承擔1單位系統風險的超額報酬">崔納 (Treynor)</div>
+                        <div class="quant-value text-white">{{ stats.treynor }}</div>
+                    </div>
+                    <div class="quant-card border-yellow-900/30 bg-yellow-900/10">
+                        <div class="quant-label text-yellow-300" title="機率權重盈虧比 (克服非常態分配)">Omega 比率</div>
+                        <div class="quant-value text-white">{{ stats.omega }}</div>
+                    </div>
+                    <div class="quant-card border-yellow-900/30 bg-yellow-900/10">
+                        <div class="quant-label text-yellow-300" title="總獲利 / 總虧損">獲利因子 (PF)</div>
+                        <div class="quant-value text-white">{{ stats.profitFactor }}</div>
+                    </div>
+
+                    <div class="quant-card">
+                        <div class="quant-label text-purple-400">組合 Beta (β)</div>
+                        <div class="quant-value text-white">{{ riskParams.beta }}</div>
+                    </div>
+                    <div class="quant-card">
+                        <div class="quant-label text-green-400">Alpha (Jensen)</div>
+                        <div class="quant-value text-white">{{ stats.alpha }}%</div>
+                    </div>
+                    <div class="quant-card bg-red-900/20 border-red-500/30">
+                        <div class="quant-label text-red-400">最大回撤 (MDD)</div>
+                        <div class="quant-value text-white">{{ stats.mdd }}%</div>
+                    </div>
+                    <div class="quant-card">
+                        <div class="quant-label text-yellow-400">卡瑪 (Calmar)</div>
+                        <div class="quant-value text-white">{{ stats.calmar }}</div>
+                    </div>
+                    <div class="quant-card bg-red-900/20 border-red-500/30">
+                        <div class="quant-label text-red-400" title="綜合深度與長度的回撤懲罰">潰瘍指數 (UI)</div>
+                        <div class="quant-value text-white">{{ stats.ulcer }}</div>
+                    </div>
+                    <div class="quant-card bg-red-900/20 border-red-500/30">
+                        <div class="quant-label text-red-400" title="最長未創新高天數">水下時間 (天)</div>
+                        <div class="quant-value text-white">{{ stats.tuw }}</div>
+                    </div>
+                    <div class="quant-card"><div class="quant-label text-red-400">VaR (95%)</div><div class="quant-value text-white">{{ stats.var95 }}%</div></div>
+                    <div class="quant-card bg-red-900/20 border-red-500/30">
+                        <div class="quant-label text-red-300">CVaR (95%)</div>
+                        <div class="quant-value text-white">{{ stats.cvar95 }}%</div>
+                    </div>
+                    <div class="quant-card bg-white/5 border-yellow-400/30">
+                        <div class="quant-label text-yellow-400">偏度 (Skewness)</div>
+                        <div class="quant-value text-white" :class="stats.skew < 0 ? 'text-red-400' : 'text-green-400'">{{ stats.skew }}</div>
+                    </div>
+                    <div class="quant-card bg-white/5 border-yellow-400/30">
+                        <div class="quant-label text-yellow-400">峭度 (Kurtosis)</div>
+                        <div class="quant-value text-white" :class="stats.kurt > 3 ? 'text-red-400' : 'text-gray-300'">{{ stats.kurt }}</div>
+                    </div>
+                </div>
+
+                
+
+                <div class="glass rounded-xl flex flex-col mt-4 transition-all duration-300 border border-gray-700/50 hover:border-gray-500/50">
+                    <div class="p-4 cursor-pointer flex justify-between items-center bg-gray-800/30 hover:bg-gray-800/60 transition-colors" @click="isHistoryExpanded = !isHistoryExpanded">
+                        <h3 class="font-bold text-white flex items-center gap-2">
+                            <i class="fas fa-list-alt text-blue-400"></i> 快照歷史紀錄（現金流調整後報酬明細 Cash-Flow-Adjusted Return Detail）
+                            <span class="text-xs font-normal text-gray-500 ml-2 hidden sm:inline">{{ enrichedHistory.length }} 筆資料</span>
+                        </h3>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs text-gray-500" v-if="!isHistoryExpanded">點擊展開</span>
+                            <button class="text-gray-400 hover:text-white transition-transform duration-300 transform w-8 h-8 rounded-full flex items-center justify-center bg-gray-900/50 border border-gray-700" :class="{'rotate-180 text-blue-400 border-blue-500/30': isHistoryExpanded}">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div v-show="isHistoryExpanded" class="border-t border-gray-700/50 overflow-hidden animate-fade-in">
+                        <div class="overflow-x-auto p-2 md:p-0">
+                            <table class="w-full text-left whitespace-nowrap">
+                                <thead class="bg-[#0f172a] text-xs text-gray-400 uppercase font-semibold border-b border-gray-700">
+                                   <tr>
+                                       <th class="p-3 pl-6">日期</th>
+                                       <th class="p-3 text-right">總資產 (NAV)</th>
+                                       <th class="p-3 text-right">總成本 (Cost)</th>
+                                       <th class="p-3 text-right text-gray-400">外部現金流</th>
+                                       <th class="p-3 text-right">現金流調整後區間報酬 (Cash-Flow-Adjusted Period Return)</th>
+                                       <th class="p-3 text-center">動作</th>
+                                   </tr>
+                                </thead>
+                                <tbody class="text-sm divide-y divide-white/5">
+    <tr v-for="(h, idx) in enrichedHistory" :key="h.date" class="hover:bg-white/5 transition-colors">
+        <td class="p-3 pl-6 font-mono text-blue-300">{{ h.date }}</td>
+
+        <td class="p-3 text-right font-mono text-white">
+            {{ formatNumber(h.assets) }}
+        </td>
+
+        <td class="p-3 text-right font-mono text-gray-500">
+            {{ formatNumber(h.cost) }}
+        </td>
+
+        <td
+            class="p-3 text-right font-mono font-bold"
+            :class="(h.computedFlow || 0) > 0 ? 'text-cyan-300' : ((h.computedFlow || 0) < 0 ? 'text-orange-300' : 'text-gray-500')"
+        >
+            {{
+                (h.computedFlow || 0) === 0
+                    ? '0'
+                    : ((h.computedFlow || 0) > 0 ? '+' : '') + formatNumber(h.computedFlow || 0)
+            }}
+        </td>
+
+        <td class="p-3 text-right font-mono font-bold" :class="h.dailyReturn >= 0 ? 'text-red-400' : 'text-green-400'">
+            {{ h.dailyReturn === null ? '-' : (h.dailyReturn * 100).toFixed(2) + '%' }}
+        </td>
+
+        <td class="p-3 text-center">
+            <button
+                @click.stop="removeHistoryByDate(h.date)"
+                class="text-gray-600 hover:text-red-500 transition-colors w-8 h-8 rounded-full hover:bg-red-500/10"
+            >
+                <i class="fas fa-trash"></i>
+            </button>
+        </td>
+    </tr>
+
+    <tr v-if="enrichedHistory.length === 0">
+        <td colspan="6" class="p-6 text-center text-gray-500 text-xs">
+            尚無快照紀錄，請點擊上方「快照」按鈕建立第一筆資料。
+        </td>
+    </tr>
+</tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass chart-card p-5 md:p-6 flex flex-col mt-6">
+                    <div class="mb-4">
+    <h4 class="panel-title">
+        <i class="fas fa-history text-blue-400"></i>
+        Rolling 12-Period
+    </h4>
+    <p class="panel-subtitle">追蹤 Sharpe 與波動度的滾動變化</p>
+</div>
+                    <div class="flex-1 relative"><canvas id="rollingChart"></canvas></div>
+                </div>
+
+            
+
 <div class="glass panel-card analytics-hierarchy-strip overflow-hidden border-white/10">
     <div class="p-4 md:p-5 border-b border-white/10 bg-white/[0.025] flex items-center justify-between gap-3">
         <div>
@@ -1813,95 +1991,6 @@
     </div>
 </div>
 
-
-                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-6 gap-3 mt-4">
-                    <div class="quant-card">
-                        <div class="quant-label text-blue-400" title="時間加權報酬 (評估選股能力)">年化 TWR</div>
-                        <div class="quant-value text-white">{{ stats.annRet }}%</div>
-                    </div>
-                    <div class="quant-card border-blue-900/30 bg-blue-900/10">
-                        <div class="quant-label text-blue-300" title="資金加權報酬 (評估擇時進出能力)">年化 MWR</div>
-                        <div class="quant-value text-white">{{ stats.mwr }}%</div>
-                    </div>
-                    <div class="quant-card border-blue-900/30 bg-blue-900/10">
-                        <div class="quant-label text-blue-300" title="連續複利 LN(1+TWR)">Log Return</div>
-                        <div class="quant-value text-white">{{ stats.annLogRet }}%</div>
-                    </div>
-                    
-                    <div class="quant-card">
-                        <div class="quant-label text-gray-400">年化標準差 (Vol)</div>
-                        <div class="quant-value text-white">{{ stats.annVol }}%</div>
-                    </div>
-                    
-                    <!-- 夏普與 PSR 卡片 -->
-                    <div class="quant-card relative overflow-hidden group">
-                        <div class="quant-label text-yellow-400" title="風險調整後報酬 (搭配 PSR 檢定)">夏普 (Sharpe)</div>
-                        <div class="quant-value text-white flex items-center justify-center gap-2">
-                            <span>{{ stats.sharpe }}</span>
-                            <span v-if="stats.psr !== '-'" 
-                                  class="text-[10px] font-mono px-1.5 py-0.5 rounded border shadow-sm flex items-center"
-                                  :class="parseFloat(stats.psr) >= 95 ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800/50' : (parseFloat(stats.psr) >= 80 ? 'bg-blue-900/30 text-blue-400 border-blue-800/50' : 'bg-red-900/30 text-red-400 border-red-800/50')"
-                                  title="Probabilistic Sharpe Ratio (歷史防禦力檢定)">
-                                PSR {{ stats.psr }}%
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="quant-card">
-                        <div class="quant-label text-yellow-400">索提諾 (Sortino)</div>
-                        <div class="quant-value text-white">{{ stats.sortino }}</div>
-                    </div>
-                    <div class="quant-card border-yellow-900/30 bg-yellow-900/10">
-                        <div class="quant-label text-yellow-300" title="每承擔1單位系統風險的超額報酬">崔納 (Treynor)</div>
-                        <div class="quant-value text-white">{{ stats.treynor }}</div>
-                    </div>
-                    <div class="quant-card border-yellow-900/30 bg-yellow-900/10">
-                        <div class="quant-label text-yellow-300" title="機率權重盈虧比 (克服非常態分配)">Omega 比率</div>
-                        <div class="quant-value text-white">{{ stats.omega }}</div>
-                    </div>
-                    <div class="quant-card border-yellow-900/30 bg-yellow-900/10">
-                        <div class="quant-label text-yellow-300" title="總獲利 / 總虧損">獲利因子 (PF)</div>
-                        <div class="quant-value text-white">{{ stats.profitFactor }}</div>
-                    </div>
-
-                    <div class="quant-card">
-                        <div class="quant-label text-purple-400">組合 Beta (β)</div>
-                        <div class="quant-value text-white">{{ riskParams.beta }}</div>
-                    </div>
-                    <div class="quant-card">
-                        <div class="quant-label text-green-400">Alpha (Jensen)</div>
-                        <div class="quant-value text-white">{{ stats.alpha }}%</div>
-                    </div>
-                    <div class="quant-card bg-red-900/20 border-red-500/30">
-                        <div class="quant-label text-red-400">最大回撤 (MDD)</div>
-                        <div class="quant-value text-white">{{ stats.mdd }}%</div>
-                    </div>
-                    <div class="quant-card">
-                        <div class="quant-label text-yellow-400">卡瑪 (Calmar)</div>
-                        <div class="quant-value text-white">{{ stats.calmar }}</div>
-                    </div>
-                    <div class="quant-card bg-red-900/20 border-red-500/30">
-                        <div class="quant-label text-red-400" title="綜合深度與長度的回撤懲罰">潰瘍指數 (UI)</div>
-                        <div class="quant-value text-white">{{ stats.ulcer }}</div>
-                    </div>
-                    <div class="quant-card bg-red-900/20 border-red-500/30">
-                        <div class="quant-label text-red-400" title="最長未創新高天數">水下時間 (天)</div>
-                        <div class="quant-value text-white">{{ stats.tuw }}</div>
-                    </div>
-                    <div class="quant-card"><div class="quant-label text-red-400">VaR (95%)</div><div class="quant-value text-white">{{ stats.var95 }}%</div></div>
-                    <div class="quant-card bg-red-900/20 border-red-500/30">
-                        <div class="quant-label text-red-300">CVaR (95%)</div>
-                        <div class="quant-value text-white">{{ stats.cvar95 }}%</div>
-                    </div>
-                    <div class="quant-card bg-white/5 border-yellow-400/30">
-                        <div class="quant-label text-yellow-400">偏度 (Skewness)</div>
-                        <div class="quant-value text-white" :class="stats.skew < 0 ? 'text-red-400' : 'text-green-400'">{{ stats.skew }}</div>
-                    </div>
-                    <div class="quant-card bg-white/5 border-yellow-400/30">
-                        <div class="quant-label text-yellow-400">峭度 (Kurtosis)</div>
-                        <div class="quant-value text-white" :class="stats.kurt > 3 ? 'text-red-400' : 'text-gray-300'">{{ stats.kurt }}</div>
-                    </div>
-                </div>
 
                 <!-- 組合 X 光機與 Jump Diffusion -->
                 <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
@@ -2491,93 +2580,7 @@
                     </div>
                 </div>
 
-                <div class="glass rounded-xl flex flex-col mt-4 transition-all duration-300 border border-gray-700/50 hover:border-gray-500/50">
-                    <div class="p-4 cursor-pointer flex justify-between items-center bg-gray-800/30 hover:bg-gray-800/60 transition-colors" @click="isHistoryExpanded = !isHistoryExpanded">
-                        <h3 class="font-bold text-white flex items-center gap-2">
-                            <i class="fas fa-list-alt text-blue-400"></i> 快照歷史紀錄（現金流調整後報酬明細 Cash-Flow-Adjusted Return Detail）
-                            <span class="text-xs font-normal text-gray-500 ml-2 hidden sm:inline">{{ enrichedHistory.length }} 筆資料</span>
-                        </h3>
-                        <div class="flex items-center gap-3">
-                            <span class="text-xs text-gray-500" v-if="!isHistoryExpanded">點擊展開</span>
-                            <button class="text-gray-400 hover:text-white transition-transform duration-300 transform w-8 h-8 rounded-full flex items-center justify-center bg-gray-900/50 border border-gray-700" :class="{'rotate-180 text-blue-400 border-blue-500/30': isHistoryExpanded}">
-                                <i class="fas fa-chevron-down"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div v-show="isHistoryExpanded" class="border-t border-gray-700/50 overflow-hidden animate-fade-in">
-                        <div class="overflow-x-auto p-2 md:p-0">
-                            <table class="w-full text-left whitespace-nowrap">
-                                <thead class="bg-[#0f172a] text-xs text-gray-400 uppercase font-semibold border-b border-gray-700">
-                                   <tr>
-                                       <th class="p-3 pl-6">日期</th>
-                                       <th class="p-3 text-right">總資產 (NAV)</th>
-                                       <th class="p-3 text-right">總成本 (Cost)</th>
-                                       <th class="p-3 text-right text-gray-400">外部現金流</th>
-                                       <th class="p-3 text-right">現金流調整後區間報酬 (Cash-Flow-Adjusted Period Return)</th>
-                                       <th class="p-3 text-center">動作</th>
-                                   </tr>
-                                </thead>
-                                <tbody class="text-sm divide-y divide-white/5">
-    <tr v-for="(h, idx) in enrichedHistory" :key="h.date" class="hover:bg-white/5 transition-colors">
-        <td class="p-3 pl-6 font-mono text-blue-300">{{ h.date }}</td>
-
-        <td class="p-3 text-right font-mono text-white">
-            {{ formatNumber(h.assets) }}
-        </td>
-
-        <td class="p-3 text-right font-mono text-gray-500">
-            {{ formatNumber(h.cost) }}
-        </td>
-
-        <td
-            class="p-3 text-right font-mono font-bold"
-            :class="(h.computedFlow || 0) > 0 ? 'text-cyan-300' : ((h.computedFlow || 0) < 0 ? 'text-orange-300' : 'text-gray-500')"
-        >
-            {{
-                (h.computedFlow || 0) === 0
-                    ? '0'
-                    : ((h.computedFlow || 0) > 0 ? '+' : '') + formatNumber(h.computedFlow || 0)
-            }}
-        </td>
-
-        <td class="p-3 text-right font-mono font-bold" :class="h.dailyReturn >= 0 ? 'text-red-400' : 'text-green-400'">
-            {{ h.dailyReturn === null ? '-' : (h.dailyReturn * 100).toFixed(2) + '%' }}
-        </td>
-
-        <td class="p-3 text-center">
-            <button
-                @click.stop="removeHistoryByDate(h.date)"
-                class="text-gray-600 hover:text-red-500 transition-colors w-8 h-8 rounded-full hover:bg-red-500/10"
-            >
-                <i class="fas fa-trash"></i>
-            </button>
-        </td>
-    </tr>
-
-    <tr v-if="enrichedHistory.length === 0">
-        <td colspan="6" class="p-6 text-center text-gray-500 text-xs">
-            尚無快照紀錄，請點擊上方「快照」按鈕建立第一筆資料。
-        </td>
-    </tr>
-</tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="glass chart-card p-5 md:p-6 flex flex-col mt-6">
-                    <div class="mb-4">
-    <h4 class="panel-title">
-        <i class="fas fa-history text-blue-400"></i>
-        Rolling 12-Period
-    </h4>
-    <p class="panel-subtitle">追蹤 Sharpe 與波動度的滾動變化</p>
-</div>
-                    <div class="flex-1 relative"><canvas id="rollingChart"></canvas></div>
-                </div>
-
-            </section>
+                </section>
 
             <!-- ===== Ledger Tab / 記帳 ===== -->
             <section v-show="currentTab === 'ledger'" class="flex flex-col md:flex-row gap-6">

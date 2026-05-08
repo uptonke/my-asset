@@ -1690,7 +1690,7 @@ const navOverlayOptions = [
     { value: 'nav_only', label: 'NAV Only' },
     { value: 'ma_stack', label: 'NAV + MA' },
     { value: 'full', label: 'NAV + MA + Cost' },
-    { value: 'drawdown', label: 'Drawdown Overlay' }
+    { value: 'drawdown', label: '回撤疊圖' }
 ];
 
 function setNavOverlayMode(mode) {
@@ -3899,7 +3899,7 @@ if (cmlCtx && !chartCML) {
                 hidden: overlayMode === 'nav_only' || overlayMode === 'ma_stack'
             };
             chartHist.data.datasets[4] = {
-                label: 'Drawdown',
+                label: '回撤',
                 data: navDrawdown,
                 borderColor: '#94a3b8',
                 backgroundColor: 'rgba(148,163,184,0.08)',
