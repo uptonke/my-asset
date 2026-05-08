@@ -365,6 +365,7 @@ ${JSON.stringify(payload, null, 2)}
         const exchangeRate = ref(32.5);
         const sheetUrl = ref('');
         const liquidityBufferRatio = ref(0);
+        const tradeBufferBasePct = ref(2);
         const chaosMeta = ref(null);
         
         const cloudAiAnalysis = ref(null);
@@ -383,6 +384,9 @@ ${JSON.stringify(payload, null, 2)}
         const quantStartDate = ref(''); 
         const dataFrequency = ref('Weekly');
         const snapshotDate = ref(new Date().toISOString().split('T')[0]); 
+        const navOverlayMode = ref('full');
+        const holdingsActionFilter = ref('all');
+        const holdingsSortKey = ref('priority');
 
         const transactions = ref([]);
         const realHistoryData = ref([]);
@@ -462,6 +466,9 @@ ${JSON.stringify(payload, null, 2)}
                         if (data.settings.liquidityBufferRatio !== undefined && data.settings.liquidityBufferRatio !== null) {
                             liquidityBufferRatio.value = parseFloat(data.settings.liquidityBufferRatio) || 0;
                         }
+                        if (data.settings.tradeBufferBasePct !== undefined && data.settings.tradeBufferBasePct !== null) {
+                            tradeBufferBasePct.value = parseFloat(data.settings.tradeBufferBasePct) || 2;
+                        }
                     }
                 }
 
@@ -474,7 +481,8 @@ ${JSON.stringify(payload, null, 2)}
                     sheetUrl: sheetUrl.value,
                     fireTargets: fireTargets.value,
                     priceMap: priceMap.value,
-                    liquidityBufferRatio: liquidityBufferRatio.value
+                    liquidityBufferRatio: liquidityBufferRatio.value,
+                    tradeBufferBasePct: tradeBufferBasePct.value
                 }));
 
             } catch (err) {
@@ -490,6 +498,9 @@ ${JSON.stringify(payload, null, 2)}
                 if (localSettings.priceMap) priceMap.value = localSettings.priceMap;
                 if (localSettings.liquidityBufferRatio !== undefined && localSettings.liquidityBufferRatio !== null) {
                     liquidityBufferRatio.value = parseFloat(localSettings.liquidityBufferRatio) || 0;
+                }
+                if (localSettings.tradeBufferBasePct !== undefined && localSettings.tradeBufferBasePct !== null) {
+                    tradeBufferBasePct.value = parseFloat(localSettings.tradeBufferBasePct) || 2;
                 }
             } finally {
                 isDbSyncing.value = false;
@@ -1238,6 +1249,67 @@ function absNumOrNull(val) {
     return n === null ? null : Math.abs(n);
 }
 
+function getNavMaConfig(frequency) {
+    const freq = String(frequency || 'Weekly').toLowerCase();
+    if (freq.includes('day')) {
+        return {
+            monthWindow: 21,
+            yearWindow: 252,
+            monthLabel: 'NAV 月線 MA (21D)',
+            yearLabel: 'NAV 年線 MA (252D)',
+            frequencyNote: '以日資料 21D / 252D 近似月線與年線。'
+        };
+    }
+    if (freq.includes('month')) {
+        return {
+            monthWindow: 1,
+            yearWindow: 12,
+            monthLabel: 'NAV 月線 MA (1M)',
+            yearLabel: 'NAV 年線 MA (12M)',
+            frequencyNote: '以月資料 1M / 12M 顯示月線與年線。'
+        };
+    }
+    return {
+        monthWindow: 4,
+        yearWindow: 52,
+        monthLabel: 'NAV 月線 MA (4W)',
+        yearLabel: 'NAV 年線 MA (52W)',
+        frequencyNote: '以週資料 4W / 52W 近似月線與年線。'
+    };
+}
+
+function computeMovingAverage(values, windowSize) {
+    const arr = values.map(v => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : null;
+    });
+    const window = Math.max(1, Number(windowSize) || 1);
+    return arr.map((_, idx) => {
+        if (idx + 1 < window) return null;
+        const slice = arr.slice(idx + 1 - window, idx + 1);
+        if (slice.some(v => v === null)) return null;
+        const sum = slice.reduce((acc, v) => acc + v, 0);
+        return Number((sum / window).toFixed(2));
+    });
+}
+
+function computeDrawdownSeries(values) {
+    let peak = null;
+    return values.map(v => {
+        const n = Number(v);
+        if (!Number.isFinite(n) || n <= 0) return null;
+        peak = peak === null ? n : Math.max(peak, n);
+        if (!peak) return 0;
+        return Number((((n / peak) - 1) * 100).toFixed(2));
+    });
+}
+
+function formatPctSigned(val, digits = 1) {
+    const n = Number(val);
+    if (!Number.isFinite(n)) return '-';
+    return `${n > 0 ? '+' : ''}${n.toFixed(digits)}%`;
+}
+
 function makeGovernanceFlag(code, label, detail, value = null) {
     return { code, label, detail, value };
 }
@@ -1269,6 +1341,61 @@ const historyIntegrityRisk = computed(() => {
         polluted,
         lowConfidence: polluted || sorted.length < 12 || stats.value.mwr === '-',
         reasons
+    };
+});
+
+
+const navMaConfig = computed(() => getNavMaConfig(dataFrequency.value));
+
+const tradeBufferPresets = [1, 2, 3, 5];
+
+function clampTradeBuffer(val) {
+    const n = Number(val);
+    if (!Number.isFinite(n)) return 2;
+    return Math.max(0.5, Math.min(10, Math.round(n * 10) / 10));
+}
+
+async function applyTradeBuffer(val) {
+    const nextVal = clampTradeBuffer(val);
+    if (nextVal === tradeBufferBasePct.value) return;
+    tradeBufferBasePct.value = nextVal;
+    await saveData();
+}
+
+async function nudgeTradeBuffer(delta) {
+    await applyTradeBuffer((Number(tradeBufferBasePct.value) || 0) + delta);
+}
+
+const tradeBufferProfile = computed(() => {
+    const base = clampTradeBuffer(tradeBufferBasePct.value);
+    const mode = croDecisionMode.value;
+
+    let addThresholdPct = base;
+    let trimThresholdPct = base;
+    let modeNote = 'Base no-trade zone：落在門檻內先不交易，避免過度來回。';
+
+    if (mode === 'CRO_VETO') {
+        addThresholdPct = 999;
+        trimThresholdPct = Math.max(1, Math.round(base * 10) / 10);
+        modeNote = 'CRO veto 中：停止風險加碼；Trade Buffer 只用來判斷何時該 trim。';
+    } else if (mode === 'CRO_CAUTION_MC_ALLOWED') {
+        addThresholdPct = Number((base + 1).toFixed(1));
+        trimThresholdPct = base;
+        modeNote = 'CRO caution 中：加碼門檻拉寬，先避免為了小 drift 過度補倉。';
+    } else {
+        addThresholdPct = base;
+        trimThresholdPct = base;
+        modeNote = 'MC primary：在 no-trade zone 外才執行調整，降低交易噪音。';
+    }
+
+    return {
+        basePct: base,
+        addThresholdPct,
+        trimThresholdPct,
+        addDisabled: mode === 'CRO_VETO',
+        mode,
+        modeNote,
+        bufferLabel: `±${base.toFixed(1)}% 基礎交易緩衝區`
     };
 });
 
@@ -1504,6 +1631,314 @@ const allocationGovernance = computed(() => {
     };
 });
 
+const governanceLogicLine = 'Whole portfolio 先由 CRO 判定可否承擔風險；risk assets 內部配置才交給 MC。';
+
+const historyIntegrityBadge = computed(() => {
+    const reasons = historyIntegrityRisk.value.reasons || [];
+    if (historyIntegrityRisk.value.lowConfidence && reasons.length >= 3) {
+        return {
+            level: 'HIGH',
+            label: 'High',
+            badgeClass: 'border-red-500/30 bg-red-500/10 text-red-300',
+            detail: '歷史樣本污染或不足，歷史統計僅能作 soft evidence。'
+        };
+    }
+    if (historyIntegrityRisk.value.lowConfidence || reasons.length) {
+        return {
+            level: 'MEDIUM',
+            label: 'Medium',
+            badgeClass: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+            detail: '歷史資料仍可參考，但不能單獨作為 hard veto。'
+        };
+    }
+    return {
+        level: 'LOW',
+        label: 'Low',
+        badgeClass: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+        detail: '歷史完整性目前穩定，可作為 soft evidence 背景。'
+    };
+});
+
+const doNotDoList = computed(() => {
+    if (croDecisionMode.value === 'CRO_VETO') {
+        return [
+            '不要新增風險資產部位。',
+            '不要把 MC 當成整體投組總司令。',
+            '不要忽視 buffer / tail / concentration / drift。'
+        ];
+    }
+    if (croDecisionMode.value === 'CRO_CAUTION_MC_ALLOWED') {
+        return [
+            '不要把歷史 Sharpe / PSR / MWR 當成鐵律。',
+            '不要一次把 risky sleeve 調太大。',
+            '不要把 soft evidence 升格成 hard veto。'
+        ];
+    }
+    return [
+        '不要為了小 drift 過度交易。',
+        '不要讓 CRO 搶走 MC 的 sleeve 配置權。',
+        '不要忽略持倉集中與交易緩衝區。'
+    ];
+});
+
+const navOverlayOptions = [
+    { value: 'nav_only', label: 'NAV Only' },
+    { value: 'ma_stack', label: 'NAV + MA' },
+    { value: 'full', label: 'NAV + MA + Cost' },
+    { value: 'drawdown', label: 'Drawdown Overlay' }
+];
+
+function setNavOverlayMode(mode) {
+    navOverlayMode.value = mode;
+    nextTick(() => updateCharts());
+}
+
+const navTrendSummary = computed(() => {
+    const sorted = [...displayHistory.value].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const navSeries = sorted.map(h => Number(h.assets) || 0);
+    const maConfig = navMaConfig.value;
+    const monthMa = computeMovingAverage(navSeries, maConfig.monthWindow);
+    const yearMa = computeMovingAverage(navSeries, maConfig.yearWindow);
+    const drawdown = computeDrawdownSeries(navSeries);
+    const lastNav = navSeries[navSeries.length - 1] ?? null;
+    const lastMonth = monthMa.filter(v => v !== null).slice(-1)[0] ?? null;
+    const lastYear = yearMa.filter(v => v !== null).slice(-1)[0] ?? null;
+    const prevMonth = monthMa.filter(v => v !== null).slice(-2)[0] ?? null;
+    const prevYear = yearMa.filter(v => v !== null).slice(-2)[0] ?? null;
+    const lastDrawdown = drawdown.filter(v => v !== null).slice(-1)[0] ?? null;
+    const monthSlopeUp = lastMonth !== null && prevMonth !== null ? lastMonth >= prevMonth : null;
+    const yearSlopeUp = lastYear !== null && prevYear !== null ? lastYear >= prevYear : null;
+
+    let regimeLabel = 'Trend Stable';
+    let badgeClass = 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300';
+    let note = 'NAV 趨勢目前未見明顯壓力。';
+
+    if (croDecisionMode.value === 'CRO_VETO') {
+        regimeLabel = 'Risk Veto';
+        badgeClass = 'border-red-500/30 bg-red-500/10 text-red-300';
+        note = '治理層已切到 veto；圖表趨勢只作背景，不作放大風險依據。';
+    } else if (croDecisionMode.value === 'CRO_CAUTION_MC_ALLOWED') {
+        regimeLabel = 'Caution';
+        badgeClass = 'border-amber-500/30 bg-amber-500/10 text-amber-300';
+        note = '趨勢可看，但執行上仍要保留緩衝。';
+    } else if ((lastYear !== null && lastNav !== null && lastNav < lastYear) || (lastDrawdown !== null && lastDrawdown <= -10)) {
+        regimeLabel = 'Trend Fragile';
+        badgeClass = 'border-amber-500/30 bg-amber-500/10 text-amber-300';
+        note = 'NAV 仍偏脆弱，先避免把單一趨勢訊號過度放大。';
+    }
+
+    return {
+        navVsMonth: lastNav !== null && lastMonth !== null ? (lastNav >= lastMonth ? '月線上方' : '月線下方') : 'N/A',
+        navVsYear: lastNav !== null && lastYear !== null ? (lastNav >= lastYear ? '年線上方' : '年線下方') : 'N/A',
+        monthSlope: monthSlopeUp === null ? 'N/A' : (monthSlopeUp ? '月線上彎' : '月線走弱'),
+        yearSlope: yearSlopeUp === null ? 'N/A' : (yearSlopeUp ? '年線穩定 / 上彎' : '年線走平 / 下彎'),
+        currentDrawdown: lastDrawdown === null ? 'N/A' : `${lastDrawdown.toFixed(1)}%`,
+        regimeLabel,
+        badgeClass,
+        note,
+        overlayModeLabel: navOverlayOptions.find(opt => opt.value === navOverlayMode.value)?.label || 'NAV + MA + Cost'
+    };
+});
+
+const riskRegimeStrip = computed(() => {
+    if (croDecisionMode.value === 'CRO_VETO') {
+        return {
+            label: 'Risk Regime · Veto',
+            class: 'border-red-500/30 bg-red-500/10 text-red-300',
+            note: 'Whole portfolio 先由 CRO 接管，暫停新增風險。'
+        };
+    }
+    if (croDecisionMode.value === 'CRO_CAUTION_MC_ALLOWED') {
+        return {
+            label: 'Risk Regime · Caution',
+            class: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+            note: 'MC 可配置 risky sleeve，但要保留更寬的 trade buffer。'
+        };
+    }
+    return {
+        label: 'Risk Regime · MC Primary',
+        class: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+        note: '無 hard veto；可由 MC 主導 risky sleeve。'
+    };
+});
+
+function getHoldingExecutionMeta(item) {
+    const mode = croDecisionMode.value;
+    const profile = tradeBufferProfile.value;
+    const currentWeightPct = Number((((item.totalWeight || 0) * 100)).toFixed(1));
+    const targetWeightPct = Number((item.blendedWeight || 0).toFixed(1));
+    const driftPct = Number((item.weightGap || 0).toFixed(1));
+    const gapAbs = Math.abs(driftPct);
+    const trimThreshold = profile.trimThresholdPct;
+    const addThreshold = profile.addThresholdPct;
+
+    let executionAction = 'Hold';
+    let executionBadgeClass = 'border-slate-500/20 bg-slate-500/10 text-slate-200';
+    let governanceStatus = '緩衝區內';
+    let governanceClass = 'border-slate-500/20 bg-slate-500/10 text-slate-300';
+    let executionReason = `落在 trade buffer 內（Base ±${profile.basePct.toFixed(1)}%），先避免過度交易。`;
+    let executionRowClass = '';
+    let priorityScore = gapAbs + (item.isOverweight ? 4 : 0);
+
+    if (driftPct <= -trimThreshold || (item.isOverweight && driftPct < 0)) {
+        executionAction = 'Trim';
+        executionBadgeClass = 'border-red-500/30 bg-red-500/10 text-red-300';
+        governanceStatus = '執行優先';
+        governanceClass = 'border-red-500/25 bg-red-500/10 text-red-300';
+        executionReason = item.isOverweight
+            ? `現有 ${currentWeightPct.toFixed(1)}% 高於綜合目標 ${targetWeightPct.toFixed(1)}%，且已有集中風險。`
+            : `高於綜合目標 ${Math.abs(driftPct).toFixed(1)}%，已超出 trim 門檻 ${trimThreshold.toFixed(1)}%。`;
+        executionRowClass = 'execution-row-trim';
+        priorityScore += 8;
+    } else if (driftPct >= addThreshold) {
+        if (profile.addDisabled) {
+            executionAction = 'Locked';
+            executionBadgeClass = 'border-amber-500/30 bg-amber-500/10 text-amber-300';
+            governanceStatus = 'CRO 鎖定';
+            governanceClass = 'border-amber-500/25 bg-amber-500/10 text-amber-300';
+            executionReason = `理論上低於目標 ${driftPct.toFixed(1)}%，但 CRO veto 中，暫不允許補風險。`;
+            executionRowClass = 'execution-row-locked';
+            priorityScore += 5;
+        } else {
+            executionAction = 'Add';
+            executionBadgeClass = 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300';
+            governanceStatus = mode === 'MC_PRIMARY' ? 'MC 可配置' : '候補觀察';
+            governanceClass = mode === 'MC_PRIMARY'
+                ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300'
+                : 'border-cyan-500/25 bg-cyan-500/10 text-cyan-300';
+            executionReason = `低於綜合目標 ${driftPct.toFixed(1)}%，已超出 add 門檻 ${addThreshold.toFixed(1)}%。`;
+            executionRowClass = 'execution-row-add';
+            priorityScore += mode === 'MC_PRIMARY' ? 6 : 3;
+        }
+    } else if (item.isOverweight || gapAbs >= Math.max(1, profile.basePct * 0.7)) {
+        executionAction = 'Watch';
+        executionBadgeClass = 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300';
+        governanceStatus = '候補觀察';
+        governanceClass = 'border-cyan-500/25 bg-cyan-500/10 text-cyan-300';
+        executionReason = item.isOverweight
+            ? '雖未超過 trim 門檻，但已接近集中上限，先列觀察。'
+            : '接近 trade buffer 邊界，先列 watchlist，避免為小 drift 追單。';
+        executionRowClass = 'execution-row-watch';
+        priorityScore += 2;
+    }
+
+    return {
+        currentWeightPct,
+        targetWeightPct,
+        driftPct,
+        executionAction,
+        executionBadgeClass,
+        governanceStatus,
+        governanceClass,
+        executionReason,
+        executionRowClass,
+        executionPriority: priorityScore
+    };
+}
+
+const holdingsViewOptions = [
+    { value: 'all', label: '全部' },
+    { value: 'trim', label: 'Trim' },
+    { value: 'add', label: 'Add' },
+    { value: 'locked', label: 'Locked' },
+    { value: 'watch', label: 'Watch' },
+    { value: 'high_risk', label: '高風險' },
+    { value: 'overweight', label: '過重' },
+    { value: 'drift', label: 'Drift 異常' }
+];
+
+const holdingsSortOptions = [
+    { value: 'priority', label: '動作優先序' },
+    { value: 'weight', label: '權重' },
+    { value: 'drift', label: 'Drift' },
+    { value: 'pnl', label: '未實現損益' },
+    { value: 'return', label: '報酬率' },
+    { value: 'risk', label: '風險分數' }
+];
+
+const holdingsDecoratedGroups = computed(() => {
+    const groups = {};
+    for (const [catName, group] of Object.entries(groupedHoldings.value)) {
+        const items = (group.items || []).map(item => Object.assign(item, getHoldingExecutionMeta(item)));
+        groups[catName] = { ...group, items };
+    }
+    return groups;
+});
+
+const holdingsActionSummary = computed(() => {
+    const items = Object.values(holdingsDecoratedGroups.value).flatMap(group => group.items || []);
+    return {
+        total: items.length,
+        trim: items.filter(item => item.executionAction === 'Trim').length,
+        add: items.filter(item => item.executionAction === 'Add').length,
+        locked: items.filter(item => item.executionAction === 'Locked').length,
+        watch: items.filter(item => item.executionAction === 'Watch').length,
+        hold: items.filter(item => item.executionAction === 'Hold').length,
+        highRisk: items.filter(item => item.riskLevel === 'High').length,
+        overweight: items.filter(item => item.isOverweight).length,
+        drift: items.filter(item => Math.abs(Number(item.driftPct || 0)) >= Math.max(2, tradeBufferProfile.value.basePct)).length
+    };
+});
+
+function holdingMatchesFilter(item, filterKey) {
+    if (filterKey === 'trim') return item.executionAction === 'Trim';
+    if (filterKey === 'add') return item.executionAction === 'Add';
+    if (filterKey === 'locked') return item.executionAction === 'Locked';
+    if (filterKey === 'watch') return item.executionAction === 'Watch';
+    if (filterKey === 'high_risk') return item.riskLevel === 'High';
+    if (filterKey === 'overweight') return !!item.isOverweight;
+    if (filterKey === 'drift') return Math.abs(Number(item.driftPct || 0)) >= Math.max(2, tradeBufferProfile.value.basePct);
+    return true;
+}
+
+function compareHoldingRows(a, b, sortKey) {
+    if (sortKey === 'weight') return (b.currentWeightPct || 0) - (a.currentWeightPct || 0);
+    if (sortKey === 'drift') return Math.abs(b.driftPct || 0) - Math.abs(a.driftPct || 0);
+    if (sortKey === 'pnl') return (b.unrealizedPLTwd || 0) - (a.unrealizedPLTwd || 0);
+    if (sortKey === 'return') return (b.returnRate || 0) - (a.returnRate || 0);
+    if (sortKey === 'risk') {
+        const riskScore = row => (row.riskLevel === 'High' ? 2 : 0) + (row.isOverweight ? 2 : 0) + Math.abs(Number(row.driftPct || 0)) / 5;
+        return riskScore(b) - riskScore(a);
+    }
+    return (b.executionPriority || 0) - (a.executionPriority || 0);
+}
+
+const filteredHoldingsGroups = computed(() => {
+    const groups = {};
+    for (const [catName, group] of Object.entries(holdingsDecoratedGroups.value)) {
+        const items = (group.items || [])
+            .filter(item => holdingMatchesFilter(item, holdingsActionFilter.value))
+            .sort((a, b) => compareHoldingRows(a, b, holdingsSortKey.value));
+
+        if (!items.length) continue;
+
+        const totalValue = items.reduce((sum, item) => sum + (Number(item.marketValueTwd) || 0), 0);
+        const totalCost = items.reduce((sum, item) => sum + (Number(item.totalCostTwd) || 0), 0);
+        const unrealizedPL = totalValue - totalCost;
+        const returnRate = totalCost > 0 ? (unrealizedPL / totalCost) * 100 : 0;
+        const annualizedBase = items.reduce((sum, item) => sum + (Number(item.annualizedReturnRate) || 0) * (Number(item.marketValueTwd) || 0), 0);
+        const annualizedReturnRate = totalValue > 0 ? annualizedBase / totalValue : 0;
+
+        groups[catName] = {
+            ...group,
+            items,
+            totalValue,
+            totalCost,
+            unrealizedPL,
+            returnRate,
+            annualizedReturnRate
+        };
+    }
+    return groups;
+});
+
+const holdingsVisibleStats = computed(() => {
+    const visible = Object.values(filteredHoldingsGroups.value).flatMap(group => group.items || []).length;
+    return {
+        visible,
+        total: holdingsActionSummary.value.total
+    };
+});
 
 const holdingsTableRows = computed(() => {
     return Object.entries(groupedHoldings.value).flatMap(([categoryName, group]) =>
@@ -1539,8 +1974,10 @@ function getAlertToneMeta(tone = 'info') {
     };
 }
 
-const rebalanceCockpitRows = computed(() => {
+function buildRebalanceRows() {
     const total = totalStockValueTwd.value || 0;
+    const addThreshold = tradeBufferProfile.value.addThresholdPct;
+    const trimThreshold = tradeBufferProfile.value.trimThresholdPct;
 
     return holdingsTableRows.value
         .map(item => {
@@ -1549,29 +1986,45 @@ const rebalanceCockpitRows = computed(() => {
             const driftPct = Number((item.weightGap || 0).toFixed(1));
             const gapAbs = Math.abs(driftPct);
             const actionValueTwd = total > 0 ? Math.round(total * gapAbs / 100) : 0;
+            const inTradeBufferZone = tradeBufferProfile.value.addDisabled
+                ? driftPct > -trimThreshold && driftPct < trimThreshold
+                : gapAbs < Math.min(addThreshold, trimThreshold);
 
-            let action = '觀察';
-            let actionClass = 'text-gray-300';
-            let note = '偏離仍在可容忍區間。';
+            let action = 'Buffer Hold';
+            let actionClass = 'text-slate-300';
+            let note = `目前仍在交易緩衝區內（基礎 ±${tradeBufferProfile.value.basePct.toFixed(1)}%），先避免過度交易。`;
+            let executionBucket = 'hold';
+            let governanceLabel = '緩衝區內';
+            let governanceClass = 'border-slate-500/20 bg-slate-500/10 text-slate-300';
 
-            if (driftPct <= -3) {
+            if (driftPct <= -trimThreshold) {
                 action = '優先減碼';
                 actionClass = 'text-red-300';
+                executionBucket = 'trim';
+                governanceLabel = '執行優先';
+                governanceClass = 'border-red-500/25 bg-red-500/10 text-red-300';
                 note = item.isOverweight
-                    ? '已過重且偏離目標，先處理集中與 drift。'
-                    : '目前實際權重大於綜合目標，優先把部位拉回。';
-            } else if (driftPct >= 3) {
-                action = croDecisionMode.value === 'CRO_VETO' ? '候補加碼' : '加碼候選';
-                actionClass = croDecisionMode.value === 'CRO_VETO' ? 'text-amber-300' : 'text-emerald-300';
-                note = croDecisionMode.value === 'CRO_VETO'
-                    ? '理論上低於目標，但 CRO veto 中，先不執行風險加碼。'
-                    : '低於綜合目標，可由 MC 主導 risky sleeve 補位。';
+                    ? `已過重且超出 trim 緩衝門檻 ${trimThreshold.toFixed(1)}%，先處理集中與 drift。`
+                    : `實際權重大於綜合目標，且已超出 trim 緩衝門檻 ${trimThreshold.toFixed(1)}%。`;
+            } else if (driftPct >= addThreshold) {
+                action = tradeBufferProfile.value.addDisabled ? '候補加碼' : '加碼候選';
+                actionClass = tradeBufferProfile.value.addDisabled ? 'text-amber-300' : 'text-emerald-300';
+                executionBucket = tradeBufferProfile.value.addDisabled ? 'pending' : 'add';
+                governanceLabel = tradeBufferProfile.value.addDisabled ? 'CRO 鎖定' : (croDecisionMode.value === 'MC_PRIMARY' ? 'MC 可配置' : '候補觀察');
+                governanceClass = tradeBufferProfile.value.addDisabled
+                    ? 'border-amber-500/25 bg-amber-500/10 text-amber-300'
+                    : (croDecisionMode.value === 'MC_PRIMARY'
+                        ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-300'
+                        : 'border-cyan-500/25 bg-cyan-500/10 text-cyan-300');
+                note = tradeBufferProfile.value.addDisabled
+                    ? `理論上低於目標，但 CRO veto 中；加碼門檻已被鎖住，先不承擔新增風險。`
+                    : `低於綜合目標且超出 add 緩衝門檻 ${addThreshold.toFixed(1)}%，可由 MC 主導 risky sleeve 補位。`;
             }
 
             const severityScore = gapAbs
                 + (item.isOverweight ? 6 : 0)
-                + (item.riskLevel === 'High' && driftPct <= -3 ? 3 : 0)
-                + (item.riskLevel === 'High' && driftPct >= 3 && croDecisionMode.value !== 'MC_PRIMARY' ? 1 : 0);
+                + (item.riskLevel === 'High' && driftPct <= -trimThreshold ? 3 : 0)
+                + (item.riskLevel === 'High' && driftPct >= addThreshold && croDecisionMode.value !== 'MC_PRIMARY' ? 1 : 0);
 
             return {
                 ticker: item.ticker,
@@ -1585,23 +2038,101 @@ const rebalanceCockpitRows = computed(() => {
                 action,
                 actionClass,
                 note,
+                governanceLabel,
+                governanceClass,
+                executionBucket,
                 actionValueTwd,
                 actionValueText: `NT$ ${formatNumber(actionValueTwd)}`,
                 marketValueTwd: item.marketValueTwd,
                 isOverweight: !!item.isOverweight,
-                severityScore
+                severityScore,
+                inTradeBufferZone,
+                trimThresholdPct: trimThreshold,
+                addThresholdPct: addThreshold,
+                estimatedDriftAfterText: gapAbs ? `~${Math.max(0, gapAbs - Math.min(gapAbs, Math.abs(driftPct))).toFixed(1)}%` : '0.0%'
             };
         })
-        .filter(row => row.gapAbs >= 2 || row.isOverweight)
-        .sort((a, b) => b.severityScore - a.severityScore)
-        .slice(0, 8);
+        .filter(row => row.gapAbs >= Math.min(tradeBufferProfile.value.basePct, row.trimThresholdPct) || row.isOverweight || row.action !== 'Buffer Hold')
+        .sort((a, b) => b.severityScore - a.severityScore);
+}
+
+const rebalanceAllRows = computed(() => buildRebalanceRows());
+
+const rebalanceCockpitRows = computed(() => rebalanceAllRows.value.slice(0, 8));
+
+const rebalanceCockpitBuckets = computed(() => ({
+    trim: rebalanceAllRows.value.filter(row => row.executionBucket === 'trim').slice(0, 5),
+    add: rebalanceAllRows.value.filter(row => row.executionBucket === 'add').slice(0, 5),
+    pending: rebalanceAllRows.value.filter(row => row.executionBucket === 'pending').slice(0, 5),
+    hold: rebalanceAllRows.value.filter(row => row.executionBucket === 'hold').slice(0, 5)
+}));
+
+const tradeBufferSummary = computed(() => {
+    const rows = rebalanceAllRows.value;
+    return {
+        basePct: tradeBufferProfile.value.basePct,
+        addThresholdPct: tradeBufferProfile.value.addThresholdPct,
+        trimThresholdPct: tradeBufferProfile.value.trimThresholdPct,
+        holdCount: rows.filter(row => row.action === 'Buffer Hold').length,
+        trimCount: rows.filter(row => row.action === '優先減碼').length,
+        addCount: rows.filter(row => row.action === '加碼候選').length,
+        pendingAddCount: rows.filter(row => row.action === '候補加碼').length
+    };
+});
+
+const rebalancePostTradeEstimate = computed(() => {
+    const topTrim = rebalanceCockpitBuckets.value.trim[0] || null;
+    const topAdd = rebalanceCockpitBuckets.value.add[0] || null;
+    const topPending = rebalanceCockpitBuckets.value.pending[0] || null;
+    const topRiskPct = toNumOrNull(xrayStats.value?.mrcTable?.[0]?.riskPct);
+    const bufferGapBefore = toNumOrNull(rebalanceMonitor.value.bufferGapPct) || 0;
+
+    let concentrationAfter = topRiskPct;
+    let bufferGapAfter = bufferGapBefore;
+    let executionNote = '目前沒有明確的執行候選。';
+
+    if (topTrim) {
+        concentrationAfter = topRiskPct === null ? null : Math.max(0, topRiskPct - Math.min(8, Math.abs(topTrim.driftPct) * 0.7));
+        bufferGapAfter = Math.max(0, bufferGapBefore - Math.min(bufferGapBefore, (topTrim.actionValueTwd / Math.max(totalPortfolioNav.value, 1)) * 100));
+        executionNote = `若先執行 ${topTrim.ticker} 的 trim，集中度與現金壓力通常會先緩和。`;
+    } else if (topAdd) {
+        executionNote = `若要加碼，優先觀察 ${topAdd.ticker} 是否仍維持在 add 門檻外。`;
+    } else if (topPending) {
+        executionNote = `${topPending.ticker} 理論上可補位，但目前仍被 CRO 鎖住。`;
+    }
+
+    return {
+        topTrim,
+        topAdd,
+        topPending,
+        concentrationBefore: topRiskPct,
+        concentrationAfter,
+        bufferGapBefore,
+        bufferGapAfter,
+        executionNote
+    };
 });
 
 const alertCenterItems = computed(() => {
     const items = [];
-    const pushItem = (id, tone, title, detail, tab = 'analytics', ctaLabel = '查看') => {
-        items.push({ id, tone, title, detail, tab, ctaLabel, ...getAlertToneMeta(tone) });
+    const pushItem = (id, tone, title, detail, tab = 'analytics', ctaLabel = '查看', sourceLabel = 'System', suggestedAction = '查看') => {
+        const meta = getAlertToneMeta(tone);
+        const section = tone === 'critical' ? 'critical' : (tone === 'warn' ? 'actionable' : 'informational');
+        items.push({ id, tone, title, detail, tab, ctaLabel, sourceLabel, suggestedAction, section, ...meta });
     };
+
+    if (croDecisionMode.value === 'CRO_VETO') {
+        pushItem(
+            'governance-veto',
+            'critical',
+            'CRO Veto 生效',
+            '目前所有加碼訊號都只能列入參考；先處理整體投組風險，再談 risky sleeve 配置。',
+            'summary',
+            '看治理',
+            'Governance',
+            '停止新增風險'
+        );
+    }
 
     if (isCashNegative.value) {
         pushItem(
@@ -1610,7 +2141,9 @@ const alertCenterItems = computed(() => {
             '現金餘額為負',
             `目前 Cash = NT$ ${formatNumber(cashBalance.value)}。先修正 Ledger，再談任何風險加碼。`,
             'ledger',
-            '修正 Ledger'
+            '修正 Ledger',
+            'Ledger',
+            '先補現金 / 修流水'
         );
     } else if (isCashTooHigh.value) {
         pushItem(
@@ -1619,21 +2152,23 @@ const alertCenterItems = computed(() => {
             '現金占比過高',
             '現金已超過 NAV 50%，請確認是否漏記 Withdraw，或資金部署節奏失衡。',
             'ledger',
-            '檢查流水'
+            '檢查流水',
+            'Buffer',
+            '檢查部署節奏'
         );
     }
 
     croHardVetoFlags.value.slice(0, 4).forEach((flag, idx) => {
-        pushItem(`hard-${idx}-${flag.code}`, 'critical', flag.label, flag.detail, 'analytics', '看 Analytics');
+        const sourceLabel = flag.code.includes('BUFFER') ? 'Buffer' : flag.code.includes('PCA') || flag.code.includes('CONCENT') ? 'X-Ray' : 'Tail';
+        pushItem(`hard-${idx}-${flag.code}`, 'critical', flag.label, flag.detail, 'analytics', '看 Analytics', sourceLabel, '先處理硬風險');
     });
 
     (rebalanceMonitor.value.alerts || []).slice(0, 2).forEach((alert, idx) => {
-        const title = `再平衡警報 ${idx + 1}`;
         const detail = alert.reason || alert.message || `${alert.ticker || '部位'} 偏離目標過大。`;
-        pushItem(`rb-${idx}`, 'warn', title, detail, 'analytics', '看 Cockpit');
+        pushItem(`rb-${idx}`, 'warn', `再平衡警報 ${idx + 1}`, detail, 'analytics', '看 Cockpit', 'Rebalance', '先看 trim / drift');
     });
 
-    const topTrim = rebalanceCockpitRows.value.find(row => row.action === '優先減碼');
+    const topTrim = rebalanceCockpitBuckets.value.trim[0];
     if (topTrim) {
         pushItem(
             `trim-${topTrim.ticker}`,
@@ -1641,7 +2176,23 @@ const alertCenterItems = computed(() => {
             `${topTrim.ticker} 偏重 / 漂移偏大`,
             `目前 ${topTrim.currentWeightPct.toFixed(1)}%，綜合目標 ${topTrim.targetWeightPct.toFixed(1)}%，優先處理減碼。`,
             'holdings',
-            '看持倉'
+            '看持倉',
+            'Execution',
+            '先 trim'
+        );
+    }
+
+    const pendingAdd = rebalanceCockpitBuckets.value.pending[0];
+    if (pendingAdd) {
+        pushItem(
+            `pending-${pendingAdd.ticker}`,
+            'info',
+            `${pendingAdd.ticker} 暫列候補加碼`,
+            `理論上低於目標，但目前 governance mode = ${croDecisionMode.value}，暫不允許加風險。`,
+            'analytics',
+            '看治理',
+            'Governance',
+            '先等待 veto 解除'
         );
     }
 
@@ -1652,7 +2203,9 @@ const alertCenterItems = computed(() => {
             '歷史統計可信度不足',
             historyIntegrityRisk.value.reasons.join(' / '),
             'analytics',
-            '看統計'
+            '看統計',
+            'History',
+            '降低歷史 stats 權重'
         );
     }
 
@@ -1676,11 +2229,25 @@ const alertCenterItems = computed(() => {
             detail: '治理層、現金層與再平衡層暫時穩定，可維持既有節奏。',
             tab: 'summary',
             ctaLabel: '看總覽',
+            sourceLabel: 'System',
+            suggestedAction: '維持觀察',
+            section: 'informational',
             ...getAlertToneMeta('info')
         }];
     }
 
-    return deduped.slice(0, 6);
+    return deduped.slice(0, 8);
+});
+
+const alertCenterSections = computed(() => {
+    const labels = {
+        critical: 'Critical',
+        actionable: 'Actionable',
+        informational: 'Informational'
+    };
+    return ['critical', 'actionable', 'informational']
+        .map(key => ({ key, label: labels[key], items: alertCenterItems.value.filter(item => item.section === key) }))
+        .filter(section => section.items.length);
 });
 
 const decisionCenter = computed(() => {
@@ -1759,6 +2326,7 @@ const decisionCenter = computed(() => {
         whyNowTitle: `為何現在是 ${mode}`,
         whyNowSummary,
         nextSteps,
+        avoidActions: doNotDoList.value,
         metrics: [
             { label: '治理模式', value: mode },
             { label: '高優先警報', value: String(alertCount) },
@@ -1808,6 +2376,13 @@ function setTxIntent(intent) {
     txForm.value.ticker = '';
     txForm.value.price = null;
     txForm.value.shares = null;
+}
+
+function applyQuickTx(type) {
+    if (type === 'Deposit' || type === 'Withdraw') setTxIntent('external');
+    else if (type === 'Expense') setTxIntent('adjustment');
+    else setTxIntent('internal');
+    txForm.value.type = type;
 }
 
 function buildTransactionDraft(form = txForm.value) {
@@ -1873,6 +2448,22 @@ function buildTransactionDraft(form = txForm.value) {
     const projectedCashAfter = cashBalance.value + finalFlow;
     if ((type === 'Buy' || type === 'Withdraw' || type === 'Expense') && projectedCashAfter < -CASH_EPS) {
         blockers.push(`此筆交易後現金將變成 NT$ ${formatNumber(projectedCashAfter)}，已被防呆層擋下。`);
+    }
+
+    if (type === 'Buy' && rebalanceMonitor.value.bufferBlockingRiskBuys) {
+        blockers.push(`目前 Buffer Gap = ${rebalanceMonitor.value.bufferGapPct ?? '-'}%，風險買入已被 governance 鎖住。`);
+    }
+
+    const projectedNav = Math.max(0, totalPortfolioNav.value + ((type === 'Deposit') ? Math.abs(finalFlow) : ((type === 'Withdraw' || type === 'Expense') ? finalFlow : 0)));
+    const targetBufferPct = Number(liquidityBufferRatio.value) || 0;
+    const projectedBufferPct = projectedNav > 0 ? Math.max(0, projectedCashAfter) / projectedNav * 100 : 0;
+
+    if (targetBufferPct > 0 && projectedCashAfter >= 0 && projectedBufferPct < targetBufferPct) {
+        warnings.push(`交易後現金緩衝約 ${projectedBufferPct.toFixed(1)}%，低於目標 ${targetBufferPct.toFixed(1)}%。`);
+    }
+
+    if (type === 'Sell' && actualTotal && actualTotal > 0 && txIntent.value === 'external') {
+        warnings.push('Sell 是內部交易，不是外部現金流。請確認流程類型。');
     }
 
     return {
@@ -2192,7 +2783,8 @@ async function saveData() {
         sheetUrl: sheetUrl.value,
         fireTargets: fireTargets.value,
         priceMap: priceMap.value,
-        liquidityBufferRatio: liquidityBufferRatio.value
+        liquidityBufferRatio: liquidityBufferRatio.value,
+        tradeBufferBasePct: tradeBufferBasePct.value
     }));
 
     isDbSyncing.value = true;
@@ -2210,7 +2802,8 @@ async function saveData() {
                     sheetUrl: sheetUrl.value,
                     fireTargets: fireTargets.value,
                     priceMap: priceMap.value,
-                    liquidityBufferRatio: liquidityBufferRatio.value
+                    liquidityBufferRatio: liquidityBufferRatio.value,
+                    tradeBufferBasePct: tradeBufferBasePct.value
                 }
             }, { onConflict: 'id' });
 
@@ -3126,7 +3719,7 @@ function resizeAllCharts() {
         function initCharts() {
             Chart.defaults.color = '#94a3b8'; Chart.defaults.borderColor = '#334155';
             const allocCtx = document.getElementById('allocationChart'); if(allocCtx && !chartAlloc) chartAlloc = new Chart(allocCtx, { type: 'doughnut', data: { labels: [], datasets: [{data:[]}] }, options: { responsive: true, maintainAspectRatio: false } });
-            const histCtx = document.getElementById('historyChart'); if(histCtx && !chartHist) chartHist = new Chart(histCtx, { type: 'line', data: { labels: [], datasets: [{data:[]},{data:[]}] }, options: { responsive: true, maintainAspectRatio: false } });
+            const histCtx = document.getElementById('historyChart'); if(histCtx && !chartHist) chartHist = new Chart(histCtx, { type: 'line', data: { labels: [], datasets: [{data:[]},{data:[]},{data:[]},{data:[]}] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: true, labels: { color: '#cbd5e1', usePointStyle: true, boxWidth: 8 } }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: NT$ ${formatNumber(ctx.raw ?? 0)}` } } }, scales: { x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(148,163,184,0.08)' } }, y: { ticks: { color: '#94a3b8', callback: (value) => 'NT$ ' + formatNumber(value) }, grid: { color: 'rgba(148,163,184,0.08)' } } } } });
             const smlCtx = document.getElementById('smlChart');
 if (smlCtx && !chartSML) {
     chartSML = new Chart(smlCtx, {
@@ -3236,23 +3829,84 @@ if (cmlCtx && !chartCML) {
         if (chartHist) {
             const history = displayHistory.value;
             const sorted = [...history].sort((a,b)=>new Date(a.date)-new Date(b.date));
+            const navSeries = sorted.map(h => Number(h.assets) || 0);
+            const costSeries = sorted.map(h => Number(h.cost) || 0);
+            const maConfig = navMaConfig.value;
+            const navMonthMa = computeMovingAverage(navSeries, maConfig.monthWindow);
+            const navYearMa = computeMovingAverage(navSeries, maConfig.yearWindow);
+            const navDrawdown = computeDrawdownSeries(navSeries);
+            const overlayMode = navOverlayMode.value;
+
+            chartHist.options.scales.y = {
+                ticks: { color: '#94a3b8', callback: (value) => 'NT$ ' + formatNumber(value) },
+                grid: { color: 'rgba(148,163,184,0.08)' }
+            };
+            chartHist.options.scales.y1 = {
+                position: 'right',
+                min: -40,
+                max: 5,
+                ticks: { color: '#64748b', callback: (value) => `${value}%` },
+                grid: { drawOnChartArea: false }
+            };
+
             chartHist.data.labels = sorted.map(h=>h.date);
             chartHist.data.datasets[0] = {
                 label: 'NAV',
-                data: sorted.map(h=>h.assets),
-                borderColor: '#3b82f6',
+                data: navSeries,
+                borderColor: '#4f8cff',
                 fill: true,
-                backgroundColor: 'rgba(59,130,246,0.1)',
-                tension: 0.1
+                backgroundColor: 'rgba(79,140,255,0.12)',
+                tension: 0.18,
+                borderWidth: 2,
+                pointRadius: 0,
+                pointHoverRadius: 3,
+                hidden: false
             };
             chartHist.data.datasets[1] = {
-                label: 'Cost',
-                data: sorted.map(h=>h.cost),
-                borderColor: '#10b981',
-                borderDash:[5,5],
-                tension: 0.1
+                label: maConfig.monthLabel,
+                data: navMonthMa,
+                borderColor: '#f59e0b',
+                borderWidth: 1.8,
+                tension: 0.22,
+                pointRadius: 0,
+                pointHoverRadius: 2,
+                hidden: overlayMode === 'nav_only'
             };
-            if (chartHist.data.datasets.length > 2) chartHist.data.datasets.splice(2);
+            chartHist.data.datasets[2] = {
+                label: maConfig.yearLabel,
+                data: navYearMa,
+                borderColor: '#f43f5e',
+                borderWidth: 1.8,
+                tension: 0.22,
+                pointRadius: 0,
+                pointHoverRadius: 2,
+                hidden: overlayMode === 'nav_only'
+            };
+            chartHist.data.datasets[3] = {
+                label: 'Cost',
+                data: costSeries,
+                borderColor: '#22c55e',
+                borderDash:[6,4],
+                borderWidth: 1.4,
+                tension: 0.1,
+                pointRadius: 0,
+                pointHoverRadius: 2,
+                hidden: overlayMode === 'nav_only' || overlayMode === 'ma_stack'
+            };
+            chartHist.data.datasets[4] = {
+                label: 'Drawdown',
+                data: navDrawdown,
+                borderColor: '#94a3b8',
+                backgroundColor: 'rgba(148,163,184,0.08)',
+                fill: true,
+                yAxisID: 'y1',
+                tension: 0.18,
+                borderWidth: 1.2,
+                pointRadius: 0,
+                pointHoverRadius: 2,
+                hidden: overlayMode !== 'drawdown'
+            };
+            if (chartHist.data.datasets.length > 5) chartHist.data.datasets.splice(5);
             chartHist.update();
         }
 
@@ -3539,6 +4193,18 @@ chartCML.data.datasets = [
     }
 });
 
+        watch(tradeBufferBasePct, async (newVal, oldVal) => {
+    const clamped = clampTradeBuffer(newVal);
+    if (clamped !== newVal) {
+        tradeBufferBasePct.value = clamped;
+        return;
+    }
+
+    if (oldVal !== undefined && newVal !== oldVal) {
+        await saveData();
+    }
+});
+
         return { 
             currentTab, showHistoryModal, isUpdating,
             transactions, groupedHoldings, categoryTotals, riskTotals, portfolioStats, 
@@ -3557,9 +4223,12 @@ chartCML.data.datasets = [
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
-            xrayStats, rebalanceMonitor, tailStatsLite, croDecisionMode, allocationGovernance, historyIntegrityRisk,
-            decisionCenter, alertCenterItems, rebalanceCockpitRows, goToTab,
-            txIntent, txTypeOptions, txPreview, setTxIntent,
+            xrayStats, rebalanceMonitor, tailStatsLite, croDecisionMode, allocationGovernance, historyIntegrityRisk, historyIntegrityBadge, governanceLogicLine, doNotDoList,
+            navMaConfig, navOverlayMode, navOverlayOptions, navTrendSummary, riskRegimeStrip, setNavOverlayMode,
+            tradeBufferBasePct, tradeBufferPresets, tradeBufferProfile, tradeBufferSummary, applyTradeBuffer, nudgeTradeBuffer,
+            decisionCenter, alertCenterItems, alertCenterSections, rebalanceCockpitRows, rebalanceCockpitBuckets, rebalancePostTradeEstimate, goToTab,
+            holdingsViewOptions, holdingsSortOptions, holdingsActionFilter, holdingsSortKey, holdingsActionSummary, filteredHoldingsGroups, holdingsVisibleStats,
+            txIntent, txTypeOptions, txPreview, setTxIntent, applyQuickTx,
             cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
         };
     }

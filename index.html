@@ -22,6 +22,7 @@
     <link rel="stylesheet" href="assets/css/20-dashboard.css">
     <link rel="stylesheet" href="assets/css/30-ios-bloomberg.css">
     <link rel="stylesheet" href="assets/css/40-executive-institutional.css">
+    <link rel="stylesheet" href="assets/css/50-bloomberg-terminal-hard.css">
 </head>
 <body class="min-h-screen flex flex-col text-sm bg-[#0f172a]">
     
@@ -360,6 +361,12 @@
                     </div>
                 </div>
             </div>
+            <div class="mt-3 rounded-2xl border border-white/10 bg-black/20 p-4 avoid-card">
+                <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-3">本次不該做什麼</div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <div v-for="item in doNotDoList" :key="item" class="rounded-xl border border-white/8 bg-white/[0.025] px-4 py-3 text-sm text-gray-200">{{ item }}</div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -376,20 +383,27 @@
                 <div class="text-[11px] text-gray-500 font-mono">{{ alertCenterItems.length }} items</div>
             </div>
         </div>
-        <div class="p-4 md:p-5 space-y-3">
-            <div v-for="item in alertCenterItems" :key="item.id" class="rounded-2xl border p-4" :class="item.panelClass">
-                <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0">
-                        <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[10px] font-bold border mb-2" :class="item.badgeClass">
-                            <i class="fas" :class="item.icon"></i>
-                            {{ item.tone.toUpperCase() }}
+        <div class="p-4 md:p-5 space-y-4">
+            <div v-for="section in alertCenterSections" :key="section.key" class="space-y-3">
+                <div class="alert-section-title">{{ section.label }}</div>
+                <div v-for="item in section.items" :key="item.id" class="rounded-2xl border p-4" :class="item.panelClass">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-2 mb-2">
+                                <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[10px] font-bold border" :class="item.badgeClass">
+                                    <i class="fas" :class="item.icon"></i>
+                                    {{ item.tone.toUpperCase() }}
+                                </div>
+                                <span class="alert-source-chip">{{ item.sourceLabel }}</span>
+                                <span class="alert-action-chip">{{ item.suggestedAction }}</span>
+                            </div>
+                            <div class="text-sm font-bold text-white">{{ item.title }}</div>
+                            <div class="text-xs text-gray-300 mt-2 leading-relaxed">{{ item.detail }}</div>
                         </div>
-                        <div class="text-sm font-bold text-white">{{ item.title }}</div>
-                        <div class="text-xs text-gray-300 mt-2 leading-relaxed">{{ item.detail }}</div>
+                        <button @click="goToTab(item.tab)" class="shrink-0 text-[11px] px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/[0.04] text-gray-200 hover:text-white hover:bg-white/10 transition">
+                            {{ item.ctaLabel }}
+                        </button>
                     </div>
-                    <button @click="goToTab(item.tab)" class="shrink-0 text-[11px] px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/[0.04] text-gray-200 hover:text-white hover:bg-white/10 transition">
-                        {{ item.ctaLabel }}
-                    </button>
                 </div>
             </div>
         </div>
@@ -440,17 +454,44 @@
                         </div>
                     </div>
 
-                    <div class="px-5 md:px-6 pb-5 md:pb-6">
+                    <div class="px-5 md:px-6 pb-4">
                         <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
-                            <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-3">主要依據</div>
-                            <div v-if="allocationGovernance.primaryReasons.length" class="space-y-2">
-                                <div v-for="reason in allocationGovernance.primaryReasons" :key="reason.code"
-                                     class="text-sm rounded-xl border border-white/8 bg-white/[0.025] px-4 py-3">
+                            <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-2">Governance Logic</div>
+                            <div class="text-sm text-gray-200 leading-relaxed">{{ governanceLogicLine }}</div>
+                        </div>
+                    </div>
+
+                    <div class="px-5 md:px-6 pb-5 md:pb-6 grid grid-cols-1 xl:grid-cols-3 gap-4">
+                        <div class="evidence-card">
+                            <div class="evidence-title text-red-300">Hard Veto Signals</div>
+                            <div v-if="allocationGovernance.hardFlags.length" class="space-y-2 mt-3">
+                                <div v-for="reason in allocationGovernance.hardFlags.slice(0, 4)" :key="reason.code" class="evidence-item evidence-item-hard">
                                     <div class="font-bold text-white mb-1">{{ reason.label }}</div>
                                     <div class="text-gray-300 leading-relaxed">{{ reason.detail }}</div>
                                 </div>
                             </div>
-                            <div v-else class="text-sm text-emerald-300">目前沒有 hard veto 或 soft caution，MC 可作為 risky sleeve 主導配置器。</div>
+                            <div v-else class="text-sm text-emerald-300 mt-3">目前沒有 hard veto。</div>
+                        </div>
+                        <div class="evidence-card">
+                            <div class="evidence-title text-amber-300">Soft Caution Signals</div>
+                            <div v-if="allocationGovernance.softFlags.length" class="space-y-2 mt-3">
+                                <div v-for="reason in allocationGovernance.softFlags.slice(0, 4)" :key="reason.code" class="evidence-item evidence-item-soft">
+                                    <div class="font-bold text-white mb-1">{{ reason.label }}</div>
+                                    <div class="text-gray-300 leading-relaxed">{{ reason.detail }}</div>
+                                </div>
+                            </div>
+                            <div v-else class="text-sm text-emerald-300 mt-3">目前沒有額外 soft caution。</div>
+                        </div>
+                        <div class="evidence-card">
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="evidence-title text-cyan-300">History Integrity</div>
+                                <span class="holding-governance-badge" :class="historyIntegrityBadge.badgeClass">{{ historyIntegrityBadge.label }}</span>
+                            </div>
+                            <div class="text-sm text-gray-200 leading-relaxed mt-3">{{ historyIntegrityBadge.detail }}</div>
+                            <ul v-if="historyIntegrityRisk.reasons.length" class="evidence-list mt-3">
+                                <li v-for="reason in historyIntegrityRisk.reasons.slice(0, 4)" :key="reason">{{ reason }}</li>
+                            </ul>
+                            <div v-else class="text-sm text-emerald-300 mt-3">歷史樣本暫時沒有明顯污染跡象。</div>
                         </div>
                     </div>
                 </div>
@@ -811,7 +852,48 @@
         <i class="fas fa-chart-line text-emerald-400"></i>
         淨值成長趨勢 (NAV)
     </h4>
-    <p class="panel-subtitle">觀察資產淨值隨時間的變化</p>
+    <p class="panel-subtitle">觀察資產淨值隨時間的變化，並加入月線 / 年線 MA 與 Cost 對照。</p>
+    <div class="terminal-inline-note mt-3 flex flex-wrap items-center gap-2 text-[11px]">
+        <span class="terminal-chip">{{ navMaConfig.monthLabel }}</span>
+        <span class="terminal-chip">{{ navMaConfig.yearLabel }}</span>
+        <span class="terminal-chip" :class="riskRegimeStrip.class">{{ riskRegimeStrip.label }}</span>
+        <span class="text-gray-500">{{ navMaConfig.frequencyNote }}</span>
+    </div>
+    <div class="mt-3 flex flex-wrap items-center gap-2">
+        <button v-for="opt in navOverlayOptions"
+                :key="opt.value"
+                @click="setNavOverlayMode(opt.value)"
+                class="nav-overlay-btn"
+                :class="navOverlayMode === opt.value ? 'is-active' : ''">
+            {{ opt.label }}
+        </button>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-2 mt-3">
+        <div class="terminal-mini-stat soft">
+            <div class="terminal-mini-label">NAV vs 月線</div>
+            <div class="terminal-mini-value">{{ navTrendSummary.navVsMonth }}</div>
+        </div>
+        <div class="terminal-mini-stat soft">
+            <div class="terminal-mini-label">NAV vs 年線</div>
+            <div class="terminal-mini-value">{{ navTrendSummary.navVsYear }}</div>
+        </div>
+        <div class="terminal-mini-stat soft">
+            <div class="terminal-mini-label">月線斜率</div>
+            <div class="terminal-mini-value">{{ navTrendSummary.monthSlope }}</div>
+        </div>
+        <div class="terminal-mini-stat soft">
+            <div class="terminal-mini-label">年線斜率</div>
+            <div class="terminal-mini-value">{{ navTrendSummary.yearSlope }}</div>
+        </div>
+        <div class="terminal-mini-stat soft">
+            <div class="terminal-mini-label">Current DD</div>
+            <div class="terminal-mini-value">{{ navTrendSummary.currentDrawdown }}</div>
+        </div>
+    </div>
+    <div class="terminal-regime-strip mt-3 rounded-2xl border px-4 py-3" :class="riskRegimeStrip.class">
+        <div class="text-[11px] uppercase tracking-[0.14em] opacity-75">Trend / Regime Strip</div>
+        <div class="text-xs text-white mt-1">{{ riskRegimeStrip.note }} · Overlay：{{ navTrendSummary.overlayModeLabel }}</div>
+    </div>
 </div>
                         <div class="flex-1 relative">
                             <canvas id="historyChart"></canvas>
@@ -844,7 +926,37 @@
         </span>
     </div>
 </div>
-                    
+                    <div class="px-4 md:px-5 py-3 border-b border-white/10 bg-black/20 holdings-exec-toolbar">
+                        <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+                            <div class="flex flex-wrap gap-2">
+                                <button v-for="opt in holdingsViewOptions"
+                                        :key="opt.value"
+                                        @click="holdingsActionFilter = opt.value"
+                                        class="holdings-filter-btn"
+                                        :class="holdingsActionFilter === opt.value ? 'is-active' : ''">
+                                    {{ opt.label }}
+                                    <span class="opacity-70 ml-1">
+                                        <template v-if="opt.value==='all'">{{ holdingsActionSummary.total }}</template>
+                                        <template v-else-if="opt.value==='trim'">{{ holdingsActionSummary.trim }}</template>
+                                        <template v-else-if="opt.value==='add'">{{ holdingsActionSummary.add }}</template>
+                                        <template v-else-if="opt.value==='locked'">{{ holdingsActionSummary.locked }}</template>
+                                        <template v-else-if="opt.value==='watch'">{{ holdingsActionSummary.watch }}</template>
+                                        <template v-else-if="opt.value==='high_risk'">{{ holdingsActionSummary.highRisk }}</template>
+                                        <template v-else-if="opt.value==='overweight'">{{ holdingsActionSummary.overweight }}</template>
+                                        <template v-else>{{ holdingsActionSummary.drift }}</template>
+                                    </span>
+                                </button>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2 text-xs">
+                                <select v-model="holdingsSortKey" class="input-dark rounded-lg px-3 py-2 text-xs min-w-[180px]">
+                                    <option v-for="opt in holdingsSortOptions" :key="opt.value" :value="opt.value">排序：{{ opt.label }}</option>
+                                </select>
+                                <span class="px-2.5 py-2 rounded-lg border border-white/10 bg-white/[0.04] text-gray-300">
+                                    顯示 {{ holdingsVisibleStats.visible }} / {{ holdingsVisibleStats.total }} 檔
+                                </span>
+                            </div>
+                        </div>
+                    </div>
                     <div class="overflow-visible flex-1 p-2 md:p-0 bg-[#0f172a]/50"> 
                         <div class="hidden md:block rounded-b-2xl relative">
     <!-- 假表頭：固定在主 header 下方 -->
@@ -871,6 +983,9 @@
     <col style="width: 74px;">   <!-- MC% -->
     <col style="width: 98px;">   <!-- 綜合目標% -->
     <col style="width: 96px;">   <!-- 落差 -->
+    <col style="width: 108px;">  <!-- 交易狀態 -->
+    <col style="width: 108px;">  <!-- 決策權 -->
+    <col style="width: 220px;">  <!-- 動作理由 -->
     <col style="width: 108px;">  <!-- 流動性脆弱度 -->
     <col style="width: 128px;">  <!-- 風險傳染敏感度 -->
 </colgroup>
@@ -895,6 +1010,9 @@
                         <th class="px-1.5 py-2 text-right text-purple-400" title="MC理論極限權重">MC%</th>
                         <th class="px-1.5 py-2 text-right text-yellow-400 font-bold" title="50%雲端 + 50%MC">綜合目標%</th>
                         <th class="px-1.5 py-2 text-right" title="與綜合目標的偏離度">落差 (Drift)</th>
+                        <th class="px-1.5 py-2 text-center">交易狀態</th>
+                        <th class="px-1.5 py-2 text-center">決策權</th>
+                        <th class="px-1.5 py-2 text-left">動作理由</th>
                         <th class="px-1.5 py-2 text-right text-cyan-300 whitespace-nowrap" title="流動性脆弱度">流動性脆弱度</th>
                         <th class="px-1.5 py-2 text-right text-red-300 whitespace-nowrap" title="恐慌傳染度">風險傳染敏感度</th>
                     </tr>
@@ -925,14 +1043,17 @@
     <col style="width: 74px;">   <!-- MC% -->
     <col style="width: 98px;">   <!-- 綜合目標% -->
     <col style="width: 96px;">   <!-- 落差 -->
+    <col style="width: 108px;">  <!-- 交易狀態 -->
+    <col style="width: 108px;">  <!-- 決策權 -->
+    <col style="width: 220px;">  <!-- 動作理由 -->
     <col style="width: 108px;">  <!-- 流動性脆弱度 -->
     <col style="width: 128px;">  <!-- 風險傳染敏感度 -->
 </colgroup>
 
             <tbody class="text-[13px]">
-                <template v-for="(group, catName) in groupedHoldings" :key="catName">
+                <template v-for="(group, catName) in filteredHoldingsGroups" :key="catName">
                     <tr class="group-header">
-                        <td colspan="20" class="py-3 border-y border-white/10 bg-white/[0.04]">
+                        <td colspan="23" class="py-3 border-y border-white/10 bg-white/[0.04]">
                             <div class="flex justify-between items-center px-5">
                                <div>
                                    <i class="fas fa-folder-open mr-2 text-blue-400"></i>
@@ -959,7 +1080,7 @@
                         </td>
                     </tr>
 
-                    <tr v-for="stock in group.items" :key="stock.ticker" class="hover:bg-white/[0.04] transition-colors border-b border-white/[0.06]">
+                    <tr v-for="stock in group.items" :key="stock.ticker" class="hover:bg-white/[0.04] transition-colors border-b border-white/[0.06]" :class="stock.executionRowClass">
                         <td class="pl-4 font-bold text-white flex items-center gap-1.5 py-2.5">
                             {{ stock.ticker }}
                             <span v-if="stock.isUSD" class="text-[9px] bg-gray-700 px-1 rounded text-gray-300">USD</span>
@@ -1028,6 +1149,13 @@
                                 {{ stock.weightGap > 0 ? '+' : '' }}{{ stock.weightGap.toFixed(1) }}%
                             </span>
                         </td>
+                        <td class="p-2 text-center">
+                            <span class="holding-action-badge" :class="stock.executionBadgeClass">{{ stock.executionAction }}</span>
+                        </td>
+                        <td class="p-2 text-center">
+                            <span class="holding-governance-badge" :class="stock.governanceClass">{{ stock.governanceStatus }}</span>
+                        </td>
+                        <td class="p-2 text-left text-[11px] text-gray-300 leading-relaxed whitespace-normal min-w-[220px]">{{ stock.executionReason }}</td>
                         <td class="p-2 text-right font-mono text-cyan-300 font-bold min-w-[108px]">
     <span class="px-2 py-1 rounded border border-cyan-500/20 bg-cyan-500/10">
         {{ stock.liquidityScore ?? '-' }}
@@ -1046,7 +1174,7 @@
 </div>
 
                         <div class="md:hidden space-y-4 pb-4 px-2">
-                            <template v-for="(group, catName) in groupedHoldings" :key="'mob-'+catName">
+                            <template v-for="(group, catName) in filteredHoldingsGroups" :key="'mob-'+catName">
                                 <div class="sticky top-0 z-10 bg-[#1e293b]/95 backdrop-blur-md px-3 py-2 flex flex-col gap-1 rounded-lg border border-gray-700 shadow-lg mt-4">
     <div class="flex justify-between items-center">
         <div class="font-bold text-gray-200 flex items-center">
@@ -1090,7 +1218,11 @@
                                                 </div>
                                             </div>
                                         </div>
-                                        
+                                        <div class="flex flex-wrap gap-1.5 mb-2">
+                                            <span class="holding-action-badge" :class="stock.executionBadgeClass">{{ stock.executionAction }}</span>
+                                            <span class="holding-governance-badge" :class="stock.governanceClass">{{ stock.governanceStatus }}</span>
+                                        </div>
+                                        <div class="text-[11px] text-gray-400 mb-2 leading-relaxed">{{ stock.executionReason }}</div>
                                         <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-700/50">
                                             <div class="flex gap-3 text-xs">
                                                 <div class="flex flex-col">
@@ -1475,14 +1607,121 @@
                     把 drift、目標權重與治理模式收斂成可執行清單。CRO 決定能不能 aggressive；MC 只在 risky sleeve 內決定怎麼配。
                 </p>
             </div>
-            <div class="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+            <div class="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 terminal-exec-rule-box">
                 <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-1">Execution Rule</div>
                 <div class="text-sm font-bold text-white">{{ allocationGovernance.badgeText }}</div>
                 <div class="text-[11px] text-gray-400 mt-2">{{ allocationGovernance.summary }}</div>
             </div>
         </div>
     </div>
-    <div class="p-5 md:p-6">
+    <div class="p-5 md:p-6 space-y-4">
+        <div class="terminal-trade-buffer-panel rounded-2xl border border-white/10 bg-black/25 p-4 md:p-5">
+            <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
+                <div>
+                    <div class="text-[11px] uppercase tracking-[0.18em] text-amber-400 font-bold">Trade Buffers</div>
+                    <div class="text-sm md:text-base font-bold text-white mt-1">交易緩衝區 / No-Trade Zone</div>
+                    <div class="text-[11px] md:text-xs text-gray-400 mt-2 leading-relaxed">
+                        不是每個 drift 都要交易。先讓部位在緩衝區內自然波動，超出門檻再進入再平衡流程。
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 min-w-0 xl:min-w-[420px]">
+                    <div class="terminal-mini-stat">
+                        <div class="terminal-mini-label">Base Buffer</div>
+                        <div class="terminal-mini-value">±{{ tradeBufferSummary.basePct.toFixed(1) }}%</div>
+                    </div>
+                    <div class="terminal-mini-stat">
+                        <div class="terminal-mini-label">Trim 門檻</div>
+                        <div class="terminal-mini-value">{{ tradeBufferSummary.trimThresholdPct.toFixed(1) }}%</div>
+                    </div>
+                    <div class="terminal-mini-stat">
+                        <div class="terminal-mini-label">Add 門檻</div>
+                        <div class="terminal-mini-value">{{ tradeBufferProfile.addDisabled ? 'LOCK' : tradeBufferSummary.addThresholdPct.toFixed(1) + '%' }}</div>
+                    </div>
+                    <div class="terminal-mini-stat">
+                        <div class="terminal-mini-label">Mode</div>
+                        <div class="terminal-mini-value">{{ tradeBufferProfile.mode }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 flex flex-col lg:flex-row lg:items-center gap-3 lg:justify-between">
+                <div class="flex flex-wrap items-center gap-2">
+                    <button
+                        v-for="pct in tradeBufferPresets"
+                        :key="'trade-buffer-' + pct"
+                        @click="applyTradeBuffer(pct)"
+                        class="terminal-buffer-btn"
+                        :class="Number(tradeBufferBasePct) === pct ? 'is-active' : ''"
+                    >
+                        ±{{ pct }}%
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button @click="nudgeTradeBuffer(-0.5)" class="terminal-step-btn" title="減少 0.5%">
+                        <i class="fas fa-minus text-[11px]"></i>
+                    </button>
+                    <input
+                        :value="tradeBufferBasePct"
+                        @change="applyTradeBuffer($event.target.value)"
+                        type="number"
+                        min="0.5"
+                        max="10"
+                        step="0.5"
+                        class="terminal-buffer-input"
+                    >
+                    <button @click="nudgeTradeBuffer(0.5)" class="terminal-step-btn" title="增加 0.5%">
+                        <i class="fas fa-plus text-[11px]"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div class="terminal-mini-stat soft">
+                    <div class="terminal-mini-label">Trim 候選</div>
+                    <div class="terminal-mini-value">{{ tradeBufferSummary.trimCount }}</div>
+                </div>
+                <div class="terminal-mini-stat soft">
+                    <div class="terminal-mini-label">Add 候選</div>
+                    <div class="terminal-mini-value">{{ tradeBufferSummary.addCount }}</div>
+                </div>
+                <div class="terminal-mini-stat soft">
+                    <div class="terminal-mini-label">候補加碼</div>
+                    <div class="terminal-mini-value">{{ tradeBufferSummary.pendingAddCount }}</div>
+                </div>
+                <div class="terminal-mini-stat soft">
+                    <div class="terminal-mini-label">Buffer Hold</div>
+                    <div class="terminal-mini-value">{{ tradeBufferSummary.holdCount }}</div>
+                </div>
+            </div>
+
+            <div class="mt-3 text-[11px] text-gray-400 leading-relaxed">
+                {{ tradeBufferProfile.modeNote }}
+            </div>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="cockpit-bucket-card">
+                <div class="cockpit-bucket-label">先減碼</div>
+                <div class="cockpit-bucket-value text-red-300">{{ rebalanceCockpitBuckets.trim.length }}</div>
+                <div class="cockpit-bucket-note">Trim queue</div>
+            </div>
+            <div class="cockpit-bucket-card">
+                <div class="cockpit-bucket-label">可加碼</div>
+                <div class="cockpit-bucket-value text-emerald-300">{{ rebalanceCockpitBuckets.add.length }}</div>
+                <div class="cockpit-bucket-note">MC allocator</div>
+            </div>
+            <div class="cockpit-bucket-card">
+                <div class="cockpit-bucket-label">候補加碼</div>
+                <div class="cockpit-bucket-value text-amber-300">{{ rebalanceCockpitBuckets.pending.length }}</div>
+                <div class="cockpit-bucket-note">CRO locked</div>
+            </div>
+            <div class="cockpit-bucket-card">
+                <div class="cockpit-bucket-label">暫不動</div>
+                <div class="cockpit-bucket-value text-slate-300">{{ rebalanceCockpitBuckets.hold.length }}</div>
+                <div class="cockpit-bucket-note">Buffer hold</div>
+            </div>
+        </div>
+        <div>
         <div v-if="rebalanceCockpitRows.length" class="overflow-x-auto rounded-2xl border border-white/10 bg-black/20">
             <table class="w-full text-left whitespace-nowrap cockpit-table">
                 <thead class="bg-[#0f172a] text-[11px] text-gray-400 uppercase font-semibold border-b border-gray-700">
@@ -1494,7 +1733,8 @@
                         <th class="p-3 text-right">Drift</th>
                         <th class="p-3 text-right">名目調整額</th>
                         <th class="p-3">建議</th>
-                        <th class="p-3">治理備註</th>
+                        <th class="p-3">決策權</th>
+                        <th class="p-3">治理 / 緩衝備註</th>
                     </tr>
                 </thead>
                 <tbody class="text-sm divide-y divide-white/5">
@@ -1503,7 +1743,7 @@
                         <td class="p-3 text-gray-300">{{ row.categoryName }}</td>
                         <td class="p-3 text-right font-mono text-gray-300">{{ row.currentWeightPct.toFixed(1) }}%</td>
                         <td class="p-3 text-right font-mono text-yellow-300">{{ row.targetWeightPct.toFixed(1) }}%</td>
-                        <td class="p-3 text-right font-mono font-bold" :class="row.driftPct <= -3 ? 'text-red-300' : (row.driftPct >= 3 ? 'text-emerald-300' : 'text-gray-300')">
+                        <td class="p-3 text-right font-mono font-bold" :class="row.driftPct <= -row.trimThresholdPct ? 'text-red-300' : (row.driftPct >= row.addThresholdPct ? 'text-emerald-300' : 'text-gray-300')">
                             {{ row.driftText }}
                         </td>
                         <td class="p-3 text-right font-mono text-white">{{ row.actionValueText }}</td>
@@ -1512,13 +1752,54 @@
                                 {{ row.action }}
                             </span>
                         </td>
+                        <td class="p-3">
+                            <span class="holding-governance-badge" :class="row.governanceClass">{{ row.governanceLabel }}</span>
+                        </td>
                         <td class="p-3 text-xs text-gray-400 leading-relaxed whitespace-normal">{{ row.note }}</td>
                     </tr>
                 </tbody>
             </table>
         </div>
         <div v-else class="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-300">
-            目前沒有明顯 drift 或過重部位；再平衡駕駛艙暫時維持清空狀態。
+            目前所有 drift 仍落在 Trade Buffer 內，或沒有過重部位；再平衡駕駛艙暫時不出手。
+        </div>
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-4">
+            <div class="cockpit-estimate-card">
+                <div class="cockpit-bucket-label">候補加碼名單</div>
+                <div v-if="rebalanceCockpitBuckets.pending.length" class="space-y-2 mt-3">
+                    <div v-for="row in rebalanceCockpitBuckets.pending" :key="'pending-'+row.ticker" class="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3">
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="text-sm font-bold text-white">{{ row.ticker }}</div>
+                            <span class="holding-governance-badge" :class="row.governanceClass">{{ row.governanceLabel }}</span>
+                        </div>
+                        <div class="text-xs text-gray-300 mt-2 leading-relaxed">{{ row.note }}</div>
+                    </div>
+                </div>
+                <div v-else class="text-sm text-emerald-300 mt-3">目前沒有被 governance 鎖住的候補加碼。</div>
+            </div>
+            <div class="cockpit-estimate-card">
+                <div class="cockpit-bucket-label">Post-Trade 粗估</div>
+                <div class="grid grid-cols-2 gap-2 mt-3">
+                    <div class="terminal-mini-stat soft">
+                        <div class="terminal-mini-label">集中度 Before</div>
+                        <div class="terminal-mini-value">{{ rebalancePostTradeEstimate.concentrationBefore === null ? 'N/A' : rebalancePostTradeEstimate.concentrationBefore.toFixed(1) + '%' }}</div>
+                    </div>
+                    <div class="terminal-mini-stat soft">
+                        <div class="terminal-mini-label">集中度 After</div>
+                        <div class="terminal-mini-value">{{ rebalancePostTradeEstimate.concentrationAfter === null ? 'N/A' : rebalancePostTradeEstimate.concentrationAfter.toFixed(1) + '%' }}</div>
+                    </div>
+                    <div class="terminal-mini-stat soft">
+                        <div class="terminal-mini-label">Buffer Gap Before</div>
+                        <div class="terminal-mini-value">{{ rebalancePostTradeEstimate.bufferGapBefore.toFixed(1) }}%</div>
+                    </div>
+                    <div class="terminal-mini-stat soft">
+                        <div class="terminal-mini-label">Buffer Gap After</div>
+                        <div class="terminal-mini-value">{{ rebalancePostTradeEstimate.bufferGapAfter.toFixed(1) }}%</div>
+                    </div>
+                </div>
+                <div class="text-xs text-gray-300 mt-3 leading-relaxed">{{ rebalancePostTradeEstimate.executionNote }}</div>
+                <div class="text-[11px] text-gray-500 mt-2">前端粗估，只用來排執行優先序，不取代正式風險模型。</div>
+            </div>
         </div>
     </div>
 </div>
@@ -2331,6 +2612,15 @@
        </div>
 
        <div>
+           <label class="text-xs text-gray-400 mb-2 block">快捷動作</label>
+           <div class="grid grid-cols-3 gap-2 mb-3">
+               <button @click="applyQuickTx('Deposit')" class="p-2 rounded-lg text-xs font-bold border border-green-500/20 bg-green-500/10 text-green-300">入金</button>
+               <button @click="applyQuickTx('Withdraw')" class="p-2 rounded-lg text-xs font-bold border border-red-500/20 bg-red-500/10 text-red-300">出金</button>
+               <button @click="applyQuickTx('Buy')" class="p-2 rounded-lg text-xs font-bold border border-yellow-500/20 bg-yellow-500/10 text-yellow-300">買入</button>
+               <button @click="applyQuickTx('Sell')" class="p-2 rounded-lg text-xs font-bold border border-purple-500/20 bg-purple-500/10 text-purple-300">賣出</button>
+               <button @click="applyQuickTx('Expense')" class="p-2 rounded-lg text-xs font-bold border border-white/10 bg-black/20 text-gray-300">手續費 / 費用</button>
+               <button @click="currentTab='history'" class="p-2 rounded-lg text-xs font-bold border border-cyan-500/20 bg-cyan-500/10 text-cyan-300">補快照</button>
+           </div>
            <label class="text-xs text-gray-400 mb-2 block">3. 動作</label>
            <div class="grid grid-cols-2 gap-2" v-if="txIntent !== 'adjustment'">
                <button v-for="option in txTypeOptions"
