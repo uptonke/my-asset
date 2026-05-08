@@ -3724,7 +3724,7 @@ function resizeAllCharts() {
         function initCharts() {
             Chart.defaults.color = '#94a3b8'; Chart.defaults.borderColor = '#334155';
             const allocCtx = document.getElementById('allocationChart'); if(allocCtx && !chartAlloc) chartAlloc = new Chart(allocCtx, { type: 'doughnut', data: { labels: [], datasets: [{data:[]}] }, options: { responsive: true, maintainAspectRatio: false } });
-            const histCtx = document.getElementById('historyChart'); if(histCtx && !chartHist) chartHist = new Chart(histCtx, { type: 'line', data: { labels: [], datasets: [{data:[]},{data:[]},{data:[]},{data:[]}] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: true, labels: { color: '#cbd5e1', usePointStyle: true, boxWidth: 8 } }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: NT$ ${formatNumber(ctx.raw ?? 0)}` } } }, scales: { x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(148,163,184,0.08)' } }, y: { ticks: { color: '#94a3b8', callback: (value) => 'NT$ ' + formatNumber(value) }, grid: { color: 'rgba(148,163,184,0.08)' } } } } });
+            const histCtx = document.getElementById('historyChart'); if(histCtx && !chartHist) chartHist = new Chart(histCtx, { type: 'line', data: { labels: [], datasets: [{data:[]},{data:[]},{data:[]},{data:[]}] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, layout: { padding: { top: 8, right: 8, bottom: 4, left: 4 } }, plugins: { legend: { display: true, position: 'top', labels: { color: '#cbd5e1', usePointStyle: true, boxWidth: 10, boxHeight: 10, padding: 14, font: { size: 13, weight: '700' } } }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: NT$ ${formatNumber(ctx.raw ?? 0)}` } } }, scales: { x: { ticks: { color: '#94a3b8', font: { size: 12, weight: '600' }, maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 12 }, grid: { color: 'rgba(148,163,184,0.08)' } }, y: { ticks: { color: '#cbd5e1', font: { size: 12, weight: '700' }, callback: (value) => 'NT$ ' + formatNumber(value) }, grid: { color: 'rgba(148,163,184,0.08)' } } } } });
             const smlCtx = document.getElementById('smlChart');
 if (smlCtx && !chartSML) {
     chartSML = new Chart(smlCtx, {
@@ -3843,14 +3843,14 @@ if (cmlCtx && !chartCML) {
             const overlayMode = navOverlayMode.value;
 
             chartHist.options.scales.y = {
-                ticks: { color: '#94a3b8', callback: (value) => 'NT$ ' + formatNumber(value) },
+                ticks: { color: '#cbd5e1', font: { size: 12, weight: '700' }, callback: (value) => 'NT$ ' + formatNumber(value) },
                 grid: { color: 'rgba(148,163,184,0.08)' }
             };
             chartHist.options.scales.y1 = {
                 position: 'right',
                 min: -40,
                 max: 5,
-                ticks: { color: '#64748b', callback: (value) => `${value}%` },
+                ticks: { color: '#94a3b8', font: { size: 12, weight: '700' }, callback: (value) => `${value}%` },
                 grid: { drawOnChartArea: false }
             };
 
