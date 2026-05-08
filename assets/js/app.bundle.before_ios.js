@@ -1722,43 +1722,11 @@ const decisionCenter = computed(() => {
         }
     ];
 
-    let scriptTitle = '今日操作劇本';
-    let scriptSummary = '目前節奏穩定，先維持既有紀律，再由 MC 微調 risky sleeve 配置。';
-    let whyNowSummary = '目前未出現 hard veto，治理層主要扮演監督與確認角色。';
-    let nextSteps = [
-        '先看 Rebalance Cockpit，確認是否有新的 drift 或過重部位。',
-        '再看 MC 建議，僅在 risky sleeve 內調整權重。',
-        '保留 CRO 監督，但不讓它搶 MC 的配置主導權。'
-    ];
-
-    if (mode === 'CRO_VETO') {
-        scriptSummary = '現在不是追高報酬的時間，先把整體投組的風險口收回來。';
-        whyNowSummary = '硬風險訊號已觸發，whole-portfolio 先由 CRO 否決層接管。';
-        nextSteps = [
-            '先補 buffer / 現金層，避免資金結構先出問題。',
-            '處理 concentration、tail、jump、EVT、stressed CVaR 與 drift。',
-            '等 hard veto 解除後，再讓 MC 接手 risky sleeve 配置。'
-        ];
-    } else if (mode === 'CRO_CAUTION_MC_ALLOWED') {
-        scriptSummary = '可以讓 MC 配 risky sleeve，但這次不要把歷史統計當成聖旨。';
-        whyNowSummary = '沒有 hard veto；只是歷史 stats 或資料完整性仍帶有噪音。';
-        nextSteps = [
-            '先確認歷史資料完整性與樣本可信度。',
-            '讓 MC 主導 risky sleeve，但把部位調整幅度壓小。',
-            '保留 CRO 警告，避免把 soft evidence 升格成 hard veto。'
-        ];
-    }
-
     return {
         headline,
         subline,
         topAlert,
         quickActions,
-        scriptTitle,
-        scriptSummary,
-        whyNowTitle: `為何現在是 ${mode}`,
-        whyNowSummary,
-        nextSteps,
         metrics: [
             { label: '治理模式', value: mode },
             { label: '高優先警報', value: String(alertCount) },

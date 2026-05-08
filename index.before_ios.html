@@ -20,8 +20,6 @@
     <link rel="stylesheet" href="assets/css/00-base.css">
     <link rel="stylesheet" href="assets/css/10-components.css">
     <link rel="stylesheet" href="assets/css/20-dashboard.css">
-    <link rel="stylesheet" href="assets/css/30-ios-bloomberg.css">
-    <link rel="stylesheet" href="assets/css/40-executive-institutional.css">
 </head>
 <body class="min-h-screen flex flex-col text-sm bg-[#0f172a]">
     
@@ -290,8 +288,8 @@
 
                 </div>
 
-<div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6 items-start summary-exec-grid">
-    <div class="glass panel-card xl:col-span-2 overflow-hidden border-yellow-500/20 executive-command-card">
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6 items-start">
+    <div class="glass panel-card xl:col-span-2 overflow-hidden border-yellow-500/20">
         <div class="p-5 md:p-6 border-b border-white/10 bg-yellow-500/5">
             <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                 <div>
@@ -314,8 +312,8 @@
                 </div>
             </div>
         </div>
-        <div class="p-5 md:p-6 space-y-4 executive-command-body">
-            <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 executive-kpi-rail">
+        <div class="p-5 md:p-6 space-y-4">
+            <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
                 <div v-for="metric in decisionCenter.metrics" :key="metric.label" class="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
                     <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-2">{{ metric.label }}</div>
                     <div class="text-sm font-bold text-white font-mono">{{ metric.value }}</div>
@@ -330,40 +328,10 @@
                     {{ action.label }}
                 </button>
             </div>
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 ios-decision-grid">
-                <div class="ios-story-card">
-                    <div class="ios-story-label">{{ decisionCenter.scriptTitle }}</div>
-                    <div class="ios-story-title">先不要跟市場拼拳，先把治理順序排對。</div>
-                    <p class="ios-story-copy">{{ decisionCenter.scriptSummary }}</p>
-                </div>
-                <div class="ios-story-card">
-                    <div class="ios-story-label">{{ decisionCenter.whyNowTitle }}</div>
-                    <p class="ios-story-copy mb-3">{{ decisionCenter.whyNowSummary }}</p>
-                    <div v-if="allocationGovernance.primaryReasons.length" class="space-y-2">
-                        <div v-for="reason in allocationGovernance.primaryReasons.slice(0, 3)" :key="reason.code" class="ios-reason-chip">
-                            <div class="ios-reason-title">{{ reason.label }}</div>
-                            <div class="ios-reason-detail">{{ reason.detail }}</div>
-                        </div>
-                    </div>
-                    <div v-else class="ios-reason-chip">
-                        <div class="ios-reason-title">目前無額外阻礙</div>
-                        <div class="ios-reason-detail">治理層、現金層與再平衡層暫時穩定。</div>
-                    </div>
-                </div>
-                <div class="ios-story-card">
-                    <div class="ios-story-label">先做哪三步</div>
-                    <div class="space-y-2.5">
-                        <div v-for="(step, idx) in decisionCenter.nextSteps" :key="`${idx}-${step}`" class="ios-step">
-                            <div class="ios-step-index">{{ idx + 1 }}</div>
-                            <div class="ios-step-text">{{ step }}</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
-    <div class="glass panel-card overflow-hidden border-cyan-500/20 executive-alert-card">
+    <div class="glass panel-card overflow-hidden border-cyan-500/20">
         <div class="p-5 md:p-6 border-b border-white/10 bg-cyan-500/5">
             <div class="flex items-center justify-between gap-3">
                 <div>
@@ -397,7 +365,7 @@
 </div>
 
 
-                <div class="glass panel-card mt-6 overflow-hidden institutional-governance-shell" :class="allocationGovernance.panelClass">
+                <div class="glass panel-card mt-6 overflow-hidden" :class="allocationGovernance.panelClass">
                     <div class="p-5 md:p-6 border-b border-white/10">
                         <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                             <div>
@@ -824,9 +792,9 @@
             </section>
 
             <!-- ===== Holdings Tab / 庫存 ===== -->
-            <section v-show="currentTab === 'holdings'" class="flex flex-col space-y-4 animate-fade-in holdings-terminal-view">
-                <div class="glass rounded-xl overflow-hidden flex flex-col flex-1 holdings-terminal-shell">
-                    <div class="p-4 md:p-5 bg-white/[0.03] border-b border-white/10 flex flex-col md:flex-row md:justify-between md:items-center gap-3 holdings-terminal-toolbar">
+            <section v-show="currentTab === 'holdings'" class="flex flex-col space-y-4 animate-fade-in">
+                <div class="glass rounded-xl overflow-hidden flex flex-col flex-1">
+                    <div class="p-4 md:p-5 bg-white/[0.03] border-b border-white/10 flex flex-col md:flex-row md:justify-between md:items-center gap-3">
     <div>
         <h3 class="font-bold text-white text-base md:text-lg flex items-center gap-2">
             <i class="fas fa-layer-group text-yellow-500"></i>
@@ -851,7 +819,7 @@
     <div class="holdings-fake-header-anchor">
     <div class="holdings-fake-header">
         <div id="holdingsHeaderScroll" class="overflow-hidden">
-            <table class="w-max min-w-full text-left whitespace-nowrap excel-table text-[12px] bloomberg-table bloomberg-table-header">
+            <table class="w-max min-w-full text-left whitespace-nowrap excel-table text-[12px]">
                 <colgroup>
     <col style="width: 96px;">   <!-- 代號 -->
     <col style="width: 78px;">   <!-- 風險 -->
@@ -905,7 +873,7 @@
 </div>
     <!-- 真表身：保留水平捲動 -->
     <div id="holdingsBodyScroll" @scroll="syncHoldingsHeaderScroll" class="w-full overflow-x-auto rounded-b-2xl">
-        <table class="w-max min-w-full text-left whitespace-nowrap excel-table text-[12px] holdings-body-table bloomberg-table bloomberg-table-body">
+        <table class="w-max min-w-full text-left whitespace-nowrap excel-table text-[12px] holdings-body-table">
             <colgroup>
     <col style="width: 96px;">   <!-- 代號 -->
     <col style="width: 78px;">   <!-- 風險 -->
@@ -1378,7 +1346,7 @@
             <!-- ===== Analytics Tab / 量化 ===== -->
             <section v-show="currentTab === 'analytics'" class="flex flex-col space-y-6 animate-fade-in">
                 
-                <div class="p-4 rounded-xl flex flex-wrap items-center justify-between gap-4 border transition-colors duration-500 glass border-white/5 analytics-command-toolbar">
+                <div class="p-4 rounded-xl flex flex-wrap items-center justify-between gap-4 border transition-colors duration-500 glass border-white/5">
                     <div class="flex flex-col md:flex-row gap-6 w-full md:w-auto">
                         <div>
                              <h3 class="font-bold text-white text-lg flex items-center gap-2 mb-2 md:mb-0">
@@ -1429,37 +1397,7 @@
                     </div>
                 </div>
 
-<div class="glass panel-card analytics-hierarchy-strip overflow-hidden border-white/10">
-    <div class="p-4 md:p-5 border-b border-white/10 bg-white/[0.025] flex items-center justify-between gap-3">
-        <div>
-            <div class="text-[11px] uppercase tracking-[0.18em] text-gray-500 font-bold">Institutional Stack</div>
-            <div class="text-sm font-bold text-white mt-1">先分層，再判斷，再執行。</div>
-        </div>
-        <div class="text-[11px] text-gray-500 font-mono">Governance → Execution → Insight</div>
-    </div>
-    <div class="p-4 md:p-5 grid grid-cols-1 md:grid-cols-3 gap-3 institutional-stack-grid">
-        <div class="stack-card stack-card-governance">
-            <div class="stack-kicker">Layer 1 · Governance</div>
-            <div class="stack-title">CRO 否決層</div>
-            <div class="stack-copy">{{ allocationGovernance.badgeText }}</div>
-            <div class="stack-note">{{ allocationGovernance.summary }}</div>
-        </div>
-        <div class="stack-card stack-card-execution">
-            <div class="stack-kicker">Layer 2 · Execution</div>
-            <div class="stack-title">再平衡駕駛艙</div>
-            <div class="stack-copy">{{ rebalanceCockpitRows.length }} 檔待判讀</div>
-            <div class="stack-note">先修 drift / concentration，再談新增風險。</div>
-        </div>
-        <div class="stack-card stack-card-insight">
-            <div class="stack-kicker">Layer 3 · Insight</div>
-            <div class="stack-title">AI / CRO 診斷</div>
-            <div class="stack-copy">{{ croInsight ? '已生成診斷' : '待生成診斷' }}</div>
-            <div class="stack-note">AI 只補洞察，不覆蓋 deterministic governance。</div>
-        </div>
-    </div>
-</div>
-
-<div class="glass panel-card border-yellow-500/20 overflow-hidden institutional-cockpit-shell">
+<div class="glass panel-card border-yellow-500/20 overflow-hidden">
     <div class="p-5 md:p-6 border-b border-white/10 bg-yellow-500/5">
         <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
             <div>
@@ -1484,7 +1422,7 @@
     </div>
     <div class="p-5 md:p-6">
         <div v-if="rebalanceCockpitRows.length" class="overflow-x-auto rounded-2xl border border-white/10 bg-black/20">
-            <table class="w-full text-left whitespace-nowrap cockpit-table">
+            <table class="w-full text-left whitespace-nowrap">
                 <thead class="bg-[#0f172a] text-[11px] text-gray-400 uppercase font-semibold border-b border-gray-700">
                     <tr>
                         <th class="p-3 pl-4">Ticker</th>
@@ -1826,7 +1764,7 @@
                 </div>
 
                 <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
-                    <div class="glass panel-card border-yellow-500/20 overflow-hidden institutional-cockpit-shell">
+                    <div class="glass panel-card border-yellow-500/20 overflow-hidden">
                         <div class="p-5 md:p-6 border-b border-white/10 bg-yellow-500/5">
                             <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                                 <div>
@@ -2076,7 +2014,7 @@
 
 
 
-                <div class="mt-6 glass panel-card border-blue-500/20 transition-all duration-300 cro-intelligence-shell"
+                <div class="mt-6 glass panel-card border-blue-500/20 transition-all duration-300"
      :class="isCroThinking ? 'bg-blue-900/10 shadow-[0_0_20px_rgba(37,99,235,0.15)]' : ''">
 
     <div class="absolute inset-0 pointer-events-none opacity-[0.04]">
@@ -2131,7 +2069,7 @@
             </div>
         </div>
 
-        <div v-if="croInsight" class="rounded-2xl border border-white/10 bg-black/20 overflow-hidden cro-diagnosis-shell">
+        <div v-if="croInsight" class="rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
             <div class="px-4 py-3 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
                 <div class="text-sm font-bold text-white flex items-center gap-2">
                     <i class="fas fa-file-waveform text-blue-400"></i>
