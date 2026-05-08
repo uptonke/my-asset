@@ -197,6 +197,39 @@
     shares: null,
     amount: null
 });
+        const holdingsSearch = ref('');
+        const holdingsView = ref('all');
+        const holdingsSort = ref('value_desc');
+        const txFlowMode = ref('internal');
+        const txTypeOptions = computed(() => txFlowMode.value === 'external'
+            ? [
+                { value: 'Deposit', label: '入金', hint: '外部資金匯入投資帳戶' },
+                { value: 'Withdraw', label: '出金', hint: '資金領回銀行 / 生活帳戶' }
+            ]
+            : [
+                { value: 'Buy', label: '買入', hint: '用帳上資金買資產' },
+                { value: 'Sell', label: '賣出', hint: '賣掉部位，現金留在投資帳戶' }
+            ]
+        );
+
+        watch(txFlowMode, (mode) => {
+            const nextType = mode === 'external' ? 'Deposit' : 'Buy';
+            if (!txTypeOptions.value.some(opt => opt.value === txForm.value.type)) {
+                txForm.value.type = nextType;
+            }
+            if (mode === 'external') {
+                txForm.value.ticker = '';
+                txForm.value.price = null;
+                txForm.value.shares = null;
+                if (!txForm.value.amount) txForm.value.amount = null;
+            } else {
+                txForm.value.amount = null;
+            }
+        }, { immediate: true });
+
+        watch(() => txForm.value.type, (type) => {
+            txFlowMode.value = (type === 'Deposit' || type === 'Withdraw') ? 'external' : 'internal';
+        }, { immediate: true });
         
         const historyForm = ref({
             date: new Date().toISOString().split('T')[0],

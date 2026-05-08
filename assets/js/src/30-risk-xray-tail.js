@@ -346,6 +346,77 @@ if (backendTail && (
             saveData();
         }
 
+        const decisionCenter = computed(() => {
+            const holdings = [];
+            for (const cat in groupedHoldings.value) {
+                groupedHoldings.value[cat].items.forEach(item => holdings.push(item));
+            }
+
+            const topDriftList = [...holdings]
+                .sort((a, b) => Math.abs(b.weightGap || 0) - Math.abs(a.weightGap || 0))
+                .slice(0, 3)
+                .map(item => ({
+                    ticker: item.ticker,
+                    drift: Math.abs(item.weightGap || 0).toFixed(1),
+                    currentWeight: ((item.totalWeight || 0) * 100).toFixed(1),
+                    targetWeight: Number(item.blendedWeight || 0).toFixed(1)
+                }));
+
+            const queue = [];
+            if (isCashNegative.value) {
+                queue.push({
+                    level: 'high',
+                    icon: 'fa-wallet',
+                    title: '現金為負',
+                    detail: `Cash ${formatNumber(cashBalance.value)}，優先檢查是否「先出金後賣出」。`
+                });
+            }
+            if (rebalanceMonitor.value.bufferBlockingRiskBuys) {
+                queue.push({
+                    level: 'high',
+                    icon: 'fa-shield-halved',
+                    title: '防線不足',
+                    detail: `目前 ${rebalanceMonitor.value.currentBufferPct}% / 目標 ${rebalanceMonitor.value.bufferFloorPct}% ，先補硬緩衝。`
+                });
+            }
+            if ((rebalanceMonitor.value.alertCount || 0) > 0 && topDriftList[0]) {
+                queue.push({
+                    level: 'medium',
+                    icon: 'fa-crosshairs',
+                    title: '再平衡偏移擴大',
+                    detail: `${topDriftList[0].ticker} drift ${topDriftList[0].drift}% ，目前 ${topDriftList[0].currentWeight}% / 目標 ${topDriftList[0].targetWeight}%。`
+                });
+            }
+            if ((Number(tailStatsLite.value.jdCrashProb) || 0) >= 8 || (Number(tailStatsLite.value.evtShapeXi) || 0) >= 0.25) {
+                queue.push({
+                    level: 'medium',
+                    icon: 'fa-burst',
+                    title: '尾部風險偏高',
+                    detail: `Crash Prob ${tailStatsLite.value.jdCrashProb}% / EVT ξ ${tailStatsLite.value.evtShapeXi}，不要只看一般波動。`
+                });
+            }
+            if (!queue.length) {
+                queue.push({
+                    level: 'low',
+                    icon: 'fa-circle-check',
+                    title: '目前無重大異常',
+                    detail: '今天主要工作是維持快照紀律與價格更新。'
+                });
+            }
+
+            const topFocus = queue[0];
+            return {
+                headline: topFocus.title,
+                detail: topFocus.detail,
+                tone: topFocus.level,
+                queue: queue.slice(0, 4),
+                topDriftList,
+                alertCount: rebalanceMonitor.value.alertCount || 0,
+                trimCount: rebalanceMonitor.value.trimCount || 0,
+                bufferGap: Number(rebalanceMonitor.value.bufferGapPct || 0).toFixed(1)
+            };
+        });
+
         const activeFireStageIndex = computed(() => {
             if (fireTargets.value.length === 0) return -1;
             const val = totalStockValueTwd.value;

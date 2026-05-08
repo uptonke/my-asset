@@ -164,6 +164,86 @@
 
         const categoryTotals = computed(() => { const totals = {}; for(const cat in groupedHoldings.value) totals[cat] = groupedHoldings.value[cat].totalValue; return totals; });
         const riskTotals = computed(() => { let high = 0; let low = 0; for(const cat in groupedHoldings.value) { groupedHoldings.value[cat].items.forEach(item => { if(item.riskLevel === 'Low') low += item.marketValueTwd; else high += item.marketValueTwd; }); } return { High: high, Low: low }; });
+        const filteredGroupedHoldings = computed(() => {
+            const keyword = (holdingsSearch.value || '').trim().toUpperCase();
+            const view = holdingsView.value || 'all';
+            const sortKey = holdingsSort.value || 'value_desc';
+            const out = {};
+
+            const scoreIsHigh = (val) => {
+                const n = Number(val);
+                return Number.isFinite(n) && n >= 7;
+            };
+
+            const sorter = (a, b) => {
+                switch (sortKey) {
+                    case 'drift_desc':
+                        return Math.abs(b.weightGap || 0) - Math.abs(a.weightGap || 0);
+                    case 'pl_desc':
+                        return (b.unrealizedPLTwd || 0) - (a.unrealizedPLTwd || 0);
+                    case 'return_desc':
+                        return (b.returnRate || 0) - (a.returnRate || 0);
+                    case 'weight_desc':
+                        return (b.totalWeight || 0) - (a.totalWeight || 0);
+                    default:
+                        return (b.marketValueTwd || 0) - (a.marketValueTwd || 0);
+                }
+            };
+
+            Object.entries(groupedHoldings.value).forEach(([catName, group]) => {
+                let items = [...group.items].filter((stock) => {
+                    const matchesKeyword = !keyword || stock.ticker.includes(keyword) || catName.toUpperCase().includes(keyword);
+                    if (!matchesKeyword) return false;
+
+                    const drift = Math.abs(stock.weightGap || 0);
+                    const isAlert = stock.isOverweight || drift >= 5 || scoreIsHigh(stock.liquidityScore) || scoreIsHigh(stock.contagionScore);
+
+                    if (view === 'alert') return isAlert;
+                    if (view === 'overweight') return stock.isOverweight;
+                    if (view === 'lowrisk') return stock.riskLevel === 'Low';
+                    return true;
+                });
+
+                if (!items.length) return;
+                items.sort(sorter);
+
+                const totalValue = items.reduce((sum, stock) => sum + (stock.marketValueTwd || 0), 0);
+                const totalCost = items.reduce((sum, stock) => sum + (stock.totalCostTwd || 0), 0);
+                const unrealizedPL = totalValue - totalCost;
+                const returnRate = totalCost > 0 ? (unrealizedPL / totalCost) * 100 : 0;
+                const annualizedWeight = items.reduce((sum, stock) => sum + (Number(stock.totalCostTwd) || 0), 0);
+                const annualizedReturnRate = annualizedWeight > 0
+                    ? items.reduce((sum, stock) => sum + ((Number(stock.totalCostTwd) || 0) * (Number(stock.annualizedReturnRate) || 0)), 0) / annualizedWeight
+                    : 0;
+
+                out[catName] = {
+                    ...group,
+                    items,
+                    totalValue,
+                    totalCost,
+                    unrealizedPL,
+                    returnRate,
+                    annualizedReturnRate
+                };
+            });
+
+            return out;
+        });
+        const filteredHoldingsCount = computed(() => Object.values(filteredGroupedHoldings.value).reduce((sum, group) => sum + group.items.length, 0));
+        const holdingsAlertCount = computed(() => {
+            let count = 0;
+            Object.values(groupedHoldings.value).forEach(group => {
+                group.items.forEach(stock => {
+                    const drift = Math.abs(stock.weightGap || 0);
+                    const scoreIsHigh = (val) => {
+                        const n = Number(val);
+                        return Number.isFinite(n) && n >= 7;
+                    };
+                    if (stock.isOverweight || drift >= 5 || scoreIsHigh(stock.liquidityScore) || scoreIsHigh(stock.contagionScore)) count++;
+                });
+            });
+            return count;
+        });
         const totalStockValueTwd = computed(() => Object.values(categoryTotals.value).reduce((a,b)=>a+b,0));
         const portfolioStats = ref({ beta: 0, std: 0 });
 

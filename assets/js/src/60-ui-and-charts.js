@@ -546,9 +546,11 @@ chartCML.data.datasets = [
 
         return { 
             currentTab, showHistoryModal, isUpdating,
-            transactions, groupedHoldings, categoryTotals, riskTotals, portfolioStats, 
+            transactions, groupedHoldings, filteredGroupedHoldings, categoryTotals, riskTotals, portfolioStats, 
             totalStockValueTwd, totalStockCostTwd, totalStockUnrealizedPL, totalStockReturnRate, 
             reversedTransactions, txForm, historyForm, riskParams, stats, exchangeRate, 
+            holdingsSearch, holdingsView, holdingsSort, filteredHoldingsCount, holdingsAlertCount,
+            txFlowMode, txTypeOptions, ledgerDraftPreview,
             sheetUrl, addTransaction, addHistoryRecord,
             removeTransaction, removeHistoryByDate, manualUpdate, updateMeta, fetchPrices, 
             exportAll, importData, getTypeColor, getCategoryColorCode, formatNumber, formatPercent, 
@@ -562,7 +564,7 @@ chartCML.data.datasets = [
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
-            xrayStats, rebalanceMonitor, tailStatsLite, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
+            xrayStats, rebalanceMonitor, tailStatsLite, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
         };
     }
 }).mount('#app');

@@ -285,6 +285,142 @@
                             </div>
                         </div>
                     </div>
+
+                </div>
+
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
+    <div class="glass panel-card xl:col-span-2 overflow-hidden border-yellow-500/20">
+        <div class="p-5 md:p-6 border-b border-white/10 bg-yellow-500/5">
+            <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                <div>
+                    <div class="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border"
+                         :class="allocationGovernance.badgeClass">
+                        <i class="fas fa-compass-drafting"></i>
+                        Decision Center
+                    </div>
+                    <h3 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+                        <i class="fas fa-crosshairs text-yellow-400"></i>
+                        今日決策中心
+                    </h3>
+                    <p class="text-sm text-gray-200 mt-2 leading-relaxed">{{ decisionCenter.headline }}</p>
+                    <p class="text-xs text-gray-400 mt-2 leading-relaxed">{{ decisionCenter.subline }}</p>
+                </div>
+                <div class="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 min-w-[220px]">
+                    <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-2">Top Focus</div>
+                    <div class="text-sm font-bold text-white">{{ decisionCenter.topAlert?.title || '目前無急迫焦點' }}</div>
+                    <div class="text-[11px] text-gray-400 mt-2 leading-relaxed">{{ decisionCenter.topAlert?.detail || '治理層、現金層與再平衡層暫時穩定。' }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="p-5 md:p-6 space-y-4">
+            <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                <div v-for="metric in decisionCenter.metrics" :key="metric.label" class="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                    <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-2">{{ metric.label }}</div>
+                    <div class="text-sm font-bold text-white font-mono">{{ metric.value }}</div>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button v-for="action in decisionCenter.quickActions"
+                        :key="action.label"
+                        @click="goToTab(action.tab)"
+                        class="px-3 py-2 rounded-xl text-xs font-bold border transition hover:scale-[1.02]"
+                        :class="action.class">
+                    {{ action.label }}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="glass panel-card overflow-hidden border-cyan-500/20">
+        <div class="p-5 md:p-6 border-b border-white/10 bg-cyan-500/5">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <div class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+                        <i class="fas fa-bell text-cyan-400"></i>
+                        Alert Center
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">不是把所有數據攤開，而是先把最該動手的事排前面。</p>
+                </div>
+                <div class="text-[11px] text-gray-500 font-mono">{{ alertCenterItems.length }} items</div>
+            </div>
+        </div>
+        <div class="p-4 md:p-5 space-y-3">
+            <div v-for="item in alertCenterItems" :key="item.id" class="rounded-2xl border p-4" :class="item.panelClass">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[10px] font-bold border mb-2" :class="item.badgeClass">
+                            <i class="fas" :class="item.icon"></i>
+                            {{ item.tone.toUpperCase() }}
+                        </div>
+                        <div class="text-sm font-bold text-white">{{ item.title }}</div>
+                        <div class="text-xs text-gray-300 mt-2 leading-relaxed">{{ item.detail }}</div>
+                    </div>
+                    <button @click="goToTab(item.tab)" class="shrink-0 text-[11px] px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/[0.04] text-gray-200 hover:text-white hover:bg-white/10 transition">
+                        {{ item.ctaLabel }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+                <div class="glass panel-card mt-6 overflow-hidden" :class="allocationGovernance.panelClass">
+                    <div class="p-5 md:p-6 border-b border-white/10">
+                        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                            <div>
+                                <div class="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border"
+                                     :class="allocationGovernance.badgeClass">
+                                    <i class="fas" :class="allocationGovernance.icon"></i>
+                                    {{ allocationGovernance.badgeText }}
+                                </div>
+                                <h3 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+                                    <i class="fas fa-sitemap text-white/80"></i>
+                                    MC / CRO 決策權治理
+                                </h3>
+                                <p class="text-xs md:text-sm text-gray-300 mt-2 leading-relaxed">
+                                    {{ allocationGovernance.headline }}
+                                </p>
+                                <p class="text-[11px] text-gray-500 mt-2">
+                                    {{ allocationGovernance.deterministicNote }}
+                                </p>
+                            </div>
+
+                            <div class="text-right">
+                                <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-1">Decision Mode</div>
+                                <div class="font-mono text-sm font-bold text-white">{{ allocationGovernance.mode }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-5 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-2">CRO Role</div>
+                            <div class="text-sm font-bold text-white">{{ allocationGovernance.croRole }}</div>
+                        </div>
+                        <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-2">MC Role</div>
+                            <div class="text-sm font-bold text-white">{{ allocationGovernance.mcRole }}</div>
+                        </div>
+                        <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-2">Whole-Portfolio Verdict</div>
+                            <div class="text-sm text-gray-200 leading-relaxed">{{ allocationGovernance.summary }}</div>
+                        </div>
+                    </div>
+
+                    <div class="px-5 md:px-6 pb-5 md:pb-6">
+                        <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-3">Primary Reasons</div>
+                            <div v-if="allocationGovernance.primaryReasons.length" class="space-y-2">
+                                <div v-for="reason in allocationGovernance.primaryReasons" :key="reason.code"
+                                     class="text-sm rounded-xl border border-white/8 bg-white/[0.025] px-4 py-3">
+                                    <div class="font-bold text-white mb-1">{{ reason.label }}</div>
+                                    <div class="text-gray-300 leading-relaxed">{{ reason.detail }}</div>
+                                </div>
+                            </div>
+                            <div v-else class="text-sm text-emerald-300">目前沒有 hard veto 或 soft caution，MC 可作為 risky sleeve 主導配置器。</div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="glass panel-card border-cyan-500/20 mt-6 mb-6 overflow-hidden">
@@ -1216,6 +1352,11 @@
                              <h3 class="font-bold text-white text-lg flex items-center gap-2 mb-2 md:mb-0">
                                 <i class="fas fa-brain text-yellow-500"></i> 量化風險分析
                              </h3>
+                             <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold border"
+                                  :class="allocationGovernance.badgeClass">
+                                <i class="fas" :class="allocationGovernance.icon"></i>
+                                {{ allocationGovernance.badgeText }}
+                             </div>
                         </div>
                         <div class="flex gap-4 items-end flex-wrap">
                             <div class="flex flex-col">
@@ -1255,6 +1396,71 @@
                         <button @click="showHistoryModal = true" class="text-blue-400 hover:text-white text-xs border border-blue-500/50 px-3 py-2 rounded h-[30px]">補登</button>
                     </div>
                 </div>
+
+<div class="glass panel-card border-yellow-500/20 overflow-hidden">
+    <div class="p-5 md:p-6 border-b border-white/10 bg-yellow-500/5">
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div>
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border border-yellow-500/20 bg-yellow-500/10 text-yellow-300 mb-3">
+                    <i class="fas fa-sliders"></i>
+                    Rebalance Cockpit
+                </div>
+                <h4 class="text-white font-bold text-lg md:text-xl flex items-center gap-2">
+                    <i class="fas fa-jet-fighter-up text-yellow-400"></i>
+                    再平衡駕駛艙
+                </h4>
+                <p class="text-xs md:text-sm text-gray-400 mt-2 leading-relaxed">
+                    把 drift、目標權重與治理模式收斂成可執行清單。CRO 決定能不能 aggressive；MC 只在 risky sleeve 內決定怎麼配。
+                </p>
+            </div>
+            <div class="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-1">Execution Rule</div>
+                <div class="text-sm font-bold text-white">{{ allocationGovernance.badgeText }}</div>
+                <div class="text-[11px] text-gray-400 mt-2">{{ allocationGovernance.summary }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="p-5 md:p-6">
+        <div v-if="rebalanceCockpitRows.length" class="overflow-x-auto rounded-2xl border border-white/10 bg-black/20">
+            <table class="w-full text-left whitespace-nowrap">
+                <thead class="bg-[#0f172a] text-[11px] text-gray-400 uppercase font-semibold border-b border-gray-700">
+                    <tr>
+                        <th class="p-3 pl-4">Ticker</th>
+                        <th class="p-3">類別</th>
+                        <th class="p-3 text-right">現有%</th>
+                        <th class="p-3 text-right">目標%</th>
+                        <th class="p-3 text-right">Drift</th>
+                        <th class="p-3 text-right">名目調整額</th>
+                        <th class="p-3">建議</th>
+                        <th class="p-3">治理備註</th>
+                    </tr>
+                </thead>
+                <tbody class="text-sm divide-y divide-white/5">
+                    <tr v-for="row in rebalanceCockpitRows" :key="row.ticker" class="hover:bg-white/5 transition-colors">
+                        <td class="p-3 pl-4 font-bold text-white">{{ row.ticker }}</td>
+                        <td class="p-3 text-gray-300">{{ row.categoryName }}</td>
+                        <td class="p-3 text-right font-mono text-gray-300">{{ row.currentWeightPct.toFixed(1) }}%</td>
+                        <td class="p-3 text-right font-mono text-yellow-300">{{ row.targetWeightPct.toFixed(1) }}%</td>
+                        <td class="p-3 text-right font-mono font-bold" :class="row.driftPct <= -3 ? 'text-red-300' : (row.driftPct >= 3 ? 'text-emerald-300' : 'text-gray-300')">
+                            {{ row.driftText }}
+                        </td>
+                        <td class="p-3 text-right font-mono text-white">{{ row.actionValueText }}</td>
+                        <td class="p-3">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-bold border border-white/10 bg-white/[0.05]" :class="row.actionClass">
+                                {{ row.action }}
+                            </span>
+                        </td>
+                        <td class="p-3 text-xs text-gray-400 leading-relaxed whitespace-normal">{{ row.note }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div v-else class="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-300">
+            目前沒有明顯 drift 或過重部位；再平衡駕駛艙暫時維持清空狀態。
+        </div>
+    </div>
+</div>
+
 
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-6 gap-3 mt-4">
                     <div class="quant-card">
@@ -1653,6 +1859,9 @@
     <h5 class="text-[10px] text-indigo-300 uppercase tracking-wider mb-2 border-b border-indigo-800/50 pb-1 flex items-center gap-2">
         <i class="fas fa-scale-balanced"></i> Kelly Criterion 曝險建議
     </h5>
+    <div class="text-[10px] text-gray-400 mb-2 leading-relaxed">
+        MC = risky sleeve allocator，不是 whole-portfolio veto layer。
+    </div>
     
     <div class="flex justify-between text-xs text-gray-300 mb-1">
         <span title="追求極限複利成長，但風險極高">Full Kelly (理論極限)</span>
@@ -1845,6 +2054,21 @@
     </div>
 
     <div class="relative z-10 p-5 md:p-6">
+        <div class="mb-4 rounded-2xl border px-4 py-3" :class="allocationGovernance.panelClass">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div>
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold border"
+                         :class="allocationGovernance.badgeClass">
+                        <i class="fas" :class="allocationGovernance.icon"></i>
+                        {{ allocationGovernance.badgeText }}
+                    </div>
+                    <div class="text-sm font-bold text-white mt-2">{{ allocationGovernance.headline }}</div>
+                    <div class="text-[11px] text-gray-400 mt-1">{{ allocationGovernance.summary }}</div>
+                </div>
+                <div class="text-[11px] text-gray-500 font-mono">{{ allocationGovernance.mode }}</div>
+            </div>
+        </div>
+
         <div v-if="croInsight" class="rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
             <div class="px-4 py-3 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
                 <div class="text-sm font-bold text-white flex items-center gap-2">
@@ -2005,92 +2229,149 @@
 
             <!-- ===== Ledger Tab / 記帳 ===== -->
             <section v-show="currentTab === 'ledger'" class="flex flex-col md:flex-row gap-6">
-                 
-                 <!-- 🔴 左側面板：新增交易 -->
-                 <div class="w-full md:w-80 glass p-5 rounded-xl h-fit space-y-4">
-                    <h3 class="font-bold text-white text-lg border-b border-gray-700 pb-2">新增交易</h3>
-                    <div><label class="text-xs text-gray-400 mb-1 block">1. 資產類別</label>
-                        <div class="grid grid-cols-2 gap-2">
-                            <button @click="txForm.category='美股'" :class="txForm.category==='美股'?'bg-yellow-600 text-black font-bold':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs transition">美股</button>
-                            <button @click="txForm.category='台股'" :class="txForm.category==='台股'?'bg-blue-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs transition">台股</button>
-                            <button @click="txForm.category='基金'" :class="txForm.category==='基金'?'bg-green-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs transition">基金</button>
-                            <button @click="txForm.category='加密貨幣'" :class="txForm.category==='加密貨幣'?'bg-purple-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs transition">加密貨幣</button>
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <div>
-                            <label class="text-xs text-gray-400 mb-1 block">2. 交易內容 (TWD)</label>
 
-                            <div class="grid grid-cols-2 gap-2 mb-2">
-                                <input v-model="txForm.date" type="date" class="input-dark p-2 rounded text-xs col-span-2">
+<!-- 🔴 左側面板：新增交易 -->
+<div class="w-full md:w-96 glass p-5 rounded-xl h-fit space-y-4 border border-purple-500/20 bg-purple-500/5">
+   <div class="border-b border-white/10 pb-3">
+       <div class="flex items-center gap-2 mb-2">
+           <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+               <i class="fas fa-wand-magic-sparkles text-purple-300"></i>
+           </div>
+           <div>
+               <h3 class="font-bold text-white text-lg leading-none">Ledger Wizard</h3>
+               <p class="text-[11px] text-gray-400 mt-1">先分外部現金流與內部交易，再讓防呆層攔下錯帳。</p>
+           </div>
+       </div>
+   </div>
 
-                                <select v-model="txForm.type" class="input-dark p-2 rounded text-xs col-span-2">
-                                    <option value="Buy">買入 (Buy)</option>
-                                    <option value="Sell">賣出 (Sell)</option>
-                                    <option value="Deposit">入金 (Deposit)</option>
-                                    <option value="Withdraw">出金 (Withdraw)</option>
-                                    <option value="Expense">費用/校正 (Expense)</option>
-                                </select>
-                            </div>
+   <div class="space-y-4">
+       <div>
+           <label class="text-xs text-gray-400 mb-2 block">1. 流程類型</label>
+           <div class="grid grid-cols-3 gap-2">
+               <button @click="setTxIntent('internal')" class="p-2 rounded-lg text-xs font-bold border transition"
+                       :class="txIntent==='internal' ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-300' : 'border-white/10 bg-black/20 text-gray-400'">
+                   內部交易
+               </button>
+               <button @click="setTxIntent('external')" class="p-2 rounded-lg text-xs font-bold border transition"
+                       :class="txIntent==='external' ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300' : 'border-white/10 bg-black/20 text-gray-400'">
+                   外部現金流
+               </button>
+               <button @click="setTxIntent('adjustment')" class="p-2 rounded-lg text-xs font-bold border transition"
+                       :class="txIntent==='adjustment' ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-white/10 bg-black/20 text-gray-400'">
+                   校正 / 費用
+               </button>
+           </div>
+       </div>
 
-                            <template v-if="txForm.type === 'Buy' || txForm.type === 'Sell'">
-                                <input
-                                    v-model="txForm.ticker"
-                                    placeholder="代號 / 名稱 (如 AAPL)"
-                                    class="w-full input-dark p-2 rounded text-xs uppercase mb-2"
-                                >
+       <div>
+           <label class="text-xs text-gray-400 mb-1 block">2. 日期</label>
+           <input v-model="txForm.date" type="date" class="input-dark p-2 rounded text-xs w-full">
+       </div>
 
-                                <div class="grid grid-cols-2 gap-2 mb-2">
-                                    <div>
-                                        <label class="text-[10px] text-gray-500 block">成交單價 (TWD)</label>
-                                        <input v-model.number="txForm.price" type="number" :placeholder="(txForm.amount && txForm.shares) ? (txForm.amount / txForm.shares).toFixed(4) : '台幣價格'" class="w-full input-dark p-2 rounded text-xs">
-                                    </div>
-                                    <div>
-                                        <label class="text-[10px] text-gray-500 block">數量</label>
-                                        <input v-model.number="txForm.shares" type="number" placeholder="股數" class="w-full input-dark p-2 rounded text-xs">
-                                    </div>
-                                </div>
-                                <div class="mt-3" v-if="txForm.type === 'Buy' || txForm.type === 'Sell'">
-    <label class="block text-xs text-gray-400 mb-1">實際收付淨額 (含手續費/稅)</label>
-    <input type="number" v-model="txForm.amount" 
-           class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500" 
-           :placeholder="'理論值: ' + (txForm.price && txForm.shares ? txForm.price * txForm.shares : '0') + ' (留空則帶入理論值)'">
+       <div>
+           <label class="text-xs text-gray-400 mb-2 block">3. 動作</label>
+           <div class="grid grid-cols-2 gap-2" v-if="txIntent !== 'adjustment'">
+               <button v-for="option in txTypeOptions"
+                       :key="option.value"
+                       @click="txForm.type = option.value"
+                       class="p-2 rounded-lg text-xs font-bold border transition"
+                       :class="txForm.type===option.value ? option.class : 'border-white/10 bg-black/20 text-gray-400'">
+                   {{ option.label }}
+               </button>
+           </div>
+           <div v-else class="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300 font-bold">
+               Expense / 校正：僅在真的需要人工修帳時使用。
+           </div>
+       </div>
+
+       <div v-if="txIntent==='internal'">
+           <label class="text-xs text-gray-400 mb-1 block">4. 資產類別</label>
+           <div class="grid grid-cols-2 gap-2">
+               <button @click="txForm.category='美股'" :class="txForm.category==='美股'?'bg-yellow-600 text-black font-bold':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs transition">美股</button>
+               <button @click="txForm.category='台股'" :class="txForm.category==='台股'?'bg-blue-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs transition">台股</button>
+               <button @click="txForm.category='基金'" :class="txForm.category==='基金'?'bg-green-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs transition">基金</button>
+               <button @click="txForm.category='加密貨幣'" :class="txForm.category==='加密貨幣'?'bg-purple-600 text-white':'bg-gray-700 text-gray-400'" class="p-2 rounded text-xs transition">加密貨幣</button>
+           </div>
+       </div>
+
+       <div>
+           <label class="text-xs text-gray-400 mb-1 block">5. 交易內容 (TWD)</label>
+
+           <template v-if="txForm.type === 'Buy' || txForm.type === 'Sell'">
+               <input
+                   v-model="txForm.ticker"
+                   placeholder="代號 / 名稱 (如 AAPL)"
+                   class="w-full input-dark p-2 rounded text-xs uppercase mb-2"
+               >
+
+               <div class="grid grid-cols-2 gap-2 mb-2">
+                   <div>
+                       <label class="text-[10px] text-gray-500 block">成交單價 (TWD)</label>
+                       <input v-model.number="txForm.price" type="number" :placeholder="(txForm.amount && txForm.shares) ? (txForm.amount / txForm.shares).toFixed(4) : '台幣價格'" class="w-full input-dark p-2 rounded text-xs">
+                   </div>
+                   <div>
+                       <label class="text-[10px] text-gray-500 block">數量</label>
+                       <input v-model.number="txForm.shares" type="number" placeholder="股數" class="w-full input-dark p-2 rounded text-xs">
+                   </div>
+               </div>
+               <div class="mt-3">
+                   <label class="block text-xs text-gray-400 mb-1">實際收付淨額 (含手續費/稅)</label>
+                   <input type="number" v-model="txForm.amount"
+                          class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+                          :placeholder="'理論值: ' + (txForm.price && txForm.shares ? txForm.price * txForm.shares : '0') + ' (留空則帶入理論值)'">
+               </div>
+           </template>
+
+           <template v-else>
+               <div class="mb-2">
+                   <label class="text-[10px] text-gray-500 block">金額 (TWD)</label>
+                   <input
+                       v-model.number="txForm.amount"
+                       type="number"
+                       placeholder="輸入金額"
+                       class="w-full input-dark p-2 rounded text-xs"
+                   >
+               </div>
+           </template>
+       </div>
+
+       <div class="rounded-2xl border border-white/10 bg-black/20 p-4 space-y-3">
+           <div class="flex items-center justify-between text-xs">
+               <span class="text-gray-400">現金流影響</span>
+               <span class="font-mono font-bold" :class="txPreview.finalFlow >= 0 ? 'text-green-300' : 'text-red-300'">
+                   {{ txPreview.finalFlow > 0 ? '+' : '' }}{{ formatNumber(txPreview.finalFlow || 0) }}
+               </span>
+           </div>
+           <div class="flex items-center justify-between text-xs">
+               <span class="text-gray-400">送出後現金</span>
+               <span class="font-mono font-bold" :class="txPreview.projectedCashAfter >= 0 ? 'text-cyan-300' : 'text-red-300'">
+                   NT$ {{ formatNumber(txPreview.projectedCashAfter ?? cashBalance) }}
+               </span>
+           </div>
+           <div v-if="txPreview.errors.length || txPreview.blockers.length" class="rounded-xl border border-red-500/20 bg-red-500/10 p-3">
+               <div class="text-[11px] font-bold text-red-300 mb-2">已攔下</div>
+               <ul class="space-y-1 text-[11px] text-gray-200 leading-relaxed">
+                   <li v-for="msg in [...txPreview.errors, ...txPreview.blockers]" :key="msg">• {{ msg }}</li>
+               </ul>
+           </div>
+           <div v-else-if="txPreview.warnings.length" class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3">
+               <div class="text-[11px] font-bold text-amber-300 mb-2">提醒</div>
+               <ul class="space-y-1 text-[11px] text-gray-200 leading-relaxed">
+                   <li v-for="msg in txPreview.warnings" :key="msg">• {{ msg }}</li>
+               </ul>
+           </div>
+           <div v-else class="text-[11px] text-emerald-300">表單檢查通過，可以送出。</div>
+       </div>
+
+       <button @click="addTransaction"
+               :disabled="txPreview.errors.length || txPreview.blockers.length"
+               class="w-full rounded-lg font-bold text-sm py-3 shadow-lg mt-2 transition"
+               :class="(txPreview.errors.length || txPreview.blockers.length) ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'btn-purple text-white hover:scale-[1.01]'">
+           確認送出
+       </button>
+   </div>
 </div>
 
-                                <div class="text-xs text-right text-gray-400 font-mono">
-                                    總金額 (TWD):
-                                    <span class="text-white font-bold">
-                                        {{ txForm.amount ? formatNumber(txForm.amount) : formatNumber((txForm.price || 0) * (txForm.shares || 0)) }}
-                                    </span>
-                                </div>
-                            </template>
-
-                            <template v-else>
-                                <div class="mb-2">
-                                    <label class="text-[10px] text-gray-500 block">金額 (TWD)</label>
-                                    <input
-                                        v-model.number="txForm.amount"
-                                        type="number"
-                                        placeholder="輸入金額"
-                                        class="w-full input-dark p-2 rounded text-xs"
-                                    >
-                                </div>
-
-                                <div class="text-xs text-right text-gray-400 font-mono">
-                                    {{ txForm.type === 'Deposit' ? '入金金額' : '出金金額' }}:
-                                    <span class="text-white font-bold">
-                                        {{ formatNumber(txForm.amount || 0) }}
-                                    </span>
-                                </div>
-                            </template>
-                        </div>
-
-                        <button @click="addTransaction" class="w-full btn-purple text-white rounded-lg font-bold text-sm py-3 shadow-lg mt-2">
-                            確認送出
-                        </button>
-                    </div>
-                 </div> 
                  <!-- 🟡 中間面板：記帳 SOP -->
 <div class="w-full md:w-80 glass p-5 rounded-xl h-fit space-y-4 md:sticky md:top-24 self-start border border-cyan-500/20 bg-cyan-500/5">
     <div class="border-b border-white/10 pb-3">
@@ -2533,6 +2814,6 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=11.7"></script>
+<script src="assets/js/app.bundle.js?v=11.8"></script>
 </body>
 </html>

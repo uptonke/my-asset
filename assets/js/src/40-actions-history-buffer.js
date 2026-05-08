@@ -62,6 +62,51 @@ async function saveData() {
             }; reader.readAsText(file);
         }
         
+        const ledgerDraftPreview = computed(() => {
+    const { type, ticker, price, shares, amount } = txForm.value;
+    const output = {
+        impact: 0,
+        projectedCash: cashBalance.value,
+        warnings: [],
+        estimatedAmount: 0
+    };
+
+    if (type === 'Buy' || type === 'Sell') {
+        const qty = Number(shares) || 0;
+        const inputPrice = price !== null && price !== '' ? Number(price) : null;
+        const inputAmount = amount !== null && amount !== '' ? Number(amount) : null;
+        const estimatedAmount = inputAmount && inputAmount > 0
+            ? inputAmount
+            : ((inputPrice && inputPrice > 0 && qty > 0) ? inputPrice * qty : 0);
+
+        output.estimatedAmount = estimatedAmount;
+        output.impact = (type === 'Buy' ? -1 : 1) * estimatedAmount;
+        output.projectedCash = cashBalance.value + output.impact;
+
+        if (!ticker) output.warnings.push('尚未填寫代號。');
+        if (!qty || qty <= 0) output.warnings.push('股數尚未填妥。');
+        if (!estimatedAmount || estimatedAmount <= 0) output.warnings.push('尚未形成有效成交金額。');
+
+        const holding = holdingsFlat.value.find(h => h.ticker === String(ticker || '').toUpperCase());
+        if (type === 'Sell') {
+            if (!holding) output.warnings.push('目前沒有這檔持倉可賣。');
+            else if (qty > holding.shares) output.warnings.push(`賣出股數超過現有持倉 (${formatNumber(holding.shares)})。`);
+        }
+    } else if (type === 'Deposit' || type === 'Withdraw') {
+        const estimatedAmount = Number(amount) || 0;
+        output.estimatedAmount = estimatedAmount;
+        output.impact = (type === 'Deposit' ? 1 : -1) * estimatedAmount;
+        output.projectedCash = cashBalance.value + output.impact;
+        if (!estimatedAmount || estimatedAmount <= 0) output.warnings.push('金額尚未填妥。');
+    }
+
+    if ((type === 'Buy' || type === 'Withdraw') && output.estimatedAmount > 0 && output.projectedCash < -CASH_EPS) {
+        output.warnings.push('這筆送出後現金會變成負數。');
+    }
+
+    return output;
+});
+
         function addTransaction() {
     const { date, type, category, ticker, price, shares, amount } = txForm.value;
     if (!date) return;
@@ -73,6 +118,11 @@ async function saveData() {
 
     if (type === 'Buy' || type === 'Sell') {
         finalShares = Number(shares);
+
+        if (!String(ticker || '').trim()) {
+            alert('請填寫代號');
+            return;
+        }
 
         if (!finalShares || finalShares <= 0) {
             alert('請填寫有效股數');
@@ -95,6 +145,19 @@ async function saveData() {
             finalPrice = actualTotal / finalShares;
         }
 
+        if (type === 'Sell') {
+            const upperTicker = ticker.toUpperCase();
+            const holding = holdingsFlat.value.find(h => h.ticker === upperTicker);
+            if (!holding) {
+                alert('目前沒有這檔持倉可賣出');
+                return;
+            }
+            if (finalShares > holding.shares) {
+                alert(`賣出股數超過現有持倉 (${formatNumber(holding.shares)})`);
+                return;
+            }
+        }
+
         finalFlow = (type === 'Buy' ? -1 : 1) * actualTotal;
     } else if (type === 'Deposit' || type === 'Withdraw') {
         actualTotal = Number(amount);
@@ -108,6 +171,14 @@ async function saveData() {
     } else {
         alert('未知交易類型');
         return;
+    }
+
+    const projectedCash = cashBalance.value + finalFlow;
+    if ((type === 'Buy' || type === 'Withdraw') && projectedCash < -CASH_EPS) {
+        const goOn = confirm(`這筆會讓現金變成負數 (NT$ ${formatNumber(projectedCash)})。
+通常代表你可能少記了 Sell / Deposit。
+仍要送出嗎？`);
+        if (!goOn) return;
     }
 
     transactions.value.push({
