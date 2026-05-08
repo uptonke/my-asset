@@ -383,3 +383,49 @@ body {
     min-height: 470px;
   }
 }
+
+
+/* v11 sticky holdings header row + ticker column */
+.holdings-terminal-view #holdingsBodyScroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  position: relative;
+}
+
+.holdings-terminal-view .holdings-fake-header .bloomberg-table th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 70;
+  background: linear-gradient(180deg, rgba(17,24,39,0.995), rgba(15,23,42,0.985));
+  box-shadow: 10px 0 18px rgba(2,6,23,0.32), inset -1px 0 0 rgba(255,255,255,0.06);
+}
+
+.holdings-terminal-view .holdings-body-table tbody tr td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 18;
+  background: linear-gradient(90deg, rgba(8,15,28,0.985), rgba(11,18,32,0.965));
+  box-shadow: 10px 0 18px rgba(2,6,23,0.28), inset -1px 0 0 rgba(255,255,255,0.05);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.holdings-terminal-view .holdings-body-table tbody tr:hover td:first-child {
+  background: linear-gradient(90deg, rgba(18,32,54,0.98), rgba(12,22,38,0.96));
+}
+
+.holdings-terminal-view .holdings-body-table .group-header td {
+  position: sticky;
+  left: 0;
+  z-index: 14;
+}
+
+.holdings-terminal-view .holdings-fake-header .bloomberg-table th {
+  z-index: 45;
+}
+
+.holdings-terminal-view .holdings-body-table tbody td:first-child .fa-exclamation-triangle,
+.holdings-terminal-view .holdings-body-table tbody td:first-child span {
+  position: relative;
+  z-index: 1;
+}

@@ -410,6 +410,21 @@
     </div>
 </div>
 
+<div class="glass chart-card p-5 md:p-6 mt-6 allocation-below-summary-card flex flex-col">
+    <div class="mb-4 flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+        <div>
+            <h4 class="panel-title">
+                <i class="fas fa-chart-pie text-yellow-400"></i>
+                資產配置
+            </h4>
+            <p class="panel-subtitle">目前投資組合的類別分布，移至決策中心 / 警報中心下方便於先看全局再看配置。</p>
+        </div>
+        <div class="text-[11px] text-gray-500">先看治理與警報，再看配置結構。</div>
+    </div>
+    <div class="relative min-h-[360px] md:min-h-[420px] flex-1">
+        <canvas id="allocationChart"></canvas>
+    </div>
+</div>
 
                 <div class="glass panel-card mt-6 overflow-hidden institutional-governance-shell" :class="allocationGovernance.panelClass">
                     <div class="p-5 md:p-6 border-b border-white/10">
@@ -835,19 +850,11 @@
                     <div class="flex-1 relative mt-2"><canvas id="corrChart"></canvas></div>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div class="glass chart-card p-5 md:p-6 col-span-1 flex flex-col">
-                        <div class="mb-4">
-    <h4 class="panel-title">
-        <i class="fas fa-chart-pie text-yellow-400"></i>
-        資產配置
-    </h4>
-    <p class="panel-subtitle">目前投資組合的類別分布</p>
-</div>
-                        <div class="flex-1 relative"><canvas id="allocationChart"></canvas></div>
-                    </div>
-                    <div class="glass chart-card nav-trend-card p-5 md:p-6 col-span-2 flex flex-col">
-                        <div class="mb-4">
+                <div class="grid grid-cols-1 gap-6">
+                    <div class="glass chart-card nav-trend-card p-5 md:p-6 flex flex-col">
+                        <div class="grid grid-cols-1 xl:grid-cols-[430px_minmax(0,1fr)] gap-6 items-stretch nav-chart-split">
+                            <div class="nav-chart-sidebar">
+                                <div class="mb-4">
     <h4 class="panel-title">
         <i class="fas fa-chart-line text-emerald-400"></i>
         淨值成長趨勢 (NAV)
@@ -868,7 +875,7 @@
             {{ opt.label }}
         </button>
     </div>
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-2 mt-3">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
         <div class="terminal-mini-stat soft">
             <div class="terminal-mini-label">NAV vs 短期</div>
             <div class="terminal-mini-value">{{ navTrendSummary.navVsMonth }}</div>
@@ -885,7 +892,7 @@
             <div class="terminal-mini-label">長期斜率</div>
             <div class="terminal-mini-value">{{ navTrendSummary.yearSlope }}</div>
         </div>
-        <div class="terminal-mini-stat soft">
+        <div class="terminal-mini-stat soft sm:col-span-2">
             <div class="terminal-mini-label">Current DD</div>
             <div class="terminal-mini-value">{{ navTrendSummary.currentDrawdown }}</div>
         </div>
@@ -895,10 +902,12 @@
         <div class="text-xs text-white mt-1">{{ riskRegimeStrip.note }} · Overlay：{{ navTrendSummary.overlayModeLabel }}</div>
     </div>
 </div>
-                        <div class="flex-1 relative nav-chart-stage">
-                            <canvas id="historyChart"></canvas>
-                             <div v-if="displayHistory.length < 2" class="absolute inset-0 flex items-center justify-center text-gray-500 text-xs bg-gray-900/50 rounded-lg">
-                                <p>需要更多歷史數據</p>
+                            </div>
+                            <div class="relative nav-chart-stage min-h-[460px] xl:min-h-[560px]">
+                                <canvas id="historyChart"></canvas>
+                                <div v-if="displayHistory.length < 2" class="absolute inset-0 flex items-center justify-center text-gray-500 text-xs bg-gray-900/50 rounded-lg">
+                                    <p>需要更多歷史數據</p>
+                                </div>
                             </div>
                         </div>
                     </div>
