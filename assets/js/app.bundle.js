@@ -1255,26 +1255,29 @@ function getNavMaConfig(frequency) {
         return {
             monthWindow: 21,
             yearWindow: 252,
-            monthLabel: 'NAV 月線 MA (21D)',
-            yearLabel: 'NAV 年線 MA (252D)',
-            frequencyNote: '以日資料 21D / 252D 近似月線與年線。'
+            showMonth: true,
+            monthLabel: 'NAV 短期趨勢 (21D)',
+            yearLabel: 'NAV 長期趨勢 (252D)',
+            frequencyNote: '日資料：短期趨勢用 21D，長期趨勢用 252D。'
         };
     }
     if (freq.includes('month')) {
         return {
-            monthWindow: 1,
+            monthWindow: null,
             yearWindow: 12,
-            monthLabel: 'NAV 月線 MA (1M)',
-            yearLabel: 'NAV 年線 MA (12M)',
-            frequencyNote: '以月資料 1M / 12M 顯示月線與年線。'
+            showMonth: false,
+            monthLabel: '短期趨勢（已隱藏）',
+            yearLabel: 'NAV 長期趨勢 (12M)',
+            frequencyNote: '月資料只保留 12M 長期趨勢；不再畫幾乎貼著 NAV 的短期線。'
         };
     }
     return {
-        monthWindow: 4,
+        monthWindow: 13,
         yearWindow: 52,
-        monthLabel: 'NAV 月線 MA (4W)',
-        yearLabel: 'NAV 年線 MA (52W)',
-        frequencyNote: '以週資料 4W / 52W 近似月線與年線。'
+        showMonth: true,
+        monthLabel: 'NAV 短期趨勢 (13W)',
+        yearLabel: 'NAV 長期趨勢 (52W)',
+        frequencyNote: '週資料：短期趨勢改用 13W，避免原本 4W 線過度貼著 NAV。'
     };
 }
 
@@ -1283,7 +1286,9 @@ function computeMovingAverage(values, windowSize) {
         const n = Number(v);
         return Number.isFinite(n) ? n : null;
     });
-    const window = Math.max(1, Number(windowSize) || 1);
+    const rawWindow = Number(windowSize);
+    if (!Number.isFinite(rawWindow) || rawWindow < 2) return arr.map(() => null);
+    const window = Math.floor(rawWindow);
     return arr.map((_, idx) => {
         if (idx + 1 < window) return null;
         const slice = arr.slice(idx + 1 - window, idx + 1);
@@ -1728,10 +1733,10 @@ const navTrendSummary = computed(() => {
     }
 
     return {
-        navVsMonth: lastNav !== null && lastMonth !== null ? (lastNav >= lastMonth ? '月線上方' : '月線下方') : 'N/A',
-        navVsYear: lastNav !== null && lastYear !== null ? (lastNav >= lastYear ? '年線上方' : '年線下方') : 'N/A',
-        monthSlope: monthSlopeUp === null ? 'N/A' : (monthSlopeUp ? '月線上彎' : '月線走弱'),
-        yearSlope: yearSlopeUp === null ? 'N/A' : (yearSlopeUp ? '年線穩定 / 上彎' : '年線走平 / 下彎'),
+        navVsMonth: !maConfig.showMonth ? '已隱藏' : (lastNav !== null && lastMonth !== null ? (lastNav >= lastMonth ? '短期上方' : '短期下方') : 'N/A'),
+        navVsYear: lastNav !== null && lastYear !== null ? (lastNav >= lastYear ? '長期上方' : '長期下方') : 'N/A',
+        monthSlope: !maConfig.showMonth ? '已隱藏' : (monthSlopeUp === null ? 'N/A' : (monthSlopeUp ? '短期上彎' : '短期走弱')),
+        yearSlope: yearSlopeUp === null ? 'N/A' : (yearSlopeUp ? '長期穩定 / 上彎' : '長期走平 / 下彎'),
         currentDrawdown: lastDrawdown === null ? 'N/A' : `${lastDrawdown.toFixed(1)}%`,
         regimeLabel,
         badgeClass,
@@ -3870,7 +3875,7 @@ if (cmlCtx && !chartCML) {
                 tension: 0.22,
                 pointRadius: 0,
                 pointHoverRadius: 2,
-                hidden: overlayMode === 'nav_only'
+                hidden: overlayMode === 'nav_only' || !maConfig.showMonth
             };
             chartHist.data.datasets[2] = {
                 label: maConfig.yearLabel,
