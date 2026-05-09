@@ -149,6 +149,8 @@ frontend_governance: {
     summary: allocationGovernance.value.summary,
     cro_role: allocationGovernance.value.croRole,
     mc_role: allocationGovernance.value.mcRole,
+    risk_profile: governanceThresholds.value.profileLabel,
+    risk_profile_note: governanceThresholds.value.profileNote,
     hard_veto_reasons: croHardVetoFlags.value.map(flag => `${flag.label}: ${flag.detail}`),
     soft_caution_reasons: croSoftCautionFlags.value.map(flag => `${flag.label}: ${flag.detail}`),
     history_integrity_risk: historyIntegrityRisk.value
@@ -158,6 +160,7 @@ frontend_governance: {
             const promptText = `
 [SYSTEM_DIRECTIVE]
 你是 Quant Chief Risk Officer (CRO)，但在這個系統裡你的角色不是資產配置器，而是 whole-portfolio 的 veto layer。
+若 frontend_governance.risk_profile = Aggressive，代表使用者接受高風險，但你仍要排除低品質風險（過度集中、尾部脆弱、buffer 不足、假分散）。
 語氣：冷靜、直接、嚴格資料導向。
 輸出：繁體中文，最多 8 點 bullet，禁止寒暄。
 
@@ -1404,6 +1407,62 @@ const tradeBufferProfile = computed(() => {
     };
 });
 
+
+const governanceThresholds = computed(() => {
+    if (governanceRiskProfile.value === 'aggressive') {
+        return {
+            profileLabel: 'Aggressive',
+            profileNote: '風險偏好者版本：放寬 soft caution 與部分執行門檻，但保留尾部、集中與 buffer 類 hard veto。',
+            hard: {
+                rebalanceAlertCount: 3,
+                pc1: 72,
+                pc3: 93,
+                topRiskPct: 45,
+                stressedCvarMultiple: 1.5,
+                stressedCvarFloor: 16,
+                crisisCorr: 0.9,
+                downsideBeta: 1.8,
+                jdCrashProb: 15,
+                jdTailLoss: 16,
+                evtXi: 0.15
+            },
+            soft: {
+                sharpe: 0.35,
+                psr: 65,
+                dsr: 60,
+                timingDrag: 5,
+                mdd: 28,
+                calmar: 0.25
+            }
+        };
+    }
+    return {
+        profileLabel: 'Neutral',
+        profileNote: '標準版本：soft caution 與 hard veto 按預設門檻運行。',
+        hard: {
+            rebalanceAlertCount: 1,
+            pc1: 65,
+            pc3: 90,
+            topRiskPct: 35,
+            stressedCvarMultiple: 1.25,
+            stressedCvarFloor: 12,
+            crisisCorr: 0.8,
+            downsideBeta: 1.2,
+            jdCrashProb: 10,
+            jdTailLoss: 12,
+            evtXi: 0
+        },
+        soft: {
+            sharpe: 0.6,
+            psr: 80,
+            dsr: 70,
+            timingDrag: 3,
+            mdd: 20,
+            calmar: 0.4
+        }
+    };
+});
+
 const croHardVetoFlags = computed(() => {
     const flags = [];
 
@@ -1420,6 +1479,7 @@ const croHardVetoFlags = computed(() => {
     const jdCrashProb = toNumOrNull(tailStatsLite.value.jdCrashProb);
     const jdTailLoss = absNumOrNull(tailStatsLite.value.jdTailLoss);
     const evtXi = toNumOrNull(tailStatsLite.value.evtShapeXi);
+    const hardCfg = governanceThresholds.value.hard;
 
     if (rebalanceMonitor.value.bufferBlockingRiskBuys) {
         flags.push(makeGovernanceFlag(
@@ -1437,15 +1497,15 @@ const croHardVetoFlags = computed(() => {
         ));
     }
 
-    if (alertCount > 0) {
+    if (alertCount >= hardCfg.rebalanceAlertCount) {
         flags.push(makeGovernanceFlag(
             'REBALANCE_ALERT',
             '再平衡 / drift 過大',
-            `高優先警報 ${alertCount} 筆，代表 whole-portfolio 已明顯偏離。`
+            `高優先警報 ${alertCount} 筆，已超過 ${hardCfg.rebalanceAlertCount} 筆門檻，代表 whole-portfolio 已明顯偏離。`
         ));
     }
 
-    if ((pc1 !== null && pc1 >= 65) || (pc3 !== null && pc3 >= 90)) {
+    if ((pc1 !== null && pc1 >= hardCfg.pc1) || (pc3 !== null && pc3 >= hardCfg.pc3)) {
         flags.push(makeGovernanceFlag(
             'FALSE_DIVERSIFICATION',
             'X-Ray 顯示假分散',
@@ -1453,7 +1513,7 @@ const croHardVetoFlags = computed(() => {
         ));
     }
 
-    if (topRiskPct !== null && topRiskPct >= 35) {
+    if (topRiskPct !== null && topRiskPct >= hardCfg.topRiskPct) {
         flags.push(makeGovernanceFlag(
             'CONCENTRATION',
             '單一風險來源過度集中',
@@ -1461,7 +1521,7 @@ const croHardVetoFlags = computed(() => {
         ));
     }
 
-    if (stressedCvar !== null && stressedCvar >= Math.max((histCvar || 0) * 1.25, 12)) {
+    if (stressedCvar !== null && stressedCvar >= Math.max((histCvar || 0) * hardCfg.stressedCvarMultiple, hardCfg.stressedCvarFloor)) {
         flags.push(makeGovernanceFlag(
             'STRESSED_CVAR',
             'Stressed CVaR 顯著惡化',
@@ -1469,7 +1529,7 @@ const croHardVetoFlags = computed(() => {
         ));
     }
 
-    if (crisisCorr !== null && crisisCorr >= 0.8) {
+    if (crisisCorr !== null && crisisCorr >= hardCfg.crisisCorr) {
         flags.push(makeGovernanceFlag(
             'CRISIS_CORR',
             '危機相關性偏高',
@@ -1477,7 +1537,7 @@ const croHardVetoFlags = computed(() => {
         ));
     }
 
-    if (downsideBeta !== null && downsideBeta >= 1.2) {
+    if (downsideBeta !== null && downsideBeta >= hardCfg.downsideBeta) {
         flags.push(makeGovernanceFlag(
             'DOWNSIDE_BETA',
             'Downside Beta 過高',
@@ -1485,7 +1545,7 @@ const croHardVetoFlags = computed(() => {
         ));
     }
 
-    if ((jdCrashProb !== null && jdCrashProb >= 10) || (jdTailLoss !== null && jdTailLoss >= 12)) {
+    if ((jdCrashProb !== null && jdCrashProb >= hardCfg.jdCrashProb) || (jdTailLoss !== null && jdTailLoss >= hardCfg.jdTailLoss)) {
         flags.push(makeGovernanceFlag(
             'JUMP_RISK',
             'Jump risk 顯著',
@@ -1493,7 +1553,7 @@ const croHardVetoFlags = computed(() => {
         ));
     }
 
-    if (evtXi !== null && evtXi > 0) {
+    if (evtXi !== null && evtXi > hardCfg.evtXi) {
         flags.push(makeGovernanceFlag(
             'EVT_FAT_TAIL',
             'EVT 顯示肥尾',
@@ -1514,6 +1574,7 @@ const croSoftCautionFlags = computed(() => {
     const mwr = toNumOrNull(stats.value.mwr);
     const mdd = absNumOrNull(stats.value.mdd);
     const calmar = toNumOrNull(stats.value.calmar);
+    const softCfg = governanceThresholds.value.soft;
 
     if (historyIntegrityRisk.value.lowConfidence) {
         flags.push(makeGovernanceFlag(
@@ -1523,7 +1584,7 @@ const croSoftCautionFlags = computed(() => {
         ));
     }
 
-    if (sharpe !== null && sharpe < 0.6) {
+    if (sharpe !== null && sharpe < softCfg.sharpe) {
         flags.push(makeGovernanceFlag(
             'LOW_SHARPE',
             '歷史 Sharpe 偏弱',
@@ -1531,7 +1592,7 @@ const croSoftCautionFlags = computed(() => {
         ));
     }
 
-    if (psr !== null && psr < 80) {
+    if (psr !== null && psr < softCfg.psr) {
         flags.push(makeGovernanceFlag(
             'LOW_PSR',
             '歷史 PSR 可信度不足',
@@ -1539,7 +1600,7 @@ const croSoftCautionFlags = computed(() => {
         ));
     }
 
-    if (dsr !== null && dsr < 70) {
+    if (dsr !== null && dsr < softCfg.dsr) {
         flags.push(makeGovernanceFlag(
             'LOW_DSR',
             'MC DSR 偏弱',
@@ -1547,7 +1608,7 @@ const croSoftCautionFlags = computed(() => {
         ));
     }
 
-    if (twr !== null && mwr !== null && mwr < (twr - 3)) {
+    if (twr !== null && mwr !== null && mwr < (twr - softCfg.timingDrag)) {
         flags.push(makeGovernanceFlag(
             'TIMING_DRAG',
             'MWR 明顯落後 TWR',
@@ -1555,7 +1616,7 @@ const croSoftCautionFlags = computed(() => {
         ));
     }
 
-    if (mdd !== null && mdd >= 20) {
+    if (mdd !== null && mdd >= softCfg.mdd) {
         flags.push(makeGovernanceFlag(
             'DEEP_MDD',
             '歷史回撤偏深',
@@ -1563,7 +1624,7 @@ const croSoftCautionFlags = computed(() => {
         ));
     }
 
-    if (calmar !== null && calmar < 0.4) {
+    if (calmar !== null && calmar < softCfg.calmar) {
         flags.push(makeGovernanceFlag(
             'LOW_CALMAR',
             'Calmar 偏弱',
@@ -1592,7 +1653,9 @@ const allocationGovernance = computed(() => {
         softFlags,
         primaryReasons,
         historyIntegrityRisk: historyIntegrityRisk.value,
-        deterministicNote: '這一層是 deterministic governance，不靠 prompt 自由發揮。'
+        deterministicNote: `這一層是 deterministic governance，不靠 prompt 自由發揮。風險偏好設定：${governanceThresholds.value.profileLabel}。`,
+        riskProfileLabel: governanceThresholds.value.profileLabel,
+        riskProfileNote: governanceThresholds.value.profileNote
     };
 
     if (mode === 'CRO_VETO') {
@@ -1602,8 +1665,8 @@ const allocationGovernance = computed(() => {
             badgeText: 'CRO 否決啟動',
             badgeClass: 'border-red-500/30 bg-red-500/10 text-red-300',
             panelClass: 'border-red-500/25 bg-red-500/5',
-            headline: '風險紅燈，MC 僅供參考。',
-            summary: '整體投組先由 CRO 否決層接管；先處理 buffer / tail / concentration / drift。',
+            headline: governanceRiskProfile.value === 'aggressive' ? '即使偏 aggressive，這裡仍屬硬 veto，MC 僅供參考。' : '風險紅燈，MC 僅供參考。',
+            summary: governanceRiskProfile.value === 'aggressive' ? '你可以偏好高風險，但這裡屬於低品質風險：先處理 buffer / tail / concentration / drift，再談加碼。' : '整體投組先由 CRO 否決層接管；先處理 buffer / tail / concentration / drift。',
             croRole: 'CRO = 否決層（整體投組風險裁決）',
             mcRole: 'MC = 配置器，但目前不可主導加風險'
         };
@@ -1616,8 +1679,8 @@ const allocationGovernance = computed(() => {
             badgeText: 'CRO 警戒 / MC 可主導',
             badgeClass: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
             panelClass: 'border-amber-500/25 bg-amber-500/5',
-            headline: '可由 MC 主導 risky sleeve，但 CRO 保留警告。',
-            summary: '沒有硬 veto，但歷史 stats 或資料完整性不足，需降低自信，不要把 soft evidence 當成鐵律。',
+            headline: governanceRiskProfile.value === 'aggressive' ? 'Aggressive profile 已放寬門檻；可由 MC 主導 risky sleeve，但 CRO 保留警告。' : '可由 MC 主導 risky sleeve，但 CRO 保留警告。',
+            summary: governanceRiskProfile.value === 'aggressive' ? '已採用風險偏好者版本門檻；沒有硬 veto，但 soft evidence 仍提醒你別把 alpha 或 Sharpe 當免死金牌。' : '沒有硬 veto，但歷史 stats 或資料完整性不足，需降低自信，不要把 soft evidence 當成鐵律。',
             croRole: 'CRO = 提醒整體投組風險，不搶單一資產權重',
             mcRole: 'MC = 風險資產配置器，可作主配置'
         };
@@ -1629,14 +1692,14 @@ const allocationGovernance = computed(() => {
         badgeText: 'MC 主導',
         badgeClass: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
         panelClass: 'border-emerald-500/25 bg-emerald-500/5',
-        headline: '無硬風險阻礙，由 MC 主導配置。',
-        summary: 'CRO 未見 hard veto；whole-portfolio 可以放行，risky sleeve 交由 MC 最佳化。',
+        headline: governanceRiskProfile.value === 'aggressive' ? 'Aggressive profile 下無硬風險阻礙，由 MC 主導配置。' : '無硬風險阻礙，由 MC 主導配置。',
+        summary: governanceRiskProfile.value === 'aggressive' ? '已採用風險偏好者版本門檻；CRO 未見 hard veto，可把高風險預算交由 MC 在 sleeve 內做最佳化。' : 'CRO 未見 hard veto；whole-portfolio 可以放行，risky sleeve 交由 MC 最佳化。',
         croRole: 'CRO = 監督層，不主動搶配置權',
         mcRole: 'MC = 風險資產配置器，主導權重建議'
     };
 });
 
-const governanceLogicLine = 'Whole portfolio 先由 CRO 判定可否承擔風險；risk assets 內部配置才交給 MC。';
+const governanceLogicLine = computed(() => governanceRiskProfile.value === 'aggressive' ? '你可以承擔高風險，但 CRO 仍負責排除低品質風險；whole portfolio 先過 CRO，再把 risky sleeve 交給 MC。' : 'Whole portfolio 先由 CRO 判定可否承擔風險；risk assets 內部配置才交給 MC。');
 
 const historyIntegrityBadge = computed(() => {
     const reasons = historyIntegrityRisk.value.reasons || [];
@@ -1750,14 +1813,14 @@ const riskRegimeStrip = computed(() => {
         return {
             label: 'Risk Regime · Veto',
             class: 'border-red-500/30 bg-red-500/10 text-red-300',
-            note: 'Whole portfolio 先由 CRO 接管，暫停新增風險。'
+            note: governanceRiskProfile.value === 'aggressive' ? '即使是 aggressive profile，這裡仍屬硬 veto：先降集中與尾部風險，再談新增風險。' : 'Whole portfolio 先由 CRO 接管，暫停新增風險。'
         };
     }
     if (croDecisionMode.value === 'CRO_CAUTION_MC_ALLOWED') {
         return {
             label: 'Risk Regime · Caution',
             class: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
-            note: 'MC 可配置 risky sleeve，但要保留更寬的 trade buffer。'
+            note: governanceRiskProfile.value === 'aggressive' ? '已放寬為 aggressive 門檻；MC 可配置 risky sleeve，但仍要保留 trade buffer。' : 'MC 可配置 risky sleeve，但要保留更寬的 trade buffer。'
         };
     }
     return {
@@ -2909,7 +2972,7 @@ async function saveData() {
             nextTick(() => { runMonteCarlo(); });
         }
 
-        const mcRisk = ref('neutral'); const macroRegime = ref('Normal'); const enableBlackSwan = ref(false); const enableInflation = ref(false);
+        const mcRisk = ref('neutral'); const macroRegime = ref('Normal'); const enableBlackSwan = ref(false); const enableInflation = ref(false); const governanceRiskProfile = ref('aggressive');
         const bufferPresets = [0, 5, 8, 10];
 
 function clampLiquidityBuffer(val) {
