@@ -892,7 +892,7 @@
             <div class="terminal-mini-value">{{ navTrendSummary.yearSlope }}</div>
         </div>
         <div class="terminal-mini-stat soft sm:col-span-2">
-            <div class="terminal-mini-label">Current DD</div>
+            <div class="terminal-mini-label">目前距前高跌幅</div>
             <div class="terminal-mini-value">{{ navTrendSummary.currentDrawdown }}</div>
         </div>
     </div>
@@ -2624,24 +2624,13 @@
        </div>
 
        <div>
-           <label class="text-xs text-gray-400 mb-2 block">快捷動作</label>
-           <div class="grid grid-cols-3 gap-2 mb-3">
-               <button @click="applyQuickTx('Deposit')" class="p-2 rounded-lg text-xs font-bold border border-green-500/20 bg-green-500/10 text-green-300">入金</button>
-               <button @click="applyQuickTx('Withdraw')" class="p-2 rounded-lg text-xs font-bold border border-red-500/20 bg-red-500/10 text-red-300">出金</button>
-               <button @click="applyQuickTx('Buy')" class="p-2 rounded-lg text-xs font-bold border border-yellow-500/20 bg-yellow-500/10 text-yellow-300">買入</button>
-               <button @click="applyQuickTx('Sell')" class="p-2 rounded-lg text-xs font-bold border border-purple-500/20 bg-purple-500/10 text-purple-300">賣出</button>
-               <button @click="applyQuickTx('Expense')" class="p-2 rounded-lg text-xs font-bold border border-white/10 bg-black/20 text-gray-300">手續費 / 費用</button>
-               <button @click="currentTab='history'" class="p-2 rounded-lg text-xs font-bold border border-cyan-500/20 bg-cyan-500/10 text-cyan-300">補快照</button>
-           </div>
            <label class="text-xs text-gray-400 mb-2 block">3. 動作</label>
-           <div class="grid grid-cols-2 gap-2" v-if="txIntent !== 'adjustment'">
-               <button v-for="option in txTypeOptions"
-                       :key="option.value"
-                       @click="txForm.type = option.value"
-                       class="p-2 rounded-lg text-xs font-bold border transition"
-                       :class="txForm.type===option.value ? option.class : 'border-white/10 bg-black/20 text-gray-400'">
-                   {{ option.label }}
-               </button>
+           <div v-if="txIntent !== 'adjustment'">
+               <select v-model="txForm.type" class="w-full input-dark p-2 rounded text-xs">
+                   <option v-for="option in txTypeOptions" :key="option.value" :value="option.value">
+                       {{ option.label }}
+                   </option>
+               </select>
            </div>
            <div v-else class="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs text-red-300 font-bold">
                Expense / 校正：僅在真的需要人工修帳時使用。
@@ -2749,24 +2738,6 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-2 mt-3 text-xs">
-            <div class="rounded-lg border border-green-500/20 bg-green-500/10 px-3 py-2">
-                <div class="text-green-300 font-bold">Deposit</div>
-                <div class="text-gray-400 mt-1">外部入金</div>
-            </div>
-            <div class="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2">
-                <div class="text-red-300 font-bold">Withdraw</div>
-                <div class="text-gray-400 mt-1">外部出金</div>
-            </div>
-            <div class="rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-3 py-2">
-                <div class="text-yellow-300 font-bold">Buy</div>
-                <div class="text-gray-400 mt-1">買入資產</div>
-            </div>
-            <div class="rounded-lg border border-purple-500/20 bg-purple-500/10 px-3 py-2">
-                <div class="text-purple-300 font-bold">Sell</div>
-                <div class="text-gray-400 mt-1">賣出資產</div>
-            </div>
-        </div>
     </div>
 
     <div class="space-y-3 text-xs leading-relaxed">
