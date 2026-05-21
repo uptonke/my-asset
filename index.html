@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>股票紀錄 v11.8 (UI/UX Command Center)</title>
+    <title>股票紀錄 v11.7 (Chaos UI Ready)</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="assets/js/00-tailwind-config.js"></script>
@@ -69,7 +69,7 @@
                 <div class="min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
                         <h1 class="font-bold text-lg md:text-xl tracking-wide text-white truncate">Stock Portfolio</h1>
-                        <span class="text-xs bg-yellow-600 px-2 py-0.5 rounded text-black font-bold">v11.8</span>
+                        <span class="text-xs bg-yellow-600 px-2 py-0.5 rounded text-black font-bold">v11.7</span>
                         <i v-if="isDbSyncing" class="fas fa-cloud-upload-alt animate-bounce text-blue-400 text-sm" title="雲端同步中"></i>
                     </div>
                     <p class="text-xs text-gray-400 mt-1">投資儀表板 / Portfolio Dashboard</p>
@@ -104,47 +104,40 @@
     <div class="px-4 md:px-6 py-3">
         <div class="max-w-[1820px] 2xl:max-w-[2100px] mx-auto flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
             
-            <nav class="flex gap-2 overflow-x-auto whitespace-nowrap no-scrollbar rounded-2xl bg-black/15 border border-white/10 p-1.5 ux-tabbar">
+            <nav class="flex gap-2 overflow-x-auto whitespace-nowrap no-scrollbar rounded-2xl bg-black/15 border border-white/10 p-1.5">
     <button @click="currentTab='summary'"
-            :class="currentTab==='summary' ? 'ux-tab-active' : 'ux-tab-inactive'"
-            class="ux-tab-btn">
-        <i class="fas fa-compass text-xs"></i>
-        <span>今日總覽</span>
+            :class="currentTab==='summary' ? 'bg-white text-slate-900 shadow font-bold' : 'text-gray-300 hover:text-white hover:bg-white/5'"
+            class="px-4 py-2.5 rounded-xl transition text-sm flex items-center gap-2">
+        <i class="fas fa-house text-xs"></i>
+        <span>總覽</span>
     </button>
 
     <button @click="currentTab='holdings'"
-            :class="currentTab==='holdings' ? 'ux-tab-active' : 'ux-tab-inactive'"
-            class="ux-tab-btn">
+            :class="currentTab==='holdings' ? 'bg-white text-slate-900 shadow font-bold' : 'text-gray-300 hover:text-white hover:bg-white/5'"
+            class="px-4 py-2.5 rounded-xl transition text-sm flex items-center gap-2">
         <i class="fas fa-layer-group text-xs"></i>
-        <span>持倉配置</span>
+        <span>庫存</span>
     </button>
 
-    <button @click="currentTab='performance'"
-            :class="currentTab==='performance' ? 'ux-tab-active' : 'ux-tab-inactive'"
-            class="ux-tab-btn">
-        <i class="fas fa-chart-line text-xs"></i>
-        <span>績效回顧</span>
+    <button @click="currentTab='advanced'"
+            :class="currentTab==='advanced' ? 'bg-white text-slate-900 shadow font-bold' : 'text-gray-300 hover:text-white hover:bg-white/5'"
+            class="px-4 py-2.5 rounded-xl transition text-sm flex items-center gap-2">
+        <i class="fas fa-chart-network text-xs"></i>
+        <span>分析</span>
     </button>
 
-    <button @click="currentTab='risk'"
-            :class="currentTab==='risk' ? 'ux-tab-active' : 'ux-tab-inactive'"
-            class="ux-tab-btn">
-        <i class="fas fa-shield-halved text-xs"></i>
-        <span>風險分析</span>
+    <button @click="currentTab='analytics'"
+            :class="currentTab==='analytics' ? 'bg-white text-slate-900 shadow font-bold' : 'text-gray-300 hover:text-white hover:bg-white/5'"
+            class="px-4 py-2.5 rounded-xl transition text-sm flex items-center gap-2">
+        <i class="fas fa-brain text-xs"></i>
+        <span>量化</span>
     </button>
 
     <button @click="currentTab='ledger'"
-            :class="currentTab==='ledger' ? 'ux-tab-active' : 'ux-tab-inactive'"
-            class="ux-tab-btn">
+            :class="currentTab==='ledger' ? 'bg-white text-slate-900 shadow font-bold' : 'text-gray-300 hover:text-white hover:bg-white/5'"
+            class="px-4 py-2.5 rounded-xl transition text-sm flex items-center gap-2">
         <i class="fas fa-book text-xs"></i>
-        <span>交易記帳</span>
-    </button>
-
-    <button @click="currentTab='system'"
-            :class="currentTab==='system' ? 'ux-tab-active' : 'ux-tab-inactive'"
-            class="ux-tab-btn">
-        <i class="fas fa-database text-xs"></i>
-        <span>系統資料</span>
+        <span>記帳</span>
     </button>
 </nav>
 
@@ -183,158 +176,753 @@
         <div class="max-w-[1820px] 2xl:max-w-[2100px] mx-auto min-h-full space-y-6 pb-20">
 
             <!-- ===== Summary Tab ===== -->
-            <section v-show="currentTab === 'summary'" class="animate-fade-in space-y-6 ux-dashboard">
-                <div class="ux-page-kicker">Decision Command Center</div>
-                <div class="ux-hero-grid">
-                    <div class="glass panel-card ux-decision-hero overflow-hidden">
-                        <div class="ux-card-header">
-                            <div>
-                                <div class="ux-eyebrow">今日總覽</div>
-                                <h2 class="ux-hero-title">{{ decisionCenter.headline }}</h2>
-                                <p class="ux-hero-subtitle">{{ decisionCenter.subline }}</p>
-                            </div>
-                            <div class="ux-status-pill" :class="allocationGovernance.badgeClass">
-                                <i class="fas" :class="allocationGovernance.icon"></i>
-                                {{ allocationGovernance.badgeText }}
+            <section v-show="currentTab === 'summary'" class="animate-fade-in space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-5">
+                    
+                    <!-- 1. 總資產淨值 (NAV) -->
+                    <div class="glass p-5 rounded-2xl border border-white/10 hover:border-yellow-500/30 transition-all duration-300">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="text-xs text-gray-400 font-bold uppercase tracking-wider">總資產淨值 (NAV)</div>
+                            <div class="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
+                                <i class="fas fa-wallet text-yellow-400"></i>
                             </div>
                         </div>
-
-                        <div class="ux-metric-rail">
-                            <div v-for="metric in decisionCenter.metrics" :key="metric.label" class="ux-mini-metric">
-                                <div class="ux-mini-label">{{ metric.label }}</div>
-                                <div class="ux-mini-value">{{ metric.value }}</div>
-                            </div>
+                        <div class="text-2xl md:text-3xl font-bold text-white font-mono leading-none">
+                            NT$ {{ formatNumber(totalPortfolioNav) }}
                         </div>
-
-                        <div class="ux-action-row">
-                            <button v-for="action in decisionCenter.quickActions" :key="action.label"
-                                    @click="goToTab(action.tab)"
-                                    class="ux-action-btn"
-                                    :class="action.class">
-                                {{ action.label }}
-                            </button>
+                        <div class="text-[10px] text-gray-500 mt-3 flex justify-between font-bold">
+                            <span>股票市值: {{ formatNumber(totalStockValueTwd) }}</span>
                         </div>
                     </div>
 
-                    <div class="glass panel-card ux-now-card">
-                        <div class="ux-eyebrow">Primary Alert</div>
-                        <div v-if="decisionCenter.topAlert" class="space-y-3">
-                            <div class="flex items-start gap-3">
-                                <div class="ux-alert-dot" :class="decisionCenter.topAlert.badgeClass"></div>
-                                <div>
-                                    <div class="text-white font-black text-lg leading-tight">{{ decisionCenter.topAlert.title }}</div>
-                                    <p class="text-sm text-gray-400 mt-1 leading-relaxed">{{ decisionCenter.topAlert.detail }}</p>
-                                </div>
-                            </div>
-                            <div class="rounded-2xl border border-white/10 bg-black/20 p-3 text-xs text-gray-300">
-                                <span class="text-gray-500">建議處理：</span>
-                                <span class="font-bold text-white">{{ decisionCenter.topAlert.suggestedAction }}</span>
-                            </div>
-                            <button @click="goToTab(decisionCenter.topAlert.tab)" class="w-full ux-secondary-btn">
-                                {{ decisionCenter.topAlert.ctaLabel }}
-                            </button>
-                        </div>
-                        <div v-else class="text-sm text-gray-400">目前沒有需要立即處理的警報。</div>
-                    </div>
-                </div>
+                    <!-- 2. 閒置現金防線 (Cash Balance) -->
+<div class="glass p-5 rounded-2xl border transition-all duration-300 relative overflow-hidden"
+     :class="isCashAlert ? 'border-red-500/50 bg-red-900/20 shadow-[0_0_15px_rgba(239,68,68,0.2)]' : 'border-white/10 hover:border-cyan-500/30'">
 
-                <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-                    <div class="ux-kpi-card">
-                        <div class="ux-kpi-label">NAV / 總資產</div>
-                        <div class="ux-kpi-value">{{ formatNumber(totalPortfolioNav) }}</div>
-                        <div class="ux-kpi-note">含現金與庫存市值</div>
+    <div v-if="isCashAlert" class="absolute inset-0 bg-red-500/10 animate-pulse pointer-events-none"></div>
+
+    <div class="relative z-10 flex items-center justify-between mb-3">
+        <div class="text-xs font-bold uppercase tracking-wider flex items-center gap-1"
+             :class="isCashAlert ? 'text-red-400' : 'text-cyan-400'">
+            <i v-if="isCashAlert" class="fas fa-triangle-exclamation animate-bounce"></i>
+            閒置現金 (Cash)
+        </div>
+
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center border"
+             :class="isCashAlert ? 'bg-red-500/20 border-red-500/30' : 'bg-cyan-500/10 border-cyan-500/20'">
+            <i class="fas fa-money-bill-wave"
+               :class="isCashAlert ? 'text-red-400' : 'text-cyan-400'"></i>
+        </div>
+    </div>
+
+    <div class="relative z-10 text-2xl md:text-3xl font-bold font-mono leading-none"
+         :class="isCashNegative ? 'text-red-400' : 'text-cyan-300'">
+        NT$ {{ formatNumber(cashBalance) }}
+    </div>
+
+    <div class="relative z-10 text-[10px] mt-3 font-bold"
+         :class="isCashAlert ? 'text-red-400' : 'text-gray-500'">
+        {{
+            isCashNegative
+                ? '⚠️ 餘額為負，請檢查 Ledger！'
+                : (isCashTooHigh
+                    ? '⚠️ 比例大於50%，請確認是否漏記出金'
+                    : '由流水帳自動結算')
+        }}
+    </div>
+</div>
+
+                    <!-- 3. 股票總成本 -->
+                    <div class="glass p-5 rounded-2xl border border-white/10 hover:border-emerald-500/30 transition-all duration-300">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="text-xs text-gray-400 font-bold uppercase tracking-wider">股票總成本</div>
+                            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                                <i class="fas fa-coins text-emerald-400"></i>
+                            </div>
+                        </div>
+                        <div class="text-2xl md:text-3xl font-bold text-white font-mono leading-none">
+                            NT$ {{ formatNumber(totalStockCostTwd) }}
+                        </div>
+                        <div class="text-[10px] text-gray-500 mt-3 font-bold">目前持倉的累積本金</div>
                     </div>
-                    <div class="ux-kpi-card" :class="isCashAlert ? 'ux-kpi-warn' : ''">
-                        <div class="ux-kpi-label">現金水位</div>
-                        <div class="ux-kpi-value">{{ formatNumber(cashBalance) }}</div>
-                        <div class="ux-kpi-note">{{ isCashNegative ? '負現金，需修正' : (isCashTooHigh ? '現金偏高' : '現金正常') }}</div>
-                    </div>
-                    <div class="ux-kpi-card">
-                        <div class="ux-kpi-label">庫存市值</div>
-                        <div class="ux-kpi-value">{{ formatNumber(totalStockValueTwd) }}</div>
-                        <div class="ux-kpi-note">不含現金</div>
-                    </div>
-                    <div class="ux-kpi-card">
-                        <div class="ux-kpi-label">未實現損益</div>
-                        <div class="ux-kpi-value" :class="totalStockUnrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
+
+                    <!-- 4. 未實現損益 -->
+                    <div class="glass p-5 rounded-2xl border border-white/10 transition-all duration-300"
+                         :class="totalStockUnrealizedPL >= 0 ? 'hover:border-red-500/30' : 'hover:border-green-500/30'">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="text-xs text-gray-400 font-bold uppercase tracking-wider">股票未實現損益</div>
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center border"
+                                 :class="totalStockUnrealizedPL >= 0 ? 'bg-red-500/10 border-red-500/20' : 'bg-green-500/10 border-green-500/20'">
+                                <i class="fas fa-chart-line" :class="totalStockUnrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'"></i>
+                            </div>
+                        </div>
+                        <div class="text-2xl md:text-3xl font-bold font-mono leading-none"
+                             :class="totalStockUnrealizedPL >= 0 ? 'text-red-400' : 'text-green-400'">
                             {{ totalStockUnrealizedPL >= 0 ? '+' : '' }}{{ formatNumber(totalStockUnrealizedPL) }}
                         </div>
-                        <div class="ux-kpi-note">{{ formatPercent(totalStockReturnRate) }}</div>
+                        <div class="mt-3 inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold border"
+                             :class="totalStockUnrealizedPL >= 0 ? 'text-red-400 border-red-500/20 bg-red-500/10' : 'text-green-400 border-green-500/20 bg-green-500/10'">
+                            報酬率 {{ totalStockReturnRate }}%
+                        </div>
                     </div>
-                    <div class="ux-kpi-card">
-                        <div class="ux-kpi-label">警報數</div>
-                        <div class="ux-kpi-value">{{ alertCenterItems.length }}</div>
-                        <div class="ux-kpi-note">Critical / Actionable / Info</div>
+
+                    <!-- 5. 類別配置 -->
+                    <div class="glass p-5 rounded-2xl border border-white/10 md:col-span-2 lg:col-span-3 xl:col-span-1 flex flex-col justify-center">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="text-xs text-gray-400 font-bold uppercase tracking-wider">類別配置</div>
+                            <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+                                <i class="fas fa-chart-pie text-purple-400"></i>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div v-for="(val, cat) in categoryTotals" :key="cat">
+                                <div class="flex justify-between text-xs mb-1.5">
+                                    <span class="text-white font-medium">{{ cat }}</span>
+                                    <span class="font-mono text-gray-300">{{ formatPercent(val / totalStockValueTwd) }}</span>
+                                </div>
+                                <div class="bg-gray-800 h-2 rounded-full overflow-hidden">
+                                    <div class="h-full rounded-full transition-all duration-500"
+                                         :style="{ width: ((val / totalStockValueTwd) * 100) + '%', backgroundColor: getCategoryColorCode(cat) }"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="ux-kpi-card">
-                        <div class="ux-kpi-label">資料信心</div>
-                        <div class="ux-kpi-value">{{ historyIntegrityBadge.label }}</div>
-                        <div class="ux-kpi-note">{{ enrichedHistory.length }} snapshots</div>
+
+                </div>
+
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6 items-start summary-exec-grid">
+    <div class="glass panel-card xl:col-span-2 overflow-hidden border-yellow-500/20 executive-command-card">
+        <div class="p-5 md:p-6 border-b border-white/10 bg-yellow-500/5">
+            <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                <div>
+                    <div class="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border"
+                         :class="allocationGovernance.badgeClass">
+                        <i class="fas fa-compass-drafting"></i>
+                        今日決策中心
+                    </div>
+                    <h3 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+                        <i class="fas fa-crosshairs text-yellow-400"></i>
+                        今日決策中心
+                    </h3>
+                    <p class="text-sm text-gray-200 mt-2 leading-relaxed">{{ decisionCenter.headline }}</p>
+                    <p class="text-xs text-gray-400 mt-2 leading-relaxed">{{ decisionCenter.subline }}</p>
+                </div>
+                <div class="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 min-w-[220px]">
+                    <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-2">最高優先焦點</div>
+                    <div class="text-sm font-bold text-white">{{ decisionCenter.topAlert?.title || '目前無急迫焦點' }}</div>
+                    <div class="text-[11px] text-gray-400 mt-2 leading-relaxed">{{ decisionCenter.topAlert?.detail || '治理層、現金層與再平衡層暫時穩定。' }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="p-5 md:p-6 space-y-4 executive-command-body">
+            <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 executive-kpi-rail">
+                <div v-for="metric in decisionCenter.metrics" :key="metric.label" class="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                    <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-2">{{ metric.label }}</div>
+                    <div class="text-sm font-bold text-white font-mono">{{ metric.value }}</div>
+                </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button v-for="action in decisionCenter.quickActions"
+                        :key="action.label"
+                        @click="goToTab(action.tab)"
+                        class="px-3 py-2 rounded-xl text-xs font-bold border transition hover:scale-[1.02]"
+                        :class="action.class">
+                    {{ action.label }}
+                </button>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 ios-decision-grid">
+                <div class="ios-story-card">
+                    <div class="ios-story-label">{{ decisionCenter.scriptTitle }}</div>
+                    <div class="ios-story-title">先不要跟市場拼拳，先把治理順序排對。</div>
+                    <p class="ios-story-copy">{{ decisionCenter.scriptSummary }}</p>
+                </div>
+                <div class="ios-story-card">
+                    <div class="ios-story-label">{{ decisionCenter.whyNowTitle }}</div>
+                    <p class="ios-story-copy mb-3">{{ decisionCenter.whyNowSummary }}</p>
+                    <div v-if="allocationGovernance.primaryReasons.length" class="space-y-2">
+                        <div v-for="reason in allocationGovernance.primaryReasons.slice(0, 3)" :key="reason.code" class="ios-reason-chip">
+                            <div class="ios-reason-title">{{ reason.label }}</div>
+                            <div class="ios-reason-detail">{{ reason.detail }}</div>
+                        </div>
+                    </div>
+                    <div v-else class="ios-reason-chip">
+                        <div class="ios-reason-title">目前無額外阻礙</div>
+                        <div class="ios-reason-detail">治理層、現金層與再平衡層暫時穩定。</div>
+                    </div>
+                </div>
+                <div class="ios-story-card">
+                    <div class="ios-story-label">先做哪三步</div>
+                    <div class="space-y-2.5">
+                        <div v-for="(step, idx) in decisionCenter.nextSteps" :key="`${idx}-${step}`" class="ios-step">
+                            <div class="ios-step-index">{{ idx + 1 }}</div>
+                            <div class="ios-step-text">{{ step }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-3 rounded-2xl border border-white/10 bg-black/20 p-4 avoid-card">
+                <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-3">本次不該做什麼</div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <div v-for="item in doNotDoList" :key="item" class="rounded-xl border border-white/8 bg-white/[0.025] px-4 py-3 text-sm text-gray-200">{{ item }}</div>
+                </div>
+            </div>
+
+            <div class="rounded-2xl border border-white/10 bg-black/20 p-4 md:p-5 decision-allocation-card">
+                <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-4">
+                    <div>
+                        <div class="text-[11px] uppercase tracking-[0.18em] text-yellow-400 font-bold">Asset Allocation</div>
+                        <div class="text-sm md:text-base font-bold text-white mt-1">資產配置</div>
+                        <div class="text-xs text-gray-400 mt-2">把配置圖塞回今日決策中心內，先看警報與治理，再看目前風險資產分布。</div>
+                    </div>
+                    <div class="text-[11px] text-gray-500">決策中心內嵌配置圖</div>
+                </div>
+                <div class="relative min-h-[320px] md:min-h-[380px]">
+                    <canvas id="allocationChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="glass panel-card overflow-hidden border-cyan-500/20 executive-alert-card">
+        <div class="p-5 md:p-6 border-b border-white/10 bg-cyan-500/5">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <div class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+                        <i class="fas fa-bell text-cyan-400"></i>
+                        警報中心
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2">不是把所有數據攤開，而是先把最該動手的事排前面。</p>
+                </div>
+                <div class="text-[11px] text-gray-500 font-mono">{{ alertCenterItems.length }} items</div>
+            </div>
+        </div>
+        <div class="p-4 md:p-5 space-y-4">
+            <div v-for="section in alertCenterSections" :key="section.key" class="space-y-3">
+                <div class="alert-section-title">{{ section.label }}</div>
+                <div v-for="item in section.items" :key="item.id" class="rounded-2xl border p-4" :class="item.panelClass">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-2 mb-2">
+                                <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[10px] font-bold border" :class="item.badgeClass">
+                                    <i class="fas" :class="item.icon"></i>
+                                    {{ item.tone.toUpperCase() }}
+                                </div>
+                                <span class="alert-source-chip">{{ item.sourceLabel }}</span>
+                                <span class="alert-action-chip">{{ item.suggestedAction }}</span>
+                            </div>
+                            <div class="text-sm font-bold text-white">{{ item.title }}</div>
+                            <div class="text-xs text-gray-300 mt-2 leading-relaxed">{{ item.detail }}</div>
+                        </div>
+                        <button @click="goToTab(item.tab)" class="shrink-0 text-[11px] px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/[0.04] text-gray-200 hover:text-white hover:bg-white/10 transition">
+                            {{ item.ctaLabel }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+                <div class="glass panel-card mt-6 overflow-hidden institutional-governance-shell" :class="allocationGovernance.panelClass">
+                    <div class="p-5 md:p-6 border-b border-white/10">
+                        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                            <div>
+                                <div class="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border"
+                                     :class="allocationGovernance.badgeClass">
+                                    <i class="fas" :class="allocationGovernance.icon"></i>
+                                    {{ allocationGovernance.badgeText }}
+                                </div>
+                                <h3 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+                                    <i class="fas fa-sitemap text-white/80"></i>
+                                    MC / CRO 決策權治理
+                                </h3>
+                                <p class="text-xs md:text-sm text-gray-300 mt-2 leading-relaxed">
+                                    {{ allocationGovernance.headline }}
+                                </p>
+                                <p class="text-[11px] text-gray-500 mt-2">
+                                    {{ allocationGovernance.deterministicNote }}
+                                </p>
+                            </div>
+
+                            <div class="text-right">
+                                <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-1">決策模式</div>
+                                <div class="font-mono text-sm font-bold text-white">{{ allocationGovernance.mode }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-5 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-2">CRO 角色</div>
+                            <div class="text-sm font-bold text-white">{{ allocationGovernance.croRole }}</div>
+                        </div>
+                        <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-2">MC 角色</div>
+                            <div class="text-sm font-bold text-white">{{ allocationGovernance.mcRole }}</div>
+                        </div>
+                        <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-2">整體投組裁決</div>
+                            <div class="text-sm text-gray-200 leading-relaxed">{{ allocationGovernance.summary }}</div>
+                        </div>
+                    </div>
+
+                    <div class="px-5 md:px-6 pb-4">
+                        <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-2">Governance Logic</div>
+                            <div class="text-sm text-gray-200 leading-relaxed">{{ governanceLogicLine }}</div>
+                        </div>
+                    </div>
+
+                    <div class="px-5 md:px-6 pb-5 md:pb-6 grid grid-cols-1 xl:grid-cols-3 gap-4">
+                        <div class="evidence-card">
+                            <div class="evidence-title text-red-300">Hard Veto Signals</div>
+                            <div v-if="allocationGovernance.hardFlags.length" class="space-y-2 mt-3">
+                                <div v-for="reason in allocationGovernance.hardFlags.slice(0, 4)" :key="reason.code" class="evidence-item evidence-item-hard">
+                                    <div class="font-bold text-white mb-1">{{ reason.label }}</div>
+                                    <div class="text-gray-300 leading-relaxed">{{ reason.detail }}</div>
+                                </div>
+                            </div>
+                            <div v-else class="text-sm text-emerald-300 mt-3">目前沒有 hard veto。</div>
+                        </div>
+                        <div class="evidence-card">
+                            <div class="evidence-title text-amber-300">Soft Caution Signals</div>
+                            <div v-if="allocationGovernance.softFlags.length" class="space-y-2 mt-3">
+                                <div v-for="reason in allocationGovernance.softFlags.slice(0, 4)" :key="reason.code" class="evidence-item evidence-item-soft">
+                                    <div class="font-bold text-white mb-1">{{ reason.label }}</div>
+                                    <div class="text-gray-300 leading-relaxed">{{ reason.detail }}</div>
+                                </div>
+                            </div>
+                            <div v-else class="text-sm text-emerald-300 mt-3">目前沒有額外 soft caution。</div>
+                        </div>
+                        <div class="evidence-card">
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="evidence-title text-cyan-300">History Integrity</div>
+                                <span class="holding-governance-badge" :class="historyIntegrityBadge.badgeClass">{{ historyIntegrityBadge.label }}</span>
+                            </div>
+                            <div class="text-sm text-gray-200 leading-relaxed mt-3">{{ historyIntegrityBadge.detail }}</div>
+                            <ul v-if="historyIntegrityRisk.reasons.length" class="evidence-list mt-3">
+                                <li v-for="reason in historyIntegrityRisk.reasons.slice(0, 4)" :key="reason">{{ reason }}</li>
+                            </ul>
+                            <div v-else class="text-sm text-emerald-300 mt-3">歷史樣本暫時沒有明顯污染跡象。</div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
-                    <div class="glass panel-card xl:col-span-2 overflow-hidden">
-                        <div class="ux-card-header border-b border-white/10 pb-4 mb-4">
-                            <div>
-                                <div class="ux-eyebrow">Action Queue</div>
-                                <h3 class="panel-title"><i class="fas fa-list-check text-yellow-400"></i> 今日待辦與警報</h3>
-                                <p class="panel-subtitle">只保留會影響交易、現金、持倉漂移或資料可信度的項目。</p>
-                            </div>
-                        </div>
-                        <div class="space-y-4">
-                            <div v-for="section in alertCenterSections" :key="section.key" class="space-y-2">
-                                <div class="ux-section-label">{{ section.label }}</div>
-                                <div v-for="item in section.items" :key="item.id" class="ux-alert-row" :class="item.panelClass">
-                                    <div class="min-w-0">
-                                        <div class="font-bold text-white flex items-center gap-2">
-                                            <i class="fas" :class="item.icon"></i>
-                                            {{ item.title }}
-                                        </div>
-                                        <div class="text-xs text-gray-400 mt-1 leading-relaxed">{{ item.detail }}</div>
-                                        <div class="text-[11px] text-gray-500 mt-2">Source: {{ item.sourceLabel }}</div>
-                                    </div>
-                                    <button @click="goToTab(item.tab)" class="ux-alert-cta">{{ item.ctaLabel }}</button>
-                                </div>
-                            </div>
+                <div class="glass panel-card border-cyan-500/20 mt-6 mb-6 overflow-hidden">
+    <div class="p-5 md:p-6 border-b border-white/10 bg-cyan-500/5">
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div>
+                <div class="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border border-cyan-500/20 bg-cyan-500/10 text-cyan-300">
+                    <i class="fas fa-biohazard"></i>
+                    Chaos Risk Overview
+                </div>
+                <h3 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-shield-halved text-cyan-400"></i>
+                    流動性擠兌 / 恐慌傳染監控
+                </h3>
+                <p class="text-xs md:text-sm text-gray-400 mt-2 leading-relaxed">
+                    在一般 VaR / CVaR 之外，額外觀察流動性折價、相關性收斂與恐慌傳染造成的壓力擴散。
+                </p>
+            </div>
+
+            <div class="text-xs text-gray-400 flex items-center gap-2">
+                <i class="fas fa-circle text-cyan-400"></i>
+                Buffer: <span class="text-cyan-300 font-bold font-mono">{{ liquidityBufferRatio || 0 }}%</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="p-5 md:p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div class="rounded-2xl border border-red-500/20 bg-red-500/10 p-4">
+        <div class="text-[11px] uppercase tracking-wider text-red-300 font-bold mb-2">Liquidity Run</div>
+        <div class="text-2xl font-bold font-mono text-red-400">
+            {{ chaosMeta?.liquidity_run_probability ?? '-' }}%
+        </div>
+        <div class="text-xs text-gray-500 mt-2">流動性擠兌機率</div>
+    </div>
+
+    <div class="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4">
+        <div class="text-[11px] uppercase tracking-wider text-yellow-300 font-bold mb-2">Stressed VaR 95</div>
+        <div class="text-2xl font-bold font-mono text-yellow-300">
+            {{ chaosMeta?.stressed_var95 ?? '-' }}%
+        </div>
+        <div class="text-xs text-gray-500 mt-2">壓力後 VaR</div>
+    </div>
+
+    <div class="rounded-2xl border border-orange-500/20 bg-orange-500/10 p-4">
+        <div class="text-[11px] uppercase tracking-wider text-orange-300 font-bold mb-2">Stressed ES 95</div>
+        <div class="text-2xl font-bold font-mono text-orange-300">
+            {{ chaosMeta?.stressed_es95 ?? '-' }}%
+        </div>
+        <div class="text-xs text-gray-500 mt-2">尾部風險放大量</div>
+    </div>
+
+    <div class="rounded-2xl border border-purple-500/20 bg-purple-500/10 p-4">
+        <div class="text-[11px] uppercase tracking-wider text-purple-300 font-bold mb-2">Contagion Loss</div>
+        <div class="text-2xl font-bold font-mono text-purple-300">
+            {{ chaosMeta?.contagion_loss_pct ?? '-' }}%
+        </div>
+        <div class="text-xs text-gray-500 mt-2">恐慌傳染額外損失</div>
+    </div>
+</div>
+
+<div class="mt-4 rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+        <div class="flex items-center gap-2 text-sm font-bold text-cyan-300">
+            <i class="fas fa-wave-square"></i>
+            Jump / EVT 摘要
+        </div>
+
+        <div class="flex flex-wrap gap-3 text-xs">
+            <div class="px-3 py-2 rounded-xl border border-red-500/20 bg-red-500/10">
+                <div class="text-gray-500 mb-1">JD Crash Prob</div>
+                <div class="font-mono font-bold"
+                     :class="parseFloat(chaosMeta?.jump_diffusion?.jd_crash_prob ?? chaosMeta?.tail_meta?.jd_crash_prob ?? 0) >= 10 ? 'text-red-300' : 'text-white'">
+                    {{ chaosMeta?.jump_diffusion?.jd_crash_prob ?? chaosMeta?.tail_meta?.jd_crash_prob ?? '-' }}
+                </div>
+            </div>
+
+            <div class="px-3 py-2 rounded-xl border border-purple-500/20 bg-purple-500/10">
+                <div class="text-gray-500 mb-1">EVT Shape ξ</div>
+                <div class="font-mono font-bold"
+                     :class="parseFloat(chaosMeta?.evt_tail?.evt_shape_xi ?? chaosMeta?.tail_meta?.evt_shape_xi ?? 0) > 0 ? 'text-red-300' : 'text-white'">
+                    {{ chaosMeta?.evt_tail?.evt_shape_xi ?? chaosMeta?.tail_meta?.evt_shape_xi ?? '-' }}
+                </div>
+            </div>
+
+            <div class="px-3 py-2 rounded-xl border border-white/10 bg-white/[0.03] min-w-[220px]">
+                <div class="text-gray-500 mb-1">風險判讀</div>
+                <div class="text-white text-xs leading-relaxed">
+                    <template v-if="parseFloat(chaosMeta?.jump_diffusion?.jd_crash_prob ?? chaosMeta?.tail_meta?.jd_crash_prob ?? 0) >= 10">
+                        跳躍崩跌機率偏高；
+                    </template>
+                    <template v-else>
+                        跳躍崩跌機率尚可；
+                    </template>
+
+                    <template v-if="parseFloat(chaosMeta?.evt_tail?.evt_shape_xi ?? chaosMeta?.tail_meta?.evt_shape_xi ?? 0) > 0">
+                        EVT 顯示肥尾，歷史 CVaR 可能偏樂觀。
+                    </template>
+                    <template v-else>
+                        EVT 未顯示明顯額外肥尾。
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-4">
+            <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div class="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                    <i class="fas fa-burst text-cyan-400"></i>
+                    壓力情境
+                </div>
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                    <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                        <div class="text-gray-500 mb-1">相關性收斂</div>
+                        <div class="text-white font-mono font-bold">
+                            {{ chaosMeta?.scenario?.corr_spike ?? '-' }}
                         </div>
                     </div>
-
-                    <div class="space-y-6">
-                        <div class="glass panel-card overflow-hidden">
-                            <div class="ux-card-header mb-4">
-                                <div>
-                                    <div class="ux-eyebrow">Allocation Snapshot</div>
-                                    <h3 class="panel-title"><i class="fas fa-chart-pie text-purple-400"></i> 資產配置</h3>
-                                </div>
-                            </div>
-                            <div class="h-[290px] relative"><canvas id="allocationChart"></canvas></div>
+                    <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                        <div class="text-gray-500 mb-1">VIX Shock</div>
+                        <div class="text-white font-mono font-bold">
+                            {{ chaosMeta?.scenario?.vix_shock ?? '-' }}
                         </div>
+                    </div>
+                    <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                        <div class="text-gray-500 mb-1">HY Spread</div>
+                        <div class="text-white font-mono font-bold">
+                            {{ chaosMeta?.scenario?.hy_spread_shock ?? '-' }}
+                        </div>
+                    </div>
+                    <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                        <div class="text-gray-500 mb-1">Fire-sale Loss</div>
+                        <div class="text-white font-mono font-bold">
+                            {{ chaosMeta?.fire_sale_loss_pct ?? '-' }}%
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                        <div class="glass panel-card">
-                            <div class="ux-eyebrow">Do Not Do</div>
-                            <h3 class="panel-title mb-3"><i class="fas fa-ban text-red-400"></i> 避免動作</h3>
-                            <div class="space-y-2">
-                                <div v-for="item in doNotDoList" :key="item" class="rounded-xl border border-red-500/15 bg-red-500/5 px-3 py-2 text-xs text-gray-300">
-                                    {{ item }}
+            <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div class="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                    <i class="fas fa-triangle-exclamation text-red-400"></i>
+                    風險傳染起火點
+                </div>
+                <div v-if="chaosMeta?.fragile_nodes && chaosMeta.fragile_nodes.length" class="flex flex-wrap gap-2">
+                    <span
+                        v-for="node in chaosMeta.fragile_nodes"
+                        :key="node"
+                        class="px-3 py-1.5 rounded-full text-xs font-bold bg-red-500/10 text-red-300 border border-red-500/20"
+                    >
+                        {{ node }}
+                    </span>
+                </div>
+                <div v-else class="text-xs text-gray-500">
+                    尚無傳染節點資料
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+                <div class="glass panel-card border-red-500/20 mt-6 mb-6">
+    <div class="p-5 md:p-6 border-b border-white/10 bg-red-500/5">
+        <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
+            <div class="min-w-0">
+                <h3 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-fire text-red-500"></i>
+                    FIRE 階段性達成進度
+                </h3>
+                <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs md:text-sm">
+                    <span class="text-gray-400">
+                        目前淨值：
+                        <span class="text-white font-bold font-mono">NT$ {{ formatNumber(totalStockValueTwd) }}</span>
+                    </span>
+                    <span class="text-red-400 font-bold">
+                        下一階段目標：
+                        <span class="font-mono">NT$ {{ formatNumber(activeFireTarget.amount) }}</span>
+                    </span>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-2 items-stretch">
+                <div v-for="(stage, index) in fireTargets" :key="index"
+                     class="relative min-w-[120px] bg-black/20 border rounded-xl p-3 transition-all duration-300 group"
+                     :class="activeFireStageIndex === index ? 'border-red-500 bg-red-900/20 shadow-[0_0_12px_rgba(239,68,68,0.18)]' : 'border-white/10 hover:border-red-400/40'">
+
+                    <button @click="fireTargets.splice(index, 1)"
+                            class="absolute -top-2 -right-2 bg-red-600 hover:bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="刪除此階段">
+                        <i class="fas fa-times"></i>
+                    </button>
+
+                    <div class="text-[10px] text-gray-400 font-bold mb-2">FIRE 階段</div>
+
+                    <div class="flex items-center gap-1 text-[11px] text-gray-300 mb-2">
+                        <input v-model.number="stage.age" type="number"
+                               class="w-8 bg-transparent text-white text-center border-b border-gray-600 focus:border-red-400 outline-none"
+                               placeholder="年齡"> 歲
+                        <span class="text-gray-500">/</span>
+                        <input v-model.number="stage.year" type="number"
+                               class="w-12 bg-transparent text-white text-center border-b border-gray-600 focus:border-red-400 outline-none"
+                               placeholder="年份">
+                    </div>
+
+                    <div class="flex items-center gap-1">
+                        <span class="text-gray-500 text-xs">NT$</span>
+                        <input v-model.number="stage.amount" type="number"
+                               class="w-full bg-transparent text-white text-sm font-mono border-b border-gray-600 focus:border-red-400 outline-none"
+                               placeholder="目標金額">
+                    </div>
+                </div>
+
+                <button @click="addFireTarget"
+                        class="min-w-[48px] rounded-xl border border-dashed border-gray-600 hover:border-red-400 text-gray-500 hover:text-red-400 transition-colors flex items-center justify-center px-3"
+                        title="新增一個 FIRE 階段">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="p-5 md:p-6">
+        <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-3">
+            <div>
+                <span class="badge badge-red">
+                    達成 {{ activeFireTarget.age }} 歲目標達成率
+                </span>
+            </div>
+            <div class="text-right">
+                <span class="text-2xl md:text-3xl font-bold text-red-400 font-mono tracking-wide">
+                    {{ fireProgress.toFixed(2) }}%
+                </span>
+            </div>
+        </div>
+
+        <div class="overflow-hidden h-3 text-xs flex rounded-full bg-gray-800 border border-gray-700 shadow-inner">
+            <div :style="{ width: Math.min(fireProgress, 100) + '%' }"
+                 class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-gradient-to-r from-orange-500 to-red-500 transition-all duration-1000 relative">
+                <div class="absolute inset-0 bg-white opacity-20" style="animation: pulse 2s infinite;"></div>
+            </div>
+        </div>
+
+        <div class="mt-5 rounded-2xl border border-white/10 bg-black/10 p-3 md:p-4 min-h-[300px] md:h-72">
+            <canvas id="fireChart"></canvas>
+        </div>
+    </div>
+</div>
+                <div class="glass panel-card border-indigo-500/20 mt-6 mb-6 transition-all duration-300">
+    <div class="absolute inset-0 pointer-events-none opacity-[0.04]">
+        <div class="absolute right-4 top-4">
+            <i class="fas fa-brain text-[120px] text-indigo-400"></i>
+        </div>
+    </div>
+
+    <div class="relative z-10 p-5 md:p-6 border-b border-white/10 bg-gradient-to-r from-indigo-900/20 to-transparent">
+        <div class="flex justify-between items-start gap-4 cursor-pointer group" @click="isAiExpanded = !isAiExpanded">
+            <div class="flex-1 min-w-0 pr-2">
+                <div class="badge badge-indigo mb-3">
+                    <i class="fas fa-sparkles"></i>
+                    AI Portfolio Insight
+                </div>
+
+                <h3 class="text-lg md:text-xl font-bold text-white flex items-center gap-2 mb-2">
+                    <i class="fas fa-magic text-indigo-400" :class="{'animate-pulse': !isAiExpanded}"></i>
+                    AI 量化解讀與投組摘要
+                </h3>
+
+                <p class="text-sm leading-relaxed transition-colors"
+                   :class="aiInsights.details.length > 0 ? 'text-indigo-100/90 group-hover:text-white' : 'text-gray-400'">
+                    <i v-if="aiInsights.details.length === 0" class="fas fa-spinner fa-spin mr-1"></i>
+                    {{ aiInsights.summary }}
+                </p>
+            </div>
+
+            <button class="shrink-0 text-indigo-400 hover:text-white transition-transform duration-300 transform bg-black/20 w-9 h-9 rounded-xl flex items-center justify-center border border-indigo-500/20"
+                    :class="{'rotate-180': isAiExpanded}">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+    </div>
+
+    <div v-show="isAiExpanded" class="relative z-10 p-5 md:p-6 animate-fade-in">
+        <div v-if="aiInsights.details.length > 0" class="rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
+            <div class="px-4 py-3 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
+                <div class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-file-lines text-indigo-400"></i>
+                    診斷重點
+                </div>
+                <div class="text-[11px] text-gray-500">Generated Summary</div>
+            </div>
+
+            <ul class="p-4 md:p-5 space-y-3">
+                <li v-for="(insight, idx) in aiInsights.details"
+                    :key="idx"
+                    class="flex items-start gap-3 text-sm rounded-xl border border-white/8 bg-white/[0.025] px-4 py-3 hover:bg-white/[0.04] transition-colors">
+                    <div class="mt-0.5 w-8 h-8 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                        <span class="text-base" v-html="insight.icon"></span>
+                    </div>
+                    <div class="min-w-0">
+                        <div class="font-bold tracking-wide mb-1" :class="insight.color">
+                            {{ insight.title }}
+                        </div>
+                        <div class="text-gray-300 leading-relaxed">
+                            {{ insight.desc }}
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <div v-else class="rounded-2xl border border-dashed border-white/10 bg-black/10 px-5 py-8 text-center">
+            <div class="w-12 h-12 mx-auto rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-3">
+                <i class="fas fa-brain text-indigo-400 text-lg"></i>
+            </div>
+            <div class="text-white font-bold mb-1">AI 診斷準備中</div>
+            <p class="text-xs text-gray-500">等待系統整理投組訊號與風險摘要。</p>
+        </div>
+    </div>
+</div>
+
+                <div class="glass p-5 rounded-2xl relative min-h-[300px] md:h-[450px] flex flex-col border-t-4 transition-colors duration-500" 
+                     :class="sysCorr > 0.85 ? 'border-red-600 bg-red-900/10' : 'border-gray-500'">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <h4 class="text-white font-bold mb-1 flex items-center gap-2">
+                                <i class="fas fa-th text-blue-400"></i> 資產相關性矩陣 (Systemic Risk)
+                            </h4>
+                            <p class="text-xs text-gray-400">衡量庫存標的齊漲齊跌程度。深綠代表正相關，深紅代表負相關（具避險效果）。</p>
+                        </div>
+                        
+                        <div v-if="sysCorr > 0.85" class="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full animate-pulse flex items-center gap-1 shadow-[0_0_15px_rgba(220,38,38,0.5)]">
+                            <i class="fas fa-skull-crossbones"></i> 雷曼時刻 (系統風險極高)
+                        </div>
+                        <div v-else class="bg-gray-800 text-gray-300 text-xs font-bold px-3 py-1 rounded border border-gray-700">
+                            平均相關性: <span :class="sysCorr > 0.7 ? 'text-red-400' : 'text-green-400'">{{ sysCorr.toFixed(2) }}</span>
+                        </div>
+                    </div>
+                    <div class="flex-1 relative mt-2"><canvas id="corrChart"></canvas></div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-6">
+                    <div class="glass chart-card nav-trend-card p-5 md:p-6 flex flex-col">
+                        <div class="grid grid-cols-1 xl:grid-cols-[430px_minmax(0,1fr)] gap-6 items-stretch nav-chart-split">
+                            <div class="nav-chart-sidebar">
+                                <div class="mb-4">
+    <h4 class="panel-title">
+        <i class="fas fa-chart-line text-emerald-400"></i>
+        淨值成長趨勢 (NAV)
+    </h4>
+    <p class="panel-subtitle">觀察資產淨值隨時間的變化，並加入短期 / 長期趨勢線與 Cost 對照。</p>
+    <div class="terminal-inline-note mt-3 flex flex-wrap items-center gap-2 text-[11px]">
+        <span class="terminal-chip">{{ navMaConfig.monthLabel }}</span>
+        <span class="terminal-chip">{{ navMaConfig.yearLabel }}</span>
+        <span class="terminal-chip" :class="riskRegimeStrip.class">{{ riskRegimeStrip.label }}</span>
+        <span class="text-gray-500">{{ navMaConfig.frequencyNote }}</span>
+    </div>
+    <div class="mt-3 flex flex-wrap items-center gap-2">
+        <button v-for="opt in navOverlayOptions"
+                :key="opt.value"
+                @click="setNavOverlayMode(opt.value)"
+                class="nav-overlay-btn"
+                :class="navOverlayMode === opt.value ? 'is-active' : ''">
+            {{ opt.label }}
+        </button>
+    </div>
+    <div class="text-[11px] text-gray-500 mt-2 leading-relaxed">回撤疊圖（Drawdown Overlay）＝把回撤曲線疊加到 NAV 圖上，拿來一起看最大跌幅、目前仍在水下多少，以及修復進度。</div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+        <div class="terminal-mini-stat soft">
+            <div class="terminal-mini-label">NAV vs 短期</div>
+            <div class="terminal-mini-value">{{ navTrendSummary.navVsMonth }}</div>
+        </div>
+        <div class="terminal-mini-stat soft">
+            <div class="terminal-mini-label">NAV vs 長期</div>
+            <div class="terminal-mini-value">{{ navTrendSummary.navVsYear }}</div>
+        </div>
+        <div class="terminal-mini-stat soft">
+            <div class="terminal-mini-label">短期斜率</div>
+            <div class="terminal-mini-value">{{ navTrendSummary.monthSlope }}</div>
+        </div>
+        <div class="terminal-mini-stat soft">
+            <div class="terminal-mini-label">長期斜率</div>
+            <div class="terminal-mini-value">{{ navTrendSummary.yearSlope }}</div>
+        </div>
+        <div class="terminal-mini-stat soft sm:col-span-2">
+            <div class="terminal-mini-label">目前距前高跌幅</div>
+            <div class="terminal-mini-value">{{ navTrendSummary.currentDrawdown }}</div>
+        </div>
+    </div>
+    <div class="terminal-regime-strip mt-3 rounded-2xl border px-4 py-3" :class="riskRegimeStrip.class">
+        <div class="text-[11px] uppercase tracking-[0.14em] opacity-75">Trend / Regime Strip</div>
+        <div class="text-xs text-white mt-1">{{ riskRegimeStrip.note }} · Overlay：{{ navTrendSummary.overlayModeLabel }}</div>
+    </div>
+</div>
+                            </div>
+                            <div class="relative nav-chart-stage min-h-[460px] xl:min-h-[560px]">
+                                <canvas id="historyChart"></canvas>
+                                <div v-if="displayHistory.length < 2" class="absolute inset-0 flex items-center justify-center text-gray-500 text-xs bg-gray-900/50 rounded-lg">
+                                    <p>需要更多歷史數據</p>
                                 </div>
-                                <div v-if="!doNotDoList.length" class="text-xs text-gray-500">目前沒有特別禁止事項。</div>
                             </div>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <!-- ===== Holdings Tab / 持倉配置 ===== -->
+            <!-- ===== Holdings Tab / 庫存 ===== -->
             <section v-show="currentTab === 'holdings'" class="flex flex-col space-y-4 animate-fade-in holdings-terminal-view">
                 <div class="glass rounded-xl overflow-hidden flex flex-col flex-1 holdings-terminal-shell">
                     <div class="p-4 md:p-5 bg-white/[0.03] border-b border-white/10 flex flex-col md:flex-row md:justify-between md:items-center gap-3 holdings-terminal-toolbar">
     <div>
         <h3 class="font-bold text-white text-base md:text-lg flex items-center gap-2">
             <i class="fas fa-layer-group text-yellow-500"></i>
-            持倉配置
+            庫存明細
         </h3>
-        <p class="panel-subtitle">Position Monitor / 權重、損益、風險與再平衡狀態</p>
+        <p class="panel-subtitle">Risk Monitor / 權重、風險與技術訊號總覽</p>
     </div>
 
     <div class="flex flex-wrap items-center gap-2 text-xs">
@@ -789,7 +1377,7 @@
             </section>
 
             <!-- ===== Advanced Tab / 分析 ===== -->
-            <section v-show="currentTab === 'risk'" class="flex flex-col space-y-6 animate-fade-in ux-risk-research">
+            <section v-show="currentTab === 'advanced'" class="flex flex-col space-y-6 animate-fade-in">
                 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div class="glass p-5 rounded-2xl flex flex-col justify-center">
@@ -928,13 +1516,13 @@
             </section>
             
             <!-- ===== Analytics Tab / 量化 ===== -->
-            <section v-show="currentTab === 'performance'" class="flex flex-col space-y-6 animate-fade-in ux-performance-page">
+            <section v-show="currentTab === 'analytics'" class="flex flex-col space-y-6 animate-fade-in">
                 
                 <div class="p-4 rounded-xl flex flex-wrap items-center justify-between gap-4 border transition-colors duration-500 glass border-white/5 analytics-command-toolbar">
                     <div class="flex flex-col md:flex-row gap-6 w-full md:w-auto">
                         <div>
                              <h3 class="font-bold text-white text-lg flex items-center gap-2 mb-2 md:mb-0">
-                                <i class="fas fa-chart-line text-yellow-500"></i> 績效回顧
+                                <i class="fas fa-brain text-yellow-500"></i> 量化風險分析
                              </h3>
                              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold border"
                                   :class="allocationGovernance.badgeClass">
@@ -1159,64 +1747,6 @@
                 </div>
 
             
-
-                <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
-                    <div class="glass chart-card p-5 md:p-6 flex flex-col">
-                        <div class="mb-4">
-                            <h4 class="panel-title"><i class="fas fa-chart-area text-emerald-400"></i> NAV 淨值成長趨勢</h4>
-                            <p class="panel-subtitle">把長期淨值、成本、短期 / 長期趨勢與回撤一起看；用於績效回顧，不用於今日交易衝動。</p>
-                        </div>
-                        <div class="relative min-h-[420px]"><canvas id="historyChart"></canvas></div>
-                    </div>
-
-                    <div class="glass chart-card p-5 md:p-6 flex flex-col">
-                        <div class="mb-4">
-                            <h4 class="panel-title"><i class="fas fa-fire text-red-400"></i> FIRE 階段性達成進度</h4>
-                            <p class="panel-subtitle">長期目標追蹤獨立於今日風險判斷，避免把短期波動誤認成策略錯誤。</p>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                            <div v-for="(stage, index) in fireTargets" :key="index" class="rounded-2xl border border-white/10 bg-black/20 p-3">
-                                <div class="flex items-center justify-between gap-2 mb-2">
-                                    <div class="text-xs font-bold text-white">Stage {{ index + 1 }}</div>
-                                    <button @click="fireTargets.splice(index, 1)" class="text-gray-600 hover:text-red-400"><i class="fas fa-times"></i></button>
-                                </div>
-                                <div class="grid grid-cols-3 gap-2">
-                                    <input v-model.number="stage.age" type="number" class="input-dark rounded p-2 text-xs" placeholder="Age">
-                                    <input v-model.number="stage.year" type="number" class="input-dark rounded p-2 text-xs" placeholder="Year">
-                                    <input v-model.number="stage.amount" type="number" class="input-dark rounded p-2 text-xs" placeholder="Amount">
-                                </div>
-                            </div>
-                        </div>
-                        <button @click="addFireTarget" class="ux-secondary-btn mb-4"><i class="fas fa-plus mr-1"></i> 新增 FIRE 階段</button>
-                        <div class="relative min-h-[300px]"><canvas id="fireChart"></canvas></div>
-                    </div>
-                </div>
-
-            </section>
-
-            <section v-show="currentTab === 'risk'" class="flex flex-col space-y-6 animate-fade-in ux-risk-page">
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                    <div class="glass chart-card p-5 md:p-6 xl:col-span-2 flex flex-col">
-                        <div class="mb-4">
-                            <h4 class="panel-title"><i class="fas fa-th text-blue-400"></i> 資產相關性矩陣</h4>
-                            <p class="panel-subtitle">衡量庫存標的齊漲齊跌程度；這裡只作系統性風險診斷，不直接產生交易指令。</p>
-                        </div>
-                        <div class="relative min-h-[380px]"><canvas id="corrChart"></canvas></div>
-                    </div>
-                    <div class="glass panel-card">
-                        <div class="ux-eyebrow">Tail Dashboard</div>
-                        <h3 class="panel-title mb-4"><i class="fas fa-skull-crossbones text-red-400"></i> 尾部風險摘要</h3>
-                        <div class="space-y-3">
-                            <div class="ux-system-row"><span>Historical CVaR</span><strong>{{ stats.cvar95 }}%</strong></div>
-                            <div class="ux-system-row"><span>Stressed CVaR</span><strong>{{ tailStatsLite?.stressedCvar ?? '-' }}%</strong></div>
-                            <div class="ux-system-row"><span>Rolling CVaR 26W</span><strong>{{ tailStatsLite?.rollingCvar26w ?? '-' }}%</strong></div>
-                            <div class="ux-system-row"><span>System Corr</span><strong>{{ sysCorr ?? '-' }}</strong></div>
-                        </div>
-                        <div class="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3 text-xs text-gray-400 leading-relaxed">
-                            風險頁只保留診斷與壓力測試，不覆蓋首頁的今日決策中心。
-                        </div>
-                    </div>
-                </div>
 
 <div class="glass panel-card analytics-hierarchy-strip overflow-hidden border-white/10">
     <div class="p-4 md:p-5 border-b border-white/10 bg-white/[0.025] flex items-center justify-between gap-3">
@@ -2308,61 +2838,6 @@
                         </table>
                     </div>
                  </div>
-            </section>
-
-            <section v-show="currentTab === 'system'" class="animate-fade-in space-y-6 ux-system-page">
-                <div class="ux-page-kicker">System & Data Health</div>
-                <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                    <div class="glass panel-card xl:col-span-2">
-                        <div class="ux-card-header mb-4">
-                            <div>
-                                <div class="ux-eyebrow">Data Pipeline</div>
-                                <h3 class="panel-title"><i class="fas fa-database text-yellow-400"></i> 系統資料狀態</h3>
-                                <p class="panel-subtitle">這裡只放同步、資料新鮮度、快照與維護按鈕；不混入投資判斷。</p>
-                            </div>
-                            <div class="ux-status-pill" :class="isDbSyncing ? 'border-blue-500/30 bg-blue-500/10 text-blue-300' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'">
-                                <i class="fas" :class="isDbSyncing ? 'fa-cloud-upload-alt animate-pulse' : 'fa-check-circle'"></i>
-                                {{ isDbSyncing ? 'Syncing' : 'Ready' }}
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div class="ux-system-row"><span>Last Update</span><strong>{{ lastUpdate || 'N/A' }}</strong></div>
-                            <div class="ux-system-row"><span>USD/TWD</span><strong>{{ exchangeRate }}</strong></div>
-                            <div class="ux-system-row"><span>Quant Start</span><strong>{{ quantStartDate || 'N/A' }}</strong></div>
-                            <div class="ux-system-row"><span>Snapshot Date</span><strong>{{ snapshotDate || 'N/A' }}</strong></div>
-                            <div class="ux-system-row"><span>History Snapshots</span><strong>{{ enrichedHistory.length }}</strong></div>
-                            <div class="ux-system-row"><span>Ledger Rows</span><strong>{{ transactions.length }}</strong></div>
-                            <div class="ux-system-row"><span>Macro Regime</span><strong>{{ macroRegime }}</strong></div>
-                            <div class="ux-system-row"><span>History Integrity</span><strong>{{ historyIntegrityBadge.label }}</strong></div>
-                        </div>
-                    </div>
-
-                    <div class="glass panel-card">
-                        <div class="ux-eyebrow">Maintenance</div>
-                        <h3 class="panel-title mb-4"><i class="fas fa-screwdriver-wrench text-cyan-400"></i> 維護操作</h3>
-                        <div class="space-y-2">
-                            <button @click="fetchPrices" class="ux-secondary-btn w-full"><i class="fas fa-cloud-arrow-down mr-2"></i> 更新價格</button>
-                            <button @click="snapshotToHistory" class="ux-secondary-btn w-full"><i class="fas fa-camera mr-2"></i> 建立 NAV 快照</button>
-                            <button @click="showHistoryModal = true" class="ux-secondary-btn w-full"><i class="fas fa-pen-to-square mr-2"></i> 補登歷史資料</button>
-                            <button @click="exportAll" class="ux-secondary-btn w-full"><i class="fas fa-file-export mr-2"></i> 匯出 JSON</button>
-                            <label class="ux-secondary-btn w-full cursor-pointer text-center">
-                                <i class="fas fa-file-import mr-2"></i> 匯入 JSON
-                                <input type="file" @change="importData" class="hidden" accept=".json">
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="glass panel-card">
-                    <div class="ux-eyebrow">Integrity Notes</div>
-                    <h3 class="panel-title mb-3"><i class="fas fa-clipboard-check text-emerald-400"></i> 資料可信度提示</h3>
-                    <div class="space-y-2">
-                        <div v-for="reason in historyIntegrityRisk.reasons" :key="reason" class="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-gray-300">
-                            {{ reason }}
-                        </div>
-                        <div v-if="!historyIntegrityRisk.reasons.length" class="text-sm text-gray-400">目前沒有明顯資料完整性警告。</div>
-                    </div>
-                </div>
             </section>
 
           <div v-if="showHistoryModal" class="fixed inset-0 bg-black/90 flex items-center justify-center z-[100] p-4">
