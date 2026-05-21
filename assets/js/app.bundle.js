@@ -2156,7 +2156,7 @@ const rebalancePostTradeEstimate = computed(() => {
 
 const alertCenterItems = computed(() => {
     const items = [];
-    const pushItem = (id, tone, title, detail, tab = 'analytics', ctaLabel = '查看', sourceLabel = 'System', suggestedAction = '查看') => {
+    const pushItem = (id, tone, title, detail, tab = 'risk', ctaLabel = '查看', sourceLabel = 'System', suggestedAction = '查看') => {
         const meta = getAlertToneMeta(tone);
         const section = tone === 'critical' ? 'critical' : (tone === 'warn' ? 'actionable' : 'informational');
         items.push({ id, tone, title, detail, tab, ctaLabel, sourceLabel, suggestedAction, section, ...meta });
@@ -2201,12 +2201,12 @@ const alertCenterItems = computed(() => {
 
     croHardVetoFlags.value.slice(0, 4).forEach((flag, idx) => {
         const sourceLabel = flag.code.includes('BUFFER') ? 'Buffer' : flag.code.includes('PCA') || flag.code.includes('CONCENT') ? 'X-Ray' : 'Tail';
-        pushItem(`hard-${idx}-${flag.code}`, 'critical', flag.label, flag.detail, 'analytics', '看 Analytics', sourceLabel, '先處理硬風險');
+        pushItem(`hard-${idx}-${flag.code}`, 'critical', flag.label, flag.detail, 'risk', '看風險', sourceLabel, '先處理硬風險');
     });
 
     (rebalanceMonitor.value.alerts || []).slice(0, 2).forEach((alert, idx) => {
         const detail = alert.reason || alert.message || `${alert.ticker || '部位'} 偏離目標過大。`;
-        pushItem(`rb-${idx}`, 'warn', `再平衡警報 ${idx + 1}`, detail, 'analytics', '看 Cockpit', 'Rebalance', '先看 trim / drift');
+        pushItem(`rb-${idx}`, 'warn', `再平衡警報 ${idx + 1}`, detail, 'risk', '看 Cockpit', 'Rebalance', '先看 trim / drift');
     });
 
     const topTrim = rebalanceCockpitBuckets.value.trim[0];
@@ -2230,7 +2230,7 @@ const alertCenterItems = computed(() => {
             'info',
             `${pendingAdd.ticker} 暫列候補加碼`,
             `理論上低於目標，但目前 governance mode = ${croDecisionMode.value}，暫不允許加風險。`,
-            'analytics',
+            'risk',
             '看治理',
             'Governance',
             '先等待 veto 解除'
@@ -2243,7 +2243,7 @@ const alertCenterItems = computed(() => {
             'info',
             '歷史統計可信度不足',
             historyIntegrityRisk.value.reasons.join(' / '),
-            'analytics',
+            'performance',
             '看統計',
             'History',
             '降低歷史 stats 權重'
@@ -2313,7 +2313,7 @@ const decisionCenter = computed(() => {
     const quickActions = [
         {
             label: mode === 'CRO_VETO' ? '先看風險駕駛艙' : '打開 Rebalance Cockpit',
-            tab: 'analytics',
+            tab: 'risk',
             class: mode === 'CRO_VETO'
                 ? 'border-red-500/30 bg-red-500/10 text-red-300'
                 : 'border-yellow-500/30 bg-yellow-500/10 text-yellow-300'

@@ -1091,8 +1091,7 @@ try:
                 t = str(tx.get("ticker", "")).strip().upper()
                 if not t:
                     continue
-                # 修復一：處理 None 的情況
-                s = float(tx.get("shares") or 0)
+                s = float(tx.get("shares", 0))
                 if str(tx.get("type", "buy")).lower() in ["sell", "賣出"]:
                     s = -s
                 current_shares[t] = current_shares.get(t, 0) + s
@@ -1329,8 +1328,7 @@ try:
             for tx in ledger_data:
                 t = str(tx.get("ticker", "")).strip().upper()
                 if not t: continue
-                # 修復二：處理 None 的情況
-                current_shares[t] = current_shares.get(t, 0) + (float(tx.get("shares") or 0) * (-1 if str(tx.get("type", "buy")).lower() in ["sell", "賣出"] else 1))
+                current_shares[t] = current_shares.get(t, 0) + (float(tx.get("shares", 0)) * (-1 if str(tx.get("type", "buy")).lower() in ["sell", "賣出"] else 1))
 
             active_tickers = [t for t, s in current_shares.items() if s > 0.0001]
             pipeline_tickers = active_tickers[:]
