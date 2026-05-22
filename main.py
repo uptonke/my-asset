@@ -1642,41 +1642,59 @@ try:
 
             if rebalance_signals and GEMINI_API_KEY:
                 print("🤖 喚醒 AI 撰寫再平衡交易執行報告...", flush=True)
-                try:
-                    rebalance_prompt = f"""
-                    [SYSTEM_DIRECTIVE]
-                    Task: Generate a high-conviction, logically flawless rebalance execution plan.
-                    Tone: Institutional Risk Manager & Quant Trader. Coldly rational, strictly data-driven.
-                    Language: STRICTLY Traditional Chinese (繁體中文). ONLY JSON output.
+                rebalance_prompt = f"""
+                [SYSTEM_DIRECTIVE]
+                Task: Generate a high-conviction, logically flawless rebalance execution plan.
+                Tone: Institutional Risk Manager & Quant Trader. Coldly rational, strictly data-driven.
+                Language: STRICTLY Traditional Chinese (繁體中文). ONLY JSON output.
 
-                    [LOGICAL_GUARDRAILS]
-                    - CRITICAL: DO NOT confuse "Sector Rotation / Capital Efficiency" with "Hedging".
-                    - TRUE HEDGING means moving to cash, bonds, or negative-beta assets.
-                    - DO NOT suggest buying high-beta, risk-on assets (like Crypto or Tech stocks) as a "hedge" against market risks.
-                    - If the trades involve moving capital to high-beta assets, explicitly frame it as "Risk-On Rotation", "Pursuing Alpha", or "Capitalizing on Momentum", NEVER as "Hedging".
+                [LOGICAL_GUARDRAILS]
+                - CRITICAL: DO NOT confuse "Sector Rotation / Capital Efficiency" with "Hedging".
+                - TRUE HEDGING means moving to cash, bonds, or negative-beta assets.
+                - DO NOT suggest buying high-beta, risk-on assets (like Crypto or Tech stocks) as a "hedge" against market risks.
+                - If the trades involve moving capital to high-beta assets, explicitly frame it as "Risk-On Rotation", "Pursuing Alpha", or "Capitalizing on Momentum", NEVER as "Hedging".
 
-                    [INPUT_DATA]
-                    Macro Summary: {macro_payload.get('ai_analysis', {}).get('summary', '無')}
-                    Execution List: {json.dumps(rebalance_signals, ensure_ascii=False)}
-                    Buffer Status: Gap {rebalance_meta['buffer_gap_pct']}%, Blocks Risk Buys: {rebalance_meta['buffer_blocking_risk_buys']}
+                [INPUT_DATA]
+                Macro Summary: {macro_payload.get('ai_analysis', {}).get('summary', '無')}
+                Execution List: {json.dumps(rebalance_signals, ensure_ascii=False)}
+                Buffer Status: Gap {rebalance_meta['buffer_gap_pct']}%, Blocks Risk Buys: {rebalance_meta['buffer_blocking_risk_buys']}
 
-                    [OUTPUT_SCHEMA]
-                    {{
-                        "execution_summary": "<string_1_sentence_rationale_linking_macro_to_trades_in_traditional_chinese_with_strict_financial_logic>",
-                        "priority_trades": [ {{"ticker": "<string>", "reason": "<string_short_rationale>"}} ]
-                    }}
-                    """
-                    rb_match = re.search(r'\{.*\}', client.models.generate_content(model="gemini-3-flash-preview", contents=rebalance_prompt).text, re.DOTALL)
-                    if rb_match:
-                        rebalance_meta["signals"] = rebalance_signals
-                        rebalance_meta["ai_execution_plan"] = json.loads(rb_match.group(0))
+                [OUTPUT_SCHEMA]
+                {{
+                    "execution_summary": "<string_1_sentence_rationale_linking_macro_to_trades_in_traditional_chinese_with_strict_financial_logic>",
+                    "priority_trades": [ {{"ticker": "<string>", "reason": "<string_short_rationale>"}} ]
+                }}
+                """
+                
+                ai_success = False
+                # 依序降級測試模型，避免 503 導致報告難產
+                for model_name in ["gemini-3-flash-preview", "gemini-2.5-flash", "gemini-2.0-flash"]:
+                    try:
+                        print(f"   嘗試使用 {model_name} 生成報告...", flush=True)
+                        res = client.models.generate_content(model=model_name, contents=rebalance_prompt)
+                        rb_match = re.search(r'\{.*\}', res.text, re.DOTALL)
                         
-                        supabase.table("portfolio_db").update({
-                            "rebalance_meta": rebalance_meta
-                        }).eq("id", target_id).execute()
-                        print("✅ 再平衡交易清單與 AI 執行報告已成功同步至 Supabase！")
-                except Exception as e: 
-                    print(f"⚠️ AI 執行報告生成失敗: {e}")
+                        if rb_match:
+                            rebalance_meta["signals"] = rebalance_signals
+                            rebalance_meta["ai_execution_plan"] = json.loads(rb_match.group(0))
+                            
+                            supabase.table("portfolio_db").update({
+                                "rebalance_meta": rebalance_meta
+                            }).eq("id", target_id).execute()
+                            
+                            print(f"✅ 再平衡交易清單與 AI 執行報告已成功同步至 Supabase！({model_name})")
+                            ai_success = True
+                            break
+                    except Exception as e: 
+                        print(f"   ⚠️ {model_name} 生成失敗: {e}")
+                
+                # 如果所有模型都因 503 失敗，確保基本交易訊號仍能寫入資料庫
+                if not ai_success:
+                    print("⚠️ 所有模型皆因負載問題無法生成報告，僅上傳基礎交易訊號至 Supabase。")
+                    rebalance_meta["signals"] = rebalance_signals
+                    supabase.table("portfolio_db").update({
+                        "rebalance_meta": rebalance_meta
+                    }).eq("id", target_id).execute()
 
 except Exception as e:
     print(f"🔥 股票管線致命錯誤:\n{traceback.format_exc()}", flush=True)
