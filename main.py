@@ -1030,6 +1030,8 @@ try:
 
     try:
         pcr_data = yf.Ticker("^PCR").history(period="1y")['Close'].dropna()
+        if pcr_data.empty:
+            raise ValueError("^PCR data is empty")
         pcr, pcr_z = float(pcr_data.iloc[-1]), float(calc_z_score(pcr_data))
     except Exception as e:
         print(f"   ⚠️ ^PCR 可能已下市或抓取失敗: {e}", flush=True)
@@ -1091,7 +1093,11 @@ try:
                 t = str(tx.get("ticker", "")).strip().upper()
                 if not t:
                     continue
-                s = float(tx.get("shares", 0))
+                
+                # 修正：阻絕 JSON Null 穿透
+                raw_shares = tx.get("shares")
+                s = float(raw_shares) if raw_shares not in [None, ""] else 0.0
+                
                 if str(tx.get("type", "buy")).lower() in ["sell", "賣出"]:
                     s = -s
                 current_shares[t] = current_shares.get(t, 0) + s
@@ -1328,7 +1334,12 @@ try:
             for tx in ledger_data:
                 t = str(tx.get("ticker", "")).strip().upper()
                 if not t: continue
-                current_shares[t] = current_shares.get(t, 0) + (float(tx.get("shares", 0)) * (-1 if str(tx.get("type", "buy")).lower() in ["sell", "賣出"] else 1))
+                
+                # 修正：阻絕 JSON Null 穿透
+                raw_shares = tx.get("shares")
+                s_val = float(raw_shares) if raw_shares not in [None, ""] else 0.0
+                
+                current_shares[t] = current_shares.get(t, 0) + (s_val * (-1 if str(tx.get("type", "buy")).lower() in ["sell", "賣出"] else 1))
 
             active_tickers = [t for t, s in current_shares.items() if s > 0.0001]
             pipeline_tickers = active_tickers[:]
