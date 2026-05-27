@@ -628,7 +628,7 @@ def compute_meta(ticker: str, category: str, df: pd.DataFrame, source: str, extr
     coverage_score = clamp(len(df) / 252.0, 0, 1)
 
     meta = {
-        "beta": round(beta, 4) if beta is not None else None,
+        "beta": round(beta, 2) if beta is not None else None,
         "std": round((vol252 if vol252 is not None else vol60 or 0) * 100, 3),
         "vol_20d": round(vol20, 6) if vol20 is not None else None,
         "vol_60d": round(vol60, 6) if vol60 is not None else None,
