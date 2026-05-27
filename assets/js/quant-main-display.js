@@ -78,10 +78,18 @@
     return "";
   }
 
+  function qualityLabel(value) {
+    const q = String(value || "").toLowerCase();
+    if (q === "ok") return "正常";
+    if (q === "thin") return "資料偏少";
+    if (q === "stale") return "資料過舊";
+    return "N/A";
+  }
+
   function sourceLabel(value) {
     return String(value || "N/A")
-      .replace("YahooChart:", "YC:")
-      .replace("yfinance:", "YF:")
+      .replace("YahooChart:", "雅虎圖表：")
+      .replace("yfinance:", "Yahoo Finance：")
       .replace("FinMind", "FinMind");
   }
 
@@ -119,7 +127,7 @@
     if (!force && cache.stockMeta && now - cache.lastFetch < 60000) return cache;
 
     if (!window.supabase?.createClient) {
-      cache.error = "Supabase JS library not loaded.";
+      cache.error = "Supabase JS 尚未載入。";
       return cache;
     }
 
@@ -158,7 +166,7 @@
         <td><span class="badge ${scoreClass(meta.valuation_score)}">${num(meta.valuation_score, 2)}</span></td>
         <td><span class="badge ${scoreClass(meta.chip_score)}">${num(meta.chip_score, 2)}</span></td>
         <td><span class="badge ${scoreClass(meta.quant_health_score)}">${num(meta.quant_health_score, 2)}</span></td>
-        <td><span class="${qualityClass(meta.data_quality)}">${escapeHtml(meta.data_quality || "N/A")}</span></td>
+        <td><span class="${qualityClass(meta.data_quality)}">${escapeHtml(qualityLabel(meta.data_quality))}</span></td>
         <td><span class="src" title="${escapeHtml(meta.source || "N/A")}">${escapeHtml(sourceLabel(meta.source))}</span></td>
         <td>${escapeHtml(meta.updated_at || "N/A")}</td>
       </tr>
@@ -185,7 +193,7 @@
       panel.innerHTML = `
         <div class="qmp-head">
           <div>
-            <div class="qmp-title">量化因子總覽 <span style="color:#fb7185">Load failed</span></div>
+            <div class="qmp-title">量化因子總覽 <span style="color:#fb7185">讀取失敗</span></div>
             <div class="qmp-sub">讀取 Supabase stock_meta 失敗。原因：${escapeHtml(data.error)}</div>
           </div>
         </div>
@@ -197,7 +205,7 @@
       panel.innerHTML = `
         <div class="qmp-head">
           <div>
-            <div class="qmp-title">量化因子總覽 <span style="color:#facc15">Quant Meta</span></div>
+            <div class="qmp-title">量化因子總覽</div>
             <div class="qmp-sub">尚未讀到 stock_meta。請先確認 GitHub Actions dry_run=false 已成功寫入 Supabase。</div>
           </div>
         </div>
@@ -208,16 +216,27 @@
     panel.innerHTML = `
       <div class="qmp-head">
         <div>
-          <div class="qmp-title">量化因子總覽 <span style="color:#facc15">Quant Meta</span></div>
-          <div class="qmp-sub">直接讀 Supabase portfolio_db.stock_meta。Beta 顯示小數點後兩位；Risk 越高代表風險越高，其餘 score 越高通常越佳。</div>
+          <div class="qmp-title">量化因子總覽</div>
+          <div class="qmp-sub">直接讀取 Supabase 的 portfolio_db.stock_meta。貝塔顯示小數點後兩位；風險分數越高代表風險越高，其餘分數越高通常越佳。</div>
         </div>
-        <div class="qmp-meta">holdings=${tickers.length}<br>latest=${escapeHtml(latestUpdated)}</div>
+        <div class="qmp-meta">持倉數=${tickers.length}<br>最新更新=${escapeHtml(latestUpdated)}</div>
       </div>
       <div class="qmp-wrap">
         <table>
           <thead>
             <tr>
-              <th>Ticker</th><th>Beta</th><th>Trend</th><th>Momentum</th><th>Risk</th><th>Technical</th><th>Valuation</th><th>Chip</th><th>Health</th><th>Quality</th><th>Source</th><th>Updated</th>
+              <th>代號</th>
+              <th>貝塔</th>
+              <th>趨勢</th>
+              <th>動能</th>
+              <th>風險</th>
+              <th>技術面</th>
+              <th>估值</th>
+              <th>籌碼</th>
+              <th>健康度</th>
+              <th>資料品質</th>
+              <th>資料來源</th>
+              <th>更新日</th>
             </tr>
           </thead>
           <tbody>
