@@ -243,6 +243,113 @@ def fetch_yfinance_price(symbol: str) -> pd.DataFrame:
         raise RuntimeError(f"yfinance empty for {symbol}")
     return out
 
+
+def fetch_yahoo_chart_price(symbol: str) -> pd.DataFrame:
+    """
+    Direct Yahoo chart fallback. This avoids some yfinance crumb/session failures.
+    It is still an unofficial Yahoo endpoint, so it is only a fallback for personal dashboard use.
+    """
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+    params = {
+        "range": "2y",
+        "interval": "1d",
+        "includePrePost": "false",
+        "events": "history",
+    }
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Accept": "application/json,text/plain,*/*",
+    }
+    resp = requests.get(url, params=params, headers=headers, timeout=25)
+    resp.raise_for_status()
+    payload = resp.json()
+    result = (((payload.get("chart") or {}).get("result") or [])[:1])
+    if not result:
+        raise RuntimeError(f"YahooChart empty for {symbol}")
+
+    r = result[0]
+    timestamps = r.get("timestamp") or []
+    quote = (((r.get("indicators") or {}).get("quote") or [])[:1])
+    adj = (((r.get("indicators") or {}).get("adjclose") or [])[:1])
+
+    if not timestamps or not quote:
+        raise RuntimeError(f"YahooChart malformed for {symbol}")
+
+    q = quote[0]
+    close_values = None
+    if adj and isinstance(adj[0], dict) and adj[0].get("adjclose"):
+        close_values = adj[0].get("adjclose")
+    if close_values is None:
+        close_values = q.get("close")
+
+    if not close_values:
+        raise RuntimeError(f"YahooChart missing close for {symbol}")
+
+    out = pd.DataFrame({
+        "date": pd.to_datetime(timestamps, unit="s"),
+        "close": pd.to_numeric(close_values, errors="coerce"),
+        "volume": pd.to_numeric(q.get("volume", [np.nan] * len(timestamps)), errors="coerce"),
+    })
+    out = out.dropna(subset=["date", "close"]).sort_values("date")
+    out = out[out["date"] >= pd.Timestamp(START_DATE)]
+    if len(out) < 40:
+        raise RuntimeError(f"YahooChart too few rows for {symbol}: {len(out)}")
+    return out
+
+
+def fetch_coinbase_price(symbol: str) -> pd.DataFrame:
+    """
+    Coinbase Exchange candles fallback for major crypto pairs.
+    Coinbase only returns limited candles per request, so this paginates in 250-day chunks.
+    """
+    t = symbol.upper().replace("USDT", "-USD")
+    if t in {"BTC", "ETH", "SOL"}:
+        product_id = f"{t}-USD"
+    elif t in {"BTC-USD", "ETH-USD", "SOL-USD"}:
+        product_id = t
+    else:
+        raise RuntimeError(f"Coinbase product unsupported for {symbol}")
+
+    end_dt = datetime.now(timezone.utc)
+    start_dt = end_dt - timedelta(days=730)
+    rows = []
+
+    cursor = start_dt
+    while cursor < end_dt:
+        chunk_end = min(cursor + timedelta(days=250), end_dt)
+        url = f"https://api.exchange.coinbase.com/products/{product_id}/candles"
+        params = {
+            "granularity": 86400,
+            "start": cursor.isoformat(),
+            "end": chunk_end.isoformat(),
+        }
+        headers = {
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "application/json",
+        }
+        resp = requests.get(url, params=params, headers=headers, timeout=25)
+        resp.raise_for_status()
+        data = resp.json()
+        if isinstance(data, list):
+            rows.extend(data)
+        cursor = chunk_end + timedelta(seconds=1)
+        time.sleep(0.15)
+
+    if len(rows) < 40:
+        raise RuntimeError(f"Coinbase empty for {product_id}")
+
+    # Coinbase candle row: [time, low, high, open, close, volume]
+    df = pd.DataFrame(rows, columns=["ts", "low", "high", "open", "close", "volume"])
+    out = pd.DataFrame()
+    out["date"] = pd.to_datetime(df["ts"], unit="s")
+    out["close"] = pd.to_numeric(df["close"], errors="coerce")
+    out["volume"] = pd.to_numeric(df["volume"], errors="coerce")
+    out = out.dropna(subset=["date", "close"]).drop_duplicates(subset=["date"]).sort_values("date")
+    out = out[out["date"] >= pd.Timestamp(START_DATE)]
+    if len(out) < 40:
+        raise RuntimeError(f"Coinbase too few rows for {product_id}: {len(out)}")
+    return out
+
 def fetch_stooq_price(symbol: str) -> pd.DataFrame:
     stooq = stooq_symbol(symbol)
     url = f"https://stooq.com/q/d/l/?s={stooq}&i=d"
@@ -319,8 +426,9 @@ def fetch_history(ticker: str, category: str) -> Tuple[pd.DataFrame, str, Dict[s
     errors = []
 
     for name, fn in [
+        ("YahooChart", lambda: fetch_yahoo_chart_price(symbol)),
         ("yfinance", lambda: fetch_yfinance_price(symbol)),
-        ("CoinGecko", lambda: fetch_coingecko_price(symbol)),
+        ("Coinbase", lambda: fetch_coinbase_price(symbol)),
         ("Stooq", lambda: fetch_stooq_price(symbol)),
     ]:
         try:
@@ -342,14 +450,18 @@ _BENCHMARK_CACHE: Dict[str, pd.DataFrame] = {}
 
 def get_benchmark(symbol: str) -> pd.DataFrame:
     if symbol not in _BENCHMARK_CACHE:
-        try:
-            _BENCHMARK_CACHE[symbol] = fetch_yfinance_price(symbol)
-        except Exception:
+        for name, fn in [
+            ("YahooChart", lambda: fetch_yahoo_chart_price(symbol)),
+            ("yfinance", lambda: fetch_yfinance_price(symbol)),
+            ("Stooq", lambda: fetch_stooq_price(symbol)),
+        ]:
             try:
-                _BENCHMARK_CACHE[symbol] = fetch_stooq_price(symbol)
+                _BENCHMARK_CACHE[symbol] = fn()
+                break
             except Exception as exc:
-                print(f"WARN: benchmark {symbol} unavailable: {exc}")
-                _BENCHMARK_CACHE[symbol] = pd.DataFrame()
+                print(f"WARN: benchmark {symbol} {name} unavailable: {exc}")
+        else:
+            _BENCHMARK_CACHE[symbol] = pd.DataFrame()
     return _BENCHMARK_CACHE[symbol]
 
 def rsi(close: pd.Series, period: int = 14) -> Optional[float]:
