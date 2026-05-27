@@ -65,12 +65,14 @@ def to_iso_date(value: Any) -> str:
 def read_ticker_map() -> Dict[str, Dict[str, Any]]:
     path = Path("data/quant_ticker_map.json")
     if not path.exists():
+        path = Path("data/quant_ticker_map.sample.json")
+    if not path.exists():
         return {}
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         return {str(k).upper(): v for k, v in data.items() if isinstance(v, dict)} if isinstance(data, dict) else {}
     except Exception as exc:
-        print(f"WARN: failed to read data/quant_ticker_map.json: {exc}")
+        print(f"WARN: failed to read ticker map: {exc}")
         return {}
 
 TICKER_MAP = read_ticker_map()
@@ -97,6 +99,9 @@ def active_holdings_from_ledger(ledger_data: List[Dict[str, Any]]) -> Dict[str, 
         ticker = str(tx.get("ticker") or "").strip().upper()
         if not ticker:
             continue
+        mapped = TICKER_MAP.get(ticker, {})
+        if mapped.get("skip") is True:
+            continue
         tx_type = str(tx.get("type") or "").strip()
         if tx_type not in {"Buy", "Sell"}:
             continue
@@ -113,7 +118,7 @@ def is_taiwan_asset(ticker: str, category: str) -> bool:
     mapped = TICKER_MAP.get(ticker.upper(), {})
     if mapped.get("source") == "finmind":
         return True
-    if mapped.get("source") == "yfinance":
+    if mapped.get("source") in {"yfinance", "stooq", "coingecko"}:
         return False
     clean = ticker.upper().replace(".TW", "").replace(".TWO", "")
     return ("台" in str(category or "")) or clean.isdigit()
@@ -129,19 +134,37 @@ def yfinance_symbol(ticker: str, category: str) -> str:
     t = ticker.upper().strip()
     if is_taiwan_asset(t, category):
         return f"{t.replace('.TW', '').replace('.TWO', '')}.TW"
-    if "加密" in str(category or "") or t in {"BTC", "ETH", "SOL"}:
-        return t if t.endswith("-USD") or t.endswith("USDT") else f"{t}-USD"
+    if "加密" in str(category or "") or t in {"BTC", "ETH", "BTC-USD", "ETH-USD", "SOL"}:
+        if t.endswith("-USD"):
+            return t
+        return f"{t}-USD"
     if t in {"USD/TWD", "USDTWD", "TWD=X"}:
         return "TWD=X"
     return t
+
+def stooq_symbol(ticker: str) -> str:
+    mapped = TICKER_MAP.get(ticker.upper(), {})
+    if mapped.get("stooq_symbol"):
+        return str(mapped["stooq_symbol"]).lower()
+    t = yfinance_symbol(ticker, "").upper().replace("-", ".")
+    if "." not in t:
+        t = f"{t}.US"
+    return t.lower()
+
+def coingecko_id(symbol: str) -> Optional[str]:
+    t = symbol.upper().replace("-USD", "").replace("USDT", "")
+    mapped = TICKER_MAP.get(symbol.upper(), {})
+    if mapped.get("coingecko_id"):
+        return str(mapped["coingecko_id"])
+    return {"BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana"}.get(t)
 
 def benchmark_symbol(ticker: str, category: str) -> str:
     mapped = TICKER_MAP.get(ticker.upper(), {})
     if mapped.get("benchmark"):
         return str(mapped["benchmark"])
     if is_taiwan_asset(ticker, category):
-        return "^TWII"
-    if "加密" in str(category or ""):
+        return "SPY"  # 避免 ^TWII 在 GitHub Actions/yfinance 失敗時拖累 beta；台股仍可計 trend/risk.
+    if "加密" in str(category or "") or ticker.upper() in {"BTC-USD", "ETH-USD", "BTC", "ETH"}:
         return "BTC-USD"
     if "黃金" in str(category or "") or ticker.upper() in {"GLD", "GLDM", "IAU"}:
         return "GLD"
@@ -220,9 +243,50 @@ def fetch_yfinance_price(symbol: str) -> pd.DataFrame:
         raise RuntimeError(f"yfinance empty for {symbol}")
     return out
 
+def fetch_stooq_price(symbol: str) -> pd.DataFrame:
+    stooq = stooq_symbol(symbol)
+    url = f"https://stooq.com/q/d/l/?s={stooq}&i=d"
+    resp = requests.get(url, timeout=25, headers={"User-Agent": "Mozilla/5.0"})
+    resp.raise_for_status()
+    text = resp.text.strip()
+    if not text or "No data" in text or len(text.splitlines()) < 40:
+        raise RuntimeError(f"Stooq empty for {stooq}")
+    from io import StringIO
+    df = pd.read_csv(StringIO(text))
+    if "Date" not in df.columns or "Close" not in df.columns:
+        raise RuntimeError(f"Stooq malformed for {stooq}")
+    out = pd.DataFrame()
+    out["date"] = pd.to_datetime(df["Date"])
+    out["close"] = pd.to_numeric(df["Close"], errors="coerce")
+    out["volume"] = pd.to_numeric(df["Volume"], errors="coerce") if "Volume" in df.columns else np.nan
+    out = out[out["date"] >= pd.Timestamp(START_DATE)]
+    return out.dropna(subset=["date", "close"]).sort_values("date")
+
+def fetch_coingecko_price(symbol: str) -> pd.DataFrame:
+    gid = coingecko_id(symbol)
+    if not gid:
+        raise RuntimeError(f"CoinGecko id missing for {symbol}")
+    url = f"https://api.coingecko.com/api/v3/coins/{gid}/market_chart"
+    resp = requests.get(url, params={"vs_currency": "usd", "days": "730", "interval": "daily"}, timeout=25, headers={"User-Agent": "Mozilla/5.0"})
+    resp.raise_for_status()
+    data = resp.json()
+    prices = data.get("prices") or []
+    vols = data.get("total_volumes") or []
+    if len(prices) < 40:
+        raise RuntimeError(f"CoinGecko empty for {symbol}")
+    df = pd.DataFrame(prices, columns=["ts", "close"])
+    df["date"] = pd.to_datetime(df["ts"], unit="ms")
+    if vols:
+        vdf = pd.DataFrame(vols, columns=["ts", "volume"])
+        vdf["date"] = pd.to_datetime(vdf["ts"], unit="ms")
+        df = df.merge(vdf[["date", "volume"]], on="date", how="left")
+    else:
+        df["volume"] = np.nan
+    return df[["date", "close", "volume"]].dropna(subset=["date", "close"]).sort_values("date")
+
 def fetch_twelve_data_price(symbol: str) -> pd.DataFrame:
     if not TWELVE_DATA_API_KEY:
-        raise RuntimeError("TWELVE_DATA_API_KEY missing")
+        raise RuntimeError("Twelve Data key not configured")
     resp = requests.get("https://api.twelvedata.com/time_series", params={"symbol": symbol, "interval": "1day", "outputsize": 520, "apikey": TWELVE_DATA_API_KEY, "format": "JSON"}, timeout=25)
     resp.raise_for_status()
     data = resp.json()
@@ -237,6 +301,10 @@ def fetch_twelve_data_price(symbol: str) -> pd.DataFrame:
 
 def fetch_history(ticker: str, category: str) -> Tuple[pd.DataFrame, str, Dict[str, Any]]:
     extras: Dict[str, Any] = {}
+    mapped = TICKER_MAP.get(ticker.upper(), {})
+    if mapped.get("skip") is True:
+        raise RuntimeError("ticker marked skip in data/quant_ticker_map.json")
+
     if is_taiwan_asset(ticker, category):
         try:
             df = fetch_finmind_price(ticker)
@@ -246,12 +314,29 @@ def fetch_history(ticker: str, category: str) -> Tuple[pd.DataFrame, str, Dict[s
             return df, "FinMind", extras
         except Exception as exc:
             print(f"WARN: FinMind price failed for {ticker}: {exc}; trying yfinance fallback")
+
     symbol = yfinance_symbol(ticker, category)
-    try:
-        return fetch_yfinance_price(symbol), f"yfinance:{symbol}", extras
-    except Exception as exc:
-        print(f"WARN: yfinance failed for {ticker} ({symbol}): {exc}")
-    return fetch_twelve_data_price(symbol), f"TwelveData:{symbol}", extras
+    errors = []
+
+    for name, fn in [
+        ("yfinance", lambda: fetch_yfinance_price(symbol)),
+        ("CoinGecko", lambda: fetch_coingecko_price(symbol)),
+        ("Stooq", lambda: fetch_stooq_price(symbol)),
+    ]:
+        try:
+            df = fn()
+            return df, f"{name}:{symbol}", extras
+        except Exception as exc:
+            errors.append(f"{name}: {exc}")
+            print(f"WARN: {name} failed for {ticker} ({symbol}): {exc}")
+
+    if TWELVE_DATA_API_KEY:
+        try:
+            return fetch_twelve_data_price(symbol), f"TwelveData:{symbol}", extras
+        except Exception as exc:
+            errors.append(f"TwelveData: {exc}")
+
+    raise RuntimeError("all free sources failed; " + " | ".join(errors))
 
 _BENCHMARK_CACHE: Dict[str, pd.DataFrame] = {}
 
@@ -259,9 +344,12 @@ def get_benchmark(symbol: str) -> pd.DataFrame:
     if symbol not in _BENCHMARK_CACHE:
         try:
             _BENCHMARK_CACHE[symbol] = fetch_yfinance_price(symbol)
-        except Exception as exc:
-            print(f"WARN: benchmark {symbol} unavailable: {exc}")
-            _BENCHMARK_CACHE[symbol] = pd.DataFrame()
+        except Exception:
+            try:
+                _BENCHMARK_CACHE[symbol] = fetch_stooq_price(symbol)
+            except Exception as exc:
+                print(f"WARN: benchmark {symbol} unavailable: {exc}")
+                _BENCHMARK_CACHE[symbol] = pd.DataFrame()
     return _BENCHMARK_CACHE[symbol]
 
 def rsi(close: pd.Series, period: int = 14) -> Optional[float]:
@@ -334,11 +422,16 @@ def score_risk(vol60, vol252, mdd, beta, corr) -> float:
 def score_technical(rsi_val, macd_h, ma20, ma60, ma200) -> float:
     score = 5.0
     if rsi_val is not None:
-        if 52 <= rsi_val <= 68: score += 1.8
-        elif 45 <= rsi_val < 52: score += 0.6
-        elif 68 < rsi_val <= 75: score += 0.3
-        elif rsi_val > 75: score -= 1.5
-        elif rsi_val < 35: score -= 1.2
+        if 52 <= rsi_val <= 68:
+            score += 1.8
+        elif 45 <= rsi_val < 52:
+            score += 0.6
+        elif 68 < rsi_val <= 75:
+            score += 0.3
+        elif rsi_val > 75:
+            score -= 1.5
+        elif rsi_val < 35:
+            score -= 1.2
     if macd_h is not None:
         score += 1.0 if macd_h > 0 else -0.8
     for gap, weight in [(ma20, 0.8), (ma60, 1.0), (ma200, 1.0)]:
@@ -361,15 +454,23 @@ def score_valuation(extras: Dict[str, Any]) -> Tuple[float, float]:
     pe = finite_float(extras.get("pe"))
     pb = finite_float(extras.get("pb"))
     if pe is not None:
-        if pe <= 0: score -= 2.0
-        elif pe < 12: score += 1.5
-        elif pe < 22: score += 0.7
-        elif pe > 45: score -= 2.0
-        elif pe > 30: score -= 1.0
+        if pe <= 0:
+            score -= 2.0
+        elif pe < 12:
+            score += 1.5
+        elif pe < 22:
+            score += 0.7
+        elif pe > 45:
+            score -= 2.0
+        elif pe > 30:
+            score -= 1.0
     if pb is not None:
-        if pb < 1.5: score += 1.0
-        elif pb > 8: score -= 1.5
-        elif pb > 4: score -= 0.7
+        if pb < 1.5:
+            score += 1.0
+        elif pb > 8:
+            score -= 1.5
+        elif pb > 4:
+            score -= 0.7
     attractiveness = clamp(score)
     return attractiveness, clamp(10.0 - attractiveness)
 
@@ -413,6 +514,7 @@ def compute_meta(ticker: str, category: str, df: pd.DataFrame, source: str, extr
     last_date = pd.to_datetime(df["date"].iloc[-1]).date()
     days_stale = (TODAY_TPE - last_date).days
     coverage_score = clamp(len(df) / 252.0, 0, 1)
+
     meta = {
         "beta": round(beta, 4) if beta is not None else None,
         "std": round((vol252 if vol252 is not None else vol60 or 0) * 100, 3),
@@ -444,8 +546,8 @@ def compute_meta(ticker: str, category: str, df: pd.DataFrame, source: str, extr
         "source": source,
         "lookback_days": int(len(df)),
         "coverage_score": round(coverage_score, 3),
-        "data_quality": "stale" if days_stale > 7 else ("thin" if len(df) < 120 else "ok"),
-        "stale": bool(days_stale > 7),
+        "data_quality": "stale" if days_stale > 10 else ("thin" if len(df) < 120 else "ok"),
+        "stale": bool(days_stale > 10),
         "last_market_date": str(last_date),
         "updated_at": str(TODAY_TPE),
     }
@@ -484,6 +586,7 @@ def write_github_summary(results: Dict[str, Any]) -> None:
         f"- Dry run: `{DRY_RUN}`",
         f"- Updated tickers: `{len(results.get('updated', []))}`",
         f"- Failed tickers: `{len(results.get('failed', []))}`",
+        f"- Skipped tickers: `{len(results.get('skipped', []))}`",
         "",
     ]
     if results.get("updated"):
@@ -499,6 +602,12 @@ def write_github_summary(results: Dict[str, Any]) -> None:
             lines.append(f"| {item['ticker']} | {item['error']} |")
     else:
         lines.append("N/A")
+    if results.get("skipped"):
+        lines.extend(["", "## Skipped", ""])
+        lines.append("| Ticker | Reason |")
+        lines.append("|---|---|")
+        for item in results["skipped"]:
+            lines.append(f"| {item['ticker']} | {item['reason']} |")
     Path(path).write_text("\n".join(lines), encoding="utf-8")
 
 def main() -> None:
@@ -513,10 +622,16 @@ def main() -> None:
     if not holdings:
         fail("No active holdings found from ledger_data.")
     print(f"Active holdings: {', '.join(sorted(holdings.keys()))}")
+
     existing_meta = row.get("stock_meta") if isinstance(row.get("stock_meta"), dict) else {}
     new_meta: Dict[str, Dict[str, Any]] = {}
-    results = {"updated": [], "failed": []}
+    results = {"updated": [], "failed": [], "skipped": []}
+
     for ticker, h in sorted(holdings.items()):
+        mapped = TICKER_MAP.get(ticker.upper(), {})
+        if mapped.get("skip") is True:
+            results["skipped"].append({"ticker": ticker, "reason": mapped.get("note", "skip=true")})
+            continue
         category = h.get("category") or ""
         try:
             df, source, extras = fetch_history(ticker, category)
@@ -527,11 +642,15 @@ def main() -> None:
         except Exception as exc:
             results["failed"].append({"ticker": ticker, "error": str(exc)})
             print(f"FAIL {ticker}: {exc}", file=sys.stderr)
+
     if not new_meta:
         fail("No stock_meta was produced. Nothing to write.")
+
     write_supabase_stock_meta(client, merge_stock_meta(existing_meta, new_meta))
     write_github_summary(results)
     print("Done.")
+    if results["failed"]:
+        print("Some tickers failed. Existing stock_meta values were left untouched for those tickers.")
 
 if __name__ == "__main__":
     main()
