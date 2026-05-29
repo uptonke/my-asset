@@ -52,26 +52,23 @@
       #${MC_PANEL_ID} .mcp-regime.cold{color:#60a5fa;background:rgba(59,130,246,.12);border-color:rgba(59,130,246,.25)}
       #${MC_PANEL_ID} .mcp-regime.ok{color:#4ade80;background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.25)}
       #${MC_PANEL_ID} .mcp-regime.mid{color:#facc15;background:rgba(250,204,21,.12);border-color:rgba(250,204,21,.25)}
-      #${MC_PANEL_ID} .mcp-reasons,#${MC_PANEL_ID} .mcp-ai-card{border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.035);border-radius:16px;padding:14px;color:#cbd5e1;font-size:12px;line-height:1.65}
-      #${MC_PANEL_ID} .mcp-reasons .label,#${MC_PANEL_ID} .mcp-ai-card .label{color:#94a3b8;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.14em;margin-bottom:6px}
-      #${MC_PANEL_ID} .mcp-quality-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
-      #${MC_PANEL_ID} .mcp-chip{border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:9px 10px;background:rgba(0,0,0,.18)}
+      #${MC_PANEL_ID} .mcp-reasons,#${MC_PANEL_ID} .mcp-ai,#${MC_PANEL_ID} .mcp-penalties,#${MC_PANEL_ID} .mcp-official{border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.035);border-radius:16px;padding:14px;color:#cbd5e1;font-size:12px;line-height:1.65}
+      #${MC_PANEL_ID} .mcp-reasons .label,#${MC_PANEL_ID} .mcp-ai .label,#${MC_PANEL_ID} .mcp-penalties .label,#${MC_PANEL_ID} .mcp-official .label{color:#94a3b8;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.14em;margin-bottom:6px}
+      #${MC_PANEL_ID} .mcp-quality-grid,#${MC_PANEL_ID} .mcp-official-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+      #${MC_PANEL_ID} .mcp-chip{border:1px solid rgba(255,255,255,.10);border-radius:12px;padding:9px 10px;background:rgba(0,0,0,.18);min-height:58px}
       #${MC_PANEL_ID} .mcp-chip .k{font-size:9px;color:#94a3b8;text-transform:uppercase;letter-spacing:.12em;font-weight:900}
-      #${MC_PANEL_ID} .mcp-chip .v{margin-top:4px;font-size:13px;font-weight:900;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
-      #${MC_PANEL_ID} .mcp-penalties{border:1px solid rgba(251,113,133,.18);background:rgba(239,68,68,.06);border-radius:16px;padding:12px;color:#fecdd3;font-size:11px;line-height:1.65}
+      #${MC_PANEL_ID} .mcp-chip .v{margin-top:4px;font-size:12px;font-weight:900;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;overflow:hidden;text-overflow:ellipsis}
+      #${MC_PANEL_ID} .mcp-penalties{border-color:rgba(251,113,133,.18);background:rgba(239,68,68,.06);color:#fecdd3}
       #${MC_PANEL_ID} .mcp-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
       #${MC_PANEL_ID} .mcp-module{border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.035);border-radius:14px;padding:12px;min-height:116px}
       #${MC_PANEL_ID} .mcp-kicker{font-size:10px;color:#94a3b8;font-weight:900;text-transform:uppercase;letter-spacing:.12em}
       #${MC_PANEL_ID} .mcp-module-title{margin-top:4px;color:#fff;font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:8px}
       #${MC_PANEL_ID} .mcp-module-score{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:20px;font-weight:900;margin-top:10px}
       #${MC_PANEL_ID} .mcp-module-note{margin-top:7px;color:#94a3b8;font-size:10px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-      #${MC_PANEL_ID} .mcp-ai-section{margin-top:10px;border-top:1px solid rgba(255,255,255,.08);padding-top:10px}
-      #${MC_PANEL_ID} .mcp-ai-section h4{margin:0 0 6px;color:#fff;font-size:12px;font-weight:900}
-      #${MC_PANEL_ID} .mcp-ai-section div{margin:3px 0}
       #${MC_PANEL_ID} .s-good{color:#4ade80} #${MC_PANEL_ID} .s-mid{color:#facc15} #${MC_PANEL_ID} .s-bad{color:#fb7185}
       #${MC_PANEL_ID} .mcp-source{font-size:10px;color:#64748b;line-height:1.5;border-top:1px solid rgba(255,255,255,.08);padding-top:10px}
       @media(max-width:1200px){#${MC_PANEL_ID} .mcp-grid{grid-template-columns:repeat(3,minmax(0,1fr))}#${MC_PANEL_ID} .mcp-score-row{grid-template-columns:1fr}}
-      @media(max-width:768px){#${Q_PANEL_ID},#${MC_PANEL_ID}{border-radius:14px;margin:0 6px 14px}#${Q_PANEL_ID} .qmp-head,#${MC_PANEL_ID} .mcp-head{flex-direction:column;padding:14px}#${Q_PANEL_ID} .qmp-meta,#${MC_PANEL_ID} .mcp-meta{text-align:left}#${Q_PANEL_ID} th,#${Q_PANEL_ID} td{padding:9px 8px;font-size:11px}#${MC_PANEL_ID} .mcp-body{padding:14px}#${MC_PANEL_ID} .mcp-score-stack{grid-template-columns:1fr}#${MC_PANEL_ID} .mcp-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#${MC_PANEL_ID} .mcp-quality-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#${MC_PANEL_ID} .mcp-score{font-size:34px}}
+      @media(max-width:768px){#${Q_PANEL_ID},#${MC_PANEL_ID}{border-radius:14px;margin:0 6px 14px}#${Q_PANEL_ID} .qmp-head,#${MC_PANEL_ID} .mcp-head{flex-direction:column;padding:14px}#${Q_PANEL_ID} .qmp-meta,#${MC_PANEL_ID} .mcp-meta{text-align:left}#${Q_PANEL_ID} th,#${Q_PANEL_ID} td{padding:9px 8px;font-size:11px}#${MC_PANEL_ID} .mcp-body{padding:14px}#${MC_PANEL_ID} .mcp-score-stack{grid-template-columns:1fr}#${MC_PANEL_ID} .mcp-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#${MC_PANEL_ID} .mcp-quality-grid,#${MC_PANEL_ID} .mcp-official-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#${MC_PANEL_ID} .mcp-score{font-size:34px}}
     `;
     document.head.appendChild(style);
   }
@@ -137,21 +134,34 @@
   function moduleName(key){return ({trend:"趨勢",breadth:"廣度",credit:"信用",volatility:"波動",liquidity:"流動性",cross_asset:"跨資產"})[key]||key;}
   function moduleIcon(key){return ({trend:"fa-arrow-trend-up",breadth:"fa-ruler-combined",credit:"fa-building-columns",volatility:"fa-wave-square",liquidity:"fa-water",cross_asset:"fa-globe"})[key]||"fa-circle-nodes";}
   function renderModule(key,mod){const score=Number(mod?.score);return`<div class="mcp-module"><div class="mcp-kicker">${escapeHtml(key)}</div><div class="mcp-module-title"><span><i class="fas ${moduleIcon(key)}"></i> ${moduleName(key)}</span><span class="${scoreTextClass(score)}">${escapeHtml(mod?.label||"")}</span></div><div class="mcp-module-score ${scoreTextClass(score)}">${Number.isFinite(score)?score.toFixed(1):"N/A"}</div><div class="mcp-module-note" title="${escapeHtml(mod?.note||"")}">${escapeHtml(mod?.note||"N/A")}</div></div>`;}
-  function renderChip(label,value){return`<div class="mcp-chip"><div class="k">${escapeHtml(label)}</div><div class="v ${statusClass(value)}">${escapeHtml(value||"N/A")}</div></div>`;}
-  function renderList(items){return Array.isArray(items)&&items.length?items.map((x)=>`<div>• ${escapeHtml(x)}</div>`).join(""):`<div>• N/A</div>`;}
-  function renderAiSection(title,items){return`<div class="mcp-ai-section"><h4>${escapeHtml(title)}</h4>${renderList(items)}</div>`;}
+  function renderChip(label,value){return`<div class="mcp-chip"><div class="k">${escapeHtml(label)}</div><div class="v ${statusClass(value)}" title="${escapeHtml(value||"N/A")}">${escapeHtml(value||"N/A")}</div></div>`;}
+  function listItems(items){return Array.isArray(items)&&items.length?items.map(x=>`<div>• ${escapeHtml(x)}</div>`).join(""):"<div>• N/A</div>";}
 
-  function renderAiCard(compass){
-    const ai=compass.ai_data_deep_analysis||{};
-    if(!ai || !Object.keys(ai).length) return "";
-    return `<div class="mcp-ai-card"><div class="label">${escapeHtml(ai.title||"AI 數據深度分析")}</div><div style="color:#94a3b8;font-size:11px;margin-bottom:8px;">${escapeHtml(ai.subtitle||"只整理數據，不輸出操作建議。")}</div>${renderAiSection("市場結構摘要",ai.market_structure_summary)}${renderAiSection("分數拆解",ai.score_decomposition)}${renderAiSection("主要背離",ai.major_divergences)}${renderAiSection("資料品質與盲區",ai.data_quality_and_blindspots)}${renderAiSection("投組暴露來源",ai.portfolio_exposure_sources)}${renderAiSection("需要人工檢查的資料點",ai.manual_checkpoints)}</div>`;
+  function renderOfficial(official){
+    if(!official){return "";}
+    const twseErrs=official?.twse?.errors?.length ?? 0;
+    const govMissing=official?.taiwan_open_data?.missing_config?.length ?? 0;
+    const treasuryErrs=official?.us_treasury?.errors?.length ?? 0;
+    const wbErrs=official?.world_bank?.errors?.length ?? 0;
+    return `<div class="mcp-official"><div class="label">Weekly Official Macro Layer</div><div class="mcp-official-grid">
+      ${renderChip("TWSE errors",String(twseErrs))}
+      ${renderChip("Taiwan URLs missing",String(govMissing))}
+      ${renderChip("Treasury errors",String(treasuryErrs))}
+      ${renderChip("World Bank errors",String(wbErrs))}
+    </div><div style="margin-top:10px;color:#94a3b8">更新=${escapeHtml(official.date||"N/A")}；資料寫入 macro_meta.official_weekly。BIS/OECD/IMF 為可設定 URL map 的慢變數層，不直接混進短期分數。</div></div>`;
+  }
+
+  function renderAI(ai){
+    if(!ai){return "";}
+    return `<div class="mcp-ai"><div class="label">${escapeHtml(ai.title||"AI 數據深度分析")}</div><div style="color:#94a3b8;margin-bottom:8px">${escapeHtml(ai.subtitle||"只整理數據，不輸出操作建議。")}</div><div><b>市場結構摘要：</b>${escapeHtml(ai.market_structure||"N/A")}</div><div style="margin-top:8px"><b>分數拆解：</b>${listItems(ai.score_decomposition)}</div><div style="margin-top:8px"><b>主要背離：</b>${listItems(ai.divergences)}</div><div style="margin-top:8px"><b>資料品質與盲區：</b>${listItems(ai.data_quality)}</div><div style="margin-top:8px"><b>投組暴露來源：</b>${listItems(ai.portfolio_exposure_notes)}</div><div style="margin-top:8px"><b>需要人工檢查的資料點：</b>${listItems(ai.manual_checks)}</div></div>`;
   }
 
   function renderCompassPanel(data){
     const panel=ensureCompassPanel();if(!panel)return;
     const compass=data?.macroMeta?.market_compass;
+    const official=data?.macroMeta?.official_weekly;
     if(data.error){panel.innerHTML=`<div class="mcp-head"><div><div class="mcp-title">Market Compass 讀取失敗</div><div class="mcp-sub">${escapeHtml(data.error)}</div></div></div>`;return;}
-    if(!compass){panel.innerHTML=`<div class="mcp-head"><div><div class="mcp-title">Market Compass</div><div class="mcp-sub">尚未偵測到 macro_meta.market_compass。請先跑 Daily Quant Pipeline，並確認已加入 FRED_API_KEY。</div></div><div class="mcp-meta">Phase 3<br>等待資料</div></div>`;return;}
+    if(!compass){panel.innerHTML=`<div class="mcp-head"><div><div class="mcp-title">Market Compass</div><div class="mcp-sub">尚未偵測到 macro_meta.market_compass。請先跑 Weekly Macro Pipeline 或 Daily Quant Pipeline。</div></div><div class="mcp-meta">等待資料</div></div>`;return;}
     const raw=Number(compass.raw_score ?? compass.score);
     const adjusted=Number(compass.adjusted_score ?? compass.score);
     const penaltyPoints=Number(compass.penalty_points ?? 0);
@@ -162,7 +172,7 @@
     const penalties=Array.isArray(compass.penalties)?compass.penalties:[];
     const fredStatus=compass.fred_status||dq.fred_status||(compass.fred_enabled?"ON":"OFF");
     const creditQuality=dq.credit_quality||mods?.credit?.confidence||"N/A";
-    panel.innerHTML=`<div class="mcp-head"><div><div class="mcp-title">🧭 Market Compass Phase 3</div><div class="mcp-sub">Raw Score 保留原始加權；Adjusted Score 扣除趨勢/廣度背離、信用資料缺失與跨資產未確認。AI 數據深度分析只整理資料，不輸出買賣、加減碼或目標價。</div></div><div class="mcp-meta">更新=${escapeHtml(compass.date||"N/A")}<br>FRED=${escapeHtml(fredStatus)}</div></div><div class="mcp-body"><div class="mcp-score-row"><div class="mcp-score-stack"><div class="mcp-score-card"><div class="mcp-kicker">Raw Score</div><div class="mcp-score">${Number.isFinite(raw)?raw.toFixed(1):"N/A"}<small>/100</small></div><div class="mcp-regime mid"><i class="fas fa-calculator"></i>原始加權</div></div><div class="mcp-score-card adjusted"><div class="mcp-kicker">Adjusted Score</div><div class="mcp-score">${Number.isFinite(adjusted)?adjusted.toFixed(1):"N/A"}<small>/100</small></div><div class="mcp-regime ${scoreTone(adjusted)}"><i class="fas fa-signal"></i>${escapeHtml(compass.regime||compass.label||"N/A")}</div></div></div><div class="mcp-reasons"><div class="label">Primary Reasons</div>${renderList(reasons)}</div></div><div class="mcp-quality-grid">${renderChip("Data Quality",dq.overall||"N/A")}${renderChip("FRED",fredStatus)}${renderChip("Credit",creditQuality)}${renderChip("Yahoo",dq.yahoo_status||"N/A")}</div>${penalties.length?`<div class="mcp-penalties"><div class="mcp-kicker">Penalty Reasons · ${penaltyPoints.toFixed(1)} pts</div>${penalties.map((p)=>`<div>• ${escapeHtml(p.reason||p.code||"Penalty")} <span class="s-bad">(${Number(p.points||0).toFixed(0)})</span></div>`).join("")}</div>`:""}<div class="mcp-grid">${order.map((k)=>renderModule(k,mods[k]||{})).join("")}</div>${renderAiCard(compass)}<div class="mcp-source">Source: ${escapeHtml(compass?.data_sources?.market_prices||"YahooChart")} / ${escapeHtml(compass?.data_sources?.macro_credit||"FRED")}. ${Array.isArray(compass.fred_errors)&&compass.fred_errors.length?`FRED warnings: ${escapeHtml(compass.fred_errors.slice(0,2).join(" | "))}`:""}</div></div>`;
+    panel.innerHTML=`<div class="mcp-head"><div><div class="mcp-title">🧭 Market Compass + Weekly Official Macro</div><div class="mcp-sub">Raw Score 保留原始加權；Adjusted Score 會扣除趨勢/廣度背離、信用資料缺失與跨資產未確認。下方 AI 數據深度分析只整理數據，不輸出操作建議。</div></div><div class="mcp-meta">更新=${escapeHtml(compass.date||"N/A")}<br>FRED=${escapeHtml(fredStatus)}</div></div><div class="mcp-body"><div class="mcp-score-row"><div class="mcp-score-stack"><div class="mcp-score-card"><div class="mcp-kicker">Raw Score</div><div class="mcp-score">${Number.isFinite(raw)?raw.toFixed(1):"N/A"}<small>/100</small></div><div class="mcp-regime mid"><i class="fas fa-calculator"></i>原始加權</div></div><div class="mcp-score-card adjusted"><div class="mcp-kicker">Adjusted Score</div><div class="mcp-score">${Number.isFinite(adjusted)?adjusted.toFixed(1):"N/A"}<small>/100</small></div><div class="mcp-regime ${scoreTone(adjusted)}"><i class="fas fa-signal"></i>${escapeHtml(compass.regime||compass.label||"N/A")}</div></div></div><div class="mcp-reasons"><div class="label">Primary Reasons</div>${listItems(reasons)}</div></div><div class="mcp-quality-grid">${renderChip("Data Quality",dq.overall||"N/A")}${renderChip("FRED",fredStatus)}${renderChip("Credit",creditQuality)}${renderChip("Yahoo",dq.yahoo_status||"N/A")}</div>${penalties.length?`<div class="mcp-penalties"><div class="label">Penalty Reasons · ${penaltyPoints.toFixed(1)} pts</div>${penalties.map((p)=>`<div>• ${escapeHtml(p.reason||p.code||"Penalty")} <span class="s-bad">(${Number(p.points||0).toFixed(0)})</span></div>`).join("")}</div>`:""}<div class="mcp-grid">${order.map((k)=>renderModule(k,mods[k]||{})).join("")}</div>${renderOfficial(official)}${renderAI(compass.ai_data_deep_analysis)}<div class="mcp-source">Source: ${escapeHtml(compass?.data_sources?.market_prices||"YahooChart")} / ${escapeHtml(compass?.data_sources?.macro_credit||"FRED")}. ${Array.isArray(compass.fred_errors)&&compass.fred_errors.length?`FRED warnings: ${escapeHtml(compass.fred_errors.slice(0,2).join(" | "))}`:""}</div></div>`;
   }
 
   async function render(force=false){
