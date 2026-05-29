@@ -36,3 +36,12 @@ jobs:
           SUPABASE_TABLE: portfolio_db
           PORTFOLIO_ROW_ID: '1'
         run: python scripts/fix_xray_twd_weights.py
+
+      - name: 🧭 更新 Phase 3 Market Compass
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_TABLE: portfolio_db
+          PORTFOLIO_ROW_ID: '1'
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: python scripts/update_market_compass.py
