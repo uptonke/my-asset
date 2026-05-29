@@ -12,7 +12,4 @@ from typing import Any, Dict, List, Optional, Tuple
 import pandas as pd
 import requests
 from supabase import create_client
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
-
-TAIPEI_TZ = timezone(timedelta(hours=8))
-TODAY_TPE = datetime.now(TAIPEI_TZ).date()
+from tenacity import retry, retry_if_exception_type, stop_after_attempt,
