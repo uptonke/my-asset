@@ -21,6 +21,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "") or os.getenv("SUPABASE_SECRET_KEY", "")
 SUPABASE_TABLE = os.getenv("SUPABASE_TABLE", "portfolio_db")
 PORTFOLIO_ROW_ID = int(os.getenv("PORTFOLIO_ROW_ID", "1"))
+CONFIG_PATH = os.getenv("OFFICIAL_DATA_CONFIG_PATH", "config/official_data_sources.json")
 
 TWSE_ENDPOINTS = {
     "institutional_investors": "https://openapi.twse.com.tw/v1/exchangeReport/T86",
@@ -28,7 +29,8 @@ TWSE_ENDPOINTS = {
     "market_value_volume": "https://openapi.twse.com.tw/v1/exchangeReport/FMTQIK",
 }
 
-# 這些通常是公開資料 URL，不應放 Secret；請放 GitHub Variables。
+# 公開資料 URL：優先讀 GitHub Variables；沒有 Variables 時讀 config/official_data_sources.json。
+# 這些不是 Secret，建議放 repo config，必要時再用 Variables 覆蓋。
 DATA_GOV_TW_URL_ENV = {
     "business_signal": "TAIWAN_BUSINESS_SIGNAL_URL",
     "export_orders": "TAIWAN_EXPORT_ORDERS_URL",
@@ -101,6 +103,64 @@ def http_json(url: str, params: Optional[Dict[str, Any]] = None) -> Any:
         return {"raw_text_preview": resp.text[:3000]}
 
 
+
+
+def load_official_data_config() -> Dict[str, Any]:
+    path = Path(CONFIG_PATH) if "Path" in globals() else None
+    # Avoid a hard dependency on pathlib import at top in older patch merges.
+    try:
+        from pathlib import Path as _Path
+        cfg_path = _Path(CONFIG_PATH)
+        if cfg_path.exists():
+            data = json.loads(cfg_path.read_text(encoding="utf-8"))
+            return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+    return {}
+
+
+def env_or_config_url(config: Dict[str, Any], section: str, key: str, env_name: str) -> str:
+    env_value = os.getenv(env_name, "").strip()
+    if env_value:
+        return env_value
+    value = ((config.get(section) or {}).get(key) or "") if isinstance(config, dict) else ""
+    return str(value).strip()
+
+
+def env_or_config_map(config: Dict[str, Any], group: str, env_name: str) -> Tuple[Dict[str, Any], Optional[str]]:
+    raw = os.getenv(env_name, "").strip()
+    if raw:
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict):
+                return parsed, "env"
+            return {}, f"{env_name} must be JSON object"
+        except Exception as exc:
+            return {}, f"{env_name} parse:{exc}"
+    value = (((config.get("global") or {}).get(group)) or {}) if isinstance(config, dict) else {}
+    if isinstance(value, dict):
+        return value, "config" if value else None
+    return {}, f"config.global.{group} must be JSON object"
+
+
+def env_or_config_world_bank(config: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[str]]:
+    indicators = DEFAULT_WORLD_BANK_INDICATORS.copy()
+    raw = os.getenv("WORLD_BANK_INDICATORS", "").strip()
+    if raw:
+        try:
+            override = json.loads(raw)
+            if isinstance(override, dict):
+                indicators.update(override)
+                return indicators, "env"
+            return indicators, "WORLD_BANK_INDICATORS must be JSON object"
+        except Exception as exc:
+            return indicators, f"WORLD_BANK_INDICATORS parse:{exc}"
+    cfg = (config.get("world_bank") or {}) if isinstance(config, dict) else {}
+    if isinstance(cfg, dict):
+        indicators.update({k: v for k, v in cfg.items() if isinstance(v, dict)})
+        return indicators, "config" if cfg else None
+    return indicators, "config.world_bank must be JSON object"
+
 def latest_row(rows: Any) -> Optional[Dict[str, Any]]:
     if isinstance(rows, dict):
         data = rows.get("data") or rows.get("result") or rows.get("records") or rows.get("items")
@@ -152,18 +212,19 @@ def summarize_twse() -> Dict[str, Any]:
     return out
 
 
-def fetch_configured_open_data() -> Dict[str, Any]:
-    out: Dict[str, Any] = {"updated_at": str(TODAY_TPE), "datasets": {}, "missing_config": [], "errors": []}
+def fetch_configured_open_data(config: Dict[str, Any]) -> Dict[str, Any]:
+    out: Dict[str, Any] = {"updated_at": str(TODAY_TPE), "datasets": {}, "missing_config": [], "errors": [], "config_path": CONFIG_PATH}
     for key, env_name in DATA_GOV_TW_URL_ENV.items():
-        url = os.getenv(env_name, "").strip()
+        url = env_or_config_url(config, "taiwan", key, env_name)
         if not url:
-            out["missing_config"].append(env_name)
+            out["missing_config"].append(f"taiwan.{key} / {env_name}")
             continue
+        source_mode = "env" if os.getenv(env_name, "").strip() else "config"
         try:
             data = http_json(url)
             rows = data if isinstance(data, list) else data.get("data") if isinstance(data, dict) else None
             sample = latest_row(rows) if isinstance(rows, list) else None
-            out["datasets"][key] = {"env": env_name, "url": url, "sample": sample, "rows": len(rows) if isinstance(rows, list) else None}
+            out["datasets"][key] = {"source_mode": source_mode, "env": env_name, "url": url, "sample": sample, "rows": len(rows) if isinstance(rows, list) else None}
         except Exception as exc:
             out["errors"].append(f"{key}:{exc}")
     return out
@@ -188,15 +249,12 @@ def summarize_treasury() -> Dict[str, Any]:
     return out
 
 
-def summarize_world_bank() -> Dict[str, Any]:
+def summarize_world_bank(config: Dict[str, Any]) -> Dict[str, Any]:
     out: Dict[str, Any] = {"updated_at": str(TODAY_TPE), "indicators": {}, "errors": []}
-    indicators = DEFAULT_WORLD_BANK_INDICATORS.copy()
-    try:
-        override = json.loads(os.getenv("WORLD_BANK_INDICATORS", "{}") or "{}")
-        if isinstance(override, dict):
-            indicators.update(override)
-    except Exception as exc:
-        out["errors"].append(f"WORLD_BANK_INDICATORS parse:{exc}")
+    indicators, source_note = env_or_config_world_bank(config)
+    if source_note and "parse" in source_note or source_note and "must" in source_note:
+        out["errors"].append(source_note)
+    out["source_mode"] = source_note or "default"
     for key, spec in indicators.items():
         try:
             countries = spec["countries"]
@@ -215,24 +273,21 @@ def summarize_world_bank() -> Dict[str, Any]:
     return out
 
 
-def summarize_optional_url_maps() -> Dict[str, Any]:
+def summarize_optional_url_maps(config: Dict[str, Any]) -> Dict[str, Any]:
     out: Dict[str, Any] = {}
     for group, env_name in OPTIONAL_URL_MAP_ENVS.items():
         group_out = {"updated_at": str(TODAY_TPE), "configured": False, "items": {}, "errors": []}
-        raw = os.getenv(env_name, "").strip()
-        if not raw:
-            group_out["missing_config"] = env_name
+        url_map, source_note = env_or_config_map(config, group, env_name)
+        if source_note and ("parse" in source_note or "must" in source_note):
+            group_out["errors"].append(source_note)
+            out[group] = group_out
+            continue
+        if not url_map:
+            group_out["missing_config"] = f"global.{group} / {env_name}"
             out[group] = group_out
             continue
         group_out["configured"] = True
-        try:
-            url_map = json.loads(raw)
-            if not isinstance(url_map, dict):
-                raise ValueError("must be JSON object")
-        except Exception as exc:
-            group_out["errors"].append(f"{env_name} parse:{exc}")
-            out[group] = group_out
-            continue
+        group_out["source_mode"] = source_note or "config"
         for key, url in url_map.items():
             try:
                 data = http_json(str(url))
@@ -252,11 +307,12 @@ def summarize_optional_url_maps() -> Dict[str, Any]:
 
 
 def build_official_weekly_meta() -> Dict[str, Any]:
+    config = load_official_data_config()
     twse = summarize_twse()
-    taiwan_open_data = fetch_configured_open_data()
+    taiwan_open_data = fetch_configured_open_data(config)
     treasury = summarize_treasury()
-    world_bank = summarize_world_bank()
-    optional = summarize_optional_url_maps()
+    world_bank = summarize_world_bank(config)
+    optional = summarize_optional_url_maps(config)
 
     missing = []
     errors = []
@@ -265,7 +321,9 @@ def build_official_weekly_meta() -> Dict[str, Any]:
         errors.extend(block.get("errors", []) if isinstance(block, dict) else [])
 
     official = {
-        "version": "weekly_official_macro_v1",
+        "version": "weekly_official_macro_v2_config_first",
+        "config_path": CONFIG_PATH,
+        "config_loaded": bool(config),
         "updated_at": datetime.now(TAIPEI_TZ).isoformat(timespec="seconds"),
         "date": str(TODAY_TPE),
         "twse": twse,
@@ -282,7 +340,8 @@ def build_official_weekly_meta() -> Dict[str, Any]:
         },
         "notes": [
             "TWSE 與 U.S. Treasury / World Bank 預設不需要 API key。",
-            "data.gov.tw 多數資料集不需要 key，但需要把實際資料 URL 放到 GitHub Variables。",
+            "data.gov.tw 多數資料集不需要 key；實際資料 URL 建議放 config/official_data_sources.json。",
+            "GitHub Variables 仍可覆蓋 config，適合臨時改 URL。",
             "BIS / OECD / IMF 已保留 URL map 入口；建議先放精選資料 URL，不要一次抓全庫。",
         ],
     }
