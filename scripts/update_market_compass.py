@@ -986,11 +986,13 @@ def main() -> None:
     macro_meta["market_compass"] = compass
     macro_meta["ai_data_deep_analysis"] = compass.get("ai_data_deep_analysis")
     client.table(SUPABASE_TABLE).update({"macro_meta": macro_meta}).eq("id", PORTFOLIO_ROW_ID).execute()
+    ai = compass.get("ai_data_deep_analysis") if isinstance(compass.get("ai_data_deep_analysis"), dict) else {}
     print(
         "OK market compass "
         f"raw={compass['raw_score']} adjusted={compass['adjusted_score']} "
         f"regime={compass['regime']} fred_status={compass['fred_status']} "
-        f"credit_quality={compass['data_quality']['credit_quality']}"
+        f"credit_quality={compass['data_quality']['credit_quality']} "
+        f"ai_engine={ai.get('analysis_engine', 'N/A')}"
     )
 
 
