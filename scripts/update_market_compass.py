@@ -12,7 +12,6 @@ import numpy as np
 import pandas as pd
 import requests
 from supabase import create_client
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 TAIPEI_TZ = timezone(timedelta(hours=8))
 TODAY_TPE = datetime.now(TAIPEI_TZ).date()
@@ -22,6 +21,8 @@ SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "") or os.get
 SUPABASE_TABLE = os.getenv("SUPABASE_TABLE", "portfolio_db")
 PORTFOLIO_ROW_ID = int(os.getenv("PORTFOLIO_ROW_ID", "1"))
 FRED_API_KEY = os.getenv("FRED_API_KEY", "")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 YAHOO_SYMBOLS = [
     "SPY", "QQQ", "RSP", "IWM", "HYG", "JNK", "LQD", "TLT", "IEF", "SHY",
@@ -42,8 +43,6 @@ FRED_SERIES = {
     "reverse_repo": "RRPONTSYD",
 }
 CORE_FRED_KEYS = ["hy_oas", "ig_oas", "financial_stress", "nfci", "real_10y", "breakeven_10y"]
-
-WEIGHTS = {"trend": 0.25, "breadth": 0.20, "credit": 0.20, "volatility": 0.15, "liquidity": 0.15, "cross_asset": 0.05}
 
 
 def finite(x: Any, default: Optional[float] = None) -> Optional[float]:
@@ -99,21 +98,43 @@ def moving_average(series: Optional[pd.Series], window: int) -> Optional[float]:
     return finite(s.tail(window).mean())
 
 
-@retry(stop=stop_after_attempt(4), wait=wait_exponential(multiplier=1.2, min=1, max=10), retry=retry_if_exception_type((requests.RequestException, RuntimeError)))
-def get_json(url: str, params: Dict[str, Any], headers: Optional[Dict[str, str]] = None, timeout: int = 25) -> Any:
-    resp = requests.get(url, params=params, headers=headers or {"User-Agent": "Mozilla/5.0"}, timeout=timeout)
-    if resp.status_code in {429, 500, 502, 503, 504}:
-        raise RuntimeError(f"retryable HTTP {resp.status_code}")
-    resp.raise_for_status()
-    return resp.json()
+def http_get_with_retry(
+    url: str,
+    params: Dict[str, Any],
+    headers: Optional[Dict[str, str]] = None,
+    timeout: int = 20,
+    retries: int = 4,
+) -> requests.Response:
+    last_exc: Optional[BaseException] = None
+    for attempt in range(retries):
+        try:
+            resp = requests.get(url, params=params, headers=headers, timeout=timeout)
+            if resp.status_code in {429, 500, 502, 503, 504} and attempt < retries - 1:
+                time.sleep(1.5 * (2 ** attempt))
+                continue
+            resp.raise_for_status()
+            return resp
+        except Exception as exc:
+            last_exc = exc
+            if attempt < retries - 1:
+                time.sleep(1.5 * (2 ** attempt))
+                continue
+    raise RuntimeError(str(last_exc) if last_exc else "request failed")
 
 
 def fetch_yahoo_chart(symbol: str, days: int = 430) -> pd.Series:
     now = int(datetime.now(timezone.utc).timestamp())
     start = int((datetime.now(timezone.utc) - timedelta(days=days)).timestamp())
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
-    data = get_json(url, {"period1": start, "period2": now, "interval": "1d", "events": "history"}, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
-    result = (((data.get("chart") or {}).get("result") or [])[:1])
+    params = {"period1": start, "period2": now, "interval": "1d", "events": "history"}
+    resp = http_get_with_retry(
+        url,
+        params=params,
+        headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"},
+        timeout=20,
+        retries=3,
+    )
+    result = (((resp.json().get("chart") or {}).get("result") or [])[:1])
     if not result:
         raise RuntimeError(f"YahooChart empty for {symbol}")
     r = result[0]
@@ -130,18 +151,24 @@ def fetch_fred_series(series_id: str, days: int = 760) -> pd.Series:
     if not FRED_API_KEY:
         raise RuntimeError("FRED_API_KEY missing")
     start = TODAY_TPE - timedelta(days=days)
-    data = get_json(
-        "https://api.stlouisfed.org/fred/series/observations",
-        {"series_id": series_id, "api_key": FRED_API_KEY, "file_type": "json", "observation_start": str(start)},
-    )
+    url = "https://api.stlouisfed.org/fred/series/observations"
+    params = {
+        "series_id": series_id,
+        "api_key": FRED_API_KEY,
+        "file_type": "json",
+        "observation_start": str(start),
+    }
+    resp = http_get_with_retry(url, params=params, timeout=20, retries=4)
+    obs = resp.json().get("observations") or []
     rows = []
-    for o in data.get("observations") or []:
+    for o in obs:
         val = o.get("value")
         if val in {None, "", "."}:
             continue
         v = finite(val)
-        if v is not None:
-            rows.append((pd.to_datetime(o.get("date")), v))
+        if v is None:
+            continue
+        rows.append((pd.to_datetime(o.get("date")), v))
     if not rows:
         raise RuntimeError(f"FRED empty for {series_id}")
     return pd.Series([v for _, v in rows], index=[d for d, _ in rows], name=series_id).sort_index()
@@ -160,11 +187,25 @@ def z_score(series: Optional[pd.Series], window: int = 252) -> Optional[float]:
 
 
 def label_trend(score: float) -> str:
-    return "強勢延伸" if score >= 80 else "趨勢偏多" if score >= 60 else "趨勢中性" if score >= 45 else "趨勢轉弱" if score >= 30 else "下行趨勢"
+    if score >= 80:
+        return "強勢延伸"
+    if score >= 60:
+        return "趨勢偏多"
+    if score >= 45:
+        return "趨勢中性"
+    if score >= 30:
+        return "趨勢轉弱"
+    return "下行趨勢"
 
 
 def label_breadth(score: float) -> str:
-    return "廣度改善" if score >= 65 else "廣度中性" if score >= 50 else "廣度偏弱" if score >= 40 else "廣度不足"
+    if score >= 65:
+        return "廣度改善"
+    if score >= 50:
+        return "廣度中性"
+    if score >= 40:
+        return "廣度偏弱"
+    return "廣度不足"
 
 
 def label_credit(score: float, quality: str = "FULL") -> str:
@@ -172,27 +213,63 @@ def label_credit(score: float, quality: str = "FULL") -> str:
         return "Proxy-only"
     if quality == "INVALID":
         return "資料無效"
-    return "信用穩定" if score >= 65 else "信用中性" if score >= 50 else "信用偏弱" if score >= 35 else "信用壓力"
+    if score >= 65:
+        return "信用穩定"
+    if score >= 50:
+        return "信用中性"
+    if score >= 35:
+        return "信用偏弱"
+    return "信用壓力"
 
 
 def label_volatility(score: float) -> str:
-    return "低波穩定" if score >= 80 else "正常波動" if score >= 55 else "波動升溫" if score >= 30 else "高壓警戒"
+    if score >= 80:
+        return "低波穩定"
+    if score >= 55:
+        return "正常波動"
+    if score >= 30:
+        return "波動升溫"
+    return "高壓警戒"
 
 
 def label_liquidity(score: float) -> str:
-    return "流動性寬鬆" if score >= 65 else "流動性中性" if score >= 50 else "流動性偏緊" if score >= 35 else "流動性壓力"
+    if score >= 65:
+        return "流動性寬鬆"
+    if score >= 50:
+        return "流動性中性"
+    if score >= 35:
+        return "流動性偏緊"
+    return "流動性壓力"
 
 
-def label_cross(score: float) -> str:
-    return "跨資產確認" if score >= 65 else "跨資產中性" if score >= 50 else "跨資產偏弱" if score >= 40 else "跨資產未確認"
+def label_cross_asset(score: float) -> str:
+    if score >= 65:
+        return "跨資產確認"
+    if score >= 50:
+        return "跨資產中性"
+    if score >= 40:
+        return "跨資產偏弱"
+    return "跨資產未確認"
 
 
 def label_adjusted(score: float) -> str:
-    return "系統性危機" if score < 20 else "偏空防守" if score < 40 else "觀望" if score < 55 else "脆弱偏多" if score < 70 else "Risk-on" if score < 85 else "強勢過熱"
+    if score < 20:
+        return "系統性危機"
+    if score < 40:
+        return "偏空防守"
+    if score < 55:
+        return "觀望"
+    if score < 70:
+        return "脆弱偏多"
+    if score < 85:
+        return "Risk-on"
+    return "強勢過熱"
 
 
 def score_trend(prices: Dict[str, pd.Series]) -> Dict[str, Any]:
-    parts, notes, details = [], [], {}
+    parts = []
+    notes = []
+    details: Dict[str, Any] = {}
     for sym in ["SPY", "QQQ"]:
         s = prices.get(sym)
         last = last_value(s)
@@ -218,8 +295,11 @@ def score_trend(prices: Dict[str, pd.Series]) -> Dict[str, Any]:
 
 
 def score_breadth(prices: Dict[str, pd.Series]) -> Dict[str, Any]:
-    details, scores, notes = {}, [], []
-    for a, b in [("RSP", "SPY"), ("IWM", "SPY")]:
+    details: Dict[str, Any] = {}
+    comps = [("RSP", "SPY"), ("IWM", "SPY")]
+    scores = []
+    notes = []
+    for a, b in comps:
         if a not in prices or b not in prices:
             continue
         rel = (prices[a] / prices[b]).dropna()
@@ -241,8 +321,8 @@ def score_breadth(prices: Dict[str, pd.Series]) -> Dict[str, Any]:
 def oas_score(value: Optional[float], z: Optional[float], kind: str) -> Optional[float]:
     if value is None:
         return None
-    score = 70.0
     if kind == "HY":
+        score = 70.0
         if value > 7.0:
             score -= 45
         elif value > 6.0:
@@ -254,6 +334,7 @@ def oas_score(value: Optional[float], z: Optional[float], kind: str) -> Optional
         elif value < 3.0:
             score += 10
     else:
+        score = 70.0
         if value > 2.5:
             score -= 35
         elif value > 2.0:
@@ -268,35 +349,48 @@ def oas_score(value: Optional[float], z: Optional[float], kind: str) -> Optional
 
 
 def score_credit(prices: Dict[str, pd.Series], fred: Dict[str, pd.Series]) -> Dict[str, Any]:
-    details, components, notes = {}, [], []
+    details: Dict[str, Any] = {}
+    components: List[Tuple[str, float, float]] = []
+    notes = []
+
     for name, a, b, weight in [("HYG/TLT", "HYG", "TLT", 0.30), ("JNK/LQD", "JNK", "LQD", 0.20)]:
         if a in prices and b in prices:
             rel = (prices[a] / prices[b]).dropna()
             m20 = pct_change(rel, 20)
-            score = clamp(50.0 + (max(-25, min(25, m20 * 10.0)) if m20 is not None else 0.0))
+            score = 50.0 + (max(-25, min(25, m20 * 10.0)) if m20 is not None else 0.0)
+            score = clamp(score)
             components.append((name, score, weight))
             details[name] = {"rel_20d": m20, "score": round(score, 2), "weight": weight}
             notes.append(f"{name} 20D {m20:+.2f}%" if m20 is not None else f"{name} N/A")
-    hy_present = "hy_oas" in fred
-    ig_present = "ig_oas" in fred
+
+    hy = fred.get("hy_oas")
+    hy_present = hy is not None and not hy.empty
     if hy_present:
-        val, z = last_value(fred["hy_oas"]), z_score(fred["hy_oas"])
-        sc = oas_score(val, z, "HY")
-        if sc is not None:
-            components.append(("HY_OAS", sc, 0.30))
-        details["HY_OAS"] = {"value": val, "z": z, "score": round(sc, 2) if sc is not None else None, "weight": 0.30, "series": FRED_SERIES["hy_oas"]}
+        val = last_value(hy)
+        z = z_score(hy)
+        score = oas_score(val, z, "HY")
+        if score is not None:
+            components.append(("HY_OAS", score, 0.30))
+        details["HY_OAS"] = {"value": val, "z": z, "score": round(score, 2) if score is not None else None, "weight": 0.30, "series": FRED_SERIES["hy_oas"]}
         notes.append(f"HY OAS {val:.2f}%" if val is not None else "HY OAS N/A")
+
+    ig = fred.get("ig_oas")
+    ig_present = ig is not None and not ig.empty
     if ig_present:
-        val, z = last_value(fred["ig_oas"]), z_score(fred["ig_oas"])
-        sc = oas_score(val, z, "IG")
-        if sc is not None:
-            components.append(("IG_OAS", sc, 0.20))
-        details["IG_OAS"] = {"value": val, "z": z, "score": round(sc, 2) if sc is not None else None, "weight": 0.20, "series": FRED_SERIES["ig_oas"]}
+        val = last_value(ig)
+        z = z_score(ig)
+        score = oas_score(val, z, "IG")
+        if score is not None:
+            components.append(("IG_OAS", score, 0.20))
+        details["IG_OAS"] = {"value": val, "z": z, "score": round(score, 2) if score is not None else None, "weight": 0.20, "series": FRED_SERIES["ig_oas"]}
         notes.append(f"IG OAS {val:.2f}%" if val is not None else "IG OAS N/A")
+
     if not components:
         return {"score": 50.0, "label": "資料無效", "confidence": "INVALID", "details": details, "note": "Credit data N/A"}
-    total_w = sum(w for _, _, w in components)
-    final = sum(score * w for _, score, w in components) / total_w
+
+    weight_sum = sum(w for _, _, w in components)
+    final = sum(score * w for _, score, w in components) / weight_sum if weight_sum > 0 else 50.0
+
     if hy_present and ig_present:
         confidence = "FULL"
     elif hy_present or ig_present:
@@ -305,27 +399,39 @@ def score_credit(prices: Dict[str, pd.Series], fred: Dict[str, pd.Series]) -> Di
     else:
         confidence = "PROXY_ONLY"
         final = min(final, 50.0)
+
+    final = clamp(final)
     details["component_weights"] = {name: weight for name, _, weight in components}
     details["oas_available"] = {"hy_oas": hy_present, "ig_oas": ig_present}
-    final = clamp(final)
     return {"score": round(final, 2), "label": label_credit(final, confidence), "confidence": confidence, "details": details, "note": "；".join(notes)}
 
 
 def score_volatility(prices: Dict[str, pd.Series]) -> Dict[str, Any]:
-    details, scores, notes = {}, [], []
-    inputs = [
-        ("VIX", last_value(prices.get("^VIX")), 12, 35),
-        ("VXN", last_value(prices.get("^VXN")), 16, 45),
-        ("MOVE", last_value(prices.get("^MOVE")), 80, 160),
-        ("SPY_HV20", hv20(prices.get("SPY")), 10, 35),
-        ("QQQ_HV20", hv20(prices.get("QQQ")), 15, 45),
-    ]
-    for name, val, low, high in inputs:
-        sc = None if val is None else clamp(100.0 - (val - low) / (high - low) * 70.0)
+    details: Dict[str, Any] = {}
+    scores = []
+    notes = []
+    vix = last_value(prices.get("^VIX"))
+    vxn = last_value(prices.get("^VXN"))
+    move = last_value(prices.get("^MOVE"))
+    spy_hv = hv20(prices.get("SPY"))
+    qqq_hv = hv20(prices.get("QQQ"))
+
+    def vol_to_score(v: Optional[float], low: float, high: float) -> Optional[float]:
+        if v is None:
+            return None
+        return clamp(100.0 - (v - low) / (high - low) * 70.0)
+
+    for name, val, low, high in [
+        ("VIX", vix, 12, 35),
+        ("VXN", vxn, 16, 45),
+        ("MOVE", move, 80, 160),
+        ("SPY_HV20", spy_hv, 10, 35),
+        ("QQQ_HV20", qqq_hv, 15, 45),
+    ]:
+        sc = vol_to_score(val, low, high)
         if sc is not None:
             scores.append(sc)
         details[name] = {"value": val, "score": round(sc, 2) if sc is not None else None}
-    vix, spy_hv = details["VIX"]["value"], details["SPY_HV20"]["value"]
     if vix is not None:
         notes.append(f"VIX {vix:.1f}")
     if spy_hv is not None:
@@ -335,11 +441,14 @@ def score_volatility(prices: Dict[str, pd.Series]) -> Dict[str, Any]:
 
 
 def score_liquidity(prices: Dict[str, pd.Series], fred: Dict[str, pd.Series]) -> Dict[str, Any]:
-    details, scores, notes = {}, [], []
+    details: Dict[str, Any] = {}
+    scores = []
+    notes = []
     dxy_m20 = pct_change(prices.get("DX-Y.NYB"), 20)
     tnx_m20 = pct_change(prices.get("^TNX"), 20)
     gold_m20 = pct_change(prices.get("GC=F"), 20)
     btc_m20 = pct_change(prices.get("BTC-USD"), 20)
+
     dxy_score = 50.0 - (max(-20, min(20, dxy_m20 * 6.0)) if dxy_m20 is not None else 0.0)
     tnx_score = 50.0 - (max(-15, min(15, tnx_m20 * 1.5)) if tnx_m20 is not None else 0.0)
     scores.extend([clamp(dxy_score), clamp(tnx_score)])
@@ -349,11 +458,13 @@ def score_liquidity(prices: Dict[str, pd.Series], fred: Dict[str, pd.Series]) ->
         "Gold_20D": {"value": gold_m20},
         "BTC_20D": {"value": btc_m20},
     })
+
     for key in ["financial_stress", "nfci", "real_10y"]:
         s = fred.get(key)
         if s is None or s.empty:
             continue
-        val, z = last_value(s), z_score(s)
+        val = last_value(s)
+        z = z_score(s)
         score = 55.0
         if z is not None:
             score -= max(-20, min(25, z * 10.0))
@@ -362,6 +473,7 @@ def score_liquidity(prices: Dict[str, pd.Series], fred: Dict[str, pd.Series]) ->
         score = clamp(score)
         scores.append(score)
         details[key] = {"value": val, "z": z, "score": round(score, 2), "series": FRED_SERIES[key]}
+
     if dxy_m20 is not None:
         notes.append(f"DXY 20D {dxy_m20:+.1f}%")
     if "financial_stress" in details and details["financial_stress"].get("value") is not None:
@@ -389,17 +501,47 @@ def score_cross_asset(prices: Dict[str, pd.Series], fred: Dict[str, pd.Series]) 
     score = clamp(score)
     details = {"Gold_20D": gold, "Oil_20D": oil, "BTC_20D": btc, "Breakeven10Y": breakeven_val, "Breakeven10Y_20D": breakeven_m}
     note = "；".join([x for x in [f"BTC 20D {btc:+.1f}%" if btc is not None else None, f"Gold 20D {gold:+.1f}%" if gold is not None else None] if x])
-    return {"score": round(score, 2), "label": label_cross(score), "details": details, "note": note}
+    return {"score": round(score, 2), "label": label_cross_asset(score), "details": details, "note": note}
+
+
+def raw_score_from_modules(modules: Dict[str, Dict[str, Any]], weights: Dict[str, float]) -> float:
+    return round(clamp(sum((finite(modules[k].get("score"), 50) or 50) * w for k, w in weights.items())), 2)
 
 
 def data_quality(prices: Dict[str, pd.Series], fred: Dict[str, pd.Series], fred_errors: List[str], yahoo_errors: List[str]) -> Dict[str, Any]:
     missing_core_yahoo = [s for s in CORE_YAHOO_SYMBOLS if s not in prices]
     missing_core_fred = [k for k in CORE_FRED_KEYS if k not in fred]
-    fred_status = "OFF" if not FRED_API_KEY else ("ON" if not missing_core_fred else "PARTIAL")
-    yahoo_status = "OK" if not missing_core_yahoo else ("FAILED" if len(missing_core_yahoo) == len(CORE_YAHOO_SYMBOLS) else "PARTIAL")
-    hy_ok, ig_ok = "hy_oas" in fred, "ig_oas" in fred
-    credit_quality = "FULL" if hy_ok and ig_ok else "PARTIAL" if hy_ok or ig_ok else "PROXY_ONLY"
-    overall = "OK" if fred_status == "ON" and yahoo_status == "OK" else "LOW" if yahoo_status == "FAILED" else "PARTIAL"
+
+    if not FRED_API_KEY:
+        fred_status = "OFF"
+    elif not missing_core_fred:
+        fred_status = "ON"
+    else:
+        fred_status = "PARTIAL"
+
+    if not missing_core_yahoo:
+        yahoo_status = "OK"
+    elif len(missing_core_yahoo) < len(CORE_YAHOO_SYMBOLS):
+        yahoo_status = "PARTIAL"
+    else:
+        yahoo_status = "FAILED"
+
+    hy_ok = "hy_oas" in fred
+    ig_ok = "ig_oas" in fred
+    if hy_ok and ig_ok:
+        credit_quality = "FULL"
+    elif hy_ok or ig_ok:
+        credit_quality = "PARTIAL"
+    else:
+        credit_quality = "PROXY_ONLY"
+
+    if yahoo_status == "OK" and fred_status == "ON":
+        overall = "OK"
+    elif yahoo_status == "FAILED":
+        overall = "LOW"
+    else:
+        overall = "PARTIAL"
+
     return {
         "overall": overall,
         "fred_status": fred_status,
@@ -412,10 +554,6 @@ def data_quality(prices: Dict[str, pd.Series], fred: Dict[str, pd.Series], fred_
     }
 
 
-def raw_score(modules: Dict[str, Dict[str, Any]]) -> float:
-    return round(clamp(sum((finite(modules[k].get("score"), 50) or 50) * w for k, w in WEIGHTS.items())), 2)
-
-
 def build_penalties(modules: Dict[str, Dict[str, Any]], dq: Dict[str, Any]) -> Tuple[float, List[Dict[str, Any]]]:
     penalties: List[Dict[str, Any]] = []
     trend = finite(modules.get("trend", {}).get("score"), 50) or 50
@@ -424,6 +562,7 @@ def build_penalties(modules: Dict[str, Dict[str, Any]], dq: Dict[str, Any]) -> T
     liquidity = finite(modules.get("liquidity", {}).get("score"), 50) or 50
     dxy = (modules.get("liquidity", {}).get("details") or {}).get("DXY_20D", {}).get("value")
     btc = (modules.get("cross_asset", {}).get("details") or {}).get("BTC_20D")
+
     if trend >= 80 and breadth < 45:
         penalties.append({"code": "TREND_BREADTH_DIVERGENCE", "points": -10, "reason": "趨勢強勢延伸，但市場廣度不足；大型權值股可能掩蓋內部脆弱。"})
     if trend >= 80 and breadth < 45 and cross < 45:
@@ -436,104 +575,334 @@ def build_penalties(modules: Dict[str, Dict[str, Any]], dq: Dict[str, Any]) -> T
         penalties.append({"code": "DXY_UP_BTC_DOWN", "points": -3, "reason": "美元走強且 BTC 走弱；流動性與高 beta 風險偏好未確認。"})
     if liquidity < 35:
         penalties.append({"code": "LIQUIDITY_STRESS", "points": -4, "reason": "流動性分數偏低；資金環境對風險資產不友善。"})
+
     total = sum(float(p["points"]) for p in penalties)
     return total, penalties
 
 
-def regime(adjusted_score: float, modules: Dict[str, Dict[str, Any]]) -> str:
+def regime(adjusted_score: float, modules: Dict[str, Dict[str, Any]], dq: Dict[str, Any]) -> str:
     vol = finite(modules.get("volatility", {}).get("score"), 50) or 50
     credit = finite(modules.get("credit", {}).get("score"), 50) or 50
     breadth = finite(modules.get("breadth", {}).get("score"), 50) or 50
     trend = finite(modules.get("trend", {}).get("score"), 50) or 50
     cross = finite(modules.get("cross_asset", {}).get("score"), 50) or 50
     liquidity = finite(modules.get("liquidity", {}).get("score"), 50) or 50
+
     if credit < 30 or vol < 25 or liquidity < 25:
         return "系統性警戒"
     if trend >= 80 and breadth < 45 and cross < 45:
         return "脆弱 Risk-On / 窄基礎上漲"
     if trend >= 80 and breadth < 45:
         return "強勢但窄基礎"
-    return "偏空防守" if adjusted_score < 40 else "觀望" if adjusted_score < 55 else "觀望偏多" if adjusted_score < 70 else "Risk-on" if adjusted_score < 85 else "強勢過熱"
+    if adjusted_score < 40:
+        return "偏空防守"
+    if adjusted_score < 55:
+        return "觀望"
+    if adjusted_score < 70:
+        return "觀望偏多"
+    if adjusted_score < 85:
+        return "Risk-on"
+    return "強勢過熱"
 
 
 def reasons(modules: Dict[str, Dict[str, Any]], dq: Dict[str, Any], penalties: List[Dict[str, Any]]) -> List[str]:
     out: List[str] = []
-    vals = {k: finite(modules.get(k, {}).get("score"), 50) or 50 for k in WEIGHTS}
-    if vals["trend"] >= 80:
+    trend = finite(modules.get("trend", {}).get("score"), 50) or 50
+    breadth = finite(modules.get("breadth", {}).get("score"), 50) or 50
+    credit = finite(modules.get("credit", {}).get("score"), 50) or 50
+    vol = finite(modules.get("volatility", {}).get("score"), 50) or 50
+    liquidity = finite(modules.get("liquidity", {}).get("score"), 50) or 50
+    cross = finite(modules.get("cross_asset", {}).get("score"), 50) or 50
+
+    if trend >= 80:
         out.append(f"趨勢強勢延伸：{modules.get('trend', {}).get('note', '')}")
-    elif vals["trend"] <= 40:
+    elif trend <= 40:
         out.append(f"趨勢轉弱：{modules.get('trend', {}).get('note', '')}")
-    if vals["breadth"] < 45:
+
+    if breadth < 45:
         out.append(f"市場廣度不足：{modules.get('breadth', {}).get('note', '')}")
-    elif vals["breadth"] >= 65:
+    elif breadth >= 65:
         out.append(f"市場廣度改善：{modules.get('breadth', {}).get('note', '')}")
+
     if dq.get("credit_quality") in {"PROXY_ONLY", "PARTIAL"}:
         missing = ", ".join(dq.get("missing_core_fred") or [])
         out.append(f"信用資料不完整：{missing or 'FRED OAS partial'}；Credit={dq.get('credit_quality')}")
-    elif vals["credit"] < 45:
+    elif credit < 45:
         out.append(f"信用偏弱：{modules.get('credit', {}).get('note', '')}")
-    elif vals["credit"] >= 65:
+    elif credit >= 65:
         out.append(f"信用穩定：{modules.get('credit', {}).get('note', '')}")
-    if vals["volatility"] >= 80:
+
+    if vol >= 80:
         out.append(f"波動風險低：{modules.get('volatility', {}).get('note', '')}")
-    elif vals["volatility"] < 45:
+    elif vol < 45:
         out.append(f"波動升溫：{modules.get('volatility', {}).get('note', '')}")
-    if vals["liquidity"] < 50:
+
+    if liquidity < 50:
         out.append(f"流動性偏緊：{modules.get('liquidity', {}).get('note', '')}")
-    if vals["cross_asset"] < 45:
+
+    if cross < 45:
         out.append(f"跨資產未確認：{modules.get('cross_asset', {}).get('note', '')}")
+
     for p in penalties:
         if p["code"] in {"TREND_BREADTH_DIVERGENCE", "NO_CROSS_ASSET_CONFIRMATION"}:
             out.append(f"Penalty：{p['reason']}")
-    return (out or ["多數指標落在中性區，暫無單邊訊號。"])[:7]
+
+    if not out:
+        out.append("多數指標落在中性區，暫無單邊訊號。")
+    return out[:7]
 
 
-def deep_data_analysis(compass: Dict[str, Any]) -> Dict[str, Any]:
+def find_risk_concentration(chaos_meta: Dict[str, Any]) -> List[str]:
+    xray = (chaos_meta or {}).get("xray_meta") or {}
+    rows = xray.get("mrc_table") if isinstance(xray.get("mrc_table"), list) else []
+    out: List[str] = []
+    for row in rows[:5]:
+        ticker = str(row.get("ticker") or row.get("yf_ticker") or "N/A")
+        risk = finite(row.get("risk_pct"))
+        weight = finite(row.get("weight_pct"))
+        model_weight = finite(row.get("model_weight_pct"))
+        if risk is None:
+            continue
+        if weight is not None:
+            gap = risk - weight
+            out.append(f"{ticker}: 風險貢獻 {risk:.1f}% / 實際資金 {weight:.1f}% / 差額 {gap:+.1f}pp")
+        elif model_weight is not None:
+            out.append(f"{ticker}: 風險貢獻 {risk:.1f}% / 模型權重 {model_weight:.1f}%")
+        else:
+            out.append(f"{ticker}: 風險貢獻 {risk:.1f}%")
+    return out[:5]
+
+
+def find_quant_watch_items(stock_meta: Dict[str, Any]) -> List[str]:
+    items: List[Tuple[float, str]] = []
+    if not isinstance(stock_meta, dict):
+        return []
+    for ticker, meta in stock_meta.items():
+        if not isinstance(meta, dict):
+            continue
+        risk = finite(meta.get("risk_score"), 0) or 0
+        health = finite(meta.get("quant_health_score"), 0) or 0
+        pressure = abs(finite(meta.get("pivot_resistance_distance_pct"), 999) or 999)
+        support = abs(finite(meta.get("pivot_support_distance_pct"), 999) or 999)
+        status = str(meta.get("pivot_status") or "")
+        score = 0.0
+        reasons_local = []
+        if risk >= 7:
+            score += 3
+            reasons_local.append(f"風險 {risk:.1f}")
+        if health < 4:
+            score += 2
+            reasons_local.append(f"健康度 {health:.1f}")
+        if pressure <= 1.5:
+            score += 2
+            reasons_local.append(f"接近月壓力 {pressure:.1f}%")
+        if support <= 1.5:
+            score += 1
+            reasons_local.append(f"接近月支撐 {support:.1f}%")
+        if "跌破" in status or "壓力" in status:
+            score += 1
+            reasons_local.append(status)
+        if score > 0:
+            items.append((score, f"{ticker}: {'；'.join(reasons_local)}"))
+    items.sort(key=lambda x: x[0], reverse=True)
+    return [x[1] for x in items[:6]]
+
+
+def build_rule_based_data_deep_analysis(
+    compass: Dict[str, Any],
+    stock_meta: Dict[str, Any],
+    chaos_meta: Dict[str, Any],
+) -> Dict[str, Any]:
     modules = compass.get("modules") or {}
     dq = compass.get("data_quality") or {}
     penalties = compass.get("penalties") or []
     raw = compass.get("raw_score")
     adjusted = compass.get("adjusted_score")
+    regime_label = compass.get("regime") or compass.get("label") or "N/A"
+
+    market_structure = [
+        f"Raw Score {raw} 與 Adjusted Score {adjusted} 的差距，代表原始加權分數被結構性背離或資料品質懲罰下修。",
+        f"目前 Market Compass 標示為「{regime_label}」；此欄位只描述資料結構，不構成操作結論。",
+    ]
+
+    score_decomposition = []
+    for key, zh in [("trend", "趨勢"), ("breadth", "廣度"), ("credit", "信用"), ("volatility", "波動"), ("liquidity", "流動性"), ("cross_asset", "跨資產")]:
+        mod = modules.get(key) or {}
+        score_decomposition.append(f"{zh}: {mod.get('score', 'N/A')} / {mod.get('label', 'N/A')}；{mod.get('note', 'N/A')}")
+
+    divergences = []
+    trend = finite((modules.get("trend") or {}).get("score"), 50) or 50
+    breadth = finite((modules.get("breadth") or {}).get("score"), 50) or 50
+    cross = finite((modules.get("cross_asset") or {}).get("score"), 50) or 50
+    vol = finite((modules.get("volatility") or {}).get("score"), 50) or 50
+    if trend >= 80 and breadth < 45:
+        divergences.append("趨勢強但廣度弱：指數層級動能與市場內部擴散不一致，需避免把大型權值股強勢誤讀為全面 risk-on。")
+    if trend >= 80 and cross < 45:
+        divergences.append("趨勢強但跨資產偏弱：股指動能未被 BTC、黃金、油價或通膨預期等跨資產訊號完整確認。")
+    if vol >= 80 and breadth < 45:
+        divergences.append("低波穩定但廣度不足：低波不是壞訊號，但在窄基礎上漲環境下可能隱含擁擠交易。")
+    if not divergences:
+        divergences.append("目前主要模組之間沒有被規則明確標記的重大背離。")
+
+    data_quality_notes = [
+        f"FRED={dq.get('fred_status', 'N/A')}；Credit={dq.get('credit_quality', 'N/A')}；Yahoo={dq.get('yahoo_status', 'N/A')}；Overall={dq.get('overall', 'N/A')}。",
+    ]
+    missing = dq.get("missing_core_fred") or []
+    if missing:
+        data_quality_notes.append("缺失核心 FRED 欄位: " + ", ".join(missing))
+    if penalties:
+        data_quality_notes.append("Penalty Reasons: " + " | ".join(str(p.get("reason")) for p in penalties))
+
+    portfolio_exposure = find_risk_concentration(chaos_meta)
+    if not portfolio_exposure:
+        portfolio_exposure = ["Risk X-Ray mrc_table 尚未提供可整理的風險貢獻資料。"]
+
+    watch_points = find_quant_watch_items(stock_meta)
+    if not watch_points:
+        watch_points = ["量化因子總覽未偵測到明確的高風險/低健康度/月樞軸異常組合。"]
+
+    market_structure_text = " ".join(market_structure)
     return {
         "title": "AI 數據深度分析",
-        "subtitle": "只整理數據、背離、資料品質與暴露來源；不輸出買賣、加減碼、目標價或操作結論。",
-        "market_structure": (
-            f"Raw Score={raw}，Adjusted Score={adjusted}。"
-            f"主要模組分數：Trend={modules.get('trend', {}).get('score')}，Breadth={modules.get('breadth', {}).get('score')}，"
-            f"Credit={modules.get('credit', {}).get('score')}，Volatility={modules.get('volatility', {}).get('score')}，"
-            f"Liquidity={modules.get('liquidity', {}).get('score')}，Cross-Asset={modules.get('cross_asset', {}).get('score')}。"
-        ),
-        "score_decomposition": [
-            f"Trend：{modules.get('trend', {}).get('label')}；{modules.get('trend', {}).get('note')}",
-            f"Breadth：{modules.get('breadth', {}).get('label')}；{modules.get('breadth', {}).get('note')}",
-            f"Credit：{modules.get('credit', {}).get('label')}；confidence={modules.get('credit', {}).get('confidence', 'N/A')}",
-            f"Volatility：{modules.get('volatility', {}).get('label')}；{modules.get('volatility', {}).get('note')}",
-            f"Liquidity：{modules.get('liquidity', {}).get('label')}；{modules.get('liquidity', {}).get('note')}",
-            f"Cross-Asset：{modules.get('cross_asset', {}).get('label')}；{modules.get('cross_asset', {}).get('note')}",
-        ],
-        "divergences": [p.get("reason") for p in penalties] or ["N/A"],
-        "data_quality": [
-            f"overall={dq.get('overall')}",
-            f"FRED={dq.get('fred_status')}",
-            f"Credit={dq.get('credit_quality')}",
-            f"Yahoo={dq.get('yahoo_status')}",
-            f"missing_core_fred={','.join(dq.get('missing_core_fred') or []) or 'N/A'}",
-        ],
-        "portfolio_exposure_notes": [
-            "對照 Risk X-Ray：檢查風險貢獻%是否明顯高於實際資金%。",
-            "對照 Quant Meta：檢查高健康度但接近月壓力的標的，避免把趨勢分數誤讀成無風險空間。",
-            "對照月支撐/月壓力：檢查健康度低、風險高、又跌破月支撐或靠近月壓力的持倉。",
-        ],
-        "manual_checks": [
-            "HY OAS / IG OAS 是否完整更新。",
-            "Breadth 是否持續落後 Trend。",
-            "DXY 與 BTC 是否延續背離。",
-            "風險貢獻排行是否被單一資產或同質性美股 ETF 集中拉高。",
-        ],
+        "subtitle": "只整理數據、背離、資料品質與暴露來源；不輸出買賣、加減碼或目標價。",
+        "analysis_engine": "rule_based",
+        "fallback_used": False,
+        "updated_at": datetime.now(TAIPEI_TZ).isoformat(timespec="seconds"),
+        # v3 frontend fields
+        "market_structure": market_structure_text,
+        "score_decomposition": score_decomposition,
+        "divergences": divergences,
+        "data_quality": data_quality_notes,
+        "portfolio_exposure_notes": portfolio_exposure,
+        "manual_checks": watch_points,
+        # compatibility fields
+        "market_structure_summary": market_structure,
+        "major_divergences": divergences,
+        "data_quality_and_blindspots": data_quality_notes,
+        "portfolio_exposure_sources": portfolio_exposure,
+        "manual_checkpoints": watch_points,
     }
 
 
-def build_market_compass() -> Dict[str, Any]:
+def _compact_for_llm(value: Any, max_chars: int = 12000) -> str:
+    try:
+        text = json.dumps(value, ensure_ascii=False, default=str, separators=(",", ":"))
+    except Exception:
+        text = str(value)
+    return text[:max_chars]
+
+
+def _as_list(value: Any, fallback: List[str]) -> List[str]:
+    if isinstance(value, list):
+        out = [str(x).strip() for x in value if str(x).strip()]
+        return out[:8] if out else fallback
+    if isinstance(value, str) and value.strip():
+        return [value.strip()]
+    return fallback
+
+
+def _safe_json_from_text(text: str) -> Dict[str, Any]:
+    t = (text or "").strip()
+    if t.startswith("```"):
+        t = t.strip("`")
+        if t.lower().startswith("json"):
+            t = t[4:].strip()
+    start = t.find("{")
+    end = t.rfind("}")
+    if start >= 0 and end > start:
+        t = t[start:end + 1]
+    data = json.loads(t)
+    if not isinstance(data, dict):
+        raise ValueError("Gemini response is not a JSON object")
+    return data
+
+
+def build_gemini_data_deep_analysis(
+    compass: Dict[str, Any],
+    stock_meta: Dict[str, Any],
+    chaos_meta: Dict[str, Any],
+    fallback: Dict[str, Any],
+) -> Dict[str, Any]:
+    if not GEMINI_API_KEY:
+        fallback["analysis_engine"] = "rule_based"
+        fallback["fallback_reason"] = "GEMINI_API_KEY missing"
+        return fallback
+
+    payload = {
+        "market_compass": {
+            "raw_score": compass.get("raw_score"),
+            "adjusted_score": compass.get("adjusted_score"),
+            "regime": compass.get("regime"),
+            "modules": compass.get("modules"),
+            "penalties": compass.get("penalties"),
+            "data_quality": compass.get("data_quality"),
+            "reasons": compass.get("reasons"),
+        },
+        "risk_xray_summary": find_risk_concentration(chaos_meta),
+        "quant_watch_items": find_quant_watch_items(stock_meta),
+    }
+    prompt = f"""
+你是投組儀表板的「AI 數據深度分析」模組，不是投顧，也不是交易訊號機器人。
+任務：只根據輸入 JSON 整理數據、分數拆解、背離、資料品質與需要人工檢查的資料點。
+嚴格禁止：買進、賣出、加碼、減碼、目標價、操作結論、保證語氣。
+輸出必須是繁體中文，且只能輸出 JSON object，不要 markdown，不要 code fence。
+
+必須輸出欄位：
+{{
+  "market_structure": "一段 80-160 字摘要，說明 Raw/Adjusted、regime 與最主要結構，不下操作結論",
+  "score_decomposition": ["6 個以內分數拆解"],
+  "divergences": ["主要背離或 N/A"],
+  "data_quality": ["資料品質與盲區"],
+  "portfolio_exposure_notes": ["投組暴露來源，若資料不足要明說"],
+  "manual_checks": ["需要人工檢查的資料點"]
+}}
+
+輸入 JSON：
+{_compact_for_llm(payload)}
+""".strip()
+    try:
+        from google import genai
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        response = client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
+        parsed = _safe_json_from_text(getattr(response, "text", "") or "")
+        result = {
+            "title": "AI 數據深度分析",
+            "subtitle": "Gemini 只整理數據、背離、資料品質與暴露來源；不輸出買賣、加減碼或目標價。",
+            "analysis_engine": "gemini",
+            "fallback_used": False,
+            "model": GEMINI_MODEL,
+            "updated_at": datetime.now(TAIPEI_TZ).isoformat(timespec="seconds"),
+            "market_structure": str(parsed.get("market_structure") or fallback.get("market_structure") or "N/A"),
+            "score_decomposition": _as_list(parsed.get("score_decomposition"), fallback.get("score_decomposition") or []),
+            "divergences": _as_list(parsed.get("divergences"), fallback.get("divergences") or []),
+            "data_quality": _as_list(parsed.get("data_quality"), fallback.get("data_quality") or []),
+            "portfolio_exposure_notes": _as_list(parsed.get("portfolio_exposure_notes"), fallback.get("portfolio_exposure_notes") or []),
+            "manual_checks": _as_list(parsed.get("manual_checks"), fallback.get("manual_checks") or []),
+        }
+        # compatibility fields
+        result["market_structure_summary"] = [result["market_structure"]]
+        result["major_divergences"] = result["divergences"]
+        result["data_quality_and_blindspots"] = result["data_quality"]
+        result["portfolio_exposure_sources"] = result["portfolio_exposure_notes"]
+        result["manual_checkpoints"] = result["manual_checks"]
+        return result
+    except Exception as exc:
+        fallback["analysis_engine"] = "rule_based"
+        fallback["fallback_used"] = True
+        fallback["fallback_reason"] = f"Gemini failed: {exc}"
+        return fallback
+
+
+def build_ai_data_deep_analysis(
+    compass: Dict[str, Any],
+    stock_meta: Dict[str, Any],
+    chaos_meta: Dict[str, Any],
+) -> Dict[str, Any]:
+    fallback = build_rule_based_data_deep_analysis(compass, stock_meta, chaos_meta)
+    return build_gemini_data_deep_analysis(compass, stock_meta, chaos_meta, fallback)
+
+
+def build_market_compass(stock_meta: Dict[str, Any], chaos_meta: Dict[str, Any]) -> Dict[str, Any]:
     prices: Dict[str, pd.Series] = {}
     yahoo_errors: List[str] = []
     for sym in YAHOO_SYMBOLS:
@@ -566,22 +935,24 @@ def build_market_compass() -> Dict[str, Any]:
         "liquidity": score_liquidity(prices, fred),
         "cross_asset": score_cross_asset(prices, fred),
     }
-    raw = raw_score(modules)
+
+    weights = {"trend": 0.25, "breadth": 0.20, "credit": 0.20, "volatility": 0.15, "liquidity": 0.15, "cross_asset": 0.05}
+    raw_score = raw_score_from_modules(modules, weights)
     dq = data_quality(prices, fred, fred_errors, yahoo_errors)
     penalty_points, penalties = build_penalties(modules, dq)
-    adjusted = round(clamp(raw + penalty_points), 2)
+    adjusted_score = round(clamp(raw_score + penalty_points), 2)
 
-    compass = {
-        "version": "phase3_weekly_adjusted_v3",
+    compass: Dict[str, Any] = {
+        "version": "phase3_adjusted_fred_yahoo_v3",
         "updated_at": datetime.now(TAIPEI_TZ).isoformat(timespec="seconds"),
         "date": str(TODAY_TPE),
-        "raw_score": raw,
-        "adjusted_score": adjusted,
-        "score": adjusted,
-        "label": label_adjusted(adjusted),
-        "regime": regime(adjusted, modules),
+        "raw_score": raw_score,
+        "adjusted_score": adjusted_score,
+        "score": adjusted_score,
+        "label": label_adjusted(adjusted_score),
+        "regime": regime(adjusted_score, modules, dq),
         "modules": modules,
-        "weights": WEIGHTS,
+        "weights": weights,
         "penalty_points": penalty_points,
         "penalties": penalties,
         "penalty_reasons": [p["reason"] for p in penalties],
@@ -591,9 +962,12 @@ def build_market_compass() -> Dict[str, Any]:
         "fred_status": dq.get("fred_status"),
         "fred_errors": fred_errors[:8],
         "yahoo_errors": yahoo_errors[:8],
-        "data_sources": {"market_prices": "Yahoo Chart unofficial endpoint", "macro_credit": "FRED API" if FRED_API_KEY else "FRED API not configured"},
+        "data_sources": {
+            "market_prices": "Yahoo Chart unofficial endpoint",
+            "macro_credit": "FRED API" if FRED_API_KEY else "FRED API not configured",
+        },
     }
-    compass["ai_data_deep_analysis"] = deep_data_analysis(compass)
+    compass["ai_data_deep_analysis"] = build_ai_data_deep_analysis(compass, stock_meta, chaos_meta)
     return compass
 
 
@@ -601,10 +975,16 @@ def main() -> None:
     if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
         raise SystemExit("ERROR: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing")
     client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-    row = client.table(SUPABASE_TABLE).select("macro_meta").eq("id", PORTFOLIO_ROW_ID).single().execute().data
-    macro_meta = row.get("macro_meta") if row and isinstance(row.get("macro_meta"), dict) else {}
-    compass = build_market_compass()
+    row = client.table(SUPABASE_TABLE).select("macro_meta,stock_meta,chaos_meta").eq("id", PORTFOLIO_ROW_ID).single().execute().data
+    if not row:
+        raise SystemExit("ERROR: portfolio row not found")
+    macro_meta = row.get("macro_meta") if isinstance(row.get("macro_meta"), dict) else {}
+    stock_meta = row.get("stock_meta") if isinstance(row.get("stock_meta"), dict) else {}
+    chaos_meta = row.get("chaos_meta") if isinstance(row.get("chaos_meta"), dict) else {}
+
+    compass = build_market_compass(stock_meta, chaos_meta)
     macro_meta["market_compass"] = compass
+    macro_meta["ai_data_deep_analysis"] = compass.get("ai_data_deep_analysis")
     client.table(SUPABASE_TABLE).update({"macro_meta": macro_meta}).eq("id", PORTFOLIO_ROW_ID).execute()
     print(
         "OK market compass "

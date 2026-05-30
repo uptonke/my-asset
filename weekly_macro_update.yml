@@ -1,0 +1,50 @@
+name: Weekly Macro Pipeline
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 每週一 00:30 Asia/Taipei = 週日 16:30 UTC
+    - cron: '30 16 * * 0'
+
+jobs:
+  weekly-macro:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 下載程式碼
+        uses: actions/checkout@v4
+
+      - name: 🐍 設定 Python 環境
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: 📦 安裝套件
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🧭 更新 Adjusted Market Compass
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_TABLE: portfolio_db
+          PORTFOLIO_ROW_ID: '1'
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-2.5-flash
+        run: python scripts/update_market_compass.py
+
+      - name: 🏛️ 更新 Weekly Official Macro Layer
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_TABLE: portfolio_db
+          PORTFOLIO_ROW_ID: '1'
+          # Optional override：BIS/OECD/IMF 慢變數層。JSON object，key=指標名，value=可直接 GET 的 API URL。
+          BIS_API_URLS: ${{ vars.BIS_API_URLS }}
+          OECD_API_URLS: ${{ vars.OECD_API_URLS }}
+          IMF_API_URLS: ${{ vars.IMF_API_URLS }}
+          WORLD_BANK_INDICATORS: ${{ vars.WORLD_BANK_INDICATORS }}
+        run: python scripts/update_weekly_official_meta.py
