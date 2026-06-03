@@ -41,6 +41,16 @@ def fnum(x: Any) -> Optional[float]:
         return None
 
 
+def any_float(x: Any) -> Optional[float]:
+    try:
+        if x is None or x == "":
+            return None
+        v = float(x)
+        return v if math.isfinite(v) else None
+    except Exception:
+        return None
+
+
 def active_tickers(ledger: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
     out: Dict[str, Dict[str, Any]] = {}
     for tx in ledger or []:
@@ -230,13 +240,112 @@ def cluster(cands: list[dict], current: float, side: str) -> Optional[dict]:
     return best
 
 
+def pivot_position_plain(status: str) -> str:
+    mapping = {
+        "突破月壓力區": "已站上壓力區",
+        "跌破月支撐區": "已跌破支撐區",
+        "月線樞軸壓縮": "支撐和壓力很近，容易震盪",
+        "接近月壓力": "接近上方壓力",
+        "接近月支撐": "接近下方支撐",
+        "月線區間中段": "在支撐與壓力中間",
+        "資料不足": "資料不足",
+        "不適用": "不適用",
+        "N/A": "N/A",
+    }
+    return mapping.get(str(status or "N/A"), str(status or "N/A"))
+
+
+def meta_score(meta: Dict[str, Any], key: str) -> Optional[float]:
+    return any_float(meta.get(key)) if isinstance(meta, dict) else None
+
+
+def build_signal(meta: Dict[str, Any], existing_meta: Dict[str, Any]) -> Dict[str, Any]:
+    status = str(meta.get("pivot_status") or "N/A")
+    position = pivot_position_plain(status)
+    trend = meta_score(existing_meta, "trend_score")
+    health = meta_score(existing_meta, "quant_health_score")
+    risk = meta_score(existing_meta, "risk_score")
+    tech = meta_score(existing_meta, "technical_score")
+
+    if status in {"資料不足", "不適用", "N/A"}:
+        return {
+            "pivot_position_plain": position,
+            "pivot_signal": "中立" if status == "N/A" else status,
+            "pivot_signal_score": None,
+            "pivot_signal_reason": "樞軸資料不足或不適用；不產生方向判斷。",
+        }
+
+    score = 50.0
+    if trend is not None:
+        score += (trend - 5.0) * 4.2
+    if health is not None:
+        score += (health - 5.0) * 4.0
+    if tech is not None:
+        score += (tech - 5.0) * 1.8
+    if risk is not None:
+        score += (5.0 - risk) * 3.0
+
+    if status == "接近月支撐":
+        score += 7.0
+    elif status == "接近月壓力":
+        score -= 7.0
+    elif status == "突破月壓力區":
+        score += 10.0
+    elif status == "跌破月支撐區":
+        score -= 12.0
+    elif status == "月線樞軸壓縮":
+        score -= 2.0
+
+    score = max(0.0, min(100.0, score))
+    if score >= 80:
+        signal = "強烈偏多"
+    elif score >= 62:
+        signal = "偏多"
+    elif score >= 42:
+        signal = "中立"
+    elif score >= 25:
+        signal = "偏弱"
+    else:
+        signal = "強烈偏弱"
+
+    trend_desc = "趨勢強" if (trend is not None and trend >= 7) else "趨勢轉弱" if (trend is not None and trend <= 4) else "趨勢普通"
+    health_desc = "健康度高" if (health is not None and health >= 7) else "健康度低" if (health is not None and health <= 4.5) else "健康度中等"
+    risk_desc = "風險偏低" if (risk is not None and risk <= 4.5) else "風險升高" if (risk is not None and risk >= 7) else "風險中等"
+
+    if status == "接近月支撐" and signal in {"偏多", "強烈偏多"}:
+        reason = f"{trend_desc}、{health_desc}、{risk_desc}，且價格接近支撐。"
+    elif status == "接近月支撐" and signal in {"偏弱", "強烈偏弱"}:
+        reason = f"雖接近支撐，但{trend_desc}或{risk_desc}，支撐可能失效。"
+    elif status == "接近月壓力" and signal in {"偏弱", "強烈偏弱"}:
+        reason = f"價格接近上方壓力，且{trend_desc}、{risk_desc}，上方空間受限。"
+    elif status == "接近月壓力" and signal in {"偏多", "強烈偏多"}:
+        reason = f"雖接近壓力，但{trend_desc}、{health_desc}；若續強才有突破意義。"
+    elif status == "突破月壓力區":
+        reason = f"價格已站上壓力區；搭配{trend_desc}、{health_desc}，觀察突破是否延續。"
+    elif status == "跌破月支撐區":
+        reason = f"價格已跌破支撐區；搭配{trend_desc}、{risk_desc}，需防守支撐失效。"
+    elif status == "月線樞軸壓縮":
+        reason = f"支撐與壓力距離很近，方向尚未打開；目前{trend_desc}、{risk_desc}。"
+    elif status == "月線區間中段":
+        reason = f"價格在支撐與壓力中間，沒有明顯技術位置優勢；目前{trend_desc}、{health_desc}、{risk_desc}。"
+    else:
+        reason = f"月線位置為「{position}」；目前{trend_desc}、{health_desc}、{risk_desc}。"
+
+    return {
+        "pivot_position_plain": position,
+        "pivot_signal": signal,
+        "pivot_signal_score": round(score, 1),
+        "pivot_signal_reason": reason,
+    }
+
+
 def pivot_meta(df: pd.DataFrame) -> Dict[str, Any]:
     if df.empty:
-        return {"pivot_status": "資料不足", "pivot_data_quality": "empty"}
+        return {"pivot_status": "資料不足", "pivot_position_plain": "資料不足", "pivot_data_quality": "empty"}
     current = fnum(df["close"].iloc[-1])
     ohlc = previous_month_ohlc(df)
     if current is None or ohlc is None:
-        return {"pivot_status": "資料不足", "pivot_data_quality": "insufficient_ohlc"}
+        return {"pivot_status": "資料不足", "pivot_position_plain": "資料不足", "pivot_data_quality": "insufficient_ohlc"}
 
     cands = candidates(ohlc, current)
     support = cluster(cands, current, "support")
@@ -294,6 +403,7 @@ def pivot_meta(df: pd.DataFrame) -> Dict[str, Any]:
     else:
         status = "N/A"
     out["pivot_status"] = status
+    out["pivot_position_plain"] = pivot_position_plain(status)
     return out
 
 
@@ -310,19 +420,34 @@ def main() -> None:
     updated, skipped, failed = [], [], []
 
     for ticker, h in sorted(holdings.items()):
+        existing = stock_meta.get(ticker) if isinstance(stock_meta.get(ticker), dict) else {}
         if should_skip_ticker(ticker):
-            stock_meta[ticker] = {**(stock_meta.get(ticker) or {}), "pivot_status": "不適用", "pivot_data_quality": "skipped_non_ticker", "pivot_timeframe": "monthly", "pivot_updated_at": str(TODAY_TPE)}
+            skip_meta = {
+                "pivot_status": "不適用",
+                "pivot_position_plain": "不適用",
+                "pivot_signal": "不適用",
+                "pivot_signal_score": None,
+                "pivot_signal_reason": "非交易型文字名稱，無法計算月線支撐/壓力。",
+                "pivot_data_quality": "skipped_non_ticker",
+                "pivot_timeframe": "monthly",
+                "pivot_updated_at": str(TODAY_TPE),
+            }
+            stock_meta[ticker] = {**existing, **skip_meta}
             skipped.append(ticker)
             print(f"SKIP pivot {ticker}: non-tradable text ticker")
             continue
         try:
             df, source = fetch_ohlc(ticker)
             meta = pivot_meta(df)
+            meta.update(build_signal(meta, existing))
             meta["pivot_source"] = source
             meta["pivot_updated_at"] = str(TODAY_TPE)
-            stock_meta[ticker] = {**(stock_meta.get(ticker) or {}), **meta}
+            stock_meta[ticker] = {**existing, **meta}
             updated.append(ticker)
-            print(f"OK monthly pivot {ticker}: {meta.get('pivot_status')} support={meta.get('pivot_support_confluence')} resistance={meta.get('pivot_resistance_confluence')}")
+            print(
+                f"OK monthly pivot {ticker}: {meta.get('pivot_position_plain')} / {meta.get('pivot_signal')} "
+                f"support={meta.get('pivot_support_confluence')} resistance={meta.get('pivot_resistance_confluence')}"
+            )
             time.sleep(0.25)
         except Exception as exc:
             failed.append((ticker, str(exc)))
