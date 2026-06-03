@@ -1,10 +1,10 @@
 (() => {
   "use strict";
 
-  const Q_PANEL_ID = "quant-meta-inline-panel-v9";
+  const Q_PANEL_ID = "quant-meta-inline-panel-v10";
   const MI_SUMMARY_ID = "market-intelligence-summary-panel-v2";
   const MI_ANALYSIS_ID = "market-intelligence-analysis-panel-v2";
-  const STYLE_ID = "quant-market-intelligence-style-v9";
+  const STYLE_ID = "quant-market-intelligence-style-v10";
   const SUPABASE_URL = "https://yrccanqxzrcoknzabifz.supabase.co";
   const SUPABASE_KEY = "sb_publishable_lDfwRDxgMhzRwVk0-Qu3vg_9HTmTFZy";
   const TABLE = "portfolio_db";
@@ -29,6 +29,13 @@
     if (inverse) return x >= 7 ? "bad" : x >= 4 ? "mid" : "ok";
     return x >= 7 ? "ok" : x >= 4 ? "mid" : "bad";
   };
+  const signalClass = (v) => {
+    const s = String(v || "");
+    if (s.includes("偏多")) return "ok";
+    if (s.includes("偏弱")) return "bad";
+    if (s.includes("中立")) return "mid";
+    return "";
+  };
 
   function injectStyle() {
     if (document.getElementById(STYLE_ID)) return;
@@ -41,7 +48,7 @@
       .qmi-body{padding:16px 18px;display:grid;gap:12px}.qmi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.qmi-grid6{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
       .qmi-card{border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:12px;background:rgba(0,0,0,.18)}.qmi-k{color:#94a3b8;font-size:9px;text-transform:uppercase;letter-spacing:.12em;font-weight:900}.qmi-v{margin-top:5px;color:#fff;font-weight:900;font:18px ui-monospace,SFMono-Regular,Menlo,monospace}.qmi-note{margin-top:6px;color:#94a3b8;font-size:10px;line-height:1.5}
       .qmi-pill{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:5px 9px;font-size:12px;font-weight:900}.ok{color:#4ade80}.mid{color:#facc15}.bad{color:#fb7185}.qmi-section{border:1px solid rgba(255,255,255,.10);border-radius:14px;padding:12px;background:rgba(255,255,255,.035);font-size:12px;line-height:1.65}.qmi-section.warn{border-color:rgba(251,113,133,.20);background:rgba(239,68,68,.06);color:#fecdd3}.qmi-label{color:#94a3b8;font-size:10px;text-transform:uppercase;letter-spacing:.12em;font-weight:900;margin-bottom:6px}
-      #${Q_PANEL_ID} .qwrap{overflow-x:auto}#${Q_PANEL_ID} table{width:max-content;min-width:100%;border-collapse:collapse;font-size:12px}#${Q_PANEL_ID} th,#${Q_PANEL_ID} td{padding:10px;border-bottom:1px solid rgba(255,255,255,.07);text-align:right;white-space:nowrap}#${Q_PANEL_ID} th{color:#94a3b8;font-size:10px;text-transform:uppercase;letter-spacing:.08em;background:rgba(15,23,42,.96)}#${Q_PANEL_ID} th:first-child,#${Q_PANEL_ID} td:first-child{text-align:left;position:sticky;left:0;background:rgba(15,23,42,.98);z-index:2}.badge{display:inline-flex;min-width:42px;justify-content:center;border-radius:999px;border:1px solid rgba(255,255,255,.10);padding:3px 7px;background:rgba(255,255,255,.04);font-weight:800}.ticker{font-weight:900;color:#fff}
+      #${Q_PANEL_ID} .qwrap{overflow-x:auto}#${Q_PANEL_ID} table{width:max-content;min-width:100%;border-collapse:collapse;font-size:12px}#${Q_PANEL_ID} th,#${Q_PANEL_ID} td{padding:10px;border-bottom:1px solid rgba(255,255,255,.07);text-align:right;white-space:nowrap}#${Q_PANEL_ID} th{color:#94a3b8;font-size:10px;text-transform:uppercase;letter-spacing:.08em;background:rgba(15,23,42,.96)}#${Q_PANEL_ID} th:first-child,#${Q_PANEL_ID} td:first-child{text-align:left;position:sticky;left:0;background:rgba(15,23,42,.98);z-index:2}.badge{display:inline-flex;min-width:42px;justify-content:center;border-radius:999px;border:1px solid rgba(255,255,255,.10);padding:3px 7px;background:rgba(255,255,255,.04);font-weight:800}.ticker{font-weight:900;color:#fff}.qmi-small{display:block;color:#94a3b8;font-size:10px;margin-top:4px;max-width:220px;white-space:normal;line-height:1.35;text-align:right}
       details.qmi-details>summary{cursor:pointer;color:#93c5fd;font-weight:900;margin-bottom:8px}
       @media(max-width:1000px){.qmi-grid,.qmi-grid6{grid-template-columns:repeat(2,minmax(0,1fr))}.qmi-head{flex-direction:column}.qmi-meta{text-align:left}}
     `;
@@ -135,9 +142,12 @@
     const latest = list.map((t) => meta?.[t]?.updated_at).filter(Boolean).sort().slice(-1)[0] || "N/A";
     const rows = list.map((t) => {
       const x = meta[t] || {};
-      return `<tr><td><span class="ticker">${esc(t)}</span></td><td>${n(x.beta,2)}</td><td><span class="badge ${scoreClass(x.trend_score)}">${n(x.trend_score,2)}</span></td><td><span class="badge ${scoreClass(x.momentum_score)}">${n(x.momentum_score,2)}</span></td><td><span class="badge ${scoreClass(x.risk_score,true)}">${n(x.risk_score,2)}</span></td><td>${n(x.technical_score,2)}</td><td>${n(x.valuation_score,2)}</td><td>${n(x.chip_score,2)}</td><td><span class="badge ${scoreClass(x.quant_health_score)}">${n(x.quant_health_score,2)}</span></td><td>${zone(x,"support")}</td><td>${zone(x,"resistance")}</td><td>${esc(x.pivot_status || "N/A")}</td><td>${esc(x.data_quality || "N/A")}</td><td>${esc(x.source || "N/A")}</td><td>${esc(x.updated_at || "N/A")}</td></tr>`;
+      const position = x.pivot_position_plain || x.pivot_status || "N/A";
+      const signal = x.pivot_signal || "N/A";
+      const reason = x.pivot_signal_reason || "";
+      return `<tr><td><span class="ticker">${esc(t)}</span></td><td>${n(x.beta,2)}</td><td><span class="badge ${scoreClass(x.trend_score)}">${n(x.trend_score,2)}</span></td><td><span class="badge ${scoreClass(x.momentum_score)}">${n(x.momentum_score,2)}</span></td><td><span class="badge ${scoreClass(x.risk_score,true)}">${n(x.risk_score,2)}</span></td><td>${n(x.technical_score,2)}</td><td>${n(x.valuation_score,2)}</td><td>${n(x.chip_score,2)}</td><td><span class="badge ${scoreClass(x.quant_health_score)}">${n(x.quant_health_score,2)}</span></td><td>${zone(x,"support")}</td><td>${zone(x,"resistance")}</td><td>${esc(position)}</td><td><span class="badge ${signalClass(signal)}">${esc(signal)}</span>${reason ? `<span class="qmi-small">${esc(reason)}</span>` : ""}</td><td>${esc(x.data_quality || "N/A")}</td><td>${esc(x.source || "N/A")}</td><td>${esc(x.updated_at || "N/A")}</td></tr>`;
     }).join("");
-    p.innerHTML = `<div class="qmi-head"><div><div class="qmi-title">量化因子總覽</div><div class="qmi-sub">庫存頁只放單檔資料：Beta、趨勢、動能、風險、健康度與月線支撐/壓力。</div></div><div class="qmi-meta">持倉數=${list.length}<br>最新=${esc(latest)}</div></div><div class="qwrap"><table><thead><tr><th>代號</th><th>Beta</th><th>趨勢</th><th>動能</th><th>風險</th><th>技術</th><th>估值</th><th>籌碼</th><th>健康度</th><th>月支撐</th><th>月壓力</th><th>樞軸狀態</th><th>品質</th><th>來源</th><th>更新</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    p.innerHTML = `<div class="qmi-head"><div><div class="qmi-title">量化因子總覽</div><div class="qmi-sub">庫存頁只放單檔資料：Beta、趨勢、動能、風險、健康度與月線支撐/壓力。</div></div><div class="qmi-meta">持倉數=${list.length}<br>最新=${esc(latest)}</div></div><div class="qwrap"><table><thead><tr><th>代號</th><th>Beta</th><th>趨勢</th><th>動能</th><th>風險</th><th>技術</th><th>估值</th><th>籌碼</th><th>健康度</th><th>月支撐</th><th>月壓力</th><th>月線位置</th><th>綜合訊號</th><th>品質</th><th>來源</th><th>更新</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
 
   function chip(k, v) {
