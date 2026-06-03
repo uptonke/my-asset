@@ -48,7 +48,6 @@ def main() -> None:
 
     text = INDEX.read_text(encoding="utf-8")
 
-    # favicon 404 quick fix.
     if 'rel="icon"' not in text and "rel='icon'" not in text:
         head = text.find("</head>")
         if head != -1:
@@ -58,7 +57,6 @@ def main() -> None:
     text = insert_after_last_css(text, TYPOGRAPHY_CSS, "typography-1")
     text = insert_before_body_end(text, JS)
 
-    # Collapse accidental duplicate IA / typography references.
     text = re.sub(
         r'(\s*<link rel="stylesheet" href="assets/css/80-terminal-ia-phase2\.css\?v=ia-phase2">\s*)+',
         '\n    <link rel="stylesheet" href="assets/css/80-terminal-ia-phase2.css?v=ia-phase2">\n',
@@ -81,3 +79,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
