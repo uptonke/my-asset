@@ -11,6 +11,4 @@
     ">": "&gt;",
     '"': "&quot;",
     "'": "&#039;",
-  }[m]));
-
-  const num = (v, d = 1) => Number.isFinite(Number(v)) ? Number(v).toFixed(d) : "N/A";
+  }[
