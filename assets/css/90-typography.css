@@ -1,10 +1,93 @@
 /*
   90-typography.css
   Typography refinement for the portfolio terminal.
-  Uses local/system fonts only: no external font requests, no font files committed.
+  Local/system fonts only: no external font requests, no bundled font files.
 */
 
 :root {
   --font-ui: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Heiti TC", sans-serif;
   --font-number: "SF Mono", "SFMono-Regular", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  --font-display
+  --font-display: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+}
+
+html,
+body,
+#app,
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-ui) !important;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+.ia-title,
+.qmi-title,
+.panel-card h2,
+.panel-card h3,
+.glass h2,
+.glass h3 {
+  font-family: var(--font-display) !important;
+  font-weight: 850 !important;
+  letter-spacing: 0.005em !important;
+}
+
+/* Financial numbers: stable width and cleaner scanning. */
+.terminal-number,
+.ia-v,
+.ia-table td,
+.qmi-v,
+.qmi-card .badge,
+.qmi-pill,
+.badge,
+td,
+.font-mono,
+[class*="value"],
+[class*="Value"] {
+  font-family: var(--font-number) !important;
+  font-variant-numeric: tabular-nums slashed-zero;
+  letter-spacing: -0.01em;
+}
+
+/* Chinese body copy: slightly more relaxed than numeric blocks. */
+p,
+.ia-subtitle,
+.ia-note,
+.qmi-sub,
+.qmi-note,
+.text-xs,
+.text-sm {
+  line-height: 1.55;
+}
+
+/* Dense finance table readability. */
+table th {
+  font-family: var(--font-ui) !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.055em !important;
+}
+
+table td {
+  font-size: 12px !important;
+}
+
+/* Header brand should look less generic SaaS / more terminal. */
+header h1,
+header .tracking-wide {
+  font-family: var(--font-display) !important;
+  letter-spacing: 0.01em !important;
+}
+
+/* Avoid overly bold Chinese paragraphs. */
+.ia-alert-detail,
+.ia-source-label,
+.ia-source-value,
+.ia-name {
+  -webkit-font-smoothing: antialiased;
+}
