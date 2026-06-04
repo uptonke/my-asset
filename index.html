@@ -575,26 +575,17 @@
     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <div class="flex items-center gap-2 text-sm font-bold text-cyan-300">
             <i class="fas fa-wave-square"></i>
-            Jump / EVT 摘要
+            跳躍風險摘要 (Jump Risk Summary)
         </div>
 
         <div class="flex flex-wrap gap-3 text-xs">
             <div class="px-3 py-2 rounded-xl border border-red-500/20 bg-red-500/10">
-                <div class="text-gray-500 mb-1">JD Crash Prob</div>
+                <div class="text-gray-500 mb-1">崩盤機率 (JD Crash Prob)</div>
                 <div class="font-mono font-bold"
                      :class="parseFloat(chaosMeta?.jump_diffusion?.jd_crash_prob ?? chaosMeta?.tail_meta?.jd_crash_prob ?? 0) >= 10 ? 'text-red-300' : 'text-white'">
                     {{ chaosMeta?.jump_diffusion?.jd_crash_prob ?? chaosMeta?.tail_meta?.jd_crash_prob ?? '-' }}
                 </div>
             </div>
-
-            <div class="px-3 py-2 rounded-xl border border-purple-500/20 bg-purple-500/10">
-                <div class="text-gray-500 mb-1">EVT Shape ξ</div>
-                <div class="font-mono font-bold"
-                     :class="parseFloat(chaosMeta?.evt_tail?.evt_shape_xi ?? chaosMeta?.tail_meta?.evt_shape_xi ?? 0) > 0 ? 'text-red-300' : 'text-white'">
-                    {{ chaosMeta?.evt_tail?.evt_shape_xi ?? chaosMeta?.tail_meta?.evt_shape_xi ?? '-' }}
-                </div>
-            </div>
-
             <div class="px-3 py-2 rounded-xl border border-white/10 bg-white/[0.03] min-w-[220px]">
                 <div class="text-gray-500 mb-1">風險判讀</div>
                 <div class="text-white text-xs leading-relaxed">
@@ -604,13 +595,7 @@
                     <template v-else>
                         跳躍崩跌機率尚可；
                     </template>
-
-                    <template v-if="parseFloat(chaosMeta?.evt_tail?.evt_shape_xi ?? chaosMeta?.tail_meta?.evt_shape_xi ?? 0) > 0">
-                        EVT 顯示肥尾，歷史 CVaR 可能偏樂觀。
-                    </template>
-                    <template v-else>
-                        EVT 未顯示明顯額外肥尾。
-                    </template>
+                        目前只顯示 Jump-Diffusion；EVT / POT-GPD 因週資料樣本不足暫停。
                 </div>
             </div>
         </div>
@@ -2081,14 +2066,14 @@
         <div class="flex flex-col gap-2">
             <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border border-orange-500/20 bg-orange-500/10 text-orange-300 w-max mb-1">
                 <i class="fas fa-meteor"></i>
-                尾部風險模型 (Tail Risk Model)
+                跳躍風險模型 (Jump Risk Model)
             </div>
             <h4 class="text-white font-bold text-lg md:text-xl flex items-center gap-2">
                 <i class="fas fa-burst text-orange-400"></i>
-                跳躍擴散與極值理論 (Jump-Diffusion & EVT)
+                跳躍擴散風險模型 (Jump-Diffusion Risk Model)
             </h4>
             <p class="text-[11px] md:text-xs text-gray-400 mt-1 leading-relaxed">
-                衡量跳躍崩跌機率與極端肥尾風險分佈，補充傳統常態分配的盲區。
+                以跳躍擴散模型估計短期崩跌、跳躍頻率與尾部損失；EVT / POT-GPD 因週資料尾部樣本不足暫停顯示。
             </p>
         </div>
     </div>
@@ -2146,57 +2131,8 @@
 
             <div class="col-span-2 border-b border-white/5 my-1"></div>
 
-            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">極值理論 VaR 95 (EVT VaR 95)</div>
-                <div class="text-white font-mono font-bold">
-                    {{ tailStatsLite.evtVar95 === '-' ? '-' : tailStatsLite.evtVar95 + '%' }}
-                </div>
-            </div>
-
-            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">極值理論 ES 95 (EVT ES 95)</div>
-                <div class="text-white font-mono font-bold">
-                    {{ tailStatsLite.evtEs95 === '-' ? '-' : tailStatsLite.evtEs95 + '%' }}
-                </div>
-            </div>
-
-            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">形狀參數 ξ (Shape ξ)</div>
-                <div class="text-white font-mono font-bold">
-                    {{ tailStatsLite.evtShapeXi }}
-                </div>
-            </div>
-
-            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">尺度參數 β (Scale β)</div>
-                <div class="text-white font-mono font-bold">
-                    {{ tailStatsLite.evtScaleBeta }}
-                </div>
-            </div>
-
-            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">門檻值 (Threshold)</div>
-                <div class="text-white font-mono font-bold">
-                    {{ tailStatsLite.evtThreshold === '-' ? '-' : tailStatsLite.evtThreshold + '%' }}
-                </div>
-            </div>
-
-            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">超額樣本數 (Exceedances)</div>
-                <div class="text-white font-mono font-bold">
-                    {{ tailStatsLite.evtExceedanceCount }}
-                </div>
-            </div>
-
-            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10 col-span-2">
-                <div class="text-gray-500 mb-1">信賴水準 / 尾部擬合 (Confidence / Tail Fit)</div>
-                <div class="text-white font-mono font-bold">
-                    {{ tailStatsLite.evtAlphaConf === '-' ? '-' : 'P' + tailStatsLite.evtAlphaConf }}
-                </div>
-            </div>
-
             <div class="col-span-2 text-[10px] text-gray-400 mt-1 leading-relaxed px-1">
-                <i class="fas fa-info-circle text-orange-400 mr-1"></i> ξ > 0 代表肥尾更明顯；歷史 CVaR 可能低估真正極端風險。
+                <i class="fas fa-info-circle text-orange-400 mr-1"></i> EVT / POT-GPD 暫停顯示：週資料尾部樣本不足；待切換為長期日報酬合成模型後再啟用。
             </div>
         </div>
     </div>
@@ -3149,7 +3085,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=11.8"></script>
+<script src="assets/js/app.bundle.js?v=11.9-jd-only"></script>
 <script src="assets/js/quant-main-display.js?v=no-chip-terminal"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=ia-phase2"></script>
