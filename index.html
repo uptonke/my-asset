@@ -2076,135 +2076,131 @@
                         </div>
                     </div>
                     
-                    <div class="glass panel-card border-orange-500/20 overflow-hidden xl:col-span-1 flex flex-col">
-                        <div class="p-5 md:p-6 border-b border-white/10 bg-orange-500/5">
-                            <div class="flex flex-col gap-2">
-                                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border border-orange-500/20 bg-orange-500/10 text-orange-300 w-max mb-1">
-                                    <i class="fas fa-meteor"></i>
-                                    Tail Risk Model
-                                </div>
-                                <h4 class="text-white font-bold text-lg md:text-xl flex items-center gap-2">
-                                    <i class="fas fa-burst text-orange-400"></i>
-                                    Jump-Diffusion & EVT
-                                </h4>
-                                <p class="text-[11px] md:text-xs text-gray-400 mt-1 leading-relaxed">
-                                    衡量跳躍崩跌機率與極端肥尾風險分佈，補充傳統常態分配的盲區。
-                                </p>
-                            </div>
-                        </div>
+                   <div class="glass panel-card border-orange-500/20 overflow-hidden xl:col-span-1 flex flex-col">
+    <div class="p-5 md:p-6 border-b border-white/10 bg-orange-500/5">
+        <div class="flex flex-col gap-2">
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border border-orange-500/20 bg-orange-500/10 text-orange-300 w-max mb-1">
+                <i class="fas fa-meteor"></i>
+                尾部風險模型 (Tail Risk Model)
+            </div>
+            <h4 class="text-white font-bold text-lg md:text-xl flex items-center gap-2">
+                <i class="fas fa-burst text-orange-400"></i>
+                跳躍擴散與極值理論 (Jump-Diffusion & EVT)
+            </h4>
+            <p class="text-[11px] md:text-xs text-gray-400 mt-1 leading-relaxed">
+                衡量跳躍崩跌機率與極端肥尾風險分佈，補充傳統常態分配的盲區。
+            </p>
+        </div>
+    </div>
 
-                        <div class="p-5 md:p-6 flex-1 bg-black/20">
-                            <div class="grid grid-cols-2 gap-3 text-xs">
-                                <!-- Jump-Diffusion 區塊 -->
-                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                                    <div class="text-gray-500 mb-1">JD VaR 95</div>
-                                    <div class="text-white font-mono font-bold">
-                                        {{ tailStatsLite.jdVar95 === '-' ? '-' : tailStatsLite.jdVar95 + '%' }}
-                                    </div>
-                                </div>
+    <div class="p-5 md:p-6 flex-1 bg-black/20">
+        <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                <div class="text-gray-500 mb-1">跳躍擴散 VaR 95 (JD VaR 95)</div>
+                <div class="text-white font-mono font-bold">
+                    {{ tailStatsLite.jdVar95 === '-' ? '-' : tailStatsLite.jdVar95 + '%' }}
+                </div>
+            </div>
 
-                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                                    <div class="text-gray-500 mb-1">JD ES 95</div>
-                                    <div class="text-white font-mono font-bold">
-                                        {{ tailStatsLite.jdEs95 === '-' ? '-' : tailStatsLite.jdEs95 + '%' }}
-                                    </div>
-                                </div>
+            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                <div class="text-gray-500 mb-1">跳躍擴散 ES 95 (JD ES 95)</div>
+                <div class="text-white font-mono font-bold">
+                    {{ tailStatsLite.jdEs95 === '-' ? '-' : tailStatsLite.jdEs95 + '%' }}
+                </div>
+            </div>
 
-                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                                    <div class="text-gray-500 mb-1">Crash Prob</div>
-                                    <div class="text-white font-mono font-bold">
-                                        {{ tailStatsLite.jdCrashProb === '-' ? '-' : tailStatsLite.jdCrashProb + '%' }}
-                                    </div>
-                                </div>
+            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                <div class="text-gray-500 mb-1">崩盤機率 (Crash Prob)</div>
+                <div class="text-white font-mono font-bold">
+                    {{ tailStatsLite.jdCrashProb === '-' ? '-' : tailStatsLite.jdCrashProb + '%' }}
+                </div>
+            </div>
 
-                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                                    <div class="text-gray-500 mb-1">Tail Loss</div>
-                                    <div class="text-white font-mono font-bold">
-                                        {{ tailStatsLite.jdTailLoss === '-' ? '-' : tailStatsLite.jdTailLoss + '%' }}
-                                    </div>
-                                </div>
+            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                <div class="text-gray-500 mb-1">尾部損失 (Tail Loss)</div>
+                <div class="text-white font-mono font-bold">
+                    {{ tailStatsLite.jdTailLoss === '-' ? '-' : tailStatsLite.jdTailLoss + '%' }}
+                </div>
+            </div>
 
-                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                                    <div class="text-gray-500 mb-1">λ (Annual Freq)</div>
-                                    <div class="text-white font-mono font-bold">
-                                        {{ tailStatsLite.jdEffectiveLambda }}
-                                    </div>
-                                </div>
+            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                <div class="text-gray-500 mb-1">年化跳躍頻率 λ (Annual Freq)</div>
+                <div class="text-white font-mono font-bold">
+                    {{ tailStatsLite.jdEffectiveLambda }}
+                </div>
+            </div>
 
-                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                                    <div class="text-gray-500 mb-1">Horizon</div>
-                                    <div class="text-white font-mono font-bold">
-                                        {{ tailStatsLite.jdHorizonWeeks }}
-                                    </div>
-                                </div>
+            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                <div class="text-gray-500 mb-1">估計期間 (Horizon)</div>
+                <div class="text-white font-mono font-bold">
+                    {{ tailStatsLite.jdHorizonWeeks }}
+                </div>
+            </div>
 
-                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10 col-span-2">
-                                    <div class="text-gray-500 mb-1">Jump Signature</div>
-                                    <div class="text-white font-mono font-bold">
-                                        μj {{ tailStatsLite.jdEffectiveJumpMean }} / σj {{ tailStatsLite.jdEffectiveJumpStd }}
-                                    </div>
-                                </div>
+            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10 col-span-2">
+                <div class="text-gray-500 mb-1">跳躍特徵 (Jump Signature)</div>
+                <div class="text-white font-mono font-bold">
+                    μj {{ tailStatsLite.jdEffectiveJumpMean }} / σj {{ tailStatsLite.jdEffectiveJumpStd }}
+                </div>
+            </div>
 
-                                <!-- EVT 區塊分隔線 -->
-                                <div class="col-span-2 border-b border-white/5 my-1"></div>
+            <div class="col-span-2 border-b border-white/5 my-1"></div>
 
-                                <!-- EVT / POT-GPD 區塊 -->
-                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                                    <div class="text-gray-500 mb-1">EVT VaR 95</div>
-                                    <div class="text-white font-mono font-bold">
-                                        {{ tailStatsLite.evtVar95 === '-' ? '-' : tailStatsLite.evtVar95 + '%' }}
-                                    </div>
-                                </div>
+            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                <div class="text-gray-500 mb-1">極值理論 VaR 95 (EVT VaR 95)</div>
+                <div class="text-white font-mono font-bold">
+                    {{ tailStatsLite.evtVar95 === '-' ? '-' : tailStatsLite.evtVar95 + '%' }}
+                </div>
+            </div>
 
-                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                                    <div class="text-gray-500 mb-1">EVT ES 95</div>
-                                    <div class="text-white font-mono font-bold">
-                                        {{ tailStatsLite.evtEs95 === '-' ? '-' : tailStatsLite.evtEs95 + '%' }}
-                                    </div>
-                                </div>
+            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                <div class="text-gray-500 mb-1">極值理論 ES 95 (EVT ES 95)</div>
+                <div class="text-white font-mono font-bold">
+                    {{ tailStatsLite.evtEs95 === '-' ? '-' : tailStatsLite.evtEs95 + '%' }}
+                </div>
+            </div>
 
-                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                                    <div class="text-gray-500 mb-1">Shape ξ</div>
-                                    <div class="text-white font-mono font-bold">
-                                        {{ tailStatsLite.evtShapeXi }}
-                                    </div>
-                                </div>
+            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                <div class="text-gray-500 mb-1">形狀參數 ξ (Shape ξ)</div>
+                <div class="text-white font-mono font-bold">
+                    {{ tailStatsLite.evtShapeXi }}
+                </div>
+            </div>
 
-                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                                    <div class="text-gray-500 mb-1">Scale β</div>
-                                    <div class="text-white font-mono font-bold">
-                                        {{ tailStatsLite.evtScaleBeta }}
-                                    </div>
-                                </div>
+            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                <div class="text-gray-500 mb-1">尺度參數 β (Scale β)</div>
+                <div class="text-white font-mono font-bold">
+                    {{ tailStatsLite.evtScaleBeta }}
+                </div>
+            </div>
 
-                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                                    <div class="text-gray-500 mb-1">Threshold</div>
-                                    <div class="text-white font-mono font-bold">
-                                        {{ tailStatsLite.evtThreshold === '-' ? '-' : tailStatsLite.evtThreshold + '%' }}
-                                    </div>
-                                </div>
+            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                <div class="text-gray-500 mb-1">門檻值 (Threshold)</div>
+                <div class="text-white font-mono font-bold">
+                    {{ tailStatsLite.evtThreshold === '-' ? '-' : tailStatsLite.evtThreshold + '%' }}
+                </div>
+            </div>
 
-                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                                    <div class="text-gray-500 mb-1">Exceedances</div>
-                                    <div class="text-white font-mono font-bold">
-                                        {{ tailStatsLite.evtExceedanceCount }}
-                                    </div>
-                                </div>
+            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                <div class="text-gray-500 mb-1">超額樣本數 (Exceedances)</div>
+                <div class="text-white font-mono font-bold">
+                    {{ tailStatsLite.evtExceedanceCount }}
+                </div>
+            </div>
 
-                                <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10 col-span-2">
-                                    <div class="text-gray-500 mb-1">Confidence / Tail Fit</div>
-                                    <div class="text-white font-mono font-bold">
-                                        {{ tailStatsLite.evtAlphaConf === '-' ? '-' : 'P' + tailStatsLite.evtAlphaConf }}
-                                    </div>
-                                </div>
+            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10 col-span-2">
+                <div class="text-gray-500 mb-1">信賴水準 / 尾部擬合 (Confidence / Tail Fit)</div>
+                <div class="text-white font-mono font-bold">
+                    {{ tailStatsLite.evtAlphaConf === '-' ? '-' : 'P' + tailStatsLite.evtAlphaConf }}
+                </div>
+            </div>
 
-                                <!-- 底部註解 -->
-                                <div class="col-span-2 text-[10px] text-gray-400 mt-1 leading-relaxed px-1">
-                                    <i class="fas fa-info-circle text-orange-400 mr-1"></i> ξ > 0 代表肥尾更明顯；歷史 CVaR 可能低估真正極端風險。
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            <div class="col-span-2 text-[10px] text-gray-400 mt-1 leading-relaxed px-1">
+                <i class="fas fa-info-circle text-orange-400 mr-1"></i> ξ > 0 代表肥尾更明顯；歷史 CVaR 可能低估真正極端風險。
+            </div>
+        </div>
+    </div>
+</div>
                 </div>
 
                 <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
@@ -2348,112 +2344,113 @@
                     </div>
 
                     <div class="glass panel-card border-red-500/20 overflow-hidden">
-                        <div class="p-5 md:p-6 border-b border-white/10 bg-red-500/5">
-                            <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                                <div>
-                                    <div class="badge badge-red mb-3">
-                                        <i class="fas fa-skull-crossbones"></i>
-                                        Tail / Crash Radar
-                                    </div>
-                                    <h4 class="text-white font-bold text-lg md:text-xl flex items-center gap-2">
-                                        <i class="fas fa-wave-square text-red-400"></i>
-                                        尾部相依 / 崩盤雷達
-                                    </h4>
-                                    <p class="text-xs md:text-sm text-gray-400 mt-2 leading-relaxed">
-                                        聚焦條件相關、危機窗口、下檔 Beta 與共同回撤，監測市場一崩時誰會跟著一起死。
-                                    </p>
-                                </div>
-                                <div class="text-xs text-gray-500">conditional / crisis / downside</div>
-                            </div>
-                        </div>
-
-                        <div class="p-5 md:p-6 space-y-4">
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                <div class="quant-card border-red-500/20 bg-red-500/10">
-                                    <div class="quant-label text-red-300">Cond. Corr</div>
-                                    <div class="quant-value text-white">{{ tailStatsLite?.conditionalCorr ?? '-' }}</div>
-                                </div>
-                                <div class="quant-card border-red-500/20 bg-red-500/10">
-                                    <div class="quant-label text-red-300">Crisis Corr</div>
-                                    <div class="quant-value text-white">{{ tailStatsLite?.crisisCorr ?? '-' }}</div>
-                                </div>
-                                <div class="quant-card border-red-500/20 bg-red-500/10">
-                                    <div class="quant-label text-red-300">Downside Beta</div>
-                                    <div class="quant-value text-white">{{ tailStatsLite?.downsideBeta ?? '-' }}</div>
-                                </div>
-                                <div class="quant-card border-red-500/20 bg-red-500/10">
-                                    <div class="quant-label text-red-300">Stressed CVaR</div>
-                                    <div class="quant-value text-white">{{ tailStatsLite?.stressedCvar ?? '-' }}%</div>
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                    <div class="text-sm font-bold text-white mb-3 flex items-center gap-2">
-                                        <i class="fas fa-link text-red-400"></i>
-                                        Crash Dependence
-                                    </div>
-                                    <div class="grid grid-cols-2 gap-3 text-xs">
-                                        <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                                            <div class="text-gray-500 mb-1">Joint Downside Hit</div>
-                                            <div class="text-white font-mono font-bold">{{ tailStatsLite?.jointDownsideHitRate ?? '-' }}%</div>
-                                        </div>
-                                        <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                                            <div class="text-gray-500 mb-1">Co-drawdown Freq</div>
-                                            <div class="text-white font-mono font-bold">{{ tailStatsLite?.coDrawdownFrequency ?? '-' }}%</div>
-                                        </div>
-                                        <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10 col-span-2">
-                                            <div class="text-gray-500 mb-1">Tail Dependence Lite</div>
-                                            <div class="text-white font-mono font-bold">{{ tailStatsLite?.tailDependenceLite ?? '-' }}</div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                    <div class="text-sm font-bold text-white mb-3 flex items-center gap-2">
-                                        <i class="fas fa-rotate text-red-400"></i>
-                                        Rolling / Stress Window
-                                    </div>
-                                    <div class="grid grid-cols-2 gap-3 text-xs">
-                                        <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                                            <div class="text-gray-500 mb-1">Rolling CVaR 26W</div>
-                                            <div class="text-white font-mono font-bold">{{ tailStatsLite?.rollingCvar26w ?? '-' }}%</div>
-                                        </div>
-                                        <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                                            <div class="text-gray-500 mb-1">Rolling CVaR 52W</div>
-                                            <div class="text-white font-mono font-bold">{{ tailStatsLite?.rollingCvar52w ?? '-' }}%</div>
-                                        </div>
-                                        <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10 col-span-2">
-                                            <div class="text-gray-500 mb-1">危機窗口定義</div>
-                                            <div class="text-white font-mono font-bold">{{ tailStatsLite?.crisisWindowLabel ?? 'Benchmark < q20 或 VIX 風險升溫' }}</div>
-                                            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10 mt-3">
-    <div class="text-gray-500 mb-2">樣本 / 門檻註解</div>
-    
-    <div class="grid grid-cols-2 gap-3 text-xs">
-        <div>
-            <div class="text-gray-500 mb-1">Tail Sample Count</div>
-            <div class="text-white font-mono font-bold">{{ tailStatsLite?.tailSampleCount ?? '-' }}</div>
-        </div>
-        <div>
-            <div class="text-gray-500 mb-1">Crisis Sample Count</div>
-            <div class="text-white font-mono font-bold">{{ tailStatsLite?.crisisSampleCount ?? '-' }}</div>
-        </div>
-        <div>
-            <div class="text-gray-500 mb-1">Co-drawdown Threshold</div>
-            <div class="text-white font-mono font-bold">{{ tailStatsLite?.coDrawdownThreshold ?? '-' }}%</div>
-        </div>
-        <div>
-            <div class="text-gray-500 mb-1">Tail Threshold Quantile</div>
-            <div class="text-white font-mono font-bold">P{{ tailStatsLite?.tailThresholdQuantile ?? '-' }}</div>
+    <div class="p-5 md:p-6 border-b border-white/10 bg-red-500/5">
+        <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+            <div>
+                <div class="badge badge-red mb-3">
+                    <i class="fas fa-skull-crossbones"></i>
+                    尾部 / 崩盤雷達 (Tail / Crash Radar)
+                </div>
+                <h4 class="text-white font-bold text-lg md:text-xl flex items-center gap-2">
+                    <i class="fas fa-wave-square text-red-400"></i>
+                    尾部相依 / 崩盤雷達
+                </h4>
+                <p class="text-xs md:text-sm text-gray-400 mt-2 leading-relaxed">
+                    聚焦條件相關、危機窗口、下檔 Beta 與共同回撤，監測市場一崩時誰會跟著一起死。
+                </p>
+            </div>
+            <div class="text-xs text-gray-500">條件相關 / 危機窗口 / 下檔風險 (conditional / crisis / downside)</div>
         </div>
     </div>
-</div>
-                                        </div>
-                                    </div>
+
+    <div class="p-5 md:p-6 space-y-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="quant-card border-red-500/20 bg-red-500/10">
+                <div class="quant-label text-red-300">條件相關 (Cond. Corr)</div>
+                <div class="quant-value text-white">{{ tailStatsLite?.conditionalCorr ?? '-' }}</div>
+            </div>
+            <div class="quant-card border-red-500/20 bg-red-500/10">
+                <div class="quant-label text-red-300">危機相關 (Crisis Corr)</div>
+                <div class="quant-value text-white">{{ tailStatsLite?.crisisCorr ?? '-' }}</div>
+            </div>
+            <div class="quant-card border-red-500/20 bg-red-500/10">
+                <div class="quant-label text-red-300">下檔 Beta (Downside Beta)</div>
+                <div class="quant-value text-white">{{ tailStatsLite?.downsideBeta ?? '-' }}</div>
+            </div>
+            <div class="quant-card border-red-500/20 bg-red-500/10">
+                <div class="quant-label text-red-300">壓力後 CVaR (Stressed CVaR)</div>
+                <div class="quant-value text-white">{{ tailStatsLite?.stressedCvar ?? '-' }}%</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div class="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                    <i class="fas fa-link text-red-400"></i>
+                    崩盤相依性 (Crash Dependence)
+                </div>
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                    <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                        <div class="text-gray-500 mb-1">共同下跌命中率 (Joint Downside Hit)</div>
+                        <div class="text-white font-mono font-bold">{{ tailStatsLite?.jointDownsideHitRate ?? '-' }}%</div>
+                    </div>
+                    <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                        <div class="text-gray-500 mb-1">共同回撤頻率 (Co-drawdown Freq)</div>
+                        <div class="text-white font-mono font-bold">{{ tailStatsLite?.coDrawdownFrequency ?? '-' }}%</div>
+                    </div>
+                    <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10 col-span-2">
+                        <div class="text-gray-500 mb-1">簡化尾部相依 (Tail Dependence Lite)</div>
+                        <div class="text-white font-mono font-bold">{{ tailStatsLite?.tailDependenceLite ?? '-' }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div class="text-sm font-bold text-white mb-3 flex items-center gap-2">
+                    <i class="fas fa-rotate text-red-400"></i>
+                    滾動 / 壓力窗口 (Rolling / Stress Window)
+                </div>
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                    <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                        <div class="text-gray-500 mb-1">26 週滾動 CVaR (Rolling CVaR 26W)</div>
+                        <div class="text-white font-mono font-bold">{{ tailStatsLite?.rollingCvar26w ?? '-' }}%</div>
+                    </div>
+                    <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                        <div class="text-gray-500 mb-1">52 週滾動 CVaR (Rolling CVaR 52W)</div>
+                        <div class="text-white font-mono font-bold">{{ tailStatsLite?.rollingCvar52w ?? '-' }}%</div>
+                    </div>
+                    <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10 col-span-2">
+                        <div class="text-gray-500 mb-1">危機窗口定義</div>
+                        <div class="text-white font-mono font-bold">{{ tailStatsLite?.crisisWindowLabel ?? '基準指數 < q20 或 VIX 風險升溫' }}</div>
+
+                        <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10 mt-3">
+                            <div class="text-gray-500 mb-2">樣本 / 門檻註解</div>
+
+                            <div class="grid grid-cols-2 gap-3 text-xs">
+                                <div>
+                                    <div class="text-gray-500 mb-1">尾部樣本數 (Tail Sample Count)</div>
+                                    <div class="text-white font-mono font-bold">{{ tailStatsLite?.tailSampleCount ?? '-' }}</div>
+                                </div>
+                                <div>
+                                    <div class="text-gray-500 mb-1">危機樣本數 (Crisis Sample Count)</div>
+                                    <div class="text-white font-mono font-bold">{{ tailStatsLite?.crisisSampleCount ?? '-' }}</div>
+                                </div>
+                                <div>
+                                    <div class="text-gray-500 mb-1">共同回撤門檻 (Co-drawdown Threshold)</div>
+                                    <div class="text-white font-mono font-bold">{{ tailStatsLite?.coDrawdownThreshold ?? '-' }}%</div>
+                                </div>
+                                <div>
+                                    <div class="text-gray-500 mb-1">尾部門檻分位數 (Tail Threshold Quantile)</div>
+                                    <div class="text-white font-mono font-bold">P{{ tailStatsLite?.tailThresholdQuantile ?? '-' }}</div>
                                 </div>
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
                 </div>
 
 
