@@ -575,17 +575,26 @@
     <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <div class="flex items-center gap-2 text-sm font-bold text-cyan-300">
             <i class="fas fa-wave-square"></i>
-            跳躍風險摘要 (Jump Risk Summary)
+            Jump / EVT 摘要
         </div>
 
         <div class="flex flex-wrap gap-3 text-xs">
             <div class="px-3 py-2 rounded-xl border border-red-500/20 bg-red-500/10">
-                <div class="text-gray-500 mb-1">崩盤機率 (JD Crash Prob)</div>
+                <div class="text-gray-500 mb-1">JD Crash Prob</div>
                 <div class="font-mono font-bold"
                      :class="parseFloat(chaosMeta?.jump_diffusion?.jd_crash_prob ?? chaosMeta?.tail_meta?.jd_crash_prob ?? 0) >= 10 ? 'text-red-300' : 'text-white'">
                     {{ chaosMeta?.jump_diffusion?.jd_crash_prob ?? chaosMeta?.tail_meta?.jd_crash_prob ?? '-' }}
                 </div>
             </div>
+
+            <div class="px-3 py-2 rounded-xl border border-purple-500/20 bg-purple-500/10">
+                <div class="text-gray-500 mb-1">EVT Shape ξ</div>
+                <div class="font-mono font-bold"
+                     :class="parseFloat(chaosMeta?.evt_tail?.evt_shape_xi ?? chaosMeta?.tail_meta?.evt_shape_xi ?? 0) > 0 ? 'text-red-300' : 'text-white'">
+                    {{ chaosMeta?.evt_tail?.evt_shape_xi ?? chaosMeta?.tail_meta?.evt_shape_xi ?? '-' }}
+                </div>
+            </div>
+
             <div class="px-3 py-2 rounded-xl border border-white/10 bg-white/[0.03] min-w-[220px]">
                 <div class="text-gray-500 mb-1">風險判讀</div>
                 <div class="text-white text-xs leading-relaxed">
@@ -595,7 +604,13 @@
                     <template v-else>
                         跳躍崩跌機率尚可；
                     </template>
-                        目前只顯示 Jump-Diffusion；EVT / POT-GPD 因週資料樣本不足暫停。
+
+                    <template v-if="parseFloat(chaosMeta?.evt_tail?.evt_shape_xi ?? chaosMeta?.tail_meta?.evt_shape_xi ?? 0) > 0">
+                        EVT 顯示肥尾，歷史 CVaR 可能偏樂觀。
+                    </template>
+                    <template v-else>
+                        EVT 未顯示明顯額外肥尾。
+                    </template>
                 </div>
             </div>
         </div>
@@ -2019,8 +2034,13 @@
                                     <div class="quant-value text-white">{{ xrayStats?.fx?.netFxExposurePct ?? '-' }}%</div>
                                 </div>
                                 <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
-                                    <div class="quant-label text-emerald-300">FX 1% NAV 衝擊</div>
-                                    <div class="quant-value text-white">{{ xrayStats?.fx?.usdNavImpact1pct ?? '-' }}%</div>
+                                    <div class="quant-label text-emerald-300">FX 1% NAV 衝擊金額</div>
+                                    <div class="quant-value text-white">
+                                        {{ xrayStats?.fx?.usdNavImpact1pct === '-' ? '-' : 'NT$ ' + Number(xrayStats.fx.usdNavImpact1pct).toLocaleString('zh-TW') }}
+                                    </div>
+                                    <div class="text-[10px] text-emerald-200/70 mt-1 leading-tight">
+                                        {{ xrayStats?.fx?.netFxExposurePct === '-' ? '' : '約 ' + (Number(xrayStats.fx.netFxExposurePct) / 100).toFixed(2) + '% NAV' }}
+                                    </div>
                                 </div>
                             </div>
 
@@ -2073,7 +2093,7 @@
                 跳躍擴散風險模型 (Jump-Diffusion Risk Model)
             </h4>
             <p class="text-[11px] md:text-xs text-gray-400 mt-1 leading-relaxed">
-                以跳躍擴散模型估計短期崩跌、跳躍頻率與尾部損失；EVT / POT-GPD 因週資料尾部樣本不足暫停顯示。
+                以跳躍擴散模型估計短期崩跌、跳躍頻率與尾部損失；EVT / POT-GPD 因週資料尾部樣本不足，改為指標解釋區。
             </p>
         </div>
     </div>
@@ -2129,10 +2149,49 @@
                 </div>
             </div>
 
+            
             <div class="col-span-2 border-b border-white/5 my-1"></div>
 
-            <div class="col-span-2 text-[10px] text-gray-400 mt-1 leading-relaxed px-1">
-                <i class="fas fa-info-circle text-orange-400 mr-1"></i> EVT / POT-GPD 暫停顯示：週資料尾部樣本不足；待切換為長期日報酬合成模型後再啟用。
+            <div class="col-span-2 rounded-xl border border-orange-500/20 bg-orange-500/10 p-3">
+                <div class="text-orange-300 font-bold text-[11px] mb-2 flex items-center gap-2">
+                    <i class="fas fa-circle-info"></i>
+                    跳躍擴散指標解釋 (Jump-Diffusion Indicator Guide)
+                </div>
+
+                <div class="grid grid-cols-1 gap-2 text-[11px] leading-relaxed">
+                    <div>
+                        <span class="text-gray-200 font-bold">跳躍擴散 VaR 95 (JD VaR 95)：</span>
+                        <span class="text-gray-400">在跳躍擴散模型下，95% 信心水準的一期虧損門檻；數值越高，代表短期左尾風險越重。</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-200 font-bold">跳躍擴散 ES 95 (JD ES 95)：</span>
+                        <span class="text-gray-400">跌破 VaR 95 門檻後，最壞 5% 情境的平均虧損；通常比 VaR 更能反映真正尾部損失。</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-200 font-bold">崩盤機率 (Crash Prob)：</span>
+                        <span class="text-gray-400">模型估計發生跳躍式大跌的機率；不是預測明天會崩盤，而是衡量斷崖式下跌風險強弱。</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-200 font-bold">尾部損失 (Tail Loss)：</span>
+                        <span class="text-gray-400">跳躍事件發生時的估計損失幅度；可視為「一旦出事，可能掉多少」的壓力 proxy。</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-200 font-bold">年化跳躍頻率 λ (Annual Freq)：</span>
+                        <span class="text-gray-400">一年中預期跳躍事件次數；λ=0.5 約等於平均兩年一次，λ=2 約等於一年兩次。</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-200 font-bold">估計期間 (Horizon)：</span>
+                        <span class="text-gray-400">這組風險估計對應的觀察或預測期間；期間越長，尾部風險通常越容易放大。</span>
+                    </div>
+                    <div>
+                        <span class="text-gray-200 font-bold">跳躍特徵 (Jump Signature)：</span>
+                        <span class="text-gray-400">μj 是平均跳幅，σj 是跳幅波動；μj 越負代表跳躍偏向下跌，σj 越大代表跳躍事件更不穩定。</span>
+                    </div>
+                </div>
+
+                <div class="mt-3 pt-2 border-t border-orange-500/20 text-[10px] text-gray-400 leading-relaxed">
+                    EVT / POT-GPD 暫停顯示：目前使用週資料，尾部超額樣本不足；等改成「持倉標的長期日報酬 + 目前權重合成 portfolio return」後再啟用。
+                </div>
             </div>
         </div>
     </div>
@@ -3085,7 +3144,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=11.9-jd-only"></script>
+<script src="assets/js/app.bundle.js?v=11.10-jd-guide-fx-fix"></script>
 <script src="assets/js/quant-main-display.js?v=no-chip-terminal"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=ia-phase2"></script>
