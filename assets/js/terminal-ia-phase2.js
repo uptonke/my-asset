@@ -443,3 +443,83 @@
     boot();
   }
 })();
+/* Hard guard: IA summary panels must only exist on 總覽 tab. */
+(() => {
+  "use strict";
+
+  const SUMMARY_ONLY_IDS = [
+    "terminal-ia-summary-panel",
+    "terminal-ia-kpi-metadata-panel"
+  ];
+
+  const REDUNDANT_IDS = [
+    "terminal-ia-holdings-market-list"
+  ];
+
+  function removeById(id) {
+    document.querySelectorAll(`[id="${id}"]`).forEach((el) => el.remove());
+  }
+
+  function removeSummaryOnlyPanels() {
+    SUMMARY_ONLY_IDS.forEach(removeById);
+    REDUNDANT_IDS.forEach(removeById);
+  }
+
+  function getActiveNavText() {
+    const buttons = [...document.querySelectorAll("nav button")];
+
+    const active = buttons.find((button) => {
+      const cls = String(button.className || "");
+      return (
+        cls.includes("bg-white") ||
+        cls.includes("text-slate-900") ||
+        cls.includes("font-bold")
+      );
+    });
+
+    return (active?.textContent || "").trim();
+  }
+
+  function isSummaryActive() {
+    return getActiveNavText().includes("總覽");
+  }
+
+  function enforceSummaryOnly() {
+    if (!isSummaryActive()) {
+      removeSummaryOnlyPanels();
+    }
+  }
+
+  document.addEventListener("click", (event) => {
+    const navButton = event.target.closest?.("nav button");
+    if (!navButton) return;
+
+    const clickedText = (navButton.textContent || "").trim();
+
+    window.setTimeout(() => {
+      if (!clickedText.includes("總覽")) {
+        removeSummaryOnlyPanels();
+      } else {
+        enforceSummaryOnly();
+      }
+    }, 50);
+
+    window.setTimeout(() => {
+      if (!clickedText.includes("總覽")) {
+        removeSummaryOnlyPanels();
+      } else {
+        enforceSummaryOnly();
+      }
+    }, 250);
+
+    window.setTimeout(() => {
+      if (!clickedText.includes("總覽")) {
+        removeSummaryOnlyPanels();
+      } else {
+        enforceSummaryOnly();
+      }
+    }, 800);
+  });
+
+  window.setInterval(enforceSummaryOnly, 1500);
+})();
