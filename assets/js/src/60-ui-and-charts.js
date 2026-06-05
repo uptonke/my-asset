@@ -564,7 +564,7 @@ chartCML.data.datasets = [
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
-            xrayStats, rebalanceMonitor, tailStatsLite, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
+            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
         };
     }
 }).mount('#app');
