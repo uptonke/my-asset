@@ -669,6 +669,276 @@ def compute_meta(ticker: str, category: str, df: pd.DataFrame, source: str, extr
         meta[key] = round(float(value), 6) if isinstance(value, (int, float, np.integer, np.floating)) else value
     return {k: v for k, v in meta.items() if v is not None}
 
+
+def is_foreign_currency_asset(ticker: str, category: str) -> bool:
+    """Return True if the asset should be converted from USD to TWD for synthetic risk."""
+    t = str(ticker or "").upper()
+    cat = str(category or "")
+    if t in {"TWD", "CASH", "NTD"}:
+        return False
+    if is_taiwan_asset(t, cat):
+        return False
+    if "美" in cat or "加密" in cat or "美元" in cat:
+        return True
+    # Most non-TW tickers in this dashboard are USD quoted ETFs/stocks/crypto.
+    return True
+
+
+def clean_price_series(df: pd.DataFrame) -> pd.Series:
+    if df is None or df.empty or "date" not in df.columns or "close" not in df.columns:
+        return pd.Series(dtype=float)
+    out = df[["date", "close"]].copy()
+    out["date"] = pd.to_datetime(out["date"]).dt.tz_localize(None).dt.normalize()
+    out["close"] = pd.to_numeric(out["close"], errors="coerce")
+    out = out.dropna(subset=["date", "close"]).drop_duplicates(subset=["date"]).sort_values("date")
+    if out.empty:
+        return pd.Series(dtype=float)
+    return pd.Series(out["close"].values, index=out["date"], dtype=float)
+
+
+def fetch_usdtwd_series(static_fx: float) -> Tuple[pd.Series, str]:
+    """Fetch USD/TWD history. If unavailable, return an empty series and use static FX later."""
+    try:
+        fx_df = fetch_yahoo_chart_price("TWD=X")
+        fx = clean_price_series(fx_df)
+        if len(fx) >= 40:
+            return fx, "YahooChart:TWD=X"
+    except Exception as exc:
+        print(f"WARN: USD/TWD historical FX unavailable, using static exchange rate: {exc}")
+    return pd.Series(dtype=float), f"static_exchange_rate:{static_fx}"
+
+
+def max_drawdown_from_returns(returns: pd.Series) -> Optional[float]:
+    r = pd.to_numeric(returns, errors="coerce").dropna()
+    if r.empty:
+        return None
+    curve = (1.0 + r).cumprod()
+    peak = curve.cummax()
+    dd = curve / peak - 1.0
+    return float(dd.min())
+
+
+def ewma_annual_vol(returns: pd.Series, lam: float = SYNTHETIC_EWMA_LAMBDA) -> Optional[float]:
+    r = pd.to_numeric(returns, errors="coerce").dropna()
+    if len(r) < 20:
+        return None
+    alpha = 1.0 - lam
+    vol = r.ewm(alpha=alpha, adjust=False).std(bias=False).iloc[-1]
+    if not math.isfinite(vol):
+        return None
+    return float(vol * math.sqrt(252))
+
+
+def confidence_from_sample(sample_count: int, included_weight_pct: float, asset_count: int) -> Tuple[str, str]:
+    if asset_count < 2:
+        return "INVALID", "可用標的少於 2 檔，無法形成有意義的合成投組。"
+    if sample_count < 252:
+        return "INVALID", "日資料樣本少於 252 筆，僅能作為除錯參考。"
+    if included_weight_pct < 80:
+        return "LOW", "可納入合成模型的持倉權重低於 80%，結果可能偏誤。"
+    if sample_count >= 1250 and included_weight_pct >= 90:
+        return "HIGH", "樣本約 5 年以上且涵蓋主要持倉。"
+    if sample_count >= 750 and included_weight_pct >= 85:
+        return "MEDIUM", "樣本約 3 年以上，適合作為主要風控參考。"
+    return "LOW", "樣本約 1–3 年或資料涵蓋度有限，適合作為 v0.2 監控，不適合直接作為交易引擎。"
+
+
+def compute_synthetic_portfolio_risk(
+    holdings: Dict[str, Dict[str, Any]],
+    history_frames: Dict[str, Tuple[pd.DataFrame, str]],
+    row: Dict[str, Any],
+) -> Dict[str, Any]:
+    """
+    v0.2 Synthetic Portfolio Risk Engine.
+
+    Method:
+    - Use current active holding weights.
+    - Convert foreign/USD assets to TWD with USD/TWD history when available.
+    - Build current-weight synthetic daily portfolio returns.
+    - Estimate volatility, VaR, ES, MDD, EWMA volatility, and component risk.
+    """
+    settings = row.get("settings") if isinstance(row.get("settings"), dict) else {}
+    static_fx = finite_float(settings.get("exchangeRate"), 31.5) or 31.5
+    fx_series, fx_source = fetch_usdtwd_series(static_fx)
+
+    asset_prices_twd: Dict[str, pd.Series] = {}
+    asset_sources: Dict[str, str] = {}
+    asset_weights_value: Dict[str, float] = {}
+    asset_meta: Dict[str, Any] = {}
+
+    for ticker, h in sorted((holdings or {}).items()):
+        if ticker not in history_frames:
+            continue
+
+        df, source = history_frames[ticker]
+        price = clean_price_series(df)
+        if len(price) < 40:
+            continue
+
+        category = str(h.get("category") or "")
+        is_foreign = is_foreign_currency_asset(ticker, category)
+
+        if is_foreign:
+            if not fx_series.empty:
+                aligned_fx = fx_series.reindex(price.index).ffill().bfill()
+                price_twd = price * aligned_fx
+                fx_mode = fx_source
+            else:
+                price_twd = price * static_fx
+                fx_mode = f"static_exchange_rate:{static_fx}"
+        else:
+            price_twd = price
+            fx_mode = "native_twd"
+
+        price_twd = pd.to_numeric(price_twd, errors="coerce").dropna()
+        if len(price_twd) < 40:
+            continue
+
+        shares = finite_float(h.get("shares"), 0.0) or 0.0
+        latest_price_twd = float(price_twd.iloc[-1])
+        market_value_twd = max(0.0, shares * latest_price_twd)
+
+        if market_value_twd <= 0:
+            continue
+
+        asset_prices_twd[ticker] = price_twd
+        asset_sources[ticker] = source
+        asset_weights_value[ticker] = market_value_twd
+        asset_meta[ticker] = {
+            "ticker": ticker,
+            "category": category,
+            "source": source,
+            "fx_mode": fx_mode,
+            "rows": int(len(price_twd)),
+            "start_date": str(price_twd.index.min().date()),
+            "end_date": str(price_twd.index.max().date()),
+            "market_value_twd": round(market_value_twd, 0),
+        }
+
+    if len(asset_prices_twd) < 2:
+        return {
+            "version": "v0.2",
+            "status": "INVALID",
+            "confidence": "INVALID",
+            "confidence_reason": "可用持倉歷史資料少於 2 檔。",
+            "updated_at": str(TODAY_TPE),
+            "method": "current_weight_synthetic_daily_returns",
+            "currency": "TWD",
+            "fx_source": fx_source,
+            "metrics": {},
+            "components": [],
+            "assets": list(asset_meta.values()),
+        }
+
+    total_mv = sum(asset_weights_value.values())
+    weights = {t: v / total_mv for t, v in asset_weights_value.items() if total_mv > 0}
+
+    prices = pd.concat(asset_prices_twd, axis=1).sort_index().ffill().dropna()
+    returns = prices.pct_change().dropna(how="any")
+
+    if len(returns) < 40:
+        return {
+            "version": "v0.2",
+            "status": "INVALID",
+            "confidence": "INVALID",
+            "confidence_reason": "合成後共同日報酬樣本少於 40 筆。",
+            "updated_at": str(TODAY_TPE),
+            "method": "current_weight_synthetic_daily_returns",
+            "currency": "TWD",
+            "fx_source": fx_source,
+            "metrics": {"sample_count": int(len(returns))},
+            "components": [],
+            "assets": list(asset_meta.values()),
+        }
+
+    tickers = list(returns.columns)
+    w = np.array([weights[t] for t in tickers], dtype=float)
+    w = w / w.sum()
+
+    port = returns.dot(w)
+    port = pd.to_numeric(port, errors="coerce").dropna()
+
+    q05 = float(port.quantile(0.05))
+    q01 = float(port.quantile(0.01))
+    tail95 = port[port <= q05]
+    tail99 = port[port <= q01]
+
+    ann_return = float(((1.0 + port.mean()) ** 252) - 1.0) if len(port) else None
+    ann_vol = float(port.std(ddof=1) * math.sqrt(252)) if len(port) > 1 else None
+    ewma_vol = ewma_annual_vol(port)
+    mdd = max_drawdown_from_returns(port)
+
+    included_weight_pct = 100.0  # weights are normalized across all usable active holdings.
+    confidence, confidence_reason = confidence_from_sample(len(port), included_weight_pct, len(tickers))
+
+    cov = returns[tickers].cov() * 252
+    port_var = float(w @ cov.values @ w.T) if len(tickers) else 0.0
+    marginal = cov.values @ w.T if port_var > 0 else np.zeros(len(tickers))
+    rc = w * marginal / port_var if port_var > 0 else np.zeros(len(tickers))
+
+    components = []
+    tail_returns = returns.loc[tail95.index, tickers] if not tail95.empty else pd.DataFrame(columns=tickers)
+
+    for i, ticker in enumerate(tickers):
+        r = pd.to_numeric(returns[ticker], errors="coerce").dropna()
+        asset_tail_contrib = None
+        if not tail_returns.empty:
+            asset_tail_contrib = float(-(tail_returns[ticker] * w[i]).mean())
+
+        components.append({
+            "ticker": ticker,
+            "weight_pct": round(float(w[i] * 100.0), 2),
+            "variance_risk_contribution_pct": round(float(rc[i] * 100.0), 2) if math.isfinite(float(rc[i])) else None,
+            "tail_loss_contribution_pct": round((asset_tail_contrib or 0.0) * 100.0, 3),
+            "ann_vol_pct": round(float(r.std(ddof=1) * math.sqrt(252) * 100.0), 2) if len(r) > 1 else None,
+            "sample_days": int(len(r)),
+            "source": asset_sources.get(ticker, "unknown"),
+        })
+
+    components.sort(key=lambda x: (x.get("variance_risk_contribution_pct") or 0), reverse=True)
+
+    q95_pos = float(port.quantile(0.95))
+    tail_ratio = q95_pos / abs(q05) if q05 < 0 else None
+
+    metrics = {
+        "sample_count": int(len(port)),
+        "start_date": str(port.index.min().date()),
+        "end_date": str(port.index.max().date()),
+        "asset_count": int(len(tickers)),
+        "included_weight_pct": round(included_weight_pct, 1),
+        "ann_return_pct": round((ann_return or 0.0) * 100.0, 2),
+        "ann_vol_pct": round((ann_vol or 0.0) * 100.0, 2),
+        "ewma_vol_pct": round((ewma_vol or 0.0) * 100.0, 2) if ewma_vol is not None else None,
+        "var95_pct": round(max(0.0, -q05) * 100.0, 2),
+        "es95_pct": round(max(0.0, -float(tail95.mean())) * 100.0, 2) if not tail95.empty else None,
+        "var99_pct": round(max(0.0, -q01) * 100.0, 2),
+        "es99_pct": round(max(0.0, -float(tail99.mean())) * 100.0, 2) if not tail99.empty else None,
+        "max_drawdown_pct": round((mdd or 0.0) * 100.0, 2),
+        "worst_day_pct": round(float(port.min()) * 100.0, 2),
+        "best_day_pct": round(float(port.max()) * 100.0, 2),
+        "tail_ratio": round(float(tail_ratio), 2) if tail_ratio is not None and math.isfinite(float(tail_ratio)) else None,
+    }
+
+    return {
+        "version": "v0.2",
+        "status": "OK" if confidence != "INVALID" else "INVALID",
+        "confidence": confidence,
+        "confidence_reason": confidence_reason,
+        "updated_at": str(TODAY_TPE),
+        "method": "current_weight_synthetic_daily_returns",
+        "currency": "TWD",
+        "fx_source": fx_source,
+        "metrics": metrics,
+        "components": components[:10],
+        "assets": list(asset_meta.values()),
+        "assumptions": [
+            "使用目前持倉權重回套歷史日報酬，不代表真實歷史投組績效。",
+            "外幣資產盡量用 USD/TWD 歷史匯率轉成 TWD；若匯率資料失敗，改用目前 exchangeRate 靜態轉換。",
+            "v0.2 是風控監控引擎，不是自動交易或最佳化引擎。",
+        ],
+    }
+
+
 def merge_stock_meta(existing: Dict[str, Any], new_meta: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
     merged = dict(existing or {})
     for ticker, meta in new_meta.items():
@@ -706,6 +976,15 @@ def write_github_summary(results: Dict[str, Any]) -> None:
         lines.append("|---|---:|---:|---:|---:|---:|---|")
         for item in results["updated"]:
             lines.append(f"| {item['ticker']} | {item['source']} | {item.get('quant_health_score', 'N/A')} | {item.get('trend_score', 'N/A')} | {item.get('risk_score', 'N/A')} | {item.get('technical_score', 'N/A')} | {item.get('data_quality', 'N/A')} |")
+    if results.get("synthetic_risk"):
+        sr = results["synthetic_risk"]
+        lines.extend(["", "## Synthetic Portfolio Risk v0.2", ""])
+        lines.append(f"- Status: `{sr.get('status', 'N/A')}`")
+        lines.append(f"- Confidence: `{sr.get('confidence', 'N/A')}`")
+        lines.append(f"- Sample count: `{sr.get('sample_count', 'N/A')}`")
+        lines.append(f"- Ann Vol: `{sr.get('ann_vol_pct', 'N/A')}%`")
+        lines.append(f"- VaR 95: `{sr.get('var95_pct', 'N/A')}%`")
+        lines.append(f"- ES 95: `{sr.get('es95_pct', 'N/A')}%`")
     lines.extend(["", "## Failed", ""])
     if results.get("failed"):
         lines.append("| Ticker | Error |")
@@ -737,6 +1016,7 @@ def main() -> None:
 
     existing_meta = row.get("stock_meta") if isinstance(row.get("stock_meta"), dict) else {}
     new_meta: Dict[str, Dict[str, Any]] = {}
+    history_frames: Dict[str, Tuple[pd.DataFrame, str]] = {}
     results = {"updated": [], "failed": [], "skipped": []}
 
     for ticker, h in sorted(holdings.items()):
@@ -747,6 +1027,7 @@ def main() -> None:
         category = h.get("category") or ""
         try:
             df, source, extras = fetch_history(ticker, category)
+            history_frames[ticker] = (df.copy(), source)
             meta = compute_meta(ticker, category, df, source, extras)
             new_meta[ticker] = meta
             results["updated"].append({"ticker": ticker, "source": source, "quant_health_score": meta.get("quant_health_score"), "trend_score": meta.get("trend_score"), "risk_score": meta.get("risk_score"), "technical_score": meta.get("technical_score"), "data_quality": meta.get("data_quality")})
@@ -758,7 +1039,40 @@ def main() -> None:
     if not new_meta:
         fail("No stock_meta was produced. Nothing to write.")
 
-    write_supabase_stock_meta(client, merge_stock_meta(existing_meta, new_meta))
+    merged_meta = merge_stock_meta(existing_meta, new_meta)
+
+    try:
+        synthetic_risk = compute_synthetic_portfolio_risk(holdings, history_frames, row)
+        merged_meta[SYNTHETIC_RISK_KEY] = synthetic_risk
+        results["synthetic_risk"] = {
+            "status": synthetic_risk.get("status"),
+            "confidence": synthetic_risk.get("confidence"),
+            "sample_count": synthetic_risk.get("metrics", {}).get("sample_count"),
+            "ann_vol_pct": synthetic_risk.get("metrics", {}).get("ann_vol_pct"),
+            "var95_pct": synthetic_risk.get("metrics", {}).get("var95_pct"),
+            "es95_pct": synthetic_risk.get("metrics", {}).get("es95_pct"),
+        }
+        print(
+            "OK synthetic risk: "
+            f"status={synthetic_risk.get('status')}, "
+            f"confidence={synthetic_risk.get('confidence')}, "
+            f"sample={synthetic_risk.get('metrics', {}).get('sample_count')}"
+        )
+    except Exception as exc:
+        merged_meta[SYNTHETIC_RISK_KEY] = {
+            "version": "v0.2",
+            "status": "FAILED",
+            "confidence": "INVALID",
+            "confidence_reason": str(exc),
+            "updated_at": str(TODAY_TPE),
+            "method": "current_weight_synthetic_daily_returns",
+            "metrics": {},
+            "components": [],
+        }
+        results["synthetic_risk"] = {"status": "FAILED", "error": str(exc)}
+        print(f"FAIL synthetic risk: {exc}", file=sys.stderr)
+
+    write_supabase_stock_meta(client, merged_meta)
     write_github_summary(results)
     print("Done.")
     if results["failed"]:
