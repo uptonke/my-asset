@@ -132,6 +132,16 @@ jump_diffusion: {
     jd_effective_lambda: tailStatsLite.value.jdEffectiveLambda,
     jd_effective_jump_mean: tailStatsLite.value.jdEffectiveJumpMean,
     jd_effective_jump_std: tailStatsLite.value.jdEffectiveJumpStd
+},
+
+evt_tail: {
+    evt_var95: tailStatsLite.value.evtVar95 === '-' ? 'N/A' : tailStatsLite.value.evtVar95 + '%',
+    evt_es95: tailStatsLite.value.evtEs95 === '-' ? 'N/A' : tailStatsLite.value.evtEs95 + '%',
+    evt_shape_xi: tailStatsLite.value.evtShapeXi,
+    evt_scale_beta: tailStatsLite.value.evtScaleBeta,
+    evt_threshold: tailStatsLite.value.evtThreshold === '-' ? 'N/A' : tailStatsLite.value.evtThreshold + '%',
+    evt_exceedance_count: tailStatsLite.value.evtExceedanceCount,
+    evt_alpha_conf: tailStatsLite.value.evtAlphaConf === '-' ? 'N/A' : 'P' + tailStatsLite.value.evtAlphaConf
 }
 };
 
@@ -147,7 +157,8 @@ Constraint: Output strictly in Traditional Chinese. Max 8 bullet points. No plea
 - DO NOT suggest buying high-beta, risk-on assets as a hedge.
 - If Portfolio X-Ray, Rebalance Monitor, and Tail / Crash Radar are present, you MUST use them explicitly.
 - If jump_diffusion is present, you MUST explicitly judge discontinuous crash risk using jd_var95, jd_es95, jd_crash_prob, and jd_tail_loss. Do not ignore it just because historical CVaR exists.
-- Treat tail metrics with low sample counts cautiously. If tail_sample_count or crisis_sample_count is small, explicitly mention that the signal direction matters more than the exact magnitude.
+- If evt_tail is present, you MUST explicitly judge whether historical tail risk is being understated using evt_var95, evt_es95, evt_shape_xi, evt_threshold, and evt_exceedance_count.
+- Treat tail metrics with low sample counts cautiously. If tail_sample_count, crisis_sample_count, or evt_exceedance_count is small, explicitly mention that the signal direction matters more than the exact magnitude.
 - If regime_rebalance_monitor shows buffer_blocking_risk_buys = YES, you MUST treat Buffer Floor as a hard constraint, not a soft suggestion.
 - When buffer_gap_pct > 0, DO NOT recommend buying high-beta or risk-on assets first. The portfolio must replenish hard buffer assets before any discretionary risk-on add.
 - If risk_efficiency contains historical_psr, mc_psr, or mc_dsr, you MUST explicitly discuss whether the portfolio's apparent Sharpe is statistically credible.
@@ -166,9 +177,9 @@ Treat DSR as more important than raw Sharpe when Monte Carlo optimization has te
 3. 【Portfolio X-Ray】Use PC1 explained, PC1-3 cumulative explained, USD exposure, FX impact, and top risk contributors. Judge whether the portfolio is truly diversified or only appears diversified.
 4. 【Regime / Rebalance Monitor】Use trim candidates, high-priority alerts, leverage volatility drag, buffer_floor_pct, current_buffer_pct, buffer_gap_pct, buffer_blocking_risk_buys, hard_buffer_tickers, and rebalance alerts. Judge whether risk is drifting because the user failed to rebalance, and whether the portfolio is currently constrained by a Buffer Floor shortfall.
 5. 【Tail / Crash Radar】Use conditional correlation, crisis correlation, downside beta, stressed CVaR, joint downside hit rate, co-drawdown frequency, tail dependence lite, and rolling CVaR. Judge how fragile the portfolio becomes in bad states.
-6. 【Jump-Diffusion】If jump_diffusion is present, you MUST compare historical tail metrics vs jump-adjusted tail metrics. State whether historical CVaR is understating discontinuous crash risk. Use jd_var95, jd_es95, jd_crash_prob, and jd_tail_loss.
+6. 【Jump-Diffusion / EVT】If jump_diffusion or evt_tail is present, you MUST explicitly compare historical tail metrics vs jump-adjusted tail metrics vs EVT-implied tail metrics. State whether historical CVaR is understating discontinuous crash risk or fat-tail risk. Use jd_var95, jd_es95, jd_crash_prob, jd_tail_loss, evt_var95, evt_es95, evt_shape_xi, evt_threshold, and evt_exceedance_count.
 7. 【肥尾與痛苦結構】Use Kurtosis, Skewness, MDD, UI, TUW, and Calmar. Judge whether the portfolio is psychologically and statistically survivable.
-8. 【真正的風險來源排序】Name the top 3 real risks now. Prioritize concentration, rebalance drift, tail fragility, leverage drag, false diversification, and jump-tail underestimation where applicable.
+8. 【真正的風險來源排序】Name the top 3 real risks now. Prioritize concentration, rebalance drift, tail fragility, leverage drag, false diversification, and jump/EVT tail underestimation where applicable.
 9. 【CRO 最終指令】Give ONE definitive tactical instruction using Buy / Hold / Trim / Cut / Hedge / Raise Cash. The instruction must be logically consistent with the data.
 If buffer_blocking_risk_buys = YES, the final tactical instruction must prioritize Raise Cash / Hold / Trim / add hard buffer assets, and must not recommend risk-on accumulation first.
 
@@ -930,7 +941,63 @@ const isCashAlert = computed(() => isCashNegative.value || isCashTooHigh.value);
                         : 0;
                 }
 
+        
+        const allocationGovernance = computed(() => {
+            const sr = syntheticRiskMeta?.value || null;
+            const confidence = sr?.confidence || 'N/A';
+            const status = sr?.status || 'PENDING';
+            const sampleCount = Number(sr?.metrics?.sample_count || 0);
+            const alertCount = Number(rebalanceMonitor?.value?.alertCount || 0);
+            const bufferBlocked = !!rebalanceMonitor?.value?.bufferBlockingRiskBuys;
+
+            if (status === 'FAILED' || status === 'INVALID' || confidence === 'INVALID') {
                 return {
+                    badgeText: '風控資料不足',
+                    badgeClass: 'border-red-500/40 bg-red-500/10 text-red-300',
+                    icon: 'fa-triangle-exclamation'
+                };
+            }
+
+            if (bufferBlocked || alertCount >= 3) {
+                return {
+                    badgeText: '風控警戒',
+                    badgeClass: 'border-orange-500/40 bg-orange-500/10 text-orange-300',
+                    icon: 'fa-shield-halved'
+                };
+            }
+
+            if (confidence === 'HIGH') {
+                return {
+                    badgeText: '模型信心高',
+                    badgeClass: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300',
+                    icon: 'fa-circle-check'
+                };
+            }
+
+            if (confidence === 'MEDIUM') {
+                return {
+                    badgeText: '模型信心中',
+                    badgeClass: 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300',
+                    icon: 'fa-chart-line'
+                };
+            }
+
+            if (confidence === 'LOW' || sampleCount > 0) {
+                return {
+                    badgeText: '樣本偏短',
+                    badgeClass: 'border-amber-500/40 bg-amber-500/10 text-amber-300',
+                    icon: 'fa-flask'
+                };
+            }
+
+            return {
+                badgeText: '等待風控資料',
+                badgeClass: 'border-slate-500/40 bg-slate-500/10 text-slate-300',
+                icon: 'fa-hourglass-half'
+            };
+        });
+
+        return {
                     ...item,
                     dailyReturn,
                     withdrawal: -periodExternalFlow, // 為了相容你的 UI 欄位
@@ -1246,6 +1313,11 @@ const psr_hist = computePSR({
     alerts: []
 });
 
+       const syntheticRiskMeta = computed(() => {
+    const meta = stockMeta.value?.__synthetic_portfolio_risk__;
+    return meta && typeof meta === 'object' ? meta : null;
+});
+
        const tailStatsLite = ref({
     conditionalCorr: '-',
     crisisCorr: '-',
@@ -1270,7 +1342,16 @@ const psr_hist = computePSR({
     jdHorizonWeeks: '-',
     jdEffectiveLambda: '-',
     jdEffectiveJumpMean: '-',
-    jdEffectiveJumpStd: '-'
+    jdEffectiveJumpStd: '-',
+
+    // EVT
+    evtVar95: '-',
+    evtEs95: '-',
+    evtShapeXi: '-',
+    evtScaleBeta: '-',
+    evtThreshold: '-',
+    evtExceedanceCount: '-',
+    evtAlphaConf: '-'
 });
 function fmtNum(val, digits = 2) {
     if (val === null || val === undefined || val === '') return '-';
@@ -1421,7 +1502,8 @@ if (backendTail && (
     backendTail.crisis_window_correlation !== null ||
     backendTail.downside_beta !== null ||
     backendTail.stressed_cvar !== null ||
-    backendTail.jd_var95 !== null
+    backendTail.jd_var95 !== null ||
+    backendTail.evt_var95 !== null
 )) {
     tailStatsLite.value = {
         conditionalCorr: fmtNum(backendTail.conditional_correlation, 2),
@@ -1447,7 +1529,16 @@ if (backendTail && (
         jdHorizonWeeks: backendTail.jd_horizon_weeks ?? '-',
         jdEffectiveLambda: fmtNum(backendTail.jd_effective_lambda, 2),
         jdEffectiveJumpMean: fmtNum(backendTail.jd_effective_jump_mean, 4),
-        jdEffectiveJumpStd: fmtNum(backendTail.jd_effective_jump_std, 4)
+        jdEffectiveJumpStd: fmtNum(backendTail.jd_effective_jump_std, 4),
+
+        // EVT
+        evtVar95: fmtPctMaybe(backendTail.evt_var95, 2),
+        evtEs95: fmtPctMaybe(backendTail.evt_es95, 2),
+        evtShapeXi: fmtNum(backendTail.evt_shape_xi, 4),
+        evtScaleBeta: fmtNum(backendTail.evt_scale_beta, 6),
+        evtThreshold: fmtPctMaybe(backendTail.evt_threshold, 2),
+        evtExceedanceCount: backendTail.evt_exceedance_count ?? '-',
+        evtAlphaConf: fmtNum((backendTail.evt_alpha_conf ?? 0) * 100, 0)
     };
 } else {
     tailStatsLite.value = {
@@ -1474,7 +1565,16 @@ if (backendTail && (
         jdHorizonWeeks: '-',
         jdEffectiveLambda: '-',
         jdEffectiveJumpMean: '-',
-        jdEffectiveJumpStd: '-'
+        jdEffectiveJumpStd: '-',
+
+        // EVT fallback
+        evtVar95: '-',
+        evtEs95: '-',
+        evtShapeXi: '-',
+        evtScaleBeta: '-',
+        evtThreshold: '-',
+        evtExceedanceCount: '-',
+        evtAlphaConf: '-'
     };
 }
 }, { deep: true, immediate: true });
@@ -1562,12 +1662,12 @@ if (backendTail && (
                     detail: `${topDriftList[0].ticker} drift ${topDriftList[0].drift}% ，目前 ${topDriftList[0].currentWeight}% / 目標 ${topDriftList[0].targetWeight}%。`
                 });
             }
-            if ((Number(tailStatsLite.value.jdCrashProb) || 0) >= 8) {
+            if ((Number(tailStatsLite.value.jdCrashProb) || 0) >= 8 || (Number(tailStatsLite.value.evtShapeXi) || 0) >= 0.25) {
                 queue.push({
                     level: 'medium',
                     icon: 'fa-burst',
                     title: '尾部風險偏高',
-                    detail: `Crash Prob ${tailStatsLite.value.jdCrashProb}% ，不要只看一般波動。`
+                    detail: `Crash Prob ${tailStatsLite.value.jdCrashProb}% / EVT ξ ${tailStatsLite.value.evtShapeXi}，不要只看一般波動。`
                 });
             }
             if (!queue.length) {
@@ -3107,7 +3207,7 @@ chartCML.data.datasets = [
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
-            xrayStats, rebalanceMonitor, tailStatsLite, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
+            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
         };
     }
 }).mount('#app');
