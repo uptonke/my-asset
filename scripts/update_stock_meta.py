@@ -32,6 +32,8 @@ SUPABASE_SECRET_KEY = env("SUPABASE_SECRET_KEY")
 SUPABASE_TABLE = env("SUPABASE_TABLE", "portfolio_db")
 PORTFOLIO_ROW_ID = env("PORTFOLIO_ROW_ID", "1")
 DRY_RUN = str(env("DRY_RUN", "false")).lower() in {"1", "true", "yes", "y"}
+SYNTHETIC_RISK_KEY = "__synthetic_portfolio_risk__"
+SYNTHETIC_EWMA_LAMBDA = 0.94
 
 def fail(message: str) -> None:
     print(f"ERROR: {message}", file=sys.stderr)
