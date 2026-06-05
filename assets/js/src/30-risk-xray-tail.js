@@ -43,6 +43,11 @@
     alerts: []
 });
 
+       const syntheticRiskMeta = computed(() => {
+    const meta = stockMeta.value?.__synthetic_portfolio_risk__;
+    return meta && typeof meta === 'object' ? meta : null;
+});
+
        const tailStatsLite = ref({
     conditionalCorr: '-',
     crisisCorr: '-',
