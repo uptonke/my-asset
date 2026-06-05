@@ -1573,239 +1573,146 @@
                 </div>
 
 
-                <!-- ===== Open Source Risk Stack / 開源風控參考庫 ===== -->
-                <div id="open-source-risk-stack" class="glass panel-card border-cyan-500/20 overflow-hidden">
-                    <div class="p-5 md:p-6 border-b border-white/10 bg-cyan-500/5">
+                <!-- ===== Synthetic Portfolio Risk Engine v0.2 ===== -->
+                <div id="synthetic-risk-engine-v02" class="glass panel-card border-emerald-500/20 overflow-hidden">
+                    <div class="p-5 md:p-6 border-b border-white/10 bg-emerald-500/5">
                         <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                             <div>
-                                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border border-cyan-500/20 bg-cyan-500/10 text-cyan-300 w-max mb-3">
-                                    <i class="fas fa-code-branch"></i>
-                                    開源風控參考庫 (Open Source Risk Stack)
+                                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border border-emerald-500/20 bg-emerald-500/10 text-emerald-300 w-max mb-3">
+                                    <i class="fas fa-chart-line"></i>
+                                    v0.2 目前權重合成風險引擎 (Synthetic Portfolio Risk Engine)
                                 </div>
                                 <h3 class="text-white font-bold text-lg md:text-xl flex items-center gap-2">
-                                    <i class="fas fa-shield-halved text-cyan-400"></i>
-                                    投組風控工程借鑑清單
+                                    <i class="fas fa-shield-virus text-emerald-400"></i>
+                                    目前配置的歷史壓力映射
                                 </h3>
                                 <p class="text-xs md:text-sm text-gray-400 mt-2 leading-relaxed">
-                                    這區不是把套件直接裝進 production，而是定義可借鑑的工程模組：合成日報酬、EWMA covariance、風險貢獻、CVaR / ES、tearsheet、模型驗證與 confidence panel。
+                                    使用「目前持倉權重」回套標的日報酬，外幣資產盡量轉成 TWD，估計 synthetic vol / VaR / ES / MDD 與風險貢獻。這不是你的真實歷史績效，而是目前配置若經歷過歷史行情時的風險投影。
                                 </p>
                             </div>
                             <div class="text-[11px] text-slate-400 md:text-right leading-relaxed">
-                                狀態：參考清單<br>
-                                原則：先抄架構，不先加重依賴
+                                狀態：{{ syntheticRiskMeta?.status ?? '等待雲端更新' }}<br>
+                                信心：{{ syntheticRiskMeta?.confidence ?? 'N/A' }}<br>
+                                更新：{{ syntheticRiskMeta?.updated_at ?? 'N/A' }}
                             </div>
                         </div>
                     </div>
 
-                    <div class="p-5 md:p-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-
-                        <a href="https://github.com/skfolio/skfolio" target="_blank" rel="noopener noreferrer"
-                           class="block rounded-2xl border border-white/10 bg-black/20 hover:bg-white/[0.04] transition p-4">
-                            <div class="flex items-start justify-between gap-3">
-                                <div>
-                                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold border-cyan-500/25 bg-cyan-500/5 text-cyan-300">
-                                        #1 參考庫
-                                    </div>
-                                    <h4 class="text-white font-bold text-sm mt-3 flex items-center gap-2">
-                                        <i class="fab fa-github text-slate-400"></i>
-                                        skfolio/skfolio
-                                    </h4>
-                                    <p class="text-xs text-slate-400 mt-1 leading-relaxed">主參考：現代投組風控與模型驗證</p>
-                                </div>
-                                <i class="fas fa-arrow-up-right-from-square text-slate-500 text-xs mt-1"></i>
-                            </div>
-                            <div class="flex flex-wrap gap-1.5 mt-3">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">Walk-forward / Purged CV</span>
-<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">EWMA / regime-adjusted covariance</span>
-<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">CVaR / CDaR / MDD / Ulcer</span>
-<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">模型選擇與信心分級</span>
-                            </div>
-                            <div class="mt-3 pt-3 border-t border-white/10 text-[10px] text-amber-200/80 leading-relaxed">
-                                <i class="fas fa-triangle-exclamation mr-1"></i>不要一開始把完整 ML pipeline 塞進前端。
-                            </div>
-                        </a>
-
-                        <a href="https://github.com/ranaroussi/quantstats" target="_blank" rel="noopener noreferrer"
-                           class="block rounded-2xl border border-white/10 bg-black/20 hover:bg-white/[0.04] transition p-4">
-                            <div class="flex items-start justify-between gap-3">
-                                <div>
-                                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold border-emerald-500/25 bg-emerald-500/5 text-emerald-300">
-                                        #2 參考庫
-                                    </div>
-                                    <h4 class="text-white font-bold text-sm mt-3 flex items-center gap-2">
-                                        <i class="fab fa-github text-slate-400"></i>
-                                        ranaroussi/quantstats
-                                    </h4>
-                                    <p class="text-xs text-slate-400 mt-1 leading-relaxed">報表參考：績效與風險 tear sheet</p>
-                                </div>
-                                <i class="fas fa-arrow-up-right-from-square text-slate-500 text-xs mt-1"></i>
-                            </div>
-                            <div class="flex flex-wrap gap-1.5 mt-3">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">MDD / drawdown periods</span>
-<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">VaR / CVaR / Sortino / Calmar</span>
-<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">rolling risk charts</span>
-<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">Monte Carlo bust probability</span>
-                            </div>
-                            <div class="mt-3 pt-3 border-t border-white/10 text-[10px] text-amber-200/80 leading-relaxed">
-                                <i class="fas fa-triangle-exclamation mr-1"></i>適合報表與指標，不是配置最佳化引擎。
-                            </div>
-                        </a>
-
-                        <a href="https://github.com/dcajasn/Riskfolio-Lib" target="_blank" rel="noopener noreferrer"
-                           class="block rounded-2xl border border-white/10 bg-black/20 hover:bg-white/[0.04] transition p-4">
-                            <div class="flex items-start justify-between gap-3">
-                                <div>
-                                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold border-purple-500/25 bg-purple-500/5 text-purple-300">
-                                        #3 參考庫
-                                    </div>
-                                    <h4 class="text-white font-bold text-sm mt-3 flex items-center gap-2">
-                                        <i class="fab fa-github text-slate-400"></i>
-                                        dcajasn/Riskfolio-Lib
-                                    </h4>
-                                    <p class="text-xs text-slate-400 mt-1 leading-relaxed">風險指標百科：CVaR / CDaR / HRP / NCO</p>
-                                </div>
-                                <i class="fas fa-arrow-up-right-from-square text-slate-500 text-xs mt-1"></i>
-                            </div>
-                            <div class="flex flex-wrap gap-1.5 mt-3">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">Risk contribution</span>
-<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">CVaR risk parity</span>
-<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">HRP / HERC</span>
-<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">Black-Litterman / constraints</span>
-                            </div>
-                            <div class="mt-3 pt-3 border-t border-white/10 text-[10px] text-amber-200/80 leading-relaxed">
-                                <i class="fas fa-triangle-exclamation mr-1"></i>指標太多，避免把 dashboard 變成指標垃圾場。
-                            </div>
-                        </a>
-
-                        <a href="https://github.com/PyPortfolio/PyPortfolioOpt" target="_blank" rel="noopener noreferrer"
-                           class="block rounded-2xl border border-white/10 bg-black/20 hover:bg-white/[0.04] transition p-4">
-                            <div class="flex items-start justify-between gap-3">
-                                <div>
-                                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold border-blue-500/25 bg-blue-500/5 text-blue-300">
-                                        #4 參考庫
-                                    </div>
-                                    <h4 class="text-white font-bold text-sm mt-3 flex items-center gap-2">
-                                        <i class="fab fa-github text-slate-400"></i>
-                                        PyPortfolio/PyPortfolioOpt
-                                    </h4>
-                                    <p class="text-xs text-slate-400 mt-1 leading-relaxed">簡潔 optimizer：配置最佳化與 covariance shrinkage</p>
-                                </div>
-                                <i class="fas fa-arrow-up-right-from-square text-slate-500 text-xs mt-1"></i>
-                            </div>
-                            <div class="flex flex-wrap gap-1.5 mt-3">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">exponential covariance</span>
-<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">Ledoit-Wolf shrinkage</span>
-<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">semicovariance</span>
-<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">HRP / Black-Litterman</span>
-                            </div>
-                            <div class="mt-3 pt-3 border-t border-white/10 text-[10px] text-amber-200/80 leading-relaxed">
-                                <i class="fas fa-triangle-exclamation mr-1"></i>偏配置最佳化，不是完整 CRO 系統。
-                            </div>
-                        </a>
-
-                        <a href="https://github.com/convexfi/riskparity.py" target="_blank" rel="noopener noreferrer"
-                           class="block rounded-2xl border border-white/10 bg-black/20 hover:bg-white/[0.04] transition p-4">
-                            <div class="flex items-start justify-between gap-3">
-                                <div>
-                                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold border-yellow-500/25 bg-yellow-500/5 text-yellow-300">
-                                        #5 參考庫
-                                    </div>
-                                    <h4 class="text-white font-bold text-sm mt-3 flex items-center gap-2">
-                                        <i class="fab fa-github text-slate-400"></i>
-                                        convexfi/riskparity.py
-                                    </h4>
-                                    <p class="text-xs text-slate-400 mt-1 leading-relaxed">風險平價 solver：ERC / risk budgeting</p>
-                                </div>
-                                <i class="fas fa-arrow-up-right-from-square text-slate-500 text-xs mt-1"></i>
-                            </div>
-                            <div class="flex flex-wrap gap-1.5 mt-3">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">Equal Risk Contribution</span>
-<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">risk budget constraints</span>
-<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">risk parity weights</span>
-                            </div>
-                            <div class="mt-3 pt-3 border-t border-white/10 text-[10px] text-amber-200/80 leading-relaxed">
-                                <i class="fas fa-triangle-exclamation mr-1"></i>只處理 risk parity，不處理 regime shift。
-                            </div>
-                        </a>
-
-                        <a href="https://github.com/quantopian/empyrical" target="_blank" rel="noopener noreferrer"
-                           class="block rounded-2xl border border-white/10 bg-black/20 hover:bg-white/[0.04] transition p-4">
-                            <div class="flex items-start justify-between gap-3">
-                                <div>
-                                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold border-slate-500/25 bg-slate-500/5 text-slate-300">
-                                        #6 參考庫
-                                    </div>
-                                    <h4 class="text-white font-bold text-sm mt-3 flex items-center gap-2">
-                                        <i class="fab fa-github text-slate-400"></i>
-                                        quantopian/empyrical
-                                    </h4>
-                                    <p class="text-xs text-slate-400 mt-1 leading-relaxed">指標函數口徑：alpha / beta / drawdown / capture</p>
-                                </div>
-                                <i class="fas fa-arrow-up-right-from-square text-slate-500 text-xs mt-1"></i>
-                            </div>
-                            <div class="flex flex-wrap gap-1.5 mt-3">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">alpha_beta</span>
-<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">max_drawdown</span>
-<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">rolling drawdown</span>
-<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">up/down capture</span>
-                            </div>
-                            <div class="mt-3 pt-3 border-t border-white/10 text-[10px] text-amber-200/80 leading-relaxed">
-                                <i class="fas fa-triangle-exclamation mr-1"></i>資料抓取功能過時，不要借它抓資料。
-                            </div>
-                        </a>
-
-                        <a href="https://github.com/quantopian/pyfolio" target="_blank" rel="noopener noreferrer"
-                           class="block rounded-2xl border border-white/10 bg-black/20 hover:bg-white/[0.04] transition p-4">
-                            <div class="flex items-start justify-between gap-3">
-                                <div>
-                                    <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold border-zinc-500/25 bg-zinc-500/5 text-zinc-300">
-                                        #7 參考庫
-                                    </div>
-                                    <h4 class="text-white font-bold text-sm mt-3 flex items-center gap-2">
-                                        <i class="fab fa-github text-slate-400"></i>
-                                        quantopian/pyfolio
-                                    </h4>
-                                    <p class="text-xs text-slate-400 mt-1 leading-relaxed">老牌 tear sheet：報表與圖表架構參考</p>
-                                </div>
-                                <i class="fas fa-arrow-up-right-from-square text-slate-500 text-xs mt-1"></i>
-                            </div>
-                            <div class="flex flex-wrap gap-1.5 mt-3">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">performance tear sheet</span>
-<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">drawdown chart</span>
-<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">rolling exposure</span>
-<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/10 text-[10px] text-slate-300">策略績效摘要</span>
-                            </div>
-                            <div class="mt-3 pt-3 border-t border-white/10 text-[10px] text-amber-200/80 leading-relaxed">
-                                <i class="fas fa-triangle-exclamation mr-1"></i>老專案，只借設計，不建議深度依賴。
-                            </div>
-                        </a>
+                    <div class="p-5 md:p-6 space-y-4">
+                        <div v-if="!syntheticRiskMeta" class="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-100 leading-relaxed">
+                            <i class="fas fa-hourglass-half mr-2"></i>
+                            尚未產生 synthetic risk。請先跑 GitHub Actions 的 <span class="font-mono">Update stock quant Meta</span>；完成後這裡會顯示合成日報酬風險。
                         </div>
 
-                        <div class="mt-5 grid grid-cols-1 lg:grid-cols-4 gap-3">
-                            <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <div class="text-xs font-bold text-cyan-300 mb-2">第一階段</div>
-                                <div class="text-white font-bold text-sm">QuantStats / Empyrical</div>
-                                <p class="text-[11px] text-gray-400 mt-1 leading-relaxed">先補風險指標、drawdown periods、rolling risk 與 HTML tearsheet 思路。</p>
+                        <template v-else>
+                            <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
+                                <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
+                                    <div class="quant-label text-emerald-300">年化波動</div>
+                                    <div class="quant-value text-white">{{ syntheticRiskMeta?.metrics?.ann_vol_pct ?? '-' }}%</div>
+                                </div>
+                                <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                    <div class="quant-label text-cyan-300">EWMA 波動</div>
+                                    <div class="quant-value text-white">{{ syntheticRiskMeta?.metrics?.ewma_vol_pct ?? '-' }}%</div>
+                                </div>
+                                <div class="quant-card border-red-500/20 bg-red-500/10">
+                                    <div class="quant-label text-red-300">VaR 95</div>
+                                    <div class="quant-value text-white">{{ syntheticRiskMeta?.metrics?.var95_pct ?? '-' }}%</div>
+                                </div>
+                                <div class="quant-card border-red-500/20 bg-red-500/10">
+                                    <div class="quant-label text-red-300">ES 95</div>
+                                    <div class="quant-value text-white">{{ syntheticRiskMeta?.metrics?.es95_pct ?? '-' }}%</div>
+                                </div>
+                                <div class="quant-card border-orange-500/20 bg-orange-500/10">
+                                    <div class="quant-label text-orange-300">最大回撤</div>
+                                    <div class="quant-value text-white">{{ syntheticRiskMeta?.metrics?.max_drawdown_pct ?? '-' }}%</div>
+                                </div>
+                                <div class="quant-card border-slate-500/20 bg-slate-500/10">
+                                    <div class="quant-label text-slate-300">樣本日數</div>
+                                    <div class="quant-value text-white">{{ syntheticRiskMeta?.metrics?.sample_count ?? '-' }}</div>
+                                </div>
+                                <div class="quant-card border-slate-500/20 bg-slate-500/10">
+                                    <div class="quant-label text-slate-300">資產數</div>
+                                    <div class="quant-value text-white">{{ syntheticRiskMeta?.metrics?.asset_count ?? '-' }}</div>
+                                </div>
+                                <div class="quant-card border-purple-500/20 bg-purple-500/10">
+                                    <div class="quant-label text-purple-300">尾部比率</div>
+                                    <div class="quant-value text-white">{{ syntheticRiskMeta?.metrics?.tail_ratio ?? '-' }}</div>
+                                </div>
                             </div>
-                            <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <div class="text-xs font-bold text-emerald-300 mb-2">第二階段</div>
-                                <div class="text-white font-bold text-sm">skfolio / PyPortfolioOpt</div>
-                                <p class="text-[11px] text-gray-400 mt-1 leading-relaxed">建立目前權重合成日報酬、EWMA covariance、shrinkage、synthetic VaR / ES。</p>
+
+                            <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                                <div class="xl:col-span-2 rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
+                                    <div class="px-4 py-3 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-ranking-star text-emerald-400"></i>
+                                            合成風險貢獻 Top 10
+                                        </div>
+                                        <div class="text-[10px] text-gray-500">variance RC / tail loss contribution</div>
+                                    </div>
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full text-xs">
+                                            <thead class="text-gray-500 border-b border-white/10">
+                                                <tr>
+                                                    <th class="text-left px-4 py-2">標的</th>
+                                                    <th class="text-right px-4 py-2">權重</th>
+                                                    <th class="text-right px-4 py-2">波動貢獻</th>
+                                                    <th class="text-right px-4 py-2">尾部損失貢獻</th>
+                                                    <th class="text-right px-4 py-2">自身波動</th>
+                                                    <th class="text-right px-4 py-2">樣本</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="row in (syntheticRiskMeta?.components || [])" :key="row.ticker" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                    <td class="px-4 py-2 font-mono text-white">{{ row.ticker }}</td>
+                                                    <td class="px-4 py-2 text-right text-gray-300">{{ row.weight_pct ?? '-' }}%</td>
+                                                    <td class="px-4 py-2 text-right text-emerald-300">{{ row.variance_risk_contribution_pct ?? '-' }}%</td>
+                                                    <td class="px-4 py-2 text-right text-red-300">{{ row.tail_loss_contribution_pct ?? '-' }}%</td>
+                                                    <td class="px-4 py-2 text-right text-gray-300">{{ row.ann_vol_pct ?? '-' }}%</td>
+                                                    <td class="px-4 py-2 text-right text-gray-500">{{ row.sample_days ?? '-' }}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div class="rounded-2xl border border-white/10 bg-black/20 p-4 space-y-3">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-circle-info text-cyan-400"></i>
+                                            模型口徑
+                                        </div>
+                                        <p class="text-[11px] text-gray-400 mt-2 leading-relaxed">
+                                            {{ syntheticRiskMeta?.confidence_reason ?? '尚無信心說明。' }}
+                                        </p>
+                                    </div>
+
+                                    <div class="grid grid-cols-2 gap-2 text-[11px]">
+                                        <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                                            <div class="text-gray-500 mb-1">期間</div>
+                                            <div class="text-white font-mono">{{ syntheticRiskMeta?.metrics?.start_date ?? '-' }}</div>
+                                            <div class="text-white font-mono">→ {{ syntheticRiskMeta?.metrics?.end_date ?? '-' }}</div>
+                                        </div>
+                                        <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                                            <div class="text-gray-500 mb-1">FX 來源</div>
+                                            <div class="text-white font-mono break-all">{{ syntheticRiskMeta?.fx_source ?? '-' }}</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="pt-3 border-t border-white/10">
+                                        <div class="text-[11px] text-gray-500 mb-2">核心假設</div>
+                                        <ul class="space-y-1 text-[11px] text-gray-400 leading-relaxed">
+                                            <li v-for="item in (syntheticRiskMeta?.assumptions || [])" :key="item" class="flex gap-2">
+                                                <i class="fas fa-check text-emerald-400 mt-0.5"></i>
+                                                <span>{{ item }}</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <div class="text-xs font-bold text-purple-300 mb-2">第三階段</div>
-                                <div class="text-white font-bold text-sm">Riskfolio-Lib / riskparity.py</div>
-                                <p class="text-[11px] text-gray-400 mt-1 leading-relaxed">做 Component VaR / ES、CVaR risk budgeting、HRP / HERC 權重建議。</p>
-                            </div>
-                            <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <div class="text-xs font-bold text-amber-300 mb-2">暫緩</div>
-                                <div class="text-white font-bold text-sm">直接安裝全部套件</div>
-                                <p class="text-[11px] text-gray-400 mt-1 leading-relaxed">CVXPY、JAX、solver 相依重，容易讓 GitHub Actions 與部署變脆弱。</p>
-                            </div>
-                        </div>
+                        </template>
                     </div>
                 </div>
+
 
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-6 gap-3 mt-4">
                     <div class="quant-card">
