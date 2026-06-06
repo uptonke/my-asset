@@ -609,7 +609,47 @@ chartCML.data.datasets = [
             };
 
             if (mode === 'CRO_VETO') {
-        
+                return {
+                    ...base,
+                    icon: 'fa-triangle-exclamation',
+                    badgeText: 'CRO 否決 / 風控紅燈',
+                    badgeClass: 'border-red-500/30 bg-red-500/10 text-red-300',
+                    panelClass: 'border-red-500/25 bg-red-500/5',
+                    headline: '風險資料或緩衝條件不足，先不要放大風險。',
+                    summary: 'synthetic risk 或再平衡監控出現 hard flag；先處理資料完整性、buffer 與集中度。',
+                    croRole: 'CRO = 否決層（整體投組風險裁決）',
+                    mcRole: 'MC = 配置器，但目前不可主導加風險'
+                };
+            }
+
+            if (mode === 'CRO_CAUTION_MC_ALLOWED') {
+                return {
+                    ...base,
+                    icon: 'fa-flask',
+                    badgeText: '樣本偏短 / 警戒',
+                    badgeClass: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+                    panelClass: 'border-amber-500/25 bg-amber-500/5',
+                    headline: '可看風險方向，但不能把模型結果當成硬指令。',
+                    summary: '目前沒有 hard veto；但 synthetic risk 樣本偏短或警示偏多，配置調整應保守。',
+                    croRole: 'CRO = 提醒整體投組風險，不搶單一資產權重',
+                    mcRole: 'MC = 風險資產配置器，可作主配置但需降自信'
+                };
+            }
+
+            return {
+                ...base,
+                icon: 'fa-circle-check',
+                badgeText: 'MC 主導',
+                badgeClass: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+                panelClass: 'border-emerald-500/25 bg-emerald-500/5',
+                headline: '無硬風險阻礙，由 MC 主導配置。',
+                summary: 'CRO 未見 hard veto；whole-portfolio 可以放行，risky sleeve 交由 MC 最佳化。',
+                croRole: 'CRO = 監督層，不主動搶配置權',
+                mcRole: 'MC = 風險資產配置器，主導權重建議'
+            };
+        });
+
+
         const navOverlayMode = ref('nav');
         const navOverlayOptions = [
             { value: 'nav', label: 'NAV' },
@@ -677,46 +717,6 @@ chartCML.data.datasets = [
                     ? `${syntheticRiskMeta.value.metrics.max_drawdown_pct}%`
                     : 'N/A',
                 overlayModeLabel: modeMap[navOverlayMode.value] || 'NAV'
-            };
-        });
-
-        return {
-                    ...base,
-                    icon: 'fa-triangle-exclamation',
-                    badgeText: 'CRO 否決 / 風控紅燈',
-                    badgeClass: 'border-red-500/30 bg-red-500/10 text-red-300',
-                    panelClass: 'border-red-500/25 bg-red-500/5',
-                    headline: '風險資料或緩衝條件不足，先不要放大風險。',
-                    summary: 'synthetic risk 或再平衡監控出現 hard flag；先處理資料完整性、buffer 與集中度。',
-                    croRole: 'CRO = 否決層（整體投組風險裁決）',
-                    mcRole: 'MC = 配置器，但目前不可主導加風險'
-                };
-            }
-
-            if (mode === 'CRO_CAUTION_MC_ALLOWED') {
-                return {
-                    ...base,
-                    icon: 'fa-flask',
-                    badgeText: '樣本偏短 / 警戒',
-                    badgeClass: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
-                    panelClass: 'border-amber-500/25 bg-amber-500/5',
-                    headline: '可看風險方向，但不能把模型結果當成硬指令。',
-                    summary: '目前沒有 hard veto；但 synthetic risk 樣本偏短或警示偏多，配置調整應保守。',
-                    croRole: 'CRO = 提醒整體投組風險，不搶單一資產權重',
-                    mcRole: 'MC = 風險資產配置器，可作主配置但需降自信'
-                };
-            }
-
-            return {
-                ...base,
-                icon: 'fa-circle-check',
-                badgeText: 'MC 主導',
-                badgeClass: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
-                panelClass: 'border-emerald-500/25 bg-emerald-500/5',
-                headline: '無硬風險阻礙，由 MC 主導配置。',
-                summary: 'CRO 未見 hard veto；whole-portfolio 可以放行，risky sleeve 交由 MC 最佳化。',
-                croRole: 'CRO = 監督層，不主動搶配置權',
-                mcRole: 'MC = 風險資產配置器，主導權重建議'
             };
         });
 
