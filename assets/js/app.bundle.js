@@ -676,13 +676,28 @@ ${JSON.stringify(payload, null, 2)}
                         ? rawContagionScore.toFixed(2)
                         : rawContagionScore;
 
+                const betaRaw = meta.beta;
+                const stdRaw = meta.std;
+                const betaValue = (
+                    betaRaw !== null &&
+                    betaRaw !== undefined &&
+                    betaRaw !== '' &&
+                    Number.isFinite(Number(betaRaw))
+                ) ? Number(betaRaw) : 1.0;
+                const stdValue = (
+                    stdRaw !== null &&
+                    stdRaw !== undefined &&
+                    stdRaw !== '' &&
+                    Number.isFinite(Number(stdRaw))
+                ) ? Number(stdRaw) : 20.0;
+
                 groups[h.category].items.push({
                     ...h,
                     isUSD,
                     riskLevel: meta.risk || 'High',
-                    // Preserve valid zero values. `|| 1.0` turns BOXX/CASH beta=0 into beta=1.
-                    beta: Number.isFinite(Number(meta.beta)) ? Number(meta.beta) : 1.0,
-                    stdDev: Number.isFinite(Number(meta.std)) ? Number(meta.std) : 20.0,
+                    // Preserve valid zero values, but do not turn null/blank into zero.
+                    beta: betaValue,
+                    stdDev: stdValue,
                     betaBenchmark: meta.beta_benchmark || meta.benchmark || '',
                     betaMethod: meta.beta_method || '',
                     liquidityScore,

@@ -247,10 +247,9 @@ def benchmark_candidates(ticker: str, category: str) -> List[str]:
     elif is_gold_like_asset(ticker, category):
         candidates += ["GLD", "IAU", "SGOL"]
     elif is_crypto_asset(ticker, category):
-        # Official crypto beta is risk-on beta vs equity market.
-        # Do NOT fall back to BTC-USD here; BTC vs BTC mechanically becomes beta=1
-        # and ETH vs BTC is a different diagnostic metric, not the dashboard beta.
-        candidates += ["SPY", "QQQ"]
+        # Official beta is vs SPY; if SPY is unavailable, QQQ is still a risk-on proxy.
+        # BTC-USD is last-resort diagnostic fallback and will be visible in beta_benchmark.
+        candidates += ["SPY", "QQQ", "BTC-USD"]
     else:
         candidates += ["SPY"]
 
@@ -733,6 +732,7 @@ def compute_meta(ticker: str, category: str, df: pd.DataFrame, source: str, extr
 
     meta = {
         "beta": round(beta, 2) if beta is not None else None,
+        "corr": round(corr, 4) if corr is not None else None,
         "std": round((vol252 if vol252 is not None else vol60 or 0) * 100, 3),
         "vol_20d": round(vol20, 6) if vol20 is not None else None,
         "vol_60d": round(vol60, 6) if vol60 is not None else None,
@@ -774,7 +774,15 @@ def compute_meta(ticker: str, category: str, df: pd.DataFrame, source: str, extr
         if value is None:
             continue
         meta[key] = round(float(value), 6) if isinstance(value, (int, float, np.integer, np.floating)) else value
-    return {k: v for k, v in meta.items() if v is not None}
+    clearable_keys = {
+        "beta",
+        "corr",
+        "benchmark",
+        "beta_benchmark",
+        "beta_method",
+        "beta_inference_rule",
+    }
+    return {k: v for k, v in meta.items() if v is not None or k in clearable_keys}
 
 
 def is_foreign_currency_asset(ticker: str, category: str) -> bool:
@@ -1137,8 +1145,24 @@ def main() -> None:
             history_frames[ticker] = (df.copy(), source)
             meta = compute_meta(ticker, category, df, source, extras)
             new_meta[ticker] = meta
-            results["updated"].append({"ticker": ticker, "source": source, "quant_health_score": meta.get("quant_health_score"), "trend_score": meta.get("trend_score"), "risk_score": meta.get("risk_score"), "technical_score": meta.get("technical_score"), "data_quality": meta.get("data_quality")})
-            print(f"OK {ticker}: source={source}, health={meta.get('quant_health_score')}, trend={meta.get('trend_score')}, risk={meta.get('risk_score')}")
+            results["updated"].append({
+                "ticker": ticker,
+                "source": source,
+                "beta": meta.get("beta"),
+                "beta_benchmark": meta.get("beta_benchmark"),
+                "corr": meta.get("corr"),
+                "quant_health_score": meta.get("quant_health_score"),
+                "trend_score": meta.get("trend_score"),
+                "risk_score": meta.get("risk_score"),
+                "technical_score": meta.get("technical_score"),
+                "data_quality": meta.get("data_quality"),
+            })
+            print(
+                f"OK {ticker}: source={source}, "
+                f"beta={meta.get('beta')}, beta_benchmark={meta.get('beta_benchmark')}, "
+                f"corr={meta.get('corr')}, "
+                f"health={meta.get('quant_health_score')}, trend={meta.get('trend_score')}, risk={meta.get('risk_score')}"
+            )
         except Exception as exc:
             results["failed"].append({"ticker": ticker, "error": str(exc)})
             print(f"FAIL {ticker}: {exc}", file=sys.stderr)
