@@ -1677,15 +1677,18 @@ try:
                         macd_h_val = float(macd_frame.dropna().iloc[-1, 1])
 
                     stock_meta[original_ticker].update({
-                        "beta": beta_val,
-                        "std": std_val,
+                        # Do NOT overwrite official beta/std here.
+                        # Official single-asset beta/std should be owned by scripts/update_stock_meta.py
+                        # to avoid Daily Quant Pipeline and Update Stock Quant Meta fighting each other.
+                        "daily_pipeline_beta_calc": beta_val,
+                        "daily_pipeline_std_calc": std_val,
                         "rsi": round(rsi_val, 2),
                         "macd_h": round(macd_h_val, 4),
                         "target_weight": tw_val,
                         "theme_tag": infer_theme_tag(original_ticker, stock_meta.get(original_ticker, {})),
                         "liquidity_score": compute_liquidity_score(original_ticker, yf_ticker, stock_meta.get(original_ticker, {}))
                     })
-                    print(f"✅ [{original_ticker}] 更新 -> Beta: {beta_val:.2f}, Std: {std_val:.1f}%, 目標權重: {tw_val*100:.2f}%")
+                    print(f"✅ [{original_ticker}] 診斷更新 -> daily_beta: {beta_val:.2f}, daily_std: {std_val:.1f}%, 目標權重: {tw_val*100:.2f}%")
 
             print("\n⚖️ 啟動自動再平衡引擎：計算目標權重落差與交易訊號...", flush=True)
             portfolio_value, asset_values, rebalance_signals = 0.0, {}, []
