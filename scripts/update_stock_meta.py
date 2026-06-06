@@ -1109,6 +1109,39 @@ def compute_flexible_portfolio_returns(
     return port, coverage, count
 
 
+
+def ewma_annual_vol(returns: pd.Series, lam: float = 0.94) -> Optional[float]:
+    """
+    Exponentially weighted annualized volatility.
+
+    Used by synthetic portfolio risk metrics.
+    - lam=0.94 is the classic RiskMetrics daily decay setting.
+    - Returns annualized volatility as decimal, e.g. 0.18 = 18%.
+    """
+    try:
+        r = pd.to_numeric(returns, errors="coerce").dropna()
+        if len(r) < 20:
+            return None
+
+        lam = float(lam)
+        if not (0 < lam < 1):
+            lam = 0.94
+
+        # Newer observations get larger weights.
+        n = len(r)
+        weights = np.array([(1.0 - lam) * (lam ** i) for i in range(n - 1, -1, -1)], dtype=float)
+        weights = weights / weights.sum()
+
+        mean = float(np.sum(weights * r.values))
+        var = float(np.sum(weights * ((r.values - mean) ** 2)))
+        if not math.isfinite(var) or var < 0:
+            return None
+
+        return float(math.sqrt(var) * math.sqrt(252))
+    except Exception:
+        return None
+
+
 def compute_synthetic_portfolio_risk(
     holdings: Dict[str, Dict[str, Any]],
     history_frames: Dict[str, Tuple[pd.DataFrame, str]],
