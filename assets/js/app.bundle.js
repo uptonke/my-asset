@@ -1290,6 +1290,92 @@ const psr_hist = computePSR({
     return Object.keys(packages).map((key) => ({ key, ...packages[key] }));
 });
 
+       const optimizerSandboxOutput = ref(null);
+       const optimizerSandboxError = ref('');
+
+       async function loadOptimizerSandboxOutput() {
+    try {
+        optimizerSandboxError.value = '';
+        const response = await fetch(`data/optimizer/skfolio_sandbox_latest.json?v=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) {
+            optimizerSandboxOutput.value = null;
+            optimizerSandboxError.value = `尚未讀到 skfolio sandbox output (${response.status})`;
+            return;
+        }
+        const data = await response.json();
+        optimizerSandboxOutput.value = data && typeof data === 'object' ? data : null;
+    } catch (err) {
+        optimizerSandboxOutput.value = null;
+        optimizerSandboxError.value = err?.message || String(err);
+    }
+}
+
+       const optimizerSandboxPortfolios = computed(() => {
+    const portfolios = optimizerSandboxOutput.value?.portfolios || {};
+    return Object.keys(portfolios).map((key) => {
+        const p = portfolios[key] || {};
+        const m = p.metrics || {};
+        return {
+            key,
+            label: key,
+            status: p.status || 'N/A',
+            annual_vol_pct: m.annual_vol_pct ?? null,
+            var95_pct: m.var95_pct ?? null,
+            es95_pct: m.es95_pct ?? null,
+            max_drawdown_pct: m.max_drawdown_pct ?? null,
+            sharpe: m.sharpe ?? null,
+            turnover_vs_current_pct: p.turnover_vs_current_pct ?? null,
+            weights: Array.isArray(p.weights) ? p.weights : [],
+            method: p.method || {}
+        };
+    });
+});
+
+       const optimizerSandboxBestByES = computed(() => {
+    return optimizerSandboxPortfolios.value
+        .filter((p) => p.status === 'OK' && Number.isFinite(Number(p.es95_pct)))
+        .slice()
+        .sort((a, b) => Number(a.es95_pct) - Number(b.es95_pct))[0] || null;
+});
+
+       const optimizerSandboxSkfolioWeights = computed(() => {
+    const p = optimizerSandboxOutput.value?.portfolios?.skfolio_min_variance;
+    return Array.isArray(p?.weights) ? p.weights : [];
+});
+
+       const optimizerSandboxCvarWeights = computed(() => {
+    const p = optimizerSandboxOutput.value?.portfolios?.skfolio_cvar_minimize;
+    return Array.isArray(p?.weights) ? p.weights : [];
+});
+
+       const optimizerIntegratedComparison = computed(() => {
+    const current = optimizerSandboxOutput.value?.portfolios?.current_weight?.metrics || {};
+    const hrp = syntheticRiskMeta.value?.risk_budgeting || {};
+    const componentEsRows = syntheticRiskMeta.value?.component_tail_risk?.var_es_95?.rows || [];
+    const topTail = Array.isArray(componentEsRows) && componentEsRows.length ? componentEsRows[0] : null;
+
+    return optimizerSandboxPortfolios.value.map((p) => {
+        const volDelta = Number.isFinite(Number(p.annual_vol_pct)) && Number.isFinite(Number(current.annual_vol_pct))
+            ? Number(p.annual_vol_pct) - Number(current.annual_vol_pct)
+            : null;
+        const esDelta = Number.isFinite(Number(p.es95_pct)) && Number.isFinite(Number(current.es95_pct))
+            ? Number(p.es95_pct) - Number(current.es95_pct)
+            : null;
+        const mddDelta = Number.isFinite(Number(p.max_drawdown_pct)) && Number.isFinite(Number(current.max_drawdown_pct))
+            ? Number(p.max_drawdown_pct) - Number(current.max_drawdown_pct)
+            : null;
+        return {
+            ...p,
+            vol_delta_vs_current_pct: volDelta === null ? null : Number(volDelta.toFixed(2)),
+            es_delta_vs_current_pct: esDelta === null ? null : Number(esDelta.toFixed(3)),
+            mdd_delta_vs_current_pct: mddDelta === null ? null : Number(mddDelta.toFixed(2)),
+            hrp_lite_vol_pct: hrp.hrp_lite_portfolio_ewma_vol_pct ?? null,
+            top_tail_ticker: topTail?.ticker ?? null,
+            top_tail_es_share_pct: topTail?.component_es_share_pct ?? null
+        };
+    });
+});
+
        const tailStatsLite = ref({
     conditionalCorr: '-',
     crisisCorr: '-',
@@ -3120,6 +3206,7 @@ chartCML.data.datasets = [
 
     window.addEventListener('resize', updateStickyHeaderOffsets);
     loadDataFromCloud();
+    loadOptimizerSandboxOutput();
 
     window.addEventListener('resize', () => {
         resizeAllCharts();
@@ -3641,7 +3728,7 @@ chartCML.data.datasets = [
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr, navOverlayMode, navOverlayOptions, setNavOverlayMode, navMaConfig, riskRegimeStrip, navTrendSummary,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
-            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
+            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
         };
     }
 }).mount('#app');

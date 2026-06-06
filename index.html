@@ -2206,6 +2206,229 @@
                             </div>
 
 
+
+                            <!-- v1.0.1 / v1.0.2 skfolio sandbox output + integrated comparison -->
+                            <div class="rounded-2xl border border-indigo-500/20 bg-indigo-500/[0.035] overflow-hidden">
+                                <div class="px-4 py-3 border-b border-white/10 bg-indigo-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-diagram-project text-indigo-400"></i>
+                                            v1.0.1 skfolio Sandbox Output + v1.0.2 整合比較
+                                        </div>
+                                        <div class="text-[10px] text-gray-500 mt-1">
+                                            讀取 <span class="font-mono">data/optimizer/skfolio_sandbox_latest.json</span>，比較目前權重、inverse-vol、scipy、skfolio min variance、skfolio CVaR，並對照 v0.5 Component ES 與 v0.6 HRP-lite。
+                                        </div>
+                                    </div>
+                                    <div class="text-[11px] text-gray-400">
+                                        狀態：{{ optimizerSandboxOutput?.status ?? '尚未讀取' }}，
+                                        樣本：{{ optimizerSandboxOutput?.sample?.strict_sample ?? '-' }} 日
+                                    </div>
+                                </div>
+
+                                <div class="p-4 space-y-4">
+                                    <div v-if="!optimizerSandboxOutput" class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-100 leading-relaxed">
+                                        <i class="fas fa-hourglass-half mr-2"></i>
+                                        尚未讀到 skfolio sandbox output。請先跑 GitHub Actions 的 <span class="font-mono">skfolio Optimizer Sandbox</span>。
+                                        <div class="text-[11px] text-amber-200/80 mt-1" v-if="optimizerSandboxError">{{ optimizerSandboxError }}</div>
+                                        <button @click="loadOptimizerSandboxOutput" class="mt-2 px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-100 text-xs hover:bg-amber-500/30">
+                                            重新讀取
+                                        </button>
+                                    </div>
+
+                                    <template v-else>
+                                        <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
+                                            <div class="quant-card border-indigo-500/20 bg-indigo-500/10">
+                                                <div class="quant-label text-indigo-300">Sandbox</div>
+                                                <div class="quant-value text-white text-lg">{{ optimizerSandboxOutput?.status ?? '-' }}</div>
+                                            </div>
+                                            <div class="quant-card border-slate-500/20 bg-slate-500/10">
+                                                <div class="quant-label text-slate-300">Strict 樣本</div>
+                                                <div class="quant-value text-white">{{ optimizerSandboxOutput?.sample?.strict_sample ?? '-' }}</div>
+                                            </div>
+                                            <div class="quant-card border-slate-500/20 bg-slate-500/10">
+                                                <div class="quant-label text-slate-300">資產數</div>
+                                                <div class="quant-value text-white">{{ optimizerSandboxOutput?.sample?.asset_count ?? '-' }}</div>
+                                            </div>
+                                            <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
+                                                <div class="quant-label text-emerald-300">最佳 ES95</div>
+                                                <div class="quant-value text-white">{{ optimizerSandboxBestByES?.label ?? '-' }}</div>
+                                            </div>
+                                            <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
+                                                <div class="quant-label text-emerald-300">ES95</div>
+                                                <div class="quant-value text-white">{{ optimizerSandboxBestByES?.es95_pct ?? '-' }}%</div>
+                                            </div>
+                                            <div class="quant-card border-purple-500/20 bg-purple-500/10">
+                                                <div class="quant-label text-purple-300">HRP-lite Vol</div>
+                                                <div class="quant-value text-white">{{ syntheticRiskMeta?.risk_budgeting?.hrp_lite_portfolio_ewma_vol_pct ?? '-' }}%</div>
+                                            </div>
+                                            <div class="quant-card border-red-500/20 bg-red-500/10">
+                                                <div class="quant-label text-red-300">Top ES 標的</div>
+                                                <div class="quant-value text-white text-lg">{{ syntheticRiskMeta?.component_tail_risk?.var_es_95?.rows?.[0]?.ticker ?? '-' }}</div>
+                                            </div>
+                                            <div class="quant-card border-red-500/20 bg-red-500/10">
+                                                <div class="quant-label text-red-300">Top ES 佔比</div>
+                                                <div class="quant-value text-white">{{ syntheticRiskMeta?.component_tail_risk?.var_es_95?.rows?.[0]?.component_es_share_pct ?? '-' }}%</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                            <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                                <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
+                                                    <i class="fas fa-table-list text-indigo-400"></i>
+                                                    skfolio Sandbox Portfolio 比較
+                                                </div>
+                                                <div class="overflow-x-auto">
+                                                    <table class="w-full text-[11px]">
+                                                        <thead class="text-gray-500 border-b border-white/10">
+                                                            <tr>
+                                                                <th class="text-left px-3 py-2">組合</th>
+                                                                <th class="text-left px-3 py-2">狀態</th>
+                                                                <th class="text-right px-3 py-2">Ann Vol</th>
+                                                                <th class="text-right px-3 py-2">VaR95</th>
+                                                                <th class="text-right px-3 py-2">ES95</th>
+                                                                <th class="text-right px-3 py-2">MDD</th>
+                                                                <th class="text-right px-3 py-2">換手率</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr v-for="row in optimizerSandboxPortfolios" :key="row.key" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                                <td class="px-3 py-2 font-mono text-white">{{ row.label }}</td>
+                                                                <td class="px-3 py-2">
+                                                                    <span class="px-1.5 py-0.5 rounded border text-[10px]"
+                                                                          :class="row.status === 'OK' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-red-500/30 bg-red-500/10 text-red-300'">
+                                                                        {{ row.status }}
+                                                                    </span>
+                                                                </td>
+                                                                <td class="px-3 py-2 text-right text-gray-300">{{ row.annual_vol_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right text-red-300">{{ row.var95_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right text-red-300">{{ row.es95_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right text-orange-300">{{ row.max_drawdown_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right text-cyan-300">{{ row.turnover_vs_current_pct ?? '-' }}%</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+
+                                            <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                                <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
+                                                    <i class="fas fa-code-compare text-purple-400"></i>
+                                                    v1.0.2：對照目前權重 / HRP-lite / Component ES
+                                                </div>
+                                                <div class="overflow-x-auto">
+                                                    <table class="w-full text-[11px]">
+                                                        <thead class="text-gray-500 border-b border-white/10">
+                                                            <tr>
+                                                                <th class="text-left px-3 py-2">組合</th>
+                                                                <th class="text-right px-3 py-2">Vol 差異</th>
+                                                                <th class="text-right px-3 py-2">ES 差異</th>
+                                                                <th class="text-right px-3 py-2">MDD 差異</th>
+                                                                <th class="text-right px-3 py-2">換手率</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr v-for="row in optimizerIntegratedComparison" :key="row.key" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                                <td class="px-3 py-2 font-mono text-white">{{ row.label }}</td>
+                                                                <td class="px-3 py-2 text-right" :class="(row.vol_delta_vs_current_pct || 0) <= 0 ? 'text-emerald-300' : 'text-red-300'">
+                                                                    {{ row.vol_delta_vs_current_pct ?? '-' }}%
+                                                                </td>
+                                                                <td class="px-3 py-2 text-right" :class="(row.es_delta_vs_current_pct || 0) <= 0 ? 'text-emerald-300' : 'text-red-300'">
+                                                                    {{ row.es_delta_vs_current_pct ?? '-' }}%
+                                                                </td>
+                                                                <td class="px-3 py-2 text-right" :class="(row.mdd_delta_vs_current_pct || 0) >= 0 ? 'text-emerald-300' : 'text-red-300'">
+                                                                    {{ row.mdd_delta_vs_current_pct ?? '-' }}%
+                                                                </td>
+                                                                <td class="px-3 py-2 text-right text-cyan-300">{{ row.turnover_vs_current_pct ?? '-' }}%</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+
+                                            <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                                <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
+                                                    <i class="fas fa-weight-hanging text-indigo-400"></i>
+                                                    skfolio Min Variance 權重差異 Top 25
+                                                </div>
+                                                <div class="overflow-x-auto max-h-[390px]">
+                                                    <table class="w-full text-[11px]">
+                                                        <thead class="text-gray-500 border-b border-white/10 sticky top-0 bg-slate-950/90 backdrop-blur">
+                                                            <tr>
+                                                                <th class="text-left px-3 py-2">標的</th>
+                                                                <th class="text-right px-3 py-2">目前</th>
+                                                                <th class="text-right px-3 py-2">skfolio</th>
+                                                                <th class="text-right px-3 py-2">差異</th>
+                                                                <th class="text-right px-3 py-2">換手貢獻</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr v-for="row in optimizerSandboxSkfolioWeights" :key="row.ticker" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                                <td class="px-3 py-2 font-mono text-white">{{ row.ticker }}</td>
+                                                                <td class="px-3 py-2 text-right text-gray-300">{{ row.current_weight_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right text-indigo-300">{{ row.weight_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right" :class="(row.delta_vs_current_pct || 0) > 0 ? 'text-emerald-300' : 'text-red-300'">
+                                                                    {{ row.delta_vs_current_pct ?? '-' }}%
+                                                                </td>
+                                                                <td class="px-3 py-2 text-right text-cyan-300">{{ row.turnover_contribution_pct ?? '-' }}%</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+
+                                            <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                                <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
+                                                    <i class="fas fa-shield-halved text-red-400"></i>
+                                                    skfolio CVaR 權重差異 Top 25
+                                                </div>
+                                                <div class="overflow-x-auto max-h-[390px]">
+                                                    <table class="w-full text-[11px]">
+                                                        <thead class="text-gray-500 border-b border-white/10 sticky top-0 bg-slate-950/90 backdrop-blur">
+                                                            <tr>
+                                                                <th class="text-left px-3 py-2">標的</th>
+                                                                <th class="text-right px-3 py-2">目前</th>
+                                                                <th class="text-right px-3 py-2">CVaR</th>
+                                                                <th class="text-right px-3 py-2">差異</th>
+                                                                <th class="text-right px-3 py-2">換手貢獻</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr v-for="row in optimizerSandboxCvarWeights" :key="row.ticker" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                                <td class="px-3 py-2 font-mono text-white">{{ row.ticker }}</td>
+                                                                <td class="px-3 py-2 text-right text-gray-300">{{ row.current_weight_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right text-red-300">{{ row.weight_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right" :class="(row.delta_vs_current_pct || 0) > 0 ? 'text-emerald-300' : 'text-red-300'">
+                                                                    {{ row.delta_vs_current_pct ?? '-' }}%
+                                                                </td>
+                                                                <td class="px-3 py-2 text-right text-cyan-300">{{ row.turnover_contribution_pct ?? '-' }}%</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+
+                                            <div class="xl:col-span-2 rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3">
+                                                <div class="text-sm font-bold text-white flex items-center gap-2 mb-2">
+                                                    <i class="fas fa-triangle-exclamation text-amber-400"></i>
+                                                    使用限制
+                                                </div>
+                                                <ul class="space-y-1 text-[11px] text-gray-400 leading-relaxed">
+                                                    <li v-for="item in (optimizerSandboxOutput?.warnings || [])" :key="item" class="flex gap-2">
+                                                        <i class="fas fa-check text-amber-400 mt-0.5"></i>
+                                                        <span>{{ item }}</span>
+                                                    </li>
+                                                    <li class="flex gap-2">
+                                                        <i class="fas fa-check text-amber-400 mt-0.5"></i>
+                                                        <span>這是 sandbox 權重比較，不是 BUY / SELL，也不會覆蓋正式投組。</span>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+
                             <!-- Risk contribution + model assumptions -->
                             <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
                                 <div class="xl:col-span-2 rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
@@ -3861,7 +4084,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=11.27-v07-optimizer-dep-probe"></script>
+<script src="assets/js/app.bundle.js?v=11.28-v101-v102-skfolio-frontend"></script>
 <script src="assets/js/quant-main-display.js?v=no-chip-terminal"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
