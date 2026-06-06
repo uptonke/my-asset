@@ -1376,6 +1376,160 @@ const psr_hist = computePSR({
     });
 });
 
+       const riskfolioSandboxOutput = ref(null);
+       const riskfolioSandboxError = ref('');
+
+       async function loadRiskfolioSandboxOutput() {
+    try {
+        riskfolioSandboxError.value = '';
+        const response = await fetch(`data/optimizer/riskfolio_sandbox_latest.json?v=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) {
+            riskfolioSandboxOutput.value = null;
+            riskfolioSandboxError.value = `尚未讀到 Riskfolio sandbox output (${response.status})`;
+            return;
+        }
+        const data = await response.json();
+        riskfolioSandboxOutput.value = data && typeof data === 'object' ? data : null;
+    } catch (err) {
+        riskfolioSandboxOutput.value = null;
+        riskfolioSandboxError.value = err?.message || String(err);
+    }
+}
+
+       const riskfolioSandboxPortfolios = computed(() => {
+    const portfolios = riskfolioSandboxOutput.value?.portfolios || {};
+    return Object.keys(portfolios).map((key) => {
+        const p = portfolios[key] || {};
+        const m = p.metrics || {};
+        return {
+            key,
+            label: key,
+            source: key.startsWith('riskfolio_') ? 'Riskfolio-Lib' : 'Baseline',
+            status: p.status || 'N/A',
+            annual_vol_pct: m.annual_vol_pct ?? null,
+            var95_pct: m.var95_pct ?? null,
+            es95_pct: m.es95_pct ?? null,
+            max_drawdown_pct: m.max_drawdown_pct ?? null,
+            sharpe: m.sharpe ?? null,
+            turnover_vs_current_pct: p.turnover_vs_current_pct ?? null,
+            weights: Array.isArray(p.weights) ? p.weights : [],
+            method: p.method || {}
+        };
+    });
+});
+
+       function normalizeOptimizerRow(p, source, currentMetrics) {
+    const volDelta = Number.isFinite(Number(p.annual_vol_pct)) && Number.isFinite(Number(currentMetrics.annual_vol_pct))
+        ? Number(p.annual_vol_pct) - Number(currentMetrics.annual_vol_pct)
+        : null;
+    const esDelta = Number.isFinite(Number(p.es95_pct)) && Number.isFinite(Number(currentMetrics.es95_pct))
+        ? Number(p.es95_pct) - Number(currentMetrics.es95_pct)
+        : null;
+    const mddDelta = Number.isFinite(Number(p.max_drawdown_pct)) && Number.isFinite(Number(currentMetrics.max_drawdown_pct))
+        ? Number(p.max_drawdown_pct) - Number(currentMetrics.max_drawdown_pct)
+        : null;
+
+    const turnoverNum = Number(p.turnover_vs_current_pct);
+    let verdict = '觀察';
+    if (p.status !== 'OK') {
+        verdict = '失敗';
+    } else if (Number.isFinite(turnoverNum) && turnoverNum >= 80) {
+        verdict = '高換手';
+    } else if (esDelta !== null && esDelta < 0 && volDelta !== null && volDelta < 0) {
+        verdict = '風險降低';
+    } else if (esDelta !== null && esDelta < 0) {
+        verdict = '尾部改善';
+    } else if (esDelta !== null && esDelta > 0) {
+        verdict = '尾部變差';
+    }
+
+    return {
+        ...p,
+        source,
+        vol_delta_vs_current_pct: volDelta === null ? null : Number(volDelta.toFixed(2)),
+        es_delta_vs_current_pct: esDelta === null ? null : Number(esDelta.toFixed(3)),
+        mdd_delta_vs_current_pct: mddDelta === null ? null : Number(mddDelta.toFixed(2)),
+        verdict
+    };
+}
+
+       const unifiedOptimizerComparison = computed(() => {
+    const skfolioRows = optimizerSandboxPortfolios.value || [];
+    const riskfolioRows = riskfolioSandboxPortfolios.value || [];
+    const currentMetrics =
+        optimizerSandboxOutput.value?.portfolios?.current_weight?.metrics ||
+        riskfolioSandboxOutput.value?.portfolios?.current_weight?.metrics ||
+        {};
+
+    const keepSkfolio = new Set([
+        'current_weight',
+        'inverse_vol_baseline',
+        'scipy_min_variance_fallback',
+        'skfolio_min_variance',
+        'skfolio_cvar_minimize'
+    ]);
+    const keepRiskfolio = new Set([
+        'riskfolio_min_variance',
+        'riskfolio_cvar_minimize',
+        'riskfolio_risk_parity_mv',
+        'riskfolio_hrp_mv'
+    ]);
+
+    const rows = [];
+
+    skfolioRows.forEach((p) => {
+        if (keepSkfolio.has(p.key)) {
+            rows.push(normalizeOptimizerRow(p, p.key.startsWith('skfolio_') ? 'skfolio' : 'baseline', currentMetrics));
+        }
+    });
+
+    riskfolioRows.forEach((p) => {
+        if (keepRiskfolio.has(p.key)) {
+            rows.push(normalizeOptimizerRow(p, 'Riskfolio-Lib', currentMetrics));
+        }
+    });
+
+    const rb = syntheticRiskMeta.value?.risk_budgeting || {};
+    if (rb && rb.status === 'OK') {
+        rows.push({
+            key: 'hrp_lite_v06',
+            label: 'hrp_lite_v06',
+            source: 'v0.6 internal',
+            status: 'OK',
+            annual_vol_pct: rb.hrp_lite_portfolio_ewma_vol_pct ?? null,
+            var95_pct: null,
+            es95_pct: null,
+            max_drawdown_pct: null,
+            sharpe: null,
+            turnover_vs_current_pct: null,
+            vol_delta_vs_current_pct: null,
+            es_delta_vs_current_pct: null,
+            mdd_delta_vs_current_pct: null,
+            verdict: '內建基準',
+            weights: Array.isArray(rb.rows) ? rb.rows : []
+        });
+    }
+
+    return rows;
+});
+
+       const unifiedOptimizerBestByES = computed(() => {
+    return unifiedOptimizerComparison.value
+        .filter((p) => p.status === 'OK' && Number.isFinite(Number(p.es95_pct)))
+        .slice()
+        .sort((a, b) => Number(a.es95_pct) - Number(b.es95_pct))[0] || null;
+});
+
+       const riskfolioMinVarWeights = computed(() => {
+    const p = riskfolioSandboxOutput.value?.portfolios?.riskfolio_min_variance;
+    return Array.isArray(p?.weights) ? p.weights : [];
+});
+
+       const riskfolioCvarWeights = computed(() => {
+    const p = riskfolioSandboxOutput.value?.portfolios?.riskfolio_cvar_minimize;
+    return Array.isArray(p?.weights) ? p.weights : [];
+});
+
        const tailStatsLite = ref({
     conditionalCorr: '-',
     crisisCorr: '-',
@@ -3207,6 +3361,7 @@ chartCML.data.datasets = [
     window.addEventListener('resize', updateStickyHeaderOffsets);
     loadDataFromCloud();
     loadOptimizerSandboxOutput();
+    loadRiskfolioSandboxOutput();
 
     window.addEventListener('resize', () => {
         resizeAllCharts();
@@ -3728,7 +3883,7 @@ chartCML.data.datasets = [
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr, navOverlayMode, navOverlayOptions, setNavOverlayMode, navMaConfig, riskRegimeStrip, navTrendSummary,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
-            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
+            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
         };
     }
 }).mount('#app');

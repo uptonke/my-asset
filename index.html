@@ -2429,6 +2429,214 @@
                             </div>
 
 
+
+                            <!-- v1.3 skfolio vs Riskfolio vs HRP-lite unified comparison -->
+                            <div class="rounded-2xl border border-fuchsia-500/20 bg-fuchsia-500/[0.035] overflow-hidden">
+                                <div class="px-4 py-3 border-b border-white/10 bg-fuchsia-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-layer-group text-fuchsia-400"></i>
+                                            v1.3 skfolio vs Riskfolio-Lib vs HRP-lite 統一比較
+                                        </div>
+                                        <div class="text-[10px] text-gray-500 mt-1">
+                                            同時讀取 skfolio 與 Riskfolio-Lib sandbox output，並對照 v0.6 HRP-lite 與 v0.5 Component ES。此區塊只做風險診斷，不產生 BUY / SELL。
+                                        </div>
+                                    </div>
+                                    <div class="text-[11px] text-gray-400">
+                                        skfolio：{{ optimizerSandboxOutput?.status ?? 'N/A' }}，
+                                        Riskfolio：{{ riskfolioSandboxOutput?.status ?? 'N/A' }}
+                                    </div>
+                                </div>
+
+                                <div class="p-4 space-y-4">
+                                    <div v-if="!optimizerSandboxOutput || !riskfolioSandboxOutput" class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-100 leading-relaxed">
+                                        <i class="fas fa-hourglass-half mr-2"></i>
+                                        尚未完整讀到 sandbox output。請確認：
+                                        <span class="font-mono">data/optimizer/skfolio_sandbox_latest.json</span>
+                                        與
+                                        <span class="font-mono">data/optimizer/riskfolio_sandbox_latest.json</span>
+                                        都已部署到 GitHub Pages。
+                                        <div class="text-[11px] text-amber-200/80 mt-1" v-if="optimizerSandboxError">skfolio：{{ optimizerSandboxError }}</div>
+                                        <div class="text-[11px] text-amber-200/80 mt-1" v-if="riskfolioSandboxError">Riskfolio：{{ riskfolioSandboxError }}</div>
+                                        <div class="flex gap-2 mt-2">
+                                            <button @click="loadOptimizerSandboxOutput" class="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-100 text-xs hover:bg-amber-500/30">
+                                                重新讀取 skfolio
+                                            </button>
+                                            <button @click="loadRiskfolioSandboxOutput" class="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-100 text-xs hover:bg-amber-500/30">
+                                                重新讀取 Riskfolio
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <template v-else>
+                                        <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
+                                            <div class="quant-card border-fuchsia-500/20 bg-fuchsia-500/10">
+                                                <div class="quant-label text-fuchsia-300">統一候選數</div>
+                                                <div class="quant-value text-white">{{ unifiedOptimizerComparison?.length ?? 0 }}</div>
+                                            </div>
+                                            <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
+                                                <div class="quant-label text-emerald-300">最低 ES95</div>
+                                                <div class="quant-value text-white text-lg">{{ unifiedOptimizerBestByES?.label ?? '-' }}</div>
+                                            </div>
+                                            <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
+                                                <div class="quant-label text-emerald-300">ES95</div>
+                                                <div class="quant-value text-white">{{ unifiedOptimizerBestByES?.es95_pct ?? '-' }}%</div>
+                                            </div>
+                                            <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                                <div class="quant-label text-cyan-300">換手率</div>
+                                                <div class="quant-value text-white">{{ unifiedOptimizerBestByES?.turnover_vs_current_pct ?? '-' }}%</div>
+                                            </div>
+                                            <div class="quant-card border-purple-500/20 bg-purple-500/10">
+                                                <div class="quant-label text-purple-300">HRP-lite Vol</div>
+                                                <div class="quant-value text-white">{{ syntheticRiskMeta?.risk_budgeting?.hrp_lite_portfolio_ewma_vol_pct ?? '-' }}%</div>
+                                            </div>
+                                            <div class="quant-card border-purple-500/20 bg-purple-500/10">
+                                                <div class="quant-label text-purple-300">目前 Top3 RC</div>
+                                                <div class="quant-value text-white">{{ syntheticRiskMeta?.risk_budgeting?.current_top3_rc_pct ?? '-' }}%</div>
+                                            </div>
+                                            <div class="quant-card border-red-500/20 bg-red-500/10">
+                                                <div class="quant-label text-red-300">Top ES 標的</div>
+                                                <div class="quant-value text-white text-lg">{{ syntheticRiskMeta?.component_tail_risk?.var_es_95?.rows?.[0]?.ticker ?? '-' }}</div>
+                                            </div>
+                                            <div class="quant-card border-red-500/20 bg-red-500/10">
+                                                <div class="quant-label text-red-300">Top ES 佔比</div>
+                                                <div class="quant-value text-white">{{ syntheticRiskMeta?.component_tail_risk?.var_es_95?.rows?.[0]?.component_es_share_pct ?? '-' }}%</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
+                                                <i class="fas fa-table-cells-large text-fuchsia-400"></i>
+                                                Unified Optimizer Comparison
+                                            </div>
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full text-[11px]">
+                                                    <thead class="text-gray-500 border-b border-white/10">
+                                                        <tr>
+                                                            <th class="text-left px-3 py-2">候選</th>
+                                                            <th class="text-left px-3 py-2">來源</th>
+                                                            <th class="text-left px-3 py-2">判讀</th>
+                                                            <th class="text-right px-3 py-2">Ann Vol</th>
+                                                            <th class="text-right px-3 py-2">VaR95</th>
+                                                            <th class="text-right px-3 py-2">ES95</th>
+                                                            <th class="text-right px-3 py-2">MDD</th>
+                                                            <th class="text-right px-3 py-2">ES 差異</th>
+                                                            <th class="text-right px-3 py-2">換手率</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="row in unifiedOptimizerComparison" :key="row.source + ':' + row.key" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                            <td class="px-3 py-2 font-mono text-white">{{ row.label }}</td>
+                                                            <td class="px-3 py-2 text-gray-300">{{ row.source }}</td>
+                                                            <td class="px-3 py-2">
+                                                                <span class="px-1.5 py-0.5 rounded border text-[10px]"
+                                                                      :class="row.verdict === '風險降低' || row.verdict === '尾部改善' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : row.verdict === '高換手' || row.verdict === '尾部變差' ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-slate-500/30 bg-slate-500/10 text-slate-300'">
+                                                                    {{ row.verdict }}
+                                                                </span>
+                                                            </td>
+                                                            <td class="px-3 py-2 text-right text-gray-300">{{ row.annual_vol_pct ?? '-' }}%</td>
+                                                            <td class="px-3 py-2 text-right text-red-300">{{ row.var95_pct ?? '-' }}%</td>
+                                                            <td class="px-3 py-2 text-right text-red-300">{{ row.es95_pct ?? '-' }}%</td>
+                                                            <td class="px-3 py-2 text-right text-orange-300">{{ row.max_drawdown_pct ?? '-' }}%</td>
+                                                            <td class="px-3 py-2 text-right" :class="(row.es_delta_vs_current_pct || 0) <= 0 ? 'text-emerald-300' : 'text-red-300'">
+                                                                {{ row.es_delta_vs_current_pct ?? '-' }}%
+                                                            </td>
+                                                            <td class="px-3 py-2 text-right text-cyan-300">{{ row.turnover_vs_current_pct ?? '-' }}%</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                            <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                                <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
+                                                    <i class="fas fa-weight-hanging text-fuchsia-400"></i>
+                                                    Riskfolio Min Variance 權重差異 Top 25
+                                                </div>
+                                                <div class="overflow-x-auto max-h-[390px]">
+                                                    <table class="w-full text-[11px]">
+                                                        <thead class="text-gray-500 border-b border-white/10 sticky top-0 bg-slate-950/90 backdrop-blur">
+                                                            <tr>
+                                                                <th class="text-left px-3 py-2">標的</th>
+                                                                <th class="text-right px-3 py-2">目前</th>
+                                                                <th class="text-right px-3 py-2">Riskfolio</th>
+                                                                <th class="text-right px-3 py-2">差異</th>
+                                                                <th class="text-right px-3 py-2">換手貢獻</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr v-for="row in riskfolioMinVarWeights" :key="row.ticker" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                                <td class="px-3 py-2 font-mono text-white">{{ row.ticker }}</td>
+                                                                <td class="px-3 py-2 text-right text-gray-300">{{ row.current_weight_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right text-fuchsia-300">{{ row.weight_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right" :class="(row.delta_vs_current_pct || 0) > 0 ? 'text-emerald-300' : 'text-red-300'">
+                                                                    {{ row.delta_vs_current_pct ?? '-' }}%
+                                                                </td>
+                                                                <td class="px-3 py-2 text-right text-cyan-300">{{ row.turnover_contribution_pct ?? '-' }}%</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+
+                                            <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                                <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
+                                                    <i class="fas fa-shield-halved text-red-400"></i>
+                                                    Riskfolio CVaR 權重差異 Top 25
+                                                </div>
+                                                <div class="overflow-x-auto max-h-[390px]">
+                                                    <table class="w-full text-[11px]">
+                                                        <thead class="text-gray-500 border-b border-white/10 sticky top-0 bg-slate-950/90 backdrop-blur">
+                                                            <tr>
+                                                                <th class="text-left px-3 py-2">標的</th>
+                                                                <th class="text-right px-3 py-2">目前</th>
+                                                                <th class="text-right px-3 py-2">Riskfolio CVaR</th>
+                                                                <th class="text-right px-3 py-2">差異</th>
+                                                                <th class="text-right px-3 py-2">換手貢獻</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr v-for="row in riskfolioCvarWeights" :key="row.ticker" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                                <td class="px-3 py-2 font-mono text-white">{{ row.ticker }}</td>
+                                                                <td class="px-3 py-2 text-right text-gray-300">{{ row.current_weight_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right text-red-300">{{ row.weight_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right" :class="(row.delta_vs_current_pct || 0) > 0 ? 'text-emerald-300' : 'text-red-300'">
+                                                                    {{ row.delta_vs_current_pct ?? '-' }}%
+                                                                </td>
+                                                                <td class="px-3 py-2 text-right text-cyan-300">{{ row.turnover_contribution_pct ?? '-' }}%</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3">
+                                            <div class="text-sm font-bold text-white flex items-center gap-2 mb-2">
+                                                <i class="fas fa-triangle-exclamation text-amber-400"></i>
+                                                v1.3 使用限制
+                                            </div>
+                                            <ul class="space-y-1 text-[11px] text-gray-400 leading-relaxed">
+                                                <li class="flex gap-2">
+                                                    <i class="fas fa-check text-amber-400 mt-0.5"></i>
+                                                    <span>ES / MDD / Vol 降低若伴隨極高換手率，不應直接視為可執行改善。</span>
+                                                </li>
+                                                <li class="flex gap-2">
+                                                    <i class="fas fa-check text-amber-400 mt-0.5"></i>
+                                                    <span>HRP-lite 只有 EWMA 風險預算口徑，沒有與 optimizer 完全相同的 VaR / ES / MDD 欄位。</span>
+                                                </li>
+                                                <li class="flex gap-2">
+                                                    <i class="fas fa-check text-amber-400 mt-0.5"></i>
+                                                    <span>這是 sandbox 比較，不是正式再平衡建議。</span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+
                             <!-- Risk contribution + model assumptions -->
                             <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
                                 <div class="xl:col-span-2 rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
@@ -4084,7 +4292,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=11.28-v101-v102-skfolio-frontend"></script>
+<script src="assets/js/app.bundle.js?v=11.29-v13-unified-optimizer-comparison"></script>
 <script src="assets/js/quant-main-display.js?v=no-chip-terminal"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
