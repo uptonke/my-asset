@@ -2102,6 +2102,110 @@
                             </div>
 
 
+
+                            <!-- v0.7 Optimizer Dependency Probe -->
+                            <div class="rounded-2xl border border-blue-500/20 bg-blue-500/[0.035] overflow-hidden">
+                                <div class="px-4 py-3 border-b border-white/10 bg-blue-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-plug-circle-check text-blue-400"></i>
+                                            v0.7 Optimizer Dependency Probe
+                                        </div>
+                                        <div class="text-[10px] text-gray-500 mt-1">
+                                            只檢查 GitHub Actions 能否 import 外部最佳化套件；不執行最佳化、不產生交易建議。
+                                        </div>
+                                    </div>
+                                    <div class="text-[11px] text-gray-400">
+                                        Readiness：{{ optimizerDependencyStatus?.readiness ?? '尚未產生' }}
+                                    </div>
+                                </div>
+
+                                <div class="p-4 grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3">
+                                    <div class="quant-card border-blue-500/20 bg-blue-500/10">
+                                        <div class="quant-label text-blue-300">Probe 狀態</div>
+                                        <div class="quant-value text-white text-lg">{{ optimizerDependencyStatus?.status ?? '-' }}</div>
+                                    </div>
+                                    <div class="quant-card border-blue-500/20 bg-blue-500/10">
+                                        <div class="quant-label text-blue-300">skfolio</div>
+                                        <div class="quant-value text-white text-lg">{{ optimizerDependencyStatus?.summary?.skfolio_available ? 'OK' : '缺少' }}</div>
+                                    </div>
+                                    <div class="quant-card border-purple-500/20 bg-purple-500/10">
+                                        <div class="quant-label text-purple-300">Riskfolio-Lib</div>
+                                        <div class="quant-value text-white text-lg">{{ optimizerDependencyStatus?.summary?.riskfolio_available ? 'OK' : '缺少' }}</div>
+                                    </div>
+                                    <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
+                                        <div class="quant-label text-emerald-300">cvxpy</div>
+                                        <div class="quant-value text-white text-lg">{{ optimizerDependencyStatus?.summary?.cvxpy_available ? 'OK' : '缺少' }}</div>
+                                    </div>
+                                    <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                        <div class="quant-label text-cyan-300">Solver 數</div>
+                                        <div class="quant-value text-white">{{ optimizerDependencyStatus?.summary?.cvxpy_solver_count ?? '-' }}</div>
+                                    </div>
+                                    <div class="quant-card border-slate-500/20 bg-slate-500/10">
+                                        <div class="quant-label text-slate-300">Safe Mode</div>
+                                        <div class="quant-value text-white text-lg">{{ optimizerDependencyStatus?.safe_mode ? 'ON' : '-' }}</div>
+                                    </div>
+                                </div>
+
+                                <div class="px-4 pb-4 grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                    <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                        <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-box-open text-blue-400"></i>
+                                            套件 import 狀態
+                                        </div>
+                                        <div class="overflow-x-auto">
+                                            <table class="w-full text-[11px]">
+                                                <thead class="text-gray-500 border-b border-white/10">
+                                                    <tr>
+                                                        <th class="text-left px-3 py-2">套件</th>
+                                                        <th class="text-left px-3 py-2">Import</th>
+                                                        <th class="text-left px-3 py-2">狀態</th>
+                                                        <th class="text-left px-3 py-2">版本</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr v-for="pkg in optimizerDependencyPackages" :key="pkg.key" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                        <td class="px-3 py-2 font-mono text-white">{{ pkg.package || pkg.key }}</td>
+                                                        <td class="px-3 py-2 font-mono text-gray-300">{{ pkg.import_name }}</td>
+                                                        <td class="px-3 py-2">
+                                                            <span class="px-1.5 py-0.5 rounded border text-[10px]"
+                                                                  :class="pkg.available ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-red-500/30 bg-red-500/10 text-red-300'">
+                                                                {{ pkg.status }}
+                                                            </span>
+                                                        </td>
+                                                        <td class="px-3 py-2 font-mono text-gray-400">{{ pkg.version ?? '-' }}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-xl border border-white/10 bg-black/20 p-4 space-y-3">
+                                        <div>
+                                            <div class="text-sm font-bold text-white flex items-center gap-2">
+                                                <i class="fas fa-road text-cyan-400"></i>
+                                                v1.0 接入判讀
+                                            </div>
+                                            <p class="text-[11px] text-gray-400 mt-2 leading-relaxed">
+                                                {{ optimizerDependencyStatus?.next_step ?? '尚未產生 dependency probe。請先跑 Update Stock Quant Meta。' }}
+                                            </p>
+                                        </div>
+                                        <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-[11px] text-gray-300">
+                                            <div class="text-gray-500 mb-1">cvxpy solvers</div>
+                                            <div class="font-mono break-all">{{ (optimizerDependencyStatus?.cvxpy_solvers || []).join(', ') || '-' }}</div>
+                                        </div>
+                                        <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-[11px] text-gray-300">
+                                            <div class="text-gray-500 mb-1">v1.0 skfolio 缺少套件</div>
+                                            <div class="font-mono break-all">{{ (optimizerDependencyStatus?.missing_for_v1_0_skfolio || []).join(', ') || '無' }}</div>
+                                        </div>
+                                        <div class="text-[10px] text-gray-500 leading-relaxed">
+                                            {{ optimizerDependencyStatus?.safe_mode_note ?? 'v0.7 只做 dependency probe。' }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+
                             <!-- Risk contribution + model assumptions -->
                             <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
                                 <div class="xl:col-span-2 rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
@@ -3757,7 +3861,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=11.26-v05-component-var-v06-hrp"></script>
+<script src="assets/js/app.bundle.js?v=11.27-v07-optimizer-dep-probe"></script>
 <script src="assets/js/quant-main-display.js?v=no-chip-terminal"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>

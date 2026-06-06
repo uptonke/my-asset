@@ -33,6 +33,7 @@ SUPABASE_TABLE = env("SUPABASE_TABLE", "portfolio_db")
 PORTFOLIO_ROW_ID = env("PORTFOLIO_ROW_ID", "1")
 DRY_RUN = str(env("DRY_RUN", "false")).lower() in {"1", "true", "yes", "y"}
 SYNTHETIC_RISK_KEY = "__synthetic_portfolio_risk__"
+OPTIMIZER_DEPS_KEY = "__optimizer_dependency_status__"
 SYNTHETIC_EWMA_LAMBDA = 0.94
 
 def fail(message: str) -> None:
@@ -2100,6 +2101,134 @@ def compute_synthetic_portfolio_risk(
     }
 
 
+
+def probe_python_module(module_name: str, package_name: Optional[str] = None, import_name: Optional[str] = None) -> Dict[str, Any]:
+    """
+    v0.7 dependency probe helper.
+
+    It must never crash the production quant pipeline.
+    - MISSING: module spec not found
+    - OK: module imported
+    - IMPORT_FAILED: spec exists but import raised
+    """
+    package_name = package_name or module_name
+    import_name = import_name or module_name
+
+    try:
+        import importlib
+        import importlib.util
+        import importlib.metadata
+        spec = importlib.util.find_spec(import_name)
+        if spec is None:
+            return {
+                "package": package_name,
+                "import_name": import_name,
+                "available": False,
+                "status": "MISSING",
+                "version": None,
+                "error": None,
+            }
+
+        try:
+            mod = importlib.import_module(import_name)
+            version = None
+            try:
+                version = importlib.metadata.version(package_name)
+            except Exception:
+                version = getattr(mod, "__version__", None)
+
+            return {
+                "package": package_name,
+                "import_name": import_name,
+                "available": True,
+                "status": "OK",
+                "version": str(version) if version is not None else None,
+                "error": None,
+            }
+        except Exception as exc:
+            return {
+                "package": package_name,
+                "import_name": import_name,
+                "available": False,
+                "status": "IMPORT_FAILED",
+                "version": None,
+                "error": str(exc)[:500],
+            }
+    except Exception as exc:
+        return {
+            "package": package_name,
+            "import_name": import_name,
+            "available": False,
+            "status": "PROBE_FAILED",
+            "version": None,
+            "error": str(exc)[:500],
+        }
+
+
+def compute_optimizer_dependency_status() -> Dict[str, Any]:
+    """
+    v0.7 Optimizer Dependency Probe.
+
+    This only checks whether optimization packages can be imported in GitHub Actions.
+    It does not run portfolio optimization and must not fail the main pipeline.
+    """
+    packages = {
+        "skfolio": probe_python_module("skfolio", "skfolio", "skfolio"),
+        "riskfolio": probe_python_module("riskfolio", "Riskfolio-Lib", "riskfolio"),
+        "cvxpy": probe_python_module("cvxpy", "cvxpy", "cvxpy"),
+        "scipy": probe_python_module("scipy", "scipy", "scipy"),
+        "sklearn": probe_python_module("sklearn", "scikit-learn", "sklearn"),
+        "numpy": probe_python_module("numpy", "numpy", "numpy"),
+        "pandas": probe_python_module("pandas", "pandas", "pandas"),
+    }
+
+    cvxpy_solvers: List[str] = []
+    cvxpy_error = None
+    if packages.get("cvxpy", {}).get("available"):
+        try:
+            import cvxpy as cp
+            cvxpy_solvers = [str(x) for x in cp.installed_solvers()]
+        except Exception as exc:
+            cvxpy_error = str(exc)[:500]
+
+    skfolio_ok = bool(packages.get("skfolio", {}).get("available"))
+    riskfolio_ok = bool(packages.get("riskfolio", {}).get("available"))
+    cvxpy_ok = bool(packages.get("cvxpy", {}).get("available"))
+
+    if skfolio_ok:
+        readiness = "READY_FOR_SKFOLIO_SANDBOX"
+        next_step = "v1.0 可接 skfolio sandbox，但不可直接產生正式交易建議。"
+    elif cvxpy_ok and riskfolio_ok:
+        readiness = "READY_FOR_RISKFOLIO_EXPERIMENT"
+        next_step = "可測 Riskfolio-Lib，但建議仍先跑 isolated sandbox。"
+    else:
+        readiness = "DEPENDENCIES_MISSING"
+        next_step = "先不要接外部 optimizer；保留 v0.6 HRP-lite，並在 requirements.txt / workflow 中另行評估安裝。"
+
+    required_for_v10 = ["skfolio", "scipy", "sklearn", "numpy", "pandas"]
+    missing_for_v10 = [k for k in required_for_v10 if not packages.get(k, {}).get("available")]
+
+    return {
+        "version": "v0.7",
+        "status": "OK",
+        "updated_at": str(TODAY_TPE),
+        "readiness": readiness,
+        "next_step": next_step,
+        "safe_mode": True,
+        "safe_mode_note": "v0.7 只做 import probe，不執行 optimizer，不影響正式風控計算。",
+        "packages": packages,
+        "cvxpy_solvers": cvxpy_solvers,
+        "cvxpy_solver_error": cvxpy_error,
+        "missing_for_v1_0_skfolio": missing_for_v10,
+        "summary": {
+            "skfolio_available": skfolio_ok,
+            "riskfolio_available": riskfolio_ok,
+            "cvxpy_available": cvxpy_ok,
+            "cvxpy_solver_count": len(cvxpy_solvers),
+        },
+    }
+
+
 def merge_stock_meta(existing: Dict[str, Any], new_meta: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
     merged = dict(existing or {})
     for ticker, meta in new_meta.items():
@@ -2160,6 +2289,21 @@ def write_github_summary(results: Dict[str, Any]) -> None:
         lines.append("|---|---|")
         for item in results["skipped"]:
             lines.append(f"| {item['ticker']} | {item['reason']} |")
+    if results.get("optimizer_dependency_status"):
+        od = results["optimizer_dependency_status"]
+        summary = od.get("summary", {}) if isinstance(od, dict) else {}
+        lines.extend([
+            "",
+            "## Optimizer Dependency Probe v0.7",
+            "",
+            f"- Status: `{od.get('status', 'N/A')}`",
+            f"- Readiness: `{od.get('readiness', 'N/A')}`",
+            f"- skfolio: `{summary.get('skfolio_available', 'N/A')}`",
+            f"- Riskfolio-Lib: `{summary.get('riskfolio_available', 'N/A')}`",
+            f"- cvxpy: `{summary.get('cvxpy_available', 'N/A')}`",
+            f"- cvxpy solvers: `{summary.get('cvxpy_solver_count', 'N/A')}`",
+        ])
+
     Path(path).write_text("\n".join(lines), encoding="utf-8")
 
 def main() -> None:
@@ -2257,6 +2401,31 @@ def main() -> None:
         }
         results["synthetic_risk"] = {"status": "FAILED", "error": str(exc)}
         print(f"FAIL synthetic risk: {exc}", file=sys.stderr)
+
+    try:
+        optimizer_deps = compute_optimizer_dependency_status()
+        merged_meta[OPTIMIZER_DEPS_KEY] = optimizer_deps
+        results["optimizer_dependency_status"] = optimizer_deps
+        print(
+            "OK optimizer deps: "
+            f"readiness={optimizer_deps.get('readiness')}, "
+            f"skfolio={optimizer_deps.get('summary', {}).get('skfolio_available')}, "
+            f"riskfolio={optimizer_deps.get('summary', {}).get('riskfolio_available')}, "
+            f"cvxpy={optimizer_deps.get('summary', {}).get('cvxpy_available')}, "
+            f"solvers={optimizer_deps.get('summary', {}).get('cvxpy_solver_count')}"
+        )
+    except Exception as exc:
+        optimizer_deps = {
+            "version": "v0.7",
+            "status": "FAILED",
+            "updated_at": str(TODAY_TPE),
+            "readiness": "PROBE_FAILED",
+            "error": str(exc),
+            "safe_mode": True,
+        }
+        merged_meta[OPTIMIZER_DEPS_KEY] = optimizer_deps
+        results["optimizer_dependency_status"] = optimizer_deps
+        print(f"FAIL optimizer deps: {exc}", file=sys.stderr)
 
     write_supabase_stock_meta(client, merged_meta)
     write_github_summary(results)

@@ -1280,6 +1280,16 @@ const psr_hist = computePSR({
     return meta && typeof meta === 'object' ? meta : null;
 });
 
+       const optimizerDependencyStatus = computed(() => {
+    const meta = stockMeta.value?.__optimizer_dependency_status__;
+    return meta && typeof meta === 'object' ? meta : null;
+});
+
+       const optimizerDependencyPackages = computed(() => {
+    const packages = optimizerDependencyStatus.value?.packages || {};
+    return Object.keys(packages).map((key) => ({ key, ...packages[key] }));
+});
+
        const tailStatsLite = ref({
     conditionalCorr: '-',
     crisisCorr: '-',
@@ -3631,7 +3641,7 @@ chartCML.data.datasets = [
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr, navOverlayMode, navOverlayOptions, setNavOverlayMode, navMaConfig, riskRegimeStrip, navTrendSummary,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
-            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
+            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
         };
     }
 }).mount('#app');
