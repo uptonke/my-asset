@@ -855,39 +855,259 @@ def fetch_usdtwd_series(static_fx: float) -> Tuple[pd.Series, str]:
     return pd.Series(dtype=float), f"static_exchange_rate:{static_fx}"
 
 
-def max_drawdown_from_returns(returns: pd.Series) -> Optional[float]:
+
+def drawdown_details_from_returns(returns: pd.Series) -> Dict[str, Any]:
     r = pd.to_numeric(returns, errors="coerce").dropna()
     if r.empty:
-        return None
+        return {
+            "max_drawdown": None,
+            "max_drawdown_start": None,
+            "max_drawdown_end": None,
+            "max_drawdown_recovery_date": None,
+            "max_drawdown_days": None,
+            "current_drawdown": None,
+            "current_drawdown_days": None,
+        }
+
     curve = (1.0 + r).cumprod()
     peak = curve.cummax()
     dd = curve / peak - 1.0
-    return float(dd.min())
+
+    end = dd.idxmin()
+    start = curve.loc[:end].idxmax()
+    after = curve.loc[end:]
+    recovery = after[after >= curve.loc[start]]
+    recovery_date = recovery.index[0] if not recovery.empty else None
+
+    current_peak_date = curve.idxmax() if curve.iloc[-1] >= peak.iloc[-1] else curve.loc[:curve.index[-1]].idxmax()
+    current_drawdown_days = int((curve.index[-1] - current_peak_date).days) if hasattr(curve.index[-1], "to_pydatetime") else None
+
+    return {
+        "max_drawdown": float(dd.min()),
+        "max_drawdown_start": str(pd.to_datetime(start).date()) if start is not None else None,
+        "max_drawdown_end": str(pd.to_datetime(end).date()) if end is not None else None,
+        "max_drawdown_recovery_date": str(pd.to_datetime(recovery_date).date()) if recovery_date is not None else None,
+        "max_drawdown_days": int((pd.to_datetime(recovery_date if recovery_date is not None else r.index[-1]) - pd.to_datetime(start)).days) if start is not None else None,
+        "current_drawdown": float(dd.iloc[-1]),
+        "current_drawdown_days": current_drawdown_days,
+    }
 
 
-def ewma_annual_vol(returns: pd.Series, lam: float = SYNTHETIC_EWMA_LAMBDA) -> Optional[float]:
+def quantstats_style_report(returns: pd.Series) -> Dict[str, Any]:
     r = pd.to_numeric(returns, errors="coerce").dropna()
-    if len(r) < 20:
-        return None
-    alpha = 1.0 - lam
-    vol = r.ewm(alpha=alpha, adjust=False).std(bias=False).iloc[-1]
-    if not math.isfinite(vol):
-        return None
-    return float(vol * math.sqrt(252))
+    if len(r) < 40:
+        return {
+            "status": "INSUFFICIENT_SAMPLE",
+            "sample_count": int(len(r)),
+        }
+
+    q05 = float(r.quantile(0.05))
+    q01 = float(r.quantile(0.01))
+    q95 = float(r.quantile(0.95))
+    tail95 = r[r <= q05]
+    tail99 = r[r <= q01]
+
+    equity = (1.0 + r).cumprod()
+    total_return = float(equity.iloc[-1] - 1.0)
+    years = max(len(r) / 252.0, 1e-9)
+    cagr = float(equity.iloc[-1] ** (1.0 / years) - 1.0) if equity.iloc[-1] > 0 else None
+    ann_return = float(((1.0 + r.mean()) ** 252) - 1.0)
+    ann_vol = float(r.std(ddof=1) * math.sqrt(252)) if len(r) > 1 else None
+    downside = r[r < 0]
+    downside_vol = float(downside.std(ddof=1) * math.sqrt(252)) if len(downside) > 1 else None
+    sharpe = (ann_return / ann_vol) if ann_vol and ann_vol > 0 else None
+    sortino = (ann_return / downside_vol) if downside_vol and downside_vol > 0 else None
+    dd_info = drawdown_details_from_returns(r)
+    mdd = dd_info.get("max_drawdown")
+    calmar = (cagr / abs(mdd)) if cagr is not None and mdd and mdd < 0 else None
+
+    monthly = (1.0 + r).resample("M").prod() - 1.0 if hasattr(r.index, "to_series") else pd.Series(dtype=float)
+    best_month = monthly.max() if not monthly.empty else None
+    worst_month = monthly.min() if not monthly.empty else None
+    best_month_label = str(monthly.idxmax().date()) if not monthly.empty else None
+    worst_month_label = str(monthly.idxmin().date()) if not monthly.empty else None
+
+    rolling_vol_21 = r.rolling(21).std(ddof=1) * math.sqrt(252)
+    rolling_vol_63 = r.rolling(63).std(ddof=1) * math.sqrt(252)
+    rolling_mean_63 = r.rolling(63).mean()
+    rolling_sharpe_63 = (rolling_mean_63 * 252) / rolling_vol_63.replace(0, np.nan)
+
+    return {
+        "status": "OK",
+        "sample_count": int(len(r)),
+        "start_date": str(r.index.min().date()),
+        "end_date": str(r.index.max().date()),
+        "total_return_pct": round(total_return * 100.0, 2),
+        "cagr_pct": round(cagr * 100.0, 2) if cagr is not None and math.isfinite(cagr) else None,
+        "annual_return_pct": round(ann_return * 100.0, 2),
+        "annual_vol_pct": round((ann_vol or 0.0) * 100.0, 2) if ann_vol is not None else None,
+        "sharpe": round(float(sharpe), 3) if sharpe is not None and math.isfinite(float(sharpe)) else None,
+        "sortino": round(float(sortino), 3) if sortino is not None and math.isfinite(float(sortino)) else None,
+        "calmar": round(float(calmar), 3) if calmar is not None and math.isfinite(float(calmar)) else None,
+        "max_drawdown_pct": round((mdd or 0.0) * 100.0, 2) if mdd is not None else None,
+        "max_drawdown_start": dd_info.get("max_drawdown_start"),
+        "max_drawdown_end": dd_info.get("max_drawdown_end"),
+        "max_drawdown_recovery_date": dd_info.get("max_drawdown_recovery_date"),
+        "max_drawdown_days": dd_info.get("max_drawdown_days"),
+        "current_drawdown_pct": round((dd_info.get("current_drawdown") or 0.0) * 100.0, 2) if dd_info.get("current_drawdown") is not None else None,
+        "current_drawdown_days": dd_info.get("current_drawdown_days"),
+        "best_day_pct": round(float(r.max()) * 100.0, 2),
+        "worst_day_pct": round(float(r.min()) * 100.0, 2),
+        "best_month_pct": round(float(best_month) * 100.0, 2) if best_month is not None and math.isfinite(float(best_month)) else None,
+        "best_month": best_month_label,
+        "worst_month_pct": round(float(worst_month) * 100.0, 2) if worst_month is not None and math.isfinite(float(worst_month)) else None,
+        "worst_month": worst_month_label,
+        "win_rate_pct": round(float((r > 0).mean()) * 100.0, 2),
+        "positive_days": int((r > 0).sum()),
+        "negative_days": int((r < 0).sum()),
+        "tail_ratio": round(float(q95 / abs(q05)), 3) if q05 < 0 and math.isfinite(q95 / abs(q05)) else None,
+        "var95_pct": round(max(0.0, -q05) * 100.0, 2),
+        "es95_pct": round(max(0.0, -float(tail95.mean())) * 100.0, 2) if not tail95.empty else None,
+        "var99_pct": round(max(0.0, -q01) * 100.0, 2),
+        "es99_pct": round(max(0.0, -float(tail99.mean())) * 100.0, 2) if not tail99.empty else None,
+        "rolling_vol_21d_pct": round(float(rolling_vol_21.dropna().iloc[-1]) * 100.0, 2) if len(rolling_vol_21.dropna()) else None,
+        "rolling_vol_63d_pct": round(float(rolling_vol_63.dropna().iloc[-1]) * 100.0, 2) if len(rolling_vol_63.dropna()) else None,
+        "rolling_sharpe_63d": round(float(rolling_sharpe_63.dropna().iloc[-1]), 3) if len(rolling_sharpe_63.dropna()) and math.isfinite(float(rolling_sharpe_63.dropna().iloc[-1])) else None,
+        "skew": round(float(r.skew()), 3) if len(r) >= 3 else None,
+        "kurtosis": round(float(r.kurtosis()), 3) if len(r) >= 4 else None,
+    }
 
 
-def confidence_from_sample(sample_count: int, included_weight_pct: float, asset_count: int) -> Tuple[str, str]:
-    if asset_count < 2:
-        return "INVALID", "可用標的少於 2 檔，無法形成有意義的合成投組。"
-    if sample_count < 252:
-        return "INVALID", "日資料樣本少於 252 筆，僅能作為除錯參考。"
-    if included_weight_pct < 80:
-        return "LOW", "可納入合成模型的持倉權重低於 80%，結果可能偏誤。"
-    if sample_count >= 1250 and included_weight_pct >= 90:
-        return "HIGH", "樣本約 5 年以上且涵蓋主要持倉。"
-    if sample_count >= 750 and included_weight_pct >= 85:
-        return "MEDIUM", "樣本約 3 年以上，適合作為主要風控參考。"
-    return "LOW", "樣本約 1–3 年或資料涵蓋度有限，適合作為 v0.2 監控，不適合直接作為交易引擎。"
+def confidence_grade_from_thresholds(value: float, high: float, medium: float, low: float) -> str:
+    if value >= high:
+        return "HIGH"
+    if value >= medium:
+        return "MEDIUM"
+    if value >= low:
+        return "LOW"
+    return "INVALID"
+
+
+def synthetic_confidence_breakdown(
+    strict_sample: int,
+    flexible_sample: int,
+    usable_asset_count: int,
+    active_asset_count: int,
+    usable_weight_pct: float,
+    strict_weight_coverage_avg: float,
+    data_quality_flags: List[str],
+) -> Dict[str, Any]:
+    sample_level = "INVALID"
+    if strict_sample >= 1250:
+        sample_level = "HIGH"
+    elif strict_sample >= 750:
+        sample_level = "MEDIUM"
+    elif strict_sample >= 252:
+        sample_level = "LOW"
+
+    asset_level = "INVALID"
+    asset_ratio = usable_asset_count / max(active_asset_count, 1)
+    if usable_weight_pct >= 95 and asset_ratio >= 0.9:
+        asset_level = "HIGH"
+    elif usable_weight_pct >= 85 and asset_ratio >= 0.75:
+        asset_level = "MEDIUM"
+    elif usable_weight_pct >= 70 and usable_asset_count >= 2:
+        asset_level = "LOW"
+
+    coverage_level = "INVALID"
+    if strict_weight_coverage_avg >= 95:
+        coverage_level = "HIGH"
+    elif strict_weight_coverage_avg >= 85:
+        coverage_level = "MEDIUM"
+    elif strict_weight_coverage_avg >= 70:
+        coverage_level = "LOW"
+
+    if sample_level == "INVALID" or asset_level == "INVALID":
+        overall = "INVALID"
+    elif "HIGH" in {sample_level, asset_level, coverage_level} and sample_level in {"HIGH", "MEDIUM"} and asset_level in {"HIGH", "MEDIUM"}:
+        overall = "HIGH" if sample_level == "HIGH" and asset_level == "HIGH" else "MEDIUM"
+    elif sample_level == "MEDIUM" and asset_level != "LOW":
+        overall = "MEDIUM"
+    else:
+        overall = "LOW"
+
+    notes = [
+        "使用目前權重回套歷史日報酬；不是實際歷史投組績效。",
+        "Strict mode 要求所有可用資產同日皆有報酬，樣本較短但口徑乾淨。",
+        "Flexible mode 允許每日依可用資產權重重新 normalize，樣本較長但早期成分可能與目前投組不同。",
+    ]
+    notes.extend(data_quality_flags[:5])
+
+    return {
+        "level": overall,
+        "breakdown": {
+            "sample_length": {
+                "level": sample_level,
+                "strict_days": int(strict_sample),
+                "flexible_days": int(flexible_sample),
+                "rule": "HIGH>=1250, MEDIUM>=750, LOW>=252 trading days",
+            },
+            "asset_coverage": {
+                "level": asset_level,
+                "usable_assets": int(usable_asset_count),
+                "active_assets": int(active_asset_count),
+                "usable_weight_pct": round(float(usable_weight_pct), 2),
+            },
+            "date_coverage": {
+                "level": coverage_level,
+                "strict_weight_coverage_avg_pct": round(float(strict_weight_coverage_avg), 2),
+            },
+            "method_limitation": {
+                "level": "LOW",
+                "code": "CURRENT_WEIGHT_BACKTEST",
+                "description": "以目前權重回套歷史，不能代表真實歷史持倉。"
+            },
+        },
+        "notes": notes,
+    }
+
+
+def compute_flexible_portfolio_returns(
+    asset_returns: pd.DataFrame,
+    weights: Dict[str, float],
+    min_coverage_pct: float = 80.0,
+) -> Tuple[pd.Series, pd.Series, pd.Series]:
+    """
+    Flexible mode:
+    - For each date, use assets with available returns.
+    - Require covered current-weight >= min_coverage_pct.
+    - Re-normalize available weights for that date.
+    Returns:
+    - portfolio returns
+    - coverage weight pct by date
+    - number of available assets by date
+    """
+    if asset_returns.empty:
+        return pd.Series(dtype=float), pd.Series(dtype=float), pd.Series(dtype=float)
+
+    w = pd.Series(weights, dtype=float)
+    w = w.reindex(asset_returns.columns).fillna(0.0)
+    out: List[Tuple[pd.Timestamp, float, float, int]] = []
+
+    for dt, row in asset_returns.iterrows():
+        valid = row.dropna()
+        if valid.empty:
+            continue
+        valid_weights = w.reindex(valid.index).fillna(0.0)
+        covered = float(valid_weights.sum())
+        if covered <= 0:
+            continue
+        covered_pct = covered * 100.0
+        if covered_pct < min_coverage_pct:
+            continue
+        norm_w = valid_weights / covered
+        ret = float((valid * norm_w).sum())
+        if math.isfinite(ret):
+            out.append((dt, ret, covered_pct, int(len(valid))))
+
+    if not out:
+        return pd.Series(dtype=float), pd.Series(dtype=float), pd.Series(dtype=float)
+
+    idx = [x[0] for x in out]
+    port = pd.Series([x[1] for x in out], index=idx, dtype=float).sort_index()
+    coverage = pd.Series([x[2] for x in out], index=idx, dtype=float).sort_index()
+    count = pd.Series([x[3] for x in out], index=idx, dtype=float).sort_index()
+    return port, coverage, count
 
 
 def compute_synthetic_portfolio_risk(
@@ -896,13 +1116,15 @@ def compute_synthetic_portfolio_risk(
     row: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
-    v0.2 Synthetic Portfolio Risk Engine.
+    v0.2.1 + v0.3 Synthetic Portfolio Risk Engine.
 
-    Method:
-    - Use current active holding weights.
-    - Convert foreign/USD assets to TWD with USD/TWD history when available.
-    - Build current-weight synthetic daily portfolio returns.
-    - Estimate volatility, VaR, ES, MDD, EWMA volatility, and component risk.
+    v0.2.1:
+    - Strict vs flexible sample diagnostics.
+    - Per-asset coverage table.
+    - Confidence breakdown.
+
+    v0.3:
+    - QuantStats-style lightweight risk report without external quantstats dependency.
     """
     settings = row.get("settings") if isinstance(row.get("settings"), dict) else {}
     static_fx = finite_float(settings.get("exchangeRate"), 31.5) or 31.5
@@ -912,19 +1134,54 @@ def compute_synthetic_portfolio_risk(
     asset_sources: Dict[str, str] = {}
     asset_weights_value: Dict[str, float] = {}
     asset_meta: Dict[str, Any] = {}
+    coverage_rows: List[Dict[str, Any]] = []
+    data_quality_flags: List[str] = []
+
+    active_holding_count = 0
+    skipped_tickers: List[str] = []
 
     for ticker, h in sorted((holdings or {}).items()):
+        shares = finite_float(h.get("shares"), 0.0) or 0.0
+        if shares <= 0:
+            continue
+
+        active_holding_count += 1
+        category = str(h.get("category") or "")
+        raw_row = {
+            "ticker": ticker,
+            "category": category,
+            "current_shares": round(shares, 8),
+            "source": None,
+            "fx_mode": None,
+            "price_rows": 0,
+            "return_days": 0,
+            "first_date": None,
+            "last_date": None,
+            "market_value_twd": 0,
+            "current_weight_pct": None,
+            "strict_included": False,
+            "flexible_included": False,
+            "coverage_ratio_vs_strict_window": None,
+            "skip_reason": None,
+        }
+
         if ticker not in history_frames:
+            raw_row["skip_reason"] = "missing_history_frame"
+            coverage_rows.append(raw_row)
+            skipped_tickers.append(ticker)
             continue
 
         df, source = history_frames[ticker]
+        raw_row["source"] = source
         price = clean_price_series(df)
+        raw_row["price_rows"] = int(len(price))
         if len(price) < 40:
+            raw_row["skip_reason"] = f"insufficient_price_rows:{len(price)}"
+            coverage_rows.append(raw_row)
+            skipped_tickers.append(ticker)
             continue
 
-        category = str(h.get("category") or "")
         is_foreign = is_foreign_currency_asset(ticker, category)
-
         if is_foreign:
             if not fx_series.empty:
                 aligned_fx = fx_series.reindex(price.index).ffill().bfill()
@@ -938,14 +1195,26 @@ def compute_synthetic_portfolio_risk(
             fx_mode = "native_twd"
 
         price_twd = pd.to_numeric(price_twd, errors="coerce").dropna()
+        raw_row["fx_mode"] = fx_mode
+        raw_row["price_rows"] = int(len(price_twd))
+        raw_row["return_days"] = max(0, int(len(price_twd) - 1))
+        raw_row["first_date"] = str(price_twd.index.min().date()) if len(price_twd) else None
+        raw_row["last_date"] = str(price_twd.index.max().date()) if len(price_twd) else None
+
         if len(price_twd) < 40:
+            raw_row["skip_reason"] = f"insufficient_twd_price_rows:{len(price_twd)}"
+            coverage_rows.append(raw_row)
+            skipped_tickers.append(ticker)
             continue
 
-        shares = finite_float(h.get("shares"), 0.0) or 0.0
         latest_price_twd = float(price_twd.iloc[-1])
         market_value_twd = max(0.0, shares * latest_price_twd)
+        raw_row["market_value_twd"] = round(market_value_twd, 0)
 
         if market_value_twd <= 0:
+            raw_row["skip_reason"] = "non_positive_market_value"
+            coverage_rows.append(raw_row)
+            skipped_tickers.append(ticker)
             continue
 
         asset_prices_twd[ticker] = price_twd
@@ -961,10 +1230,12 @@ def compute_synthetic_portfolio_risk(
             "end_date": str(price_twd.index.max().date()),
             "market_value_twd": round(market_value_twd, 0),
         }
+        coverage_rows.append(raw_row)
 
     if len(asset_prices_twd) < 2:
         return {
-            "version": "v0.2",
+            "version": "v0.3",
+            "engine_versions": {"synthetic_risk": "v0.2.1", "quantstats": "v0.3"},
             "status": "INVALID",
             "confidence": "INVALID",
             "confidence_reason": "可用持倉歷史資料少於 2 檔。",
@@ -975,17 +1246,83 @@ def compute_synthetic_portfolio_risk(
             "metrics": {},
             "components": [],
             "assets": list(asset_meta.values()),
+            "coverage": {"by_asset": coverage_rows, "skipped_tickers": skipped_tickers},
+            "confidence_detail": synthetic_confidence_breakdown(0, 0, len(asset_prices_twd), active_holding_count, 0.0, 0.0, ["可用持倉歷史資料少於 2 檔。"]),
+            "quantstats": {"status": "INSUFFICIENT_SAMPLE", "sample_count": 0},
         }
 
     total_mv = sum(asset_weights_value.values())
     weights = {t: v / total_mv for t, v in asset_weights_value.items() if total_mv > 0}
 
-    prices = pd.concat(asset_prices_twd, axis=1).sort_index().ffill().dropna()
-    returns = prices.pct_change().dropna(how="any")
+    for row_item in coverage_rows:
+        ticker = row_item.get("ticker")
+        if ticker in weights:
+            row_item["current_weight_pct"] = round(weights[ticker] * 100.0, 3)
+            row_item["flexible_included"] = True
 
-    if len(returns) < 40:
+    price_frame = pd.concat(asset_prices_twd, axis=1).sort_index().ffill()
+    all_asset_returns = price_frame.pct_change()
+
+    strict_prices = price_frame.dropna(how="any")
+    strict_returns = strict_prices.pct_change().dropna(how="any")
+
+    flexible_min_coverage_pct = 80.0
+    flexible_port, flexible_coverage, flexible_asset_count = compute_flexible_portfolio_returns(
+        all_asset_returns,
+        weights,
+        min_coverage_pct=flexible_min_coverage_pct,
+    )
+
+    strict_sample = int(len(strict_returns))
+    flexible_sample = int(len(flexible_port))
+
+    if strict_sample >= 40:
+        strict_dates = set(strict_returns.index)
+        for row_item in coverage_rows:
+            ticker = row_item.get("ticker")
+            if ticker in strict_returns.columns:
+                row_item["strict_included"] = True
+                ticker_returns = all_asset_returns[ticker].reindex(strict_returns.index)
+                available_count = int(ticker_returns.dropna().shape[0])
+                row_item["coverage_ratio_vs_strict_window"] = round(available_count / max(strict_sample, 1), 4)
+
+    usable_weight_pct = round(sum(weights.values()) * 100.0, 2)
+    missing_heavy_assets = [
+        r["ticker"] for r in coverage_rows
+        if r.get("skip_reason") and finite_float(r.get("current_weight_pct"), 0.0)
+        and (finite_float(r.get("current_weight_pct"), 0.0) or 0.0) >= 5.0
+    ]
+
+    if skipped_tickers:
+        data_quality_flags.append("部分 active holdings 沒有足夠價格資料：" + ", ".join(skipped_tickers[:10]))
+    if not fx_series.empty:
+        fx_quality_note = f"FX history source={fx_source}"
+    else:
+        fx_quality_note = f"FX uses static exchange rate={static_fx}"
+        data_quality_flags.append("USD/TWD 歷史匯率不可用，外幣資產使用靜態匯率。")
+
+    strict_weight_coverage_avg = 100.0 if strict_sample else 0.0
+    if len(flexible_coverage):
+        strict_weight_coverage_avg = float(flexible_coverage.loc[flexible_coverage.index.intersection(strict_returns.index)].mean()) if strict_sample else float(flexible_coverage.mean())
+        if not math.isfinite(strict_weight_coverage_avg):
+            strict_weight_coverage_avg = float(flexible_coverage.mean())
+
+    confidence_detail = synthetic_confidence_breakdown(
+        strict_sample=strict_sample,
+        flexible_sample=flexible_sample,
+        usable_asset_count=len(asset_prices_twd),
+        active_asset_count=active_holding_count,
+        usable_weight_pct=usable_weight_pct,
+        strict_weight_coverage_avg=strict_weight_coverage_avg,
+        data_quality_flags=data_quality_flags,
+    )
+    confidence = confidence_detail.get("level", "LOW")
+    confidence_reason = "; ".join(confidence_detail.get("notes", [])[:2])
+
+    if strict_sample < 40:
         return {
-            "version": "v0.2",
+            "version": "v0.3",
+            "engine_versions": {"synthetic_risk": "v0.2.1", "quantstats": "v0.3"},
             "status": "INVALID",
             "confidence": "INVALID",
             "confidence_reason": "合成後共同日報酬樣本少於 40 筆。",
@@ -993,16 +1330,26 @@ def compute_synthetic_portfolio_risk(
             "method": "current_weight_synthetic_daily_returns",
             "currency": "TWD",
             "fx_source": fx_source,
-            "metrics": {"sample_count": int(len(returns))},
+            "metrics": {"sample_count": strict_sample, "flexible_sample_count": flexible_sample},
             "components": [],
             "assets": list(asset_meta.values()),
+            "coverage": {
+                "mode": "strict",
+                "strict_sample": strict_sample,
+                "flexible_sample": flexible_sample,
+                "flexible_min_coverage_pct": flexible_min_coverage_pct,
+                "by_asset": coverage_rows,
+                "skipped_tickers": skipped_tickers,
+            },
+            "confidence_detail": confidence_detail,
+            "quantstats": quantstats_style_report(flexible_port if len(flexible_port) else pd.Series(dtype=float)),
         }
 
-    tickers = list(returns.columns)
+    tickers = list(strict_returns.columns)
     w = np.array([weights[t] for t in tickers], dtype=float)
     w = w / w.sum()
 
-    port = returns.dot(w)
+    port = strict_returns.dot(w)
     port = pd.to_numeric(port, errors="coerce").dropna()
 
     q05 = float(port.quantile(0.05))
@@ -1015,19 +1362,16 @@ def compute_synthetic_portfolio_risk(
     ewma_vol = ewma_annual_vol(port)
     mdd = max_drawdown_from_returns(port)
 
-    included_weight_pct = 100.0  # weights are normalized across all usable active holdings.
-    confidence, confidence_reason = confidence_from_sample(len(port), included_weight_pct, len(tickers))
-
-    cov = returns[tickers].cov() * 252
+    cov = strict_returns[tickers].cov() * 252
     port_var = float(w @ cov.values @ w.T) if len(tickers) else 0.0
     marginal = cov.values @ w.T if port_var > 0 else np.zeros(len(tickers))
     rc = w * marginal / port_var if port_var > 0 else np.zeros(len(tickers))
 
     components = []
-    tail_returns = returns.loc[tail95.index, tickers] if not tail95.empty else pd.DataFrame(columns=tickers)
+    tail_returns = strict_returns.loc[tail95.index, tickers] if not tail95.empty else pd.DataFrame(columns=tickers)
 
     for i, ticker in enumerate(tickers):
-        r = pd.to_numeric(returns[ticker], errors="coerce").dropna()
+        r = pd.to_numeric(strict_returns[ticker], errors="coerce").dropna()
         asset_tail_contrib = None
         if not tail_returns.empty:
             asset_tail_contrib = float(-(tail_returns[ticker] * w[i]).mean())
@@ -1046,13 +1390,21 @@ def compute_synthetic_portfolio_risk(
 
     q95_pos = float(port.quantile(0.95))
     tail_ratio = q95_pos / abs(q05) if q05 < 0 else None
+    qs = quantstats_style_report(port)
+    flexible_qs = quantstats_style_report(flexible_port) if len(flexible_port) >= 40 else {"status": "INSUFFICIENT_SAMPLE", "sample_count": int(len(flexible_port))}
 
     metrics = {
         "sample_count": int(len(port)),
+        "strict_sample_count": int(strict_sample),
+        "flexible_sample_count": int(flexible_sample),
         "start_date": str(port.index.min().date()),
         "end_date": str(port.index.max().date()),
+        "flexible_start_date": str(flexible_port.index.min().date()) if len(flexible_port) else None,
+        "flexible_end_date": str(flexible_port.index.max().date()) if len(flexible_port) else None,
         "asset_count": int(len(tickers)),
-        "included_weight_pct": round(included_weight_pct, 1),
+        "active_asset_count": int(active_holding_count),
+        "usable_asset_count": int(len(asset_prices_twd)),
+        "included_weight_pct": round(usable_weight_pct, 1),
         "ann_return_pct": round((ann_return or 0.0) * 100.0, 2),
         "ann_vol_pct": round((ann_vol or 0.0) * 100.0, 2),
         "ewma_vol_pct": round((ewma_vol or 0.0) * 100.0, 2) if ewma_vol is not None else None,
@@ -1066,22 +1418,52 @@ def compute_synthetic_portfolio_risk(
         "tail_ratio": round(float(tail_ratio), 2) if tail_ratio is not None and math.isfinite(float(tail_ratio)) else None,
     }
 
+    coverage_summary = {
+        "mode": "strict_primary_flexible_diagnostic",
+        "strict_sample": int(strict_sample),
+        "flexible_sample": int(flexible_sample),
+        "strict_start_date": str(port.index.min().date()),
+        "strict_end_date": str(port.index.max().date()),
+        "flexible_start_date": str(flexible_port.index.min().date()) if len(flexible_port) else None,
+        "flexible_end_date": str(flexible_port.index.max().date()) if len(flexible_port) else None,
+        "flexible_min_coverage_pct": flexible_min_coverage_pct,
+        "flexible_avg_coverage_pct": round(float(flexible_coverage.mean()), 2) if len(flexible_coverage) else None,
+        "flexible_min_actual_coverage_pct": round(float(flexible_coverage.min()), 2) if len(flexible_coverage) else None,
+        "flexible_avg_asset_count": round(float(flexible_asset_count.mean()), 2) if len(flexible_asset_count) else None,
+        "usable_weight_pct": round(usable_weight_pct, 2),
+        "usable_asset_count": int(len(asset_prices_twd)),
+        "active_asset_count": int(active_holding_count),
+        "missing_heavy_assets": missing_heavy_assets,
+        "skipped_tickers": skipped_tickers,
+        "by_asset": sorted(coverage_rows, key=lambda x: (x.get("current_weight_pct") or 0), reverse=True),
+        "fx_note": fx_quality_note,
+    }
+
     return {
-        "version": "v0.2",
+        "version": "v0.3",
+        "engine_versions": {"synthetic_risk": "v0.2.1", "quantstats": "v0.3"},
         "status": "OK" if confidence != "INVALID" else "INVALID",
         "confidence": confidence,
         "confidence_reason": confidence_reason,
+        "confidence_detail": confidence_detail,
         "updated_at": str(TODAY_TPE),
         "method": "current_weight_synthetic_daily_returns",
+        "primary_mode": "strict",
+        "diagnostic_modes": ["flexible"],
         "currency": "TWD",
         "fx_source": fx_source,
         "metrics": metrics,
+        "quantstats": qs,
+        "quantstats_flexible": flexible_qs,
+        "coverage": coverage_summary,
         "components": components[:10],
         "assets": list(asset_meta.values()),
         "assumptions": [
             "使用目前持倉權重回套歷史日報酬，不代表真實歷史投組績效。",
+            "Strict mode 要求所有可用資產同日皆有報酬，樣本較短但口徑乾淨。",
+            "Flexible mode 每日依可用資產權重重新 normalize，樣本較長但早期成分可能不同。",
             "外幣資產盡量用 USD/TWD 歷史匯率轉成 TWD；若匯率資料失敗，改用目前 exchangeRate 靜態轉換。",
-            "v0.2 是風控監控引擎，不是自動交易或最佳化引擎。",
+            "v0.3 是風控監控與報告引擎，不是自動交易或最佳化引擎。",
         ],
     }
 
@@ -1220,17 +1602,22 @@ def main() -> None:
             "OK synthetic risk: "
             f"status={synthetic_risk.get('status')}, "
             f"confidence={synthetic_risk.get('confidence')}, "
-            f"sample={synthetic_risk.get('metrics', {}).get('sample_count')}"
+            f"strict_sample={synthetic_risk.get('coverage', {}).get('strict_sample')}, "
+            f"flexible_sample={synthetic_risk.get('coverage', {}).get('flexible_sample')}, "
+            f"usable_weight={synthetic_risk.get('coverage', {}).get('usable_weight_pct')}%, "
+            f"quantstats={synthetic_risk.get('quantstats', {}).get('status')}"
         )
     except Exception as exc:
         merged_meta[SYNTHETIC_RISK_KEY] = {
-            "version": "v0.2",
+            "version": "v0.3",
             "status": "FAILED",
             "confidence": "INVALID",
             "confidence_reason": str(exc),
             "updated_at": str(TODAY_TPE),
             "method": "current_weight_synthetic_daily_returns",
             "metrics": {},
+            "quantstats": {},
+            "coverage": {},
             "components": [],
         }
         results["synthetic_risk"] = {"status": "FAILED", "error": str(exc)}
