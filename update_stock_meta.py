@@ -1164,6 +1164,263 @@ def ewma_annual_vol(returns: pd.Series, lam: float = 0.94) -> Optional[float]:
         return None
 
 
+
+def ewma_covariance_matrix(returns: pd.DataFrame, lam: float = SYNTHETIC_EWMA_LAMBDA) -> Optional[pd.DataFrame]:
+    """
+    EWMA annualized covariance matrix from daily returns.
+    Returns annualized covariance matrix.
+    """
+    try:
+        df = returns.apply(pd.to_numeric, errors="coerce").dropna(how="any")
+        if df.shape[0] < 40 or df.shape[1] < 2:
+            return None
+
+        lam = float(lam)
+        if not (0 < lam < 1):
+            lam = SYNTHETIC_EWMA_LAMBDA
+
+        n = len(df)
+        weights = np.array([(1.0 - lam) * (lam ** i) for i in range(n - 1, -1, -1)], dtype=float)
+        weights = weights / weights.sum()
+
+        values = df.values
+        mean = np.sum(values * weights[:, None], axis=0)
+        demeaned = values - mean
+        cov_daily = (demeaned * weights[:, None]).T @ demeaned
+        cov_annual = cov_daily * 252.0
+
+        return pd.DataFrame(cov_annual, index=df.columns, columns=df.columns)
+    except Exception:
+        return None
+
+
+def corr_from_covariance(cov: pd.DataFrame) -> Optional[pd.DataFrame]:
+    try:
+        diag = np.sqrt(np.diag(cov.values))
+        denom = np.outer(diag, diag)
+        corr = cov.values / np.where(denom == 0, np.nan, denom)
+        corr = np.clip(corr, -1.0, 1.0)
+        return pd.DataFrame(corr, index=cov.index, columns=cov.columns)
+    except Exception:
+        return None
+
+
+def weighted_basket_return(returns: pd.DataFrame, tickers: List[str], weights: Dict[str, float]) -> pd.Series:
+    cols = [t for t in tickers if t in returns.columns]
+    if not cols:
+        return pd.Series(dtype=float)
+    sub = returns[cols].dropna(how="all")
+    if sub.empty:
+        return pd.Series(dtype=float)
+
+    w = pd.Series({t: weights.get(t, 0.0) for t in cols}, dtype=float)
+    if float(w.sum()) <= 0:
+        w = pd.Series(1.0 / len(cols), index=cols)
+    else:
+        w = w / float(w.sum())
+
+    out = sub[cols].mul(w, axis=1).sum(axis=1, min_count=1)
+    return pd.to_numeric(out, errors="coerce").dropna()
+
+
+def rolling_corr_pair(a: pd.Series, b: pd.Series, window: int) -> Optional[float]:
+    aligned = pd.concat([a, b], axis=1).dropna()
+    if len(aligned) < max(20, window // 2):
+        return None
+    corr = aligned.iloc[-window:, 0].corr(aligned.iloc[-window:, 1]) if len(aligned) >= window else aligned.iloc[:, 0].corr(aligned.iloc[:, 1])
+    return float(corr) if corr is not None and math.isfinite(float(corr)) else None
+
+
+def ewma_corr_pair(a: pd.Series, b: pd.Series, lam: float = SYNTHETIC_EWMA_LAMBDA) -> Optional[float]:
+    aligned = pd.concat([a, b], axis=1).dropna()
+    if len(aligned) < 40:
+        return None
+    cov = ewma_covariance_matrix(aligned, lam=lam)
+    corr = corr_from_covariance(cov) if cov is not None else None
+    if corr is None:
+        return None
+    val = corr.iloc[0, 1]
+    return float(val) if math.isfinite(float(val)) else None
+
+
+def classify_asset_bucket(ticker: str, category: str = "") -> str:
+    t = str(ticker or "").upper().strip()
+    cat = str(category or "")
+
+    if is_cash_like_asset(t, cat):
+        return "cash"
+    if is_crypto_asset(t, cat):
+        return "crypto"
+    if is_gold_like_asset(t, cat):
+        return "gold"
+    if is_taiwan_asset(t, cat):
+        return "taiwan_equity"
+    return "global_equity"
+
+
+def corr_interpretation(value: Optional[float]) -> str:
+    if value is None:
+        return "資料不足"
+    if value >= 0.65:
+        return "高度同向，分散效果弱"
+    if value >= 0.35:
+        return "中度同向，風險聚集需留意"
+    if value >= 0.10:
+        return "低度同向"
+    if value > -0.10:
+        return "接近無關，分散效果較佳"
+    return "負相關，具避險/分散特性"
+
+
+def compute_ewma_regime_report(
+    strict_returns: pd.DataFrame,
+    weights: Dict[str, float],
+    asset_meta: Dict[str, Any],
+    lam: float = SYNTHETIC_EWMA_LAMBDA,
+) -> Dict[str, Any]:
+    """
+    v0.4 EWMA covariance / correlation regime monitor.
+    """
+    df = strict_returns.apply(pd.to_numeric, errors="coerce").dropna(how="any")
+    if df.shape[0] < 40 or df.shape[1] < 2:
+        return {
+            "version": "v0.4",
+            "status": "INSUFFICIENT_SAMPLE",
+            "lambda": lam,
+            "sample_count": int(df.shape[0]),
+            "risk_contribution": [],
+            "correlation_pairs": [],
+            "alerts": [{"code": "EWMA_SAMPLE_LOW", "label": "EWMA 樣本不足", "detail": "嚴格樣本不足，無法穩定估計 EWMA covariance。"}],
+        }
+
+    cov = ewma_covariance_matrix(df, lam=lam)
+    corr = corr_from_covariance(cov) if cov is not None else None
+    if cov is None or corr is None:
+        return {
+            "version": "v0.4",
+            "status": "FAILED",
+            "lambda": lam,
+            "sample_count": int(df.shape[0]),
+            "risk_contribution": [],
+            "correlation_pairs": [],
+            "alerts": [{"code": "EWMA_COV_FAILED", "label": "EWMA 共變異數失敗", "detail": "covariance matrix 無法計算。"}],
+        }
+
+    tickers = list(df.columns)
+    w = pd.Series({t: weights.get(t, 0.0) for t in tickers}, dtype=float)
+    if float(w.sum()) <= 0:
+        w = pd.Series(1.0 / len(tickers), index=tickers)
+    else:
+        w = w / float(w.sum())
+
+    cov_values = cov.loc[tickers, tickers].values
+    port_var = float(w.values @ cov_values @ w.values.T)
+    port_vol = math.sqrt(port_var) if port_var > 0 else None
+    marginal = cov_values @ w.values.T if port_var > 0 else np.zeros(len(tickers))
+    rc = w.values * marginal / port_var if port_var > 0 else np.zeros(len(tickers))
+
+    rc_rows = []
+    for i, t in enumerate(tickers):
+        asset_var = float(cov.loc[t, t]) if t in cov.index else None
+        asset_vol = math.sqrt(asset_var) if asset_var and asset_var > 0 else None
+        rc_rows.append({
+            "ticker": t,
+            "weight_pct": round(float(w.loc[t] * 100.0), 2),
+            "ewma_risk_contribution_pct": round(float(rc[i] * 100.0), 2) if math.isfinite(float(rc[i])) else None,
+            "ewma_ann_vol_pct": round(float(asset_vol * 100.0), 2) if asset_vol is not None and math.isfinite(asset_vol) else None,
+        })
+    rc_rows.sort(key=lambda x: (x.get("ewma_risk_contribution_pct") or 0), reverse=True)
+
+    buckets: Dict[str, List[str]] = {"global_equity": [], "taiwan_equity": [], "crypto": [], "gold": [], "cash": []}
+    for t in tickers:
+        meta = asset_meta.get(t, {}) if isinstance(asset_meta, dict) else {}
+        buckets.setdefault(classify_asset_bucket(t, meta.get("category", "")), []).append(t)
+
+    equity_tickers = buckets.get("global_equity", []) + buckets.get("taiwan_equity", [])
+    pair_specs = [
+        ("equity_crypto", "股票 × 加密", equity_tickers, buckets.get("crypto", [])),
+        ("equity_gold", "股票 × 黃金", equity_tickers, buckets.get("gold", [])),
+        ("taiwan_us", "台股 × 海外股票", buckets.get("taiwan_equity", []), buckets.get("global_equity", [])),
+        ("crypto_gold", "加密 × 黃金", buckets.get("crypto", []), buckets.get("gold", [])),
+    ]
+
+    pair_rows = []
+    alerts = []
+    for code, label, left, right in pair_specs:
+        if not left or not right:
+            continue
+        a = weighted_basket_return(df, left, weights)
+        b = weighted_basket_return(df, right, weights)
+        c63 = rolling_corr_pair(a, b, 63)
+        c126 = rolling_corr_pair(a, b, 126)
+        cewma = ewma_corr_pair(a, b, lam=lam)
+        main_corr = cewma if cewma is not None else c63
+        interp = corr_interpretation(main_corr)
+        pair_rows.append({
+            "code": code,
+            "label": label,
+            "left_count": int(len(left)),
+            "right_count": int(len(right)),
+            "corr_63d": round(c63, 3) if c63 is not None else None,
+            "corr_126d": round(c126, 3) if c126 is not None else None,
+            "ewma_corr": round(cewma, 3) if cewma is not None else None,
+            "interpretation": interp,
+        })
+
+        if code == "equity_crypto" and main_corr is not None and main_corr >= 0.45:
+            alerts.append({
+                "code": "EQUITY_CRYPTO_CLUSTERING",
+                "label": "股票與加密同步風險上升",
+                "detail": f"{label} 相關性約 {main_corr:.2f}，下跌時可能同向放大。"
+            })
+        if code == "equity_gold" and main_corr is not None and main_corr >= 0.30:
+            alerts.append({
+                "code": "GOLD_DIVERSIFICATION_WEAKENING",
+                "label": "黃金分散效果下降",
+                "detail": f"{label} 相關性約 {main_corr:.2f}，黃金近期可能跟 risk-on 資產同向。"
+            })
+        if code == "taiwan_us" and main_corr is not None and main_corr >= 0.65:
+            alerts.append({
+                "code": "TAIWAN_US_EQUITY_CLUSTERING",
+                "label": "台股與海外股票高度同步",
+                "detail": f"{label} 相關性約 {main_corr:.2f}，地區分散效果有限。"
+            })
+
+    # Top absolute correlations among individual assets.
+    top_abs = []
+    cols = list(corr.columns)
+    for i in range(len(cols)):
+        for j in range(i + 1, len(cols)):
+            val = corr.iloc[i, j]
+            if val is not None and math.isfinite(float(val)):
+                top_abs.append({"left": cols[i], "right": cols[j], "corr": round(float(val), 3)})
+    top_abs.sort(key=lambda x: abs(x["corr"]), reverse=True)
+
+    if alerts:
+        regime_label = "風險聚集"
+    elif any((row.get("ewma_corr") is not None and row.get("ewma_corr") < -0.10) for row in pair_rows):
+        regime_label = "分散有效"
+    else:
+        regime_label = "中性"
+
+    return {
+        "version": "v0.4",
+        "status": "OK",
+        "lambda": lam,
+        "sample_count": int(df.shape[0]),
+        "start_date": str(df.index.min().date()),
+        "end_date": str(df.index.max().date()),
+        "portfolio_ewma_vol_pct": round(float(port_vol * 100.0), 2) if port_vol is not None and math.isfinite(port_vol) else None,
+        "regime_label": regime_label,
+        "bucket_counts": {k: int(len(v)) for k, v in buckets.items()},
+        "risk_contribution": rc_rows[:10],
+        "correlation_pairs": pair_rows,
+        "top_abs_correlations": top_abs[:12],
+        "alerts": alerts,
+        "method": "EWMA covariance/correlation on strict synthetic return universe",
+    }
+
+
 def compute_synthetic_portfolio_risk(
     holdings: Dict[str, Dict[str, Any]],
     history_frames: Dict[str, Tuple[pd.DataFrame, str]],
@@ -1447,6 +1704,8 @@ def compute_synthetic_portfolio_risk(
     qs = quantstats_style_report(port)
     flexible_qs = quantstats_style_report(flexible_port) if len(flexible_port) >= 40 else {"status": "INSUFFICIENT_SAMPLE", "sample_count": int(len(flexible_port))}
 
+    ewma_regime = compute_ewma_regime_report(strict_returns[tickers], weights, asset_meta, lam=SYNTHETIC_EWMA_LAMBDA)
+
     metrics = {
         "sample_count": int(len(port)),
         "strict_sample_count": int(strict_sample),
@@ -1494,8 +1753,8 @@ def compute_synthetic_portfolio_risk(
     }
 
     return {
-        "version": "v0.3",
-        "engine_versions": {"synthetic_risk": "v0.2.1", "quantstats": "v0.3"},
+        "version": "v0.4",
+        "engine_versions": {"synthetic_risk": "v0.2.1", "quantstats": "v0.3", "ewma_regime": "v0.4"},
         "status": "OK" if confidence != "INVALID" else "INVALID",
         "confidence": confidence,
         "confidence_reason": confidence_reason,
@@ -1503,12 +1762,13 @@ def compute_synthetic_portfolio_risk(
         "updated_at": str(TODAY_TPE),
         "method": "current_weight_synthetic_daily_returns",
         "primary_mode": "strict",
-        "diagnostic_modes": ["flexible"],
+        "diagnostic_modes": ["flexible", "ewma_regime"],
         "currency": "TWD",
         "fx_source": fx_source,
         "metrics": metrics,
         "quantstats": qs,
         "quantstats_flexible": flexible_qs,
+        "ewma_regime": ewma_regime,
         "coverage": coverage_summary,
         "components": components[:10],
         "assets": list(asset_meta.values()),
@@ -1518,6 +1778,7 @@ def compute_synthetic_portfolio_risk(
             "Flexible mode 每日依可用資產權重重新 normalize，樣本較長但早期成分可能不同。",
             "外幣資產盡量用 USD/TWD 歷史匯率轉成 TWD；若匯率資料失敗，改用目前 exchangeRate 靜態轉換。",
             "v0.3 是風控監控與報告引擎，不是自動交易或最佳化引擎。",
+            "v0.4 EWMA covariance / correlation regime 用於監控風險聚集，不是預測模型。",
         ],
     }
 
@@ -1659,7 +1920,8 @@ def main() -> None:
             f"strict_sample={synthetic_risk.get('coverage', {}).get('strict_sample')}, "
             f"flexible_sample={synthetic_risk.get('coverage', {}).get('flexible_sample')}, "
             f"usable_weight={synthetic_risk.get('coverage', {}).get('usable_weight_pct')}%, "
-            f"quantstats={synthetic_risk.get('quantstats', {}).get('status')}"
+            f"quantstats={synthetic_risk.get('quantstats', {}).get('status')}, "
+            f"ewma_regime={synthetic_risk.get('ewma_regime', {}).get('status')}"
         )
     except Exception as exc:
         merged_meta[SYNTHETIC_RISK_KEY] = {

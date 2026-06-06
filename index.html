@@ -1732,7 +1732,7 @@
                                             <i class="fas fa-list-check text-emerald-400"></i>
                                             資產覆蓋 Top 12
                                         </div>
-                                        <div class="text-[10px] text-gray-500 mt-1">by current weight</div>
+                                        <div class="text-[10px] text-gray-500 mt-1">依目前權重排序</div>
                                     </div>
                                     <div class="overflow-x-auto max-h-[310px]">
                                         <table class="w-full text-[11px]">
@@ -1848,6 +1848,128 @@
                                     </div>
                                 </div>
                             </div>
+
+
+                            <!-- v0.4 EWMA covariance / correlation regime -->
+                            <div class="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] overflow-hidden">
+                                <div class="px-4 py-3 border-b border-white/10 bg-cyan-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-network-wired text-cyan-400"></i>
+                                            v0.4 EWMA 共變異數與相關性 Regime
+                                        </div>
+                                        <div class="text-[10px] text-gray-500 mt-1">
+                                            以嚴格樣本日報酬計算 EWMA covariance / correlation，監控風險聚集與分散效果。
+                                        </div>
+                                    </div>
+                                    <div class="text-[11px] text-gray-400">
+                                        λ={{ syntheticRiskMeta?.ewma_regime?.lambda ?? '-' }}，
+                                        樣本 {{ syntheticRiskMeta?.ewma_regime?.sample_count ?? '-' }} 日
+                                    </div>
+                                </div>
+
+                                <div class="p-4 grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3">
+                                    <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                        <div class="quant-label text-cyan-300">EWMA 組合波動</div>
+                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.ewma_regime?.portfolio_ewma_vol_pct ?? '-' }}%</div>
+                                    </div>
+                                    <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                        <div class="quant-label text-cyan-300">Regime</div>
+                                        <div class="quant-value text-white text-lg">{{ syntheticRiskMeta?.ewma_regime?.regime_label ?? '-' }}</div>
+                                    </div>
+                                    <div class="quant-card border-amber-500/20 bg-amber-500/10">
+                                        <div class="quant-label text-amber-300">警示數</div>
+                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.ewma_regime?.alerts?.length ?? 0 }}</div>
+                                    </div>
+                                    <div class="quant-card border-purple-500/20 bg-purple-500/10">
+                                        <div class="quant-label text-purple-300">最大 RC</div>
+                                        <div class="quant-value text-white text-lg">{{ syntheticRiskMeta?.ewma_regime?.risk_contribution?.[0]?.ticker ?? '-' }}</div>
+                                    </div>
+                                    <div class="quant-card border-purple-500/20 bg-purple-500/10">
+                                        <div class="quant-label text-purple-300">最大 RC %</div>
+                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.ewma_regime?.risk_contribution?.[0]?.ewma_risk_contribution_pct ?? '-' }}%</div>
+                                    </div>
+                                    <div class="quant-card border-slate-500/20 bg-slate-500/10">
+                                        <div class="quant-label text-slate-300">資料狀態</div>
+                                        <div class="quant-value text-white text-lg">{{ syntheticRiskMeta?.ewma_regime?.status ?? '-' }}</div>
+                                    </div>
+                                </div>
+
+                                <div class="px-4 pb-4 grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                    <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                        <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-link text-cyan-400"></i>
+                                            相關性監控
+                                        </div>
+                                        <div class="overflow-x-auto">
+                                            <table class="w-full text-[11px]">
+                                                <thead class="text-gray-500 border-b border-white/10">
+                                                    <tr>
+                                                        <th class="text-left px-3 py-2">關係</th>
+                                                        <th class="text-right px-3 py-2">63D</th>
+                                                        <th class="text-right px-3 py-2">126D</th>
+                                                        <th class="text-right px-3 py-2">EWMA</th>
+                                                        <th class="text-left px-3 py-2">判讀</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr v-for="row in (syntheticRiskMeta?.ewma_regime?.correlation_pairs || [])" :key="row.code" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                        <td class="px-3 py-2 text-white">{{ row.label }}</td>
+                                                        <td class="px-3 py-2 text-right font-mono text-gray-300">{{ row.corr_63d ?? '-' }}</td>
+                                                        <td class="px-3 py-2 text-right font-mono text-gray-300">{{ row.corr_126d ?? '-' }}</td>
+                                                        <td class="px-3 py-2 text-right font-mono text-cyan-300">{{ row.ewma_corr ?? '-' }}</td>
+                                                        <td class="px-3 py-2 text-gray-400">{{ row.interpretation ?? '-' }}</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                        <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-weight-scale text-purple-400"></i>
+                                            EWMA 風險貢獻 Top 10
+                                        </div>
+                                        <div class="overflow-x-auto">
+                                            <table class="w-full text-[11px]">
+                                                <thead class="text-gray-500 border-b border-white/10">
+                                                    <tr>
+                                                        <th class="text-left px-3 py-2">標的</th>
+                                                        <th class="text-right px-3 py-2">權重</th>
+                                                        <th class="text-right px-3 py-2">RC</th>
+                                                        <th class="text-right px-3 py-2">EWMA Vol</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr v-for="row in (syntheticRiskMeta?.ewma_regime?.risk_contribution || [])" :key="row.ticker" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                        <td class="px-3 py-2 font-mono text-white">{{ row.ticker }}</td>
+                                                        <td class="px-3 py-2 text-right text-gray-300">{{ row.weight_pct ?? '-' }}%</td>
+                                                        <td class="px-3 py-2 text-right text-purple-300">{{ row.ewma_risk_contribution_pct ?? '-' }}%</td>
+                                                        <td class="px-3 py-2 text-right text-cyan-300">{{ row.ewma_ann_vol_pct ?? '-' }}%</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div class="xl:col-span-2 rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3">
+                                        <div class="text-sm font-bold text-white flex items-center gap-2 mb-2">
+                                            <i class="fas fa-triangle-exclamation text-amber-400"></i>
+                                            Regime 警示
+                                        </div>
+                                        <div v-if="!(syntheticRiskMeta?.ewma_regime?.alerts || []).length" class="text-[11px] text-gray-400">
+                                            目前沒有 EWMA correlation regime 警示。
+                                        </div>
+                                        <ul v-else class="space-y-1 text-[11px] text-gray-300">
+                                            <li v-for="item in syntheticRiskMeta?.ewma_regime?.alerts" :key="item.code" class="flex gap-2">
+                                                <i class="fas fa-circle-exclamation text-amber-400 mt-0.5"></i>
+                                                <span><b>{{ item.label }}</b>：{{ item.detail }}</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
 
                             <!-- Risk contribution + model assumptions -->
                             <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
@@ -3504,7 +3626,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=11.24-synthetic-panel-clean"></script>
+<script src="assets/js/app.bundle.js?v=11.25-v031-v04-ewma-regime"></script>
 <script src="assets/js/quant-main-display.js?v=no-chip-terminal"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
