@@ -963,7 +963,7 @@
                                     <option v-for="opt in holdingsSortOptions" :key="opt?.value || opt?.label || JSON.stringify(opt)" :value="opt.value">排序：{{ opt?.label || 'Overlay' }}</option>
                                 </select>
                                 <span class="px-2.5 py-2 rounded-lg border border-white/10 bg-white/[0.04] text-gray-300">
-                                    顯示 {{ holdingsVisibleStats.visible }} / {{ holdingsVisibleStats.total }} 檔
+                                    顯示 {{ holdingsVisibleStats?.visible ?? 0 }} / {{ holdingsVisibleStats?.total ?? 0 }} 檔
                                 </span>
                             </div>
                         </div>
@@ -3286,7 +3286,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=11.18-nav-scope-fixed"></script>
+<script src="assets/js/app.bundle.js?v=11.19-visible-stats-fix"></script>
 <script src="assets/js/quant-main-display.js?v=no-chip-terminal"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>

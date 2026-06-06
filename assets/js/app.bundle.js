@@ -3307,12 +3307,35 @@ chartCML.data.datasets = [
             };
         });
 
+
+        const holdingsVisibleStats = computed(() => {
+            const groups = filteredHoldingsGroups?.value || filteredGroupedHoldings?.value || {};
+            let visible = 0;
+            Object.values(groups || {}).forEach(group => {
+                if (Array.isArray(group?.items)) visible += group.items.length;
+                else if (Array.isArray(group)) visible += group.length;
+            });
+
+            const total = typeof filteredHoldingsCount?.value === 'number'
+                ? filteredHoldingsCount.value
+                : Object.values(groupedHoldings?.value || {}).reduce((sum, group) => {
+                    if (Array.isArray(group?.items)) return sum + group.items.length;
+                    if (Array.isArray(group)) return sum + group.length;
+                    return sum;
+                }, 0);
+
+            return {
+                visible,
+                total
+            };
+        });
+
         return { 
             currentTab, showHistoryModal, isUpdating,
             transactions, groupedHoldings, filteredGroupedHoldings, categoryTotals, riskTotals, portfolioStats, 
             totalStockValueTwd, totalStockCostTwd, totalStockUnrealizedPL, totalStockReturnRate, 
             reversedTransactions, txForm, historyForm, riskParams, stats, exchangeRate, 
-            holdingsSearch, holdingsView, holdingsSort, filteredHoldingsCount, holdingsAlertCount,
+            holdingsSearch, holdingsView, holdingsSort, filteredHoldingsCount, holdingsAlertCount, holdingsVisibleStats,
             txFlowMode, txTypeOptions, ledgerDraftPreview,
             sheetUrl, addTransaction, addHistoryRecord,
             removeTransaction, removeHistoryByDate, manualUpdate, updateMeta, fetchPrices, 
