@@ -10,13 +10,84 @@ import zipfile
 import numpy as np
 import pandas as pd
 import yfinance as yf
-import pandas_ta as ta
+# pandas_ta is optional. GitHub Actions may not have it installed.
+# Fallback below keeps RSI/MACD working without adding a fragile dependency.
+try:
+    import pandas_ta as ta
+except ModuleNotFoundError:
+    ta = None
+
 import scipy.optimize as sco
 from scipy.stats import genpareto
 from supabase import create_client, Client
 from google import genai
 
 warnings.filterwarnings('ignore')
+
+# ==========================================
+# Optional technical-analysis fallback
+# ==========================================
+class _TAFallback:
+    """Minimal pandas_ta-compatible fallback for the two indicators used here."""
+
+    @staticmethod
+    def rsi(close, length=14):
+        try:
+            series = pd.Series(close, dtype="float64").dropna()
+            if len(series) < max(length + 1, 3):
+                return pd.Series([50.0] * len(pd.Series(close)), index=pd.Series(close).index)
+
+            delta = series.diff()
+            gain = delta.clip(lower=0)
+            loss = -delta.clip(upper=0)
+
+            avg_gain = gain.ewm(alpha=1 / length, min_periods=length, adjust=False).mean()
+            avg_loss = loss.ewm(alpha=1 / length, min_periods=length, adjust=False).mean()
+
+            rs = avg_gain / avg_loss.replace(0, np.nan)
+            out = 100 - (100 / (1 + rs))
+            out = out.replace([np.inf, -np.inf], np.nan).fillna(50.0)
+            return out
+        except Exception:
+            s = pd.Series(close)
+            return pd.Series([50.0] * len(s), index=s.index)
+
+    @staticmethod
+    def macd(close, fast=12, slow=26, signal=9):
+        try:
+            series = pd.Series(close, dtype="float64").dropna()
+            if len(series) < max(slow + signal, 3):
+                idx = pd.Series(close).index
+                return pd.DataFrame({
+                    "MACD_12_26_9": [0.0] * len(idx),
+                    "MACDh_12_26_9": [0.0] * len(idx),
+                    "MACDs_12_26_9": [0.0] * len(idx),
+                }, index=idx)
+
+            ema_fast = series.ewm(span=fast, adjust=False).mean()
+            ema_slow = series.ewm(span=slow, adjust=False).mean()
+            macd_line = ema_fast - ema_slow
+            signal_line = macd_line.ewm(span=signal, adjust=False).mean()
+            hist = macd_line - signal_line
+
+            return pd.DataFrame({
+                "MACD_12_26_9": macd_line,
+                "MACDh_12_26_9": hist,
+                "MACDs_12_26_9": signal_line,
+            })
+        except Exception:
+            idx = pd.Series(close).index
+            return pd.DataFrame({
+                "MACD_12_26_9": [0.0] * len(idx),
+                "MACDh_12_26_9": [0.0] * len(idx),
+                "MACDs_12_26_9": [0.0] * len(idx),
+            }, index=idx)
+
+
+if ta is None:
+    ta = _TAFallback()
+
+
 import shutil
 try:
     # 針對 GitHub Actions (Linux) 或 Mac 的快取路徑
@@ -1465,11 +1536,24 @@ try:
                     std_val = round(np.sqrt(aligned.iloc[:,0].var() * 252) * 100, 2)
                     tw_val = float(target_weights.get(yf_ticker, 0.0))
                     
+                    rsi_series = ta.rsi(stock_close)
+                    macd_frame = ta.macd(stock_close)
+
+                    rsi_val = 50.0
+                    if rsi_series is not None and len(rsi_series.dropna()) > 0:
+                        rsi_val = float(rsi_series.dropna().iloc[-1])
+
+                    macd_h_val = 0.0
+                    if macd_frame is not None and len(macd_frame.dropna()) > 0:
+                        # pandas_ta column order is usually MACD, MACDh, MACDs.
+                        # Fallback keeps the same order, so iloc[:, 1] remains histogram.
+                        macd_h_val = float(macd_frame.dropna().iloc[-1, 1])
+
                     stock_meta[original_ticker].update({
                         "beta": beta_val,
                         "std": std_val,
-                        "rsi": round(ta.rsi(stock_close).iloc[-1] if ta.rsi(stock_close) is not None else 50.0, 2), 
-                        "macd_h": round(ta.macd(stock_close).iloc[-1, 1] if ta.macd(stock_close) is not None else 0.0, 4),
+                        "rsi": round(rsi_val, 2),
+                        "macd_h": round(macd_h_val, 4),
                         "target_weight": tw_val,
                         "theme_tag": infer_theme_tag(original_ticker, stock_meta.get(original_ticker, {})),
                         "liquidity_score": compute_liquidity_score(original_ticker, yf_ticker, stock_meta.get(original_ticker, {}))
