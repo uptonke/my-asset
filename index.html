@@ -397,7 +397,7 @@
                     </div>
                     <p class="text-xs text-gray-400 mt-2">不是把所有數據攤開，而是先把最該動手的事排前面。</p>
                 </div>
-                <div class="text-[11px] text-gray-500 font-mono">{{ alertCenterItems.length }} items</div>
+                <div class="text-[11px] text-gray-500 font-mono">{{ (alertCenterItems || []).length }} items</div>
             </div>
         </div>
         <div class="p-4 md:p-5 space-y-4">
@@ -504,7 +504,7 @@
                                 <span class="holding-governance-badge" :class="historyIntegrityBadge.badgeClass">{{ historyIntegrityBadge.label }}</span>
                             </div>
                             <div class="text-sm text-gray-200 leading-relaxed mt-3">{{ historyIntegrityBadge.detail }}</div>
-                            <ul v-if="historyIntegrityRisk.reasons.length" class="evidence-list mt-3">
+                            <ul v-if="(historyIntegrityRisk?.reasons || []).length" class="evidence-list mt-3">
                                 <li v-for="reason in historyIntegrityRisk.reasons.slice(0, 4)" :key="reason">{{ reason }}</li>
                             </ul>
                             <div v-else class="text-sm text-emerald-300 mt-3">歷史樣本暫時沒有明顯污染跡象。</div>
@@ -656,7 +656,7 @@
                     <i class="fas fa-triangle-exclamation text-red-400"></i>
                     風險傳染起火點
                 </div>
-                <div v-if="chaosMeta?.fragile_nodes && chaosMeta.fragile_nodes.length" class="flex flex-wrap gap-2">
+                <div v-if="chaosMeta?.fragile_nodes?.length" class="flex flex-wrap gap-2">
                     <span
                         v-for="node in chaosMeta.fragile_nodes"
                         :key="node"
@@ -779,8 +779,8 @@
                 </h3>
 
                 <p class="text-sm leading-relaxed transition-colors"
-                   :class="aiInsights.details.length > 0 ? 'text-indigo-100/90 group-hover:text-white' : 'text-gray-400'">
-                    <i v-if="aiInsights.details.length === 0" class="fas fa-spinner fa-spin mr-1"></i>
+                   :class="(aiInsights?.details || []).length > 0 ? 'text-indigo-100/90 group-hover:text-white' : 'text-gray-400'">
+                    <i v-if="(aiInsights?.details || []).length === 0" class="fas fa-spinner fa-spin mr-1"></i>
                     {{ aiInsights.summary }}
                 </p>
             </div>
@@ -793,7 +793,7 @@
     </div>
 
     <div v-show="isAiExpanded" class="relative z-10 p-5 md:p-6 animate-fade-in">
-        <div v-if="aiInsights.details.length > 0" class="rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
+        <div v-if="(aiInsights?.details || []).length > 0" class="rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
             <div class="px-4 py-3 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
                 <div class="text-sm font-bold text-white flex items-center gap-2">
                     <i class="fas fa-file-lines text-indigo-400"></i>
@@ -907,7 +907,7 @@
                             </div>
                             <div class="relative nav-chart-stage min-h-[460px] xl:min-h-[560px]">
                                 <canvas id="historyChart"></canvas>
-                                <div v-if="displayHistory.length < 2" class="absolute inset-0 flex items-center justify-center text-gray-500 text-xs bg-gray-900/50 rounded-lg">
+                                <div v-if="(displayHistory || []).length < 2" class="absolute inset-0 flex items-center justify-center text-gray-500 text-xs bg-gray-900/50 rounded-lg">
                                     <p>需要更多歷史數據</p>
                                 </div>
                             </div>
@@ -1809,7 +1809,7 @@
                     <div class="p-4 cursor-pointer flex justify-between items-center bg-gray-800/30 hover:bg-gray-800/60 transition-colors" @click="isHistoryExpanded = !isHistoryExpanded">
                         <h3 class="font-bold text-white flex items-center gap-2">
                             <i class="fas fa-list-alt text-blue-400"></i> 快照歷史紀錄（現金流調整後報酬明細 Cash-Flow-Adjusted Return Detail）
-                            <span class="text-xs font-normal text-gray-500 ml-2 hidden sm:inline">{{ enrichedHistory.length }} 筆資料</span>
+                            <span class="text-xs font-normal text-gray-500 ml-2 hidden sm:inline">{{ (enrichedHistory || []).length }} 筆資料</span>
                         </h3>
                         <div class="flex items-center gap-3">
                             <span class="text-xs text-gray-500" v-if="!isHistoryExpanded">點擊展開</span>
@@ -1869,7 +1869,7 @@
         </td>
     </tr>
 
-    <tr v-if="enrichedHistory.length === 0">
+    <tr v-if="(enrichedHistory || []).length === 0">
         <td colspan="6" class="p-6 text-center text-gray-500 text-xs">
             尚無快照紀錄，請點擊上方「快照」按鈕建立第一筆資料。
         </td>
@@ -1911,7 +1911,7 @@
         <div class="stack-card stack-card-execution">
             <div class="stack-kicker">Layer 2 · Execution</div>
             <div class="stack-title">再平衡駕駛艙</div>
-            <div class="stack-copy">{{ rebalanceCockpitRows.length }} 檔待判讀</div>
+            <div class="stack-copy">{{ (rebalanceCockpitRows || []).length }} 檔待判讀</div>
             <div class="stack-note">先修 drift / concentration，再談新增風險。</div>
         </div>
         <div class="stack-card stack-card-insight">
@@ -2034,27 +2034,27 @@
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div class="cockpit-bucket-card">
                 <div class="cockpit-bucket-label">先減碼</div>
-                <div class="cockpit-bucket-value text-red-300">{{ rebalanceCockpitBuckets.trim.length }}</div>
+                <div class="cockpit-bucket-value text-red-300">{{ (rebalanceCockpitBuckets?.trim || []).length }}</div>
                 <div class="cockpit-bucket-note">Trim queue</div>
             </div>
             <div class="cockpit-bucket-card">
                 <div class="cockpit-bucket-label">可加碼</div>
-                <div class="cockpit-bucket-value text-emerald-300">{{ rebalanceCockpitBuckets.add.length }}</div>
+                <div class="cockpit-bucket-value text-emerald-300">{{ (rebalanceCockpitBuckets?.add || []).length }}</div>
                 <div class="cockpit-bucket-note">MC allocator</div>
             </div>
             <div class="cockpit-bucket-card">
                 <div class="cockpit-bucket-label">候補加碼</div>
-                <div class="cockpit-bucket-value text-amber-300">{{ rebalanceCockpitBuckets.pending.length }}</div>
+                <div class="cockpit-bucket-value text-amber-300">{{ (rebalanceCockpitBuckets?.pending || []).length }}</div>
                 <div class="cockpit-bucket-note">CRO locked</div>
             </div>
             <div class="cockpit-bucket-card">
                 <div class="cockpit-bucket-label">暫不動</div>
-                <div class="cockpit-bucket-value text-slate-300">{{ rebalanceCockpitBuckets.hold.length }}</div>
+                <div class="cockpit-bucket-value text-slate-300">{{ (rebalanceCockpitBuckets?.hold || []).length }}</div>
                 <div class="cockpit-bucket-note">Buffer hold</div>
             </div>
         </div>
         <div>
-        <div v-if="rebalanceCockpitRows.length" class="overflow-x-auto rounded-2xl border border-white/10 bg-black/20">
+        <div v-if="(rebalanceCockpitRows || []).length" class="overflow-x-auto rounded-2xl border border-white/10 bg-black/20">
             <table class="w-full text-left whitespace-nowrap cockpit-table">
                 <thead class="bg-[#0f172a] text-[11px] text-gray-400 uppercase font-semibold border-b border-gray-700">
                     <tr>
@@ -2098,7 +2098,7 @@
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-4">
             <div class="cockpit-estimate-card">
                 <div class="cockpit-bucket-label">候補加碼名單</div>
-                <div v-if="rebalanceCockpitBuckets.pending.length" class="space-y-2 mt-3">
+                <div v-if="(rebalanceCockpitBuckets?.pending || []).length" class="space-y-2 mt-3">
                     <div v-for="row in rebalanceCockpitBuckets.pending" :key="'pending-'+row.ticker" class="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3">
                         <div class="flex items-center justify-between gap-3">
                             <div class="text-sm font-bold text-white">{{ row.ticker }}</div>
@@ -2213,7 +2213,7 @@
                                                 <td class="p-3 text-right font-mono text-yellow-300">{{ row.mrc }}</td>
                                                 <td class="p-3 text-right font-mono text-white">{{ row.rc }}</td>
                                             </tr>
-                                            <tr v-if="!(xrayStats?.mrcTable?.length)">
+                                            <tr v-if="!((xrayStats?.mrcTable || []).length)">
                                                 <td colspan="5" class="p-6 text-center text-gray-500 text-xs">等待 script.js 接入 MRC / PCA / FX 計算。</td>
                                             </tr>
                                         </tbody>
@@ -2474,7 +2474,7 @@
                                         </div>
                                         <span class="text-gray-200 leading-relaxed">{{ alert }}</span>
                                     </li>
-                                    <li v-if="!(rebalanceMonitor?.alerts?.length)" class="text-xs text-gray-500">等待 script.js 接入再平衡警報邏輯。</li>
+                                    <li v-if="!((rebalanceMonitor?.alerts || []).length)" class="text-xs text-gray-500">等待 script.js 接入再平衡警報邏輯。</li>
                                 </ul>
                             </div>
                         </div>
@@ -2838,13 +2838,13 @@
                    NT$ {{ formatNumber(txPreview.projectedCashAfter ?? cashBalance) }}
                </span>
            </div>
-           <div v-if="txPreview.errors.length || txPreview.blockers.length" class="rounded-xl border border-red-500/20 bg-red-500/10 p-3">
+           <div v-if="(txPreview?.errors || []).length || (txPreview?.blockers || []).length" class="rounded-xl border border-red-500/20 bg-red-500/10 p-3">
                <div class="text-[11px] font-bold text-red-300 mb-2">已攔下</div>
                <ul class="space-y-1 text-[11px] text-gray-200 leading-relaxed">
                    <li v-for="msg in [...txPreview.errors, ...txPreview.blockers]" :key="msg">• {{ msg }}</li>
                </ul>
            </div>
-           <div v-else-if="txPreview.warnings.length" class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3">
+           <div v-else-if="(txPreview?.warnings || []).length" class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3">
                <div class="text-[11px] font-bold text-amber-300 mb-2">提醒</div>
                <ul class="space-y-1 text-[11px] text-gray-200 leading-relaxed">
                    <li v-for="msg in txPreview.warnings" :key="msg">• {{ msg }}</li>
@@ -2854,9 +2854,9 @@
        </div>
 
        <button @click="addTransaction"
-               :disabled="txPreview.errors.length || txPreview.blockers.length"
+               :disabled="(txPreview?.errors || []).length || (txPreview?.blockers || []).length"
                class="w-full rounded-lg font-bold text-sm py-3 shadow-lg mt-2 transition"
-               :class="(txPreview.errors.length || txPreview.blockers.length) ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'btn-purple text-white hover:scale-[1.01]'">
+               :class="((txPreview?.errors || []).length || (txPreview?.blockers || []).length) ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'btn-purple text-white hover:scale-[1.01]'">
            確認送出
        </button>
    </div>
@@ -3286,7 +3286,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=11.12-debug-allocation-fix"></script>
+<script src="assets/js/app.bundle.js?v=11.13-length-guards"></script>
 <script src="assets/js/quant-main-display.js?v=no-chip-terminal"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
