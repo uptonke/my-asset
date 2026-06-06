@@ -3308,29 +3308,292 @@ chartCML.data.datasets = [
         });
 
 
+
+        // ===== Compatibility layer for terminal IA template =====
+        // This block provides safe defaults for template-only variables so Vue render
+        // does not crash while cloud data is still loading.
+        const filteredHoldingsGroups = computed(() => filteredGroupedHoldings?.value || {});
+
         const holdingsVisibleStats = computed(() => {
-            const groups = filteredHoldingsGroups?.value || filteredGroupedHoldings?.value || {};
+            const groups = filteredHoldingsGroups.value || {};
             let visible = 0;
-            Object.values(groups || {}).forEach(group => {
+            Object.values(groups).forEach(group => {
                 if (Array.isArray(group?.items)) visible += group.items.length;
                 else if (Array.isArray(group)) visible += group.length;
             });
 
-            const total = typeof filteredHoldingsCount?.value === 'number'
-                ? filteredHoldingsCount.value
-                : Object.values(groupedHoldings?.value || {}).reduce((sum, group) => {
-                    if (Array.isArray(group?.items)) return sum + group.items.length;
-                    if (Array.isArray(group)) return sum + group.length;
-                    return sum;
-                }, 0);
+            let total = 0;
+            Object.values(groupedHoldings?.value || {}).forEach(group => {
+                if (Array.isArray(group?.items)) total += group.items.length;
+                else if (Array.isArray(group)) total += group.length;
+            });
 
+            return { visible, total };
+        });
+
+        const tradeBufferBasePct = ref(3.0);
+        const tradeBufferPresets = [1, 2, 3, 5, 7.5];
+
+        const holdingsActionFilter = ref('all');
+        const holdingsViewOptions = [
+            { value: 'all', label: '全部' },
+            { value: 'trim', label: '先減碼' },
+            { value: 'add', label: '可加碼' },
+            { value: 'locked', label: '鎖定' },
+            { value: 'watch', label: '觀察' },
+            { value: 'high_risk', label: '高風險' },
+            { value: 'overweight', label: '過重' },
+            { value: 'drift', label: 'Drift' }
+        ];
+
+        const goToTab = (tab) => {
+            if (!tab) return;
+            currentTab.value = tab;
+            try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (err) {}
+        };
+
+        const flattenHoldingRows = (useFiltered = false) => {
+            const groups = useFiltered ? (filteredHoldingsGroups.value || {}) : (groupedHoldings?.value || {});
+            const rows = [];
+            Object.entries(groups || {}).forEach(([catName, group]) => {
+                const items = Array.isArray(group?.items) ? group.items : (Array.isArray(group) ? group : []);
+                items.forEach(stock => {
+                    if (stock) rows.push({ ...stock, categoryName: stock.categoryName || catName });
+                });
+            });
+            return rows;
+        };
+
+        const historyIntegrityRisk = computed(() => {
+            const reasons = [];
+            const hist = displayHistory?.value || [];
+            if (hist.length < 2) reasons.push('NAV history 少於 2 筆，績效與趨勢判讀信心低。');
+            const invalid = hist.filter(row => !row || !row.date || !Number.isFinite(Number(row.assets)));
+            if (invalid.length) reasons.push(`NAV history 有 ${invalid.length} 筆日期或資產值異常。`);
+            return { reasons };
+        });
+
+        const historyIntegrityBadge = computed(() => {
+            const reasons = historyIntegrityRisk.value?.reasons || [];
+            if (reasons.length) {
+                return {
+                    label: '需檢查',
+                    detail: reasons[0],
+                    badgeClass: 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+                };
+            }
             return {
-                visible,
-                total
+                label: '樣本正常',
+                detail: '歷史樣本暫時沒有明顯污染跡象。',
+                badgeClass: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
             };
         });
 
+        const tradeBufferProfile = computed(() => {
+            const ag = allocationGovernance?.value || {};
+            const addDisabled = ag.mode === 'CRO_VETO';
+            return {
+                mode: addDisabled ? 'CRO LOCK' : 'NORMAL',
+                addDisabled,
+                modeNote: addDisabled
+                    ? 'CRO 目前否決加風險：只允許減碼、降低集中度或提高現金緩衝。'
+                    : '沒有 hard veto：超出緩衝區才進入再平衡流程。'
+            };
+        });
+
+        const applyTradeBuffer = (value) => {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return;
+            tradeBufferBasePct.value = Math.min(10, Math.max(0.5, n));
+        };
+
+        const nudgeTradeBuffer = (delta) => {
+            applyTradeBuffer(Number(tradeBufferBasePct.value || 0) + Number(delta || 0));
+        };
+
+        const rebalanceCockpitRows = computed(() => {
+            const rows = flattenHoldingRows(false).map(stock => {
+                const currentWeightPct = Number(stock.totalWeight || 0) * 100;
+                const targetWeightPct = Number(stock.blendedWeight ?? stock.targetWeight ?? 0);
+                const driftPct = targetWeightPct - currentWeightPct;
+                const base = Number(tradeBufferBasePct.value || 3);
+                const addDisabled = !!tradeBufferProfile.value.addDisabled;
+
+                let bucket = 'hold';
+                let action = '暫不動';
+                let actionClass = 'text-slate-300 bg-slate-500/10 border-slate-500/20';
+                if (driftPct <= -base) {
+                    bucket = 'trim';
+                    action = '減碼';
+                    actionClass = 'text-red-300 bg-red-500/10 border-red-500/20';
+                } else if (driftPct >= base && addDisabled) {
+                    bucket = 'pending';
+                    action = '候補加碼';
+                    actionClass = 'text-amber-300 bg-amber-500/10 border-amber-500/20';
+                } else if (driftPct >= base) {
+                    bucket = 'add';
+                    action = '加碼';
+                    actionClass = 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20';
+                }
+
+                const nav = Number(totalPortfolioNav?.value || totalStockValueTwd?.value || 0);
+                const actionValue = nav * Math.abs(driftPct) / 100;
+
+                return {
+                    ticker: stock.ticker || '-',
+                    categoryName: stock.categoryName || stock.category || '-',
+                    currentWeightPct,
+                    targetWeightPct,
+                    driftPct,
+                    driftText: `${driftPct >= 0 ? '+' : ''}${driftPct.toFixed(1)}%`,
+                    actionValueText: `NT$ ${formatNumber(actionValue)}`,
+                    action,
+                    actionClass,
+                    decisionOwner: bucket === 'pending' ? 'CRO' : 'MC',
+                    governanceNote: bucket === 'hold' ? '在 no-trade zone 內' : tradeBufferProfile.value.modeNote,
+                    bucket,
+                    trimThresholdPct: base,
+                    addThresholdPct: addDisabled ? Infinity : base
+                };
+            });
+
+            return rows.sort((a, b) => Math.abs(b.driftPct) - Math.abs(a.driftPct));
+        });
+
+        const rebalanceCockpitBuckets = computed(() => {
+            const buckets = { trim: [], add: [], pending: [], hold: [] };
+            (rebalanceCockpitRows.value || []).forEach(row => {
+                const key = buckets[row.bucket] ? row.bucket : 'hold';
+                buckets[key].push(row);
+            });
+            return buckets;
+        });
+
+        const tradeBufferSummary = computed(() => {
+            const buckets = rebalanceCockpitBuckets.value || { trim: [], add: [], pending: [], hold: [] };
+            const base = Number(tradeBufferBasePct.value || 3);
+            return {
+                basePct: base,
+                trimThresholdPct: base,
+                addThresholdPct: tradeBufferProfile.value.addDisabled ? 0 : base,
+                trimCount: (buckets.trim || []).length,
+                addCount: (buckets.add || []).length,
+                pendingAddCount: (buckets.pending || []).length,
+                holdCount: (buckets.hold || []).length
+            };
+        });
+
+        const holdingsActionSummary = computed(() => {
+            const rows = flattenHoldingRows(false);
+            const out = { total: rows.length, trim: 0, add: 0, locked: 0, watch: 0, highRisk: 0, overweight: 0, drift: 0 };
+            rows.forEach(stock => {
+                const currentPct = Number(stock.totalWeight || 0) * 100;
+                const targetPct = Number(stock.blendedWeight ?? stock.targetWeight ?? 0);
+                const gap = targetPct - currentPct;
+                if (gap <= -tradeBufferBasePct.value) out.trim++;
+                if (gap >= tradeBufferBasePct.value) out.add++;
+                if (Math.abs(gap) >= tradeBufferBasePct.value) out.drift++;
+                if (stock.isOverweight || currentPct >= 20) out.overweight++;
+                const riskScore = Number(stock.riskScore ?? stock.risk_score ?? stock.riskLevelScore ?? 0);
+                if (String(stock.riskLevel || '').toLowerCase() === 'high' || riskScore >= 7) out.highRisk++;
+                if (stock.governanceStatus && String(stock.governanceStatus).includes('鎖')) out.locked++;
+                if (Math.abs(gap) < tradeBufferBasePct.value && Math.abs(gap) >= Math.max(1, tradeBufferBasePct.value * 0.5)) out.watch++;
+            });
+            return out;
+        });
+
+        const rebalancePostTradeEstimate = computed(() => {
+            const rows = rebalanceCockpitRows.value || [];
+            const weights = rows.map(row => Number(row.currentWeightPct || 0)).filter(Number.isFinite);
+            const concentrationBefore = weights.length ? Math.max(...weights) : null;
+            const afterWeights = rows.map(row => {
+                const current = Number(row.currentWeightPct || 0);
+                const target = Number(row.targetWeightPct || current);
+                if (row.bucket === 'trim' || row.bucket === 'add') return target;
+                return current;
+            }).filter(Number.isFinite);
+            const concentrationAfter = afterWeights.length ? Math.max(...afterWeights) : null;
+            const active = rows.filter(row => row.bucket !== 'hold');
+            const avgGapBefore = active.length
+                ? active.reduce((sum, row) => sum + Math.abs(Number(row.driftPct || 0)), 0) / active.length
+                : 0;
+
+            return {
+                concentrationBefore,
+                concentrationAfter,
+                bufferGapBefore: avgGapBefore,
+                bufferGapAfter: Math.max(0, avgGapBefore - Number(tradeBufferBasePct.value || 3))
+            };
+        });
+
+        const alertCenterItems = computed(() => {
+            const items = [];
+            const ag = allocationGovernance?.value || null;
+            if (ag) {
+                items.push({
+                    id: 'allocation-governance',
+                    tone: ag.mode === 'CRO_VETO' ? 'risk' : 'info',
+                    badgeClass: ag.badgeClass || 'border-slate-500/40 bg-slate-500/10 text-slate-300',
+                    panelClass: ag.panelClass || 'border-white/10 bg-black/20',
+                    icon: ag.icon || 'fa-shield-halved',
+                    sourceLabel: 'CRO',
+                    suggestedAction: 'Review',
+                    title: ag.headline || ag.badgeText || '風控治理',
+                    detail: ag.summary || '等待風控資料載入。',
+                    ctaLabel: '看量化',
+                    tab: 'analytics'
+                });
+            }
+            const hRisk = historyIntegrityRisk.value?.reasons || [];
+            if (hRisk.length) {
+                items.push({
+                    id: 'history-integrity',
+                    tone: 'warn',
+                    badgeClass: 'border-amber-500/40 bg-amber-500/10 text-amber-300',
+                    panelClass: 'border-amber-500/20 bg-amber-500/5',
+                    icon: 'fa-database',
+                    sourceLabel: 'Data',
+                    suggestedAction: 'Check',
+                    title: '歷史資料需檢查',
+                    detail: hRisk[0],
+                    ctaLabel: '看總覽',
+                    tab: 'summary'
+                });
+            }
+            return items;
+        });
+
+        const alertCenterSections = computed(() => {
+            const items = alertCenterItems.value || [];
+            return [{
+                key: 'priority',
+                label: items.length ? '優先處理' : '目前無急迫警報',
+                items
+            }];
+        });
+
+        const txPreview = computed(() => {
+            const type = String(txForm?.value?.type || '');
+            const flow = Number(txForm?.value?.totalCashFlow || 0);
+            let finalFlow = flow;
+            if (type === 'Buy' || type === 'Expense') finalFlow = -Math.abs(flow);
+            if (type === 'Sell' || type === 'Deposit') finalFlow = Math.abs(flow);
+            if (type === 'Withdraw') finalFlow = -Math.abs(flow);
+
+            const projectedCashAfter = Number(cashBalance?.value || 0) + finalFlow;
+            const errors = [];
+            const blockers = [];
+            const warnings = [];
+            if ((type === 'Buy' || type === 'Withdraw' || type === 'Expense') && projectedCashAfter < -1) {
+                blockers.push('送出後現金會變成負數。');
+            }
+            if (!type) warnings.push('尚未選擇交易類型。');
+
+            return { finalFlow, projectedCashAfter, errors, blockers, warnings };
+        });
+
         return { 
+            filteredHoldingsGroups, holdingsVisibleStats, holdingsActionFilter, holdingsViewOptions, holdingsActionSummary, goToTab, historyIntegrityRisk, historyIntegrityBadge, alertCenterItems, alertCenterSections, tradeBufferBasePct, tradeBufferPresets, tradeBufferProfile, applyTradeBuffer, nudgeTradeBuffer, rebalanceCockpitRows, rebalanceCockpitBuckets, tradeBufferSummary, rebalancePostTradeEstimate, txPreview,
             currentTab, showHistoryModal, isUpdating,
             transactions, groupedHoldings, filteredGroupedHoldings, categoryTotals, riskTotals, portfolioStats, 
             totalStockValueTwd, totalStockCostTwd, totalStockUnrealizedPL, totalStockReturnRate, 
