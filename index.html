@@ -1971,6 +1971,137 @@
                             </div>
 
 
+
+                            <!-- v0.5 Component VaR / ES + v0.6 Risk Budgeting / HRP-lite -->
+                            <div class="rounded-2xl border border-red-500/20 bg-red-500/[0.035] overflow-hidden">
+                                <div class="px-4 py-3 border-b border-white/10 bg-red-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-fire-flame-curved text-red-400"></i>
+                                            v0.5 尾部風險歸因 + v0.6 風險預算 / HRP-lite
+                                        </div>
+                                        <div class="text-[10px] text-gray-500 mt-1">
+                                            Component VaR / ES 用歷史尾部日歸因；HRP-lite 用 EWMA covariance 產生無外部套件風險預算參考權重。
+                                        </div>
+                                    </div>
+                                    <div class="text-[11px] text-gray-400">
+                                        尾部：{{ syntheticRiskMeta?.component_tail_risk?.var_es_95?.status ?? '-' }}，
+                                        預算：{{ syntheticRiskMeta?.risk_budgeting?.status ?? '-' }}
+                                    </div>
+                                </div>
+
+                                <div class="p-4 grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
+                                    <div class="quant-card border-red-500/20 bg-red-500/10">
+                                        <div class="quant-label text-red-300">ES95</div>
+                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.component_tail_risk?.var_es_95?.es_pct ?? '-' }}%</div>
+                                    </div>
+                                    <div class="quant-card border-red-500/20 bg-red-500/10">
+                                        <div class="quant-label text-red-300">Top3 ES 佔比</div>
+                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.component_tail_risk?.var_es_95?.top3_component_es_share_pct ?? '-' }}%</div>
+                                    </div>
+                                    <div class="quant-card border-orange-500/20 bg-orange-500/10">
+                                        <div class="quant-label text-orange-300">尾部集中 HHI</div>
+                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.component_tail_risk?.var_es_95?.tail_concentration_hhi ?? '-' }}</div>
+                                    </div>
+                                    <div class="quant-card border-slate-500/20 bg-slate-500/10">
+                                        <div class="quant-label text-slate-300">Tail Days</div>
+                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.component_tail_risk?.var_es_95?.tail_count ?? '-' }}</div>
+                                    </div>
+                                    <div class="quant-card border-purple-500/20 bg-purple-500/10">
+                                        <div class="quant-label text-purple-300">目前 EWMA Vol</div>
+                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.risk_budgeting?.current_portfolio_ewma_vol_pct ?? '-' }}%</div>
+                                    </div>
+                                    <div class="quant-card border-purple-500/20 bg-purple-500/10">
+                                        <div class="quant-label text-purple-300">HRP-lite Vol</div>
+                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.risk_budgeting?.hrp_lite_portfolio_ewma_vol_pct ?? '-' }}%</div>
+                                    </div>
+                                    <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                        <div class="quant-label text-cyan-300">目前 Top3 RC</div>
+                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.risk_budgeting?.current_top3_rc_pct ?? '-' }}%</div>
+                                    </div>
+                                    <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                        <div class="quant-label text-cyan-300">HRP Top3 RC</div>
+                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.risk_budgeting?.hrp_lite_top3_rc_pct ?? '-' }}%</div>
+                                    </div>
+                                </div>
+
+                                <div class="px-4 pb-4 grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                    <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                        <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-arrow-trend-down text-red-400"></i>
+                                            Component ES 95 Top 12
+                                        </div>
+                                        <div class="overflow-x-auto">
+                                            <table class="w-full text-[11px]">
+                                                <thead class="text-gray-500 border-b border-white/10">
+                                                    <tr>
+                                                        <th class="text-left px-3 py-2">標的</th>
+                                                        <th class="text-right px-3 py-2">權重</th>
+                                                        <th class="text-right px-3 py-2">Comp ES</th>
+                                                        <th class="text-right px-3 py-2">ES 佔比</th>
+                                                        <th class="text-right px-3 py-2">半砍改善</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr v-for="row in (syntheticRiskMeta?.component_tail_risk?.var_es_95?.rows || [])" :key="row.ticker" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                        <td class="px-3 py-2 font-mono text-white">{{ row.ticker }}</td>
+                                                        <td class="px-3 py-2 text-right text-gray-300">{{ row.weight_pct ?? '-' }}%</td>
+                                                        <td class="px-3 py-2 text-right text-red-300">{{ row.component_es_pct ?? '-' }}%</td>
+                                                        <td class="px-3 py-2 text-right text-orange-300">{{ row.component_es_share_pct ?? '-' }}%</td>
+                                                        <td class="px-3 py-2 text-right text-emerald-300">{{ row.half_cut_es_improvement_pct ?? '-' }}%</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                        <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-scale-balanced text-purple-400"></i>
+                                            HRP-lite 風險預算差異 Top 16
+                                        </div>
+                                        <div class="overflow-x-auto">
+                                            <table class="w-full text-[11px]">
+                                                <thead class="text-gray-500 border-b border-white/10">
+                                                    <tr>
+                                                        <th class="text-left px-3 py-2">標的</th>
+                                                        <th class="text-right px-3 py-2">目前</th>
+                                                        <th class="text-right px-3 py-2">HRP-lite</th>
+                                                        <th class="text-right px-3 py-2">差異</th>
+                                                        <th class="text-right px-3 py-2">目前 RC</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr v-for="row in (syntheticRiskMeta?.risk_budgeting?.rows || [])" :key="row.ticker" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                        <td class="px-3 py-2 font-mono text-white">{{ row.ticker }}</td>
+                                                        <td class="px-3 py-2 text-right text-gray-300">{{ row.current_weight_pct ?? '-' }}%</td>
+                                                        <td class="px-3 py-2 text-right text-purple-300">{{ row.hrp_lite_weight_pct ?? '-' }}%</td>
+                                                        <td class="px-3 py-2 text-right" :class="(row.weight_gap_vs_hrp_pct || 0) > 0 ? 'text-red-300' : 'text-emerald-300'">
+                                                            {{ row.weight_gap_vs_hrp_pct ?? '-' }}%
+                                                        </td>
+                                                        <td class="px-3 py-2 text-right text-cyan-300">{{ row.current_rc_pct ?? '-' }}%</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div class="xl:col-span-2 rounded-xl border border-white/10 bg-black/20 p-3">
+                                        <div class="text-sm font-bold text-white flex items-center gap-2 mb-2">
+                                            <i class="fas fa-circle-info text-amber-400"></i>
+                                            v0.5 / v0.6 方法限制
+                                        </div>
+                                        <ul class="space-y-1 text-[11px] text-gray-400 leading-relaxed">
+                                            <li v-for="item in ((syntheticRiskMeta?.component_tail_risk?.var_es_95?.notes || []).concat(syntheticRiskMeta?.risk_budgeting?.notes || []))" :key="item" class="flex gap-2">
+                                                <i class="fas fa-check text-amber-400 mt-0.5"></i>
+                                                <span>{{ item }}</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+
                             <!-- Risk contribution + model assumptions -->
                             <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
                                 <div class="xl:col-span-2 rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
@@ -3626,7 +3757,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=11.25-v031-v04-ewma-regime"></script>
+<script src="assets/js/app.bundle.js?v=11.26-v05-component-var-v06-hrp"></script>
 <script src="assets/js/quant-main-display.js?v=no-chip-terminal"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>

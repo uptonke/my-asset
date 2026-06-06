@@ -942,7 +942,7 @@ def quantstats_style_report(returns: pd.Series) -> Dict[str, Any]:
     mdd = dd_info.get("max_drawdown")
     calmar = (cagr / abs(mdd)) if cagr is not None and mdd and mdd < 0 else None
 
-    monthly = (1.0 + r).resample("M").prod() - 1.0 if hasattr(r.index, "to_series") else pd.Series(dtype=float)
+    monthly = (1.0 + r).resample("ME").prod() - 1.0 if hasattr(r.index, "to_series") else pd.Series(dtype=float)
     best_month = monthly.max() if not monthly.empty else None
     worst_month = monthly.min() if not monthly.empty else None
     best_month_label = str(monthly.idxmax().date()) if not monthly.empty else None
@@ -1421,6 +1421,313 @@ def compute_ewma_regime_report(
     }
 
 
+
+def safe_pct(value: Optional[float], digits: int = 2) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        v = float(value)
+        if not math.isfinite(v):
+            return None
+        return round(v * 100.0, digits)
+    except Exception:
+        return None
+
+
+def historical_component_tail_risk(
+    returns: pd.DataFrame,
+    weights: Dict[str, float],
+    asset_sources: Dict[str, str],
+    alpha: float = 0.95,
+) -> Dict[str, Any]:
+    """
+    v0.5 historical Component VaR / Component ES.
+
+    Component ES:
+    - Find portfolio tail days where portfolio return <= VaR threshold.
+    - Attribute portfolio loss on those tail days to each weighted asset contribution.
+    - Sum of component ES should approximately equal total portfolio ES.
+
+    Component VaR:
+    - Use a local window around the historical VaR threshold.
+    - This is a historical approximation, not parametric marginal VaR.
+    """
+    df = returns.apply(pd.to_numeric, errors="coerce").dropna(how="any")
+    tickers = list(df.columns)
+    if df.shape[0] < 60 or len(tickers) < 2:
+        return {
+            "status": "INSUFFICIENT_SAMPLE",
+            "alpha": alpha,
+            "sample_count": int(df.shape[0]),
+            "rows": [],
+        }
+
+    w = pd.Series({t: weights.get(t, 0.0) for t in tickers}, dtype=float)
+    if float(w.sum()) <= 0:
+        w = pd.Series(1.0 / len(tickers), index=tickers)
+    else:
+        w = w / float(w.sum())
+
+    port = df[tickers].dot(w)
+    q = float(port.quantile(1.0 - alpha))
+    var_amount = max(0.0, -q)
+    tail_mask = port <= q
+    tail = df.loc[tail_mask, tickers]
+    tail_port = port.loc[tail_mask]
+
+    if tail.empty:
+        return {
+            "status": "INSUFFICIENT_TAIL",
+            "alpha": alpha,
+            "sample_count": int(len(port)),
+            "tail_count": 0,
+            "rows": [],
+        }
+
+    es_amount = max(0.0, -float(tail_port.mean()))
+
+    sorted_idx = port.sort_values().index
+    q_rank = max(0, int(len(sorted_idx) * (1.0 - alpha)) - 1)
+    half_window = max(3, int(len(sorted_idx) * 0.01))
+    lo = max(0, q_rank - half_window)
+    hi = min(len(sorted_idx), q_rank + half_window + 1)
+    var_window_idx = sorted_idx[lo:hi]
+    var_window = df.loc[var_window_idx, tickers]
+
+    rows = []
+    comp_es_amounts = {}
+    comp_var_amounts = {}
+
+    for t in tickers:
+        comp_es = max(0.0, -float((tail[t] * w[t]).mean()))
+        comp_var = max(0.0, -float((var_window[t] * w[t]).mean())) if not var_window.empty else None
+        comp_es_amounts[t] = comp_es
+        comp_var_amounts[t] = comp_var or 0.0
+
+    es_sum = sum(comp_es_amounts.values())
+    var_sum = sum(comp_var_amounts.values())
+
+    for t in tickers:
+        current_es = comp_es_amounts[t]
+        current_var = comp_var_amounts[t]
+
+        reduced_port = port - 0.5 * w[t] * df[t]
+        reduced_q = float(reduced_port.quantile(1.0 - alpha))
+        reduced_tail = reduced_port[reduced_port <= reduced_q]
+        reduced_es = max(0.0, -float(reduced_tail.mean())) if len(reduced_tail) else None
+        es_improvement = (es_amount - reduced_es) if reduced_es is not None else None
+
+        rows.append({
+            "ticker": t,
+            "weight_pct": round(float(w[t] * 100.0), 2),
+            "component_var_pct": round(current_var * 100.0, 3),
+            "component_var_share_pct": round((current_var / var_sum) * 100.0, 2) if var_sum > 0 else None,
+            "component_es_pct": round(current_es * 100.0, 3),
+            "component_es_share_pct": round((current_es / es_sum) * 100.0, 2) if es_sum > 0 else None,
+            "half_cut_es_improvement_pct": round((es_improvement or 0.0) * 100.0, 3) if es_improvement is not None else None,
+            "source": asset_sources.get(t, "unknown"),
+        })
+
+    rows.sort(key=lambda x: (x.get("component_es_share_pct") or 0), reverse=True)
+    top3_share = sum([(r.get("component_es_share_pct") or 0.0) for r in rows[:3]])
+    shares = np.array([(r.get("component_es_share_pct") or 0.0) / 100.0 for r in rows], dtype=float)
+    hhi = float(np.sum(shares ** 2)) if len(shares) else None
+
+    return {
+        "status": "OK",
+        "version": "v0.5",
+        "method": "historical_component_var_es_on_strict_synthetic_returns",
+        "alpha": alpha,
+        "sample_count": int(len(port)),
+        "tail_count": int(len(tail)),
+        "var_pct": round(var_amount * 100.0, 3),
+        "es_pct": round(es_amount * 100.0, 3),
+        "top3_component_es_share_pct": round(float(top3_share), 2),
+        "tail_concentration_hhi": round(hhi, 4) if hhi is not None else None,
+        "rows": rows[:12],
+        "notes": [
+            "Component ES 以投組尾部日的加權單檔損失歸因。",
+            "Component VaR 使用歷史 VaR 門檻附近樣本近似，不是 parametric marginal VaR。",
+            "半砍 ES 改善量假設減掉的部位停在現金，不重新配置到其他風險資產。"
+        ],
+    }
+
+
+def cluster_variance(cov: pd.DataFrame, items: List[str]) -> float:
+    if not items:
+        return 0.0
+    sub = cov.loc[items, items]
+    diag = np.diag(sub.values)
+    inv_diag = np.where(diag > 0, 1.0 / diag, 0.0)
+    if inv_diag.sum() <= 0:
+        w = np.ones(len(items)) / len(items)
+    else:
+        w = inv_diag / inv_diag.sum()
+    return float(w @ sub.values @ w.T)
+
+
+def greedy_corr_order(corr: pd.DataFrame) -> List[str]:
+    cols = list(corr.columns)
+    if len(cols) <= 2:
+        return cols
+
+    avg_abs = corr.abs().replace(1.0, np.nan).mean().fillna(0.0)
+    start = str(avg_abs.idxmin())
+    order = [start]
+    remaining = set(cols) - {start}
+
+    while remaining:
+        last = order[-1]
+        # nearest by distance = lowest 1-corr; if corr unavailable use large distance
+        nxt = min(
+            remaining,
+            key=lambda x: (1.0 - float(corr.loc[last, x])) if pd.notna(corr.loc[last, x]) else 9.0
+        )
+        order.append(nxt)
+        remaining.remove(nxt)
+    return order
+
+
+def recursive_bisection_weights(cov: pd.DataFrame, ordered: List[str]) -> pd.Series:
+    weights = pd.Series(1.0, index=ordered, dtype=float)
+    clusters = [ordered]
+
+    while clusters:
+        cluster = clusters.pop(0)
+        if len(cluster) <= 1:
+            continue
+
+        split = len(cluster) // 2
+        left = cluster[:split]
+        right = cluster[split:]
+
+        var_left = cluster_variance(cov, left)
+        var_right = cluster_variance(cov, right)
+
+        if var_left + var_right <= 0:
+            alpha = 0.5
+        else:
+            alpha = 1.0 - var_left / (var_left + var_right)
+
+        weights.loc[left] *= alpha
+        weights.loc[right] *= (1.0 - alpha)
+
+        clusters.append(left)
+        clusters.append(right)
+
+    if float(weights.sum()) > 0:
+        weights = weights / float(weights.sum())
+    return weights
+
+
+def compute_risk_budgeting_report(
+    strict_returns: pd.DataFrame,
+    weights: Dict[str, float],
+    asset_meta: Dict[str, Any],
+    lam: float = SYNTHETIC_EWMA_LAMBDA,
+) -> Dict[str, Any]:
+    """
+    v0.6 risk budgeting / HRP-lite.
+
+    This is intentionally dependency-free:
+    - inverse volatility baseline
+    - HRP-lite ordering by correlation distance
+    - recursive bisection using cluster variance
+    """
+    df = strict_returns.apply(pd.to_numeric, errors="coerce").dropna(how="any")
+    if df.shape[0] < 60 or df.shape[1] < 2:
+        return {
+            "version": "v0.6",
+            "status": "INSUFFICIENT_SAMPLE",
+            "sample_count": int(df.shape[0]),
+            "rows": [],
+        }
+
+    cov = ewma_covariance_matrix(df, lam=lam)
+    corr = corr_from_covariance(cov) if cov is not None else None
+    if cov is None or corr is None:
+        return {
+            "version": "v0.6",
+            "status": "FAILED",
+            "sample_count": int(df.shape[0]),
+            "rows": [],
+            "notes": ["EWMA covariance 無法計算，HRP-lite 無法產生。"],
+        }
+
+    tickers = list(df.columns)
+
+    current_w = pd.Series({t: weights.get(t, 0.0) for t in tickers}, dtype=float)
+    current_w = current_w / float(current_w.sum()) if float(current_w.sum()) > 0 else pd.Series(1.0 / len(tickers), index=tickers)
+
+    vols = pd.Series(np.sqrt(np.diag(cov.loc[tickers, tickers].values)), index=tickers)
+    inv_vol = 1.0 / vols.replace(0, np.nan)
+    inv_vol = inv_vol.replace([np.inf, -np.inf], np.nan).fillna(0.0)
+    inv_vol_w = inv_vol / float(inv_vol.sum()) if float(inv_vol.sum()) > 0 else pd.Series(1.0 / len(tickers), index=tickers)
+
+    ordered = greedy_corr_order(corr.loc[tickers, tickers])
+    hrp_w = recursive_bisection_weights(cov.loc[tickers, tickers], ordered)
+
+    def portfolio_vol(weight_series: pd.Series) -> Optional[float]:
+        wv = weight_series.reindex(tickers).fillna(0.0).values
+        var = float(wv @ cov.loc[tickers, tickers].values @ wv.T)
+        return math.sqrt(var) if var > 0 else None
+
+    current_vol = portfolio_vol(current_w)
+    inv_vol_port_vol = portfolio_vol(inv_vol_w)
+    hrp_port_vol = portfolio_vol(hrp_w)
+
+    def risk_contribution(weight_series: pd.Series) -> pd.Series:
+        wv = weight_series.reindex(tickers).fillna(0.0).values
+        covv = cov.loc[tickers, tickers].values
+        var = float(wv @ covv @ wv.T)
+        if var <= 0:
+            return pd.Series(0.0, index=tickers)
+        mrc = covv @ wv.T
+        return pd.Series(wv * mrc / var, index=tickers)
+
+    current_rc = risk_contribution(current_w)
+    hrp_rc = risk_contribution(hrp_w)
+
+    rows = []
+    for t in tickers:
+        rows.append({
+            "ticker": t,
+            "bucket": classify_asset_bucket(t, (asset_meta.get(t, {}) or {}).get("category", "")),
+            "current_weight_pct": round(float(current_w.get(t, 0.0) * 100.0), 2),
+            "inverse_vol_weight_pct": round(float(inv_vol_w.get(t, 0.0) * 100.0), 2),
+            "hrp_lite_weight_pct": round(float(hrp_w.get(t, 0.0) * 100.0), 2),
+            "current_rc_pct": round(float(current_rc.get(t, 0.0) * 100.0), 2),
+            "hrp_lite_rc_pct": round(float(hrp_rc.get(t, 0.0) * 100.0), 2),
+            "weight_gap_vs_hrp_pct": round(float((current_w.get(t, 0.0) - hrp_w.get(t, 0.0)) * 100.0), 2),
+            "ewma_vol_pct": round(float(vols.get(t, 0.0) * 100.0), 2),
+        })
+
+    rows.sort(key=lambda x: abs(x.get("weight_gap_vs_hrp_pct") or 0), reverse=True)
+
+    current_top3_rc = sorted([float(x) for x in current_rc.fillna(0.0).values], reverse=True)[:3]
+    hrp_top3_rc = sorted([float(x) for x in hrp_rc.fillna(0.0).values], reverse=True)[:3]
+
+    return {
+        "version": "v0.6",
+        "status": "OK",
+        "method": "dependency_free_hrp_lite_ewma_covariance",
+        "sample_count": int(df.shape[0]),
+        "lambda": lam,
+        "ordered_tickers": ordered,
+        "current_portfolio_ewma_vol_pct": round(float(current_vol * 100.0), 2) if current_vol is not None else None,
+        "inverse_vol_portfolio_ewma_vol_pct": round(float(inv_vol_port_vol * 100.0), 2) if inv_vol_port_vol is not None else None,
+        "hrp_lite_portfolio_ewma_vol_pct": round(float(hrp_port_vol * 100.0), 2) if hrp_port_vol is not None else None,
+        "current_top3_rc_pct": round(sum(current_top3_rc) * 100.0, 2),
+        "hrp_lite_top3_rc_pct": round(sum(hrp_top3_rc) * 100.0, 2),
+        "rows": rows[:16],
+        "notes": [
+            "HRP-lite 為無外部套件版本，使用 correlation greedy order + recursive bisection。",
+            "這不是交易建議，只是風險預算參考權重。",
+            "inverse-vol 權重忽略相關性；HRP-lite 同時考慮波動與相關性。"
+        ],
+    }
+
+
 def compute_synthetic_portfolio_risk(
     holdings: Dict[str, Dict[str, Any]],
     history_frames: Dict[str, Tuple[pd.DataFrame, str]],
@@ -1705,6 +2012,13 @@ def compute_synthetic_portfolio_risk(
     flexible_qs = quantstats_style_report(flexible_port) if len(flexible_port) >= 40 else {"status": "INSUFFICIENT_SAMPLE", "sample_count": int(len(flexible_port))}
 
     ewma_regime = compute_ewma_regime_report(strict_returns[tickers], weights, asset_meta, lam=SYNTHETIC_EWMA_LAMBDA)
+    component_tail_risk = {
+        "version": "v0.5",
+        "status": "OK",
+        "var_es_95": historical_component_tail_risk(strict_returns[tickers], weights, asset_sources, alpha=0.95),
+        "var_es_99": historical_component_tail_risk(strict_returns[tickers], weights, asset_sources, alpha=0.99),
+    }
+    risk_budgeting = compute_risk_budgeting_report(strict_returns[tickers], weights, asset_meta, lam=SYNTHETIC_EWMA_LAMBDA)
 
     metrics = {
         "sample_count": int(len(port)),
@@ -1753,8 +2067,8 @@ def compute_synthetic_portfolio_risk(
     }
 
     return {
-        "version": "v0.4",
-        "engine_versions": {"synthetic_risk": "v0.2.1", "quantstats": "v0.3", "ewma_regime": "v0.4"},
+        "version": "v0.6",
+        "engine_versions": {"synthetic_risk": "v0.2.1", "quantstats": "v0.3", "ewma_regime": "v0.4", "component_tail_risk": "v0.5", "risk_budgeting": "v0.6"},
         "status": "OK" if confidence != "INVALID" else "INVALID",
         "confidence": confidence,
         "confidence_reason": confidence_reason,
@@ -1762,13 +2076,15 @@ def compute_synthetic_portfolio_risk(
         "updated_at": str(TODAY_TPE),
         "method": "current_weight_synthetic_daily_returns",
         "primary_mode": "strict",
-        "diagnostic_modes": ["flexible", "ewma_regime"],
+        "diagnostic_modes": ["flexible", "ewma_regime", "component_tail_risk", "risk_budgeting"],
         "currency": "TWD",
         "fx_source": fx_source,
         "metrics": metrics,
         "quantstats": qs,
         "quantstats_flexible": flexible_qs,
         "ewma_regime": ewma_regime,
+        "component_tail_risk": component_tail_risk,
+        "risk_budgeting": risk_budgeting,
         "coverage": coverage_summary,
         "components": components[:10],
         "assets": list(asset_meta.values()),
@@ -1779,6 +2095,8 @@ def compute_synthetic_portfolio_risk(
             "外幣資產盡量用 USD/TWD 歷史匯率轉成 TWD；若匯率資料失敗，改用目前 exchangeRate 靜態轉換。",
             "v0.3 是風控監控與報告引擎，不是自動交易或最佳化引擎。",
             "v0.4 EWMA covariance / correlation regime 用於監控風險聚集，不是預測模型。",
+            "v0.5 Component VaR / ES 為歷史尾部歸因，並非精確 marginal VaR。",
+            "v0.6 HRP-lite 為無外部套件風險預算初版，不代表最適投組。",
         ],
     }
 
@@ -1921,7 +2239,9 @@ def main() -> None:
             f"flexible_sample={synthetic_risk.get('coverage', {}).get('flexible_sample')}, "
             f"usable_weight={synthetic_risk.get('coverage', {}).get('usable_weight_pct')}%, "
             f"quantstats={synthetic_risk.get('quantstats', {}).get('status')}, "
-            f"ewma_regime={synthetic_risk.get('ewma_regime', {}).get('status')}"
+            f"ewma_regime={synthetic_risk.get('ewma_regime', {}).get('status')}, "
+            f"component_tail={synthetic_risk.get('component_tail_risk', {}).get('var_es_95', {}).get('status')}, "
+            f"risk_budgeting={synthetic_risk.get('risk_budgeting', {}).get('status')}"
         )
     except Exception as exc:
         merged_meta[SYNTHETIC_RISK_KEY] = {
