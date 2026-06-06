@@ -225,7 +225,7 @@ def infer_primary_benchmark(ticker: str, category: str) -> str:
     - Taiwan assets: local equity market beta (^TWII)
     - US/global equities and ETFs: SPY risk-on beta
     - Crypto: SPY risk-on beta, not BTC beta, so BTC/ETH can be compared to equity risk appetite
-    - Gold ETFs: GLD
+    - Gold ETFs: SPY for official risk-on beta; GLD only as tracking diagnostic
     - Cash-like assets: CASH override
     """
     t = str(ticker or "").upper().strip()
@@ -241,7 +241,7 @@ def infer_primary_benchmark(ticker: str, category: str) -> str:
     if is_taiwan_asset(t, category):
         return "^TWII"
     if is_gold_like_asset(t, category):
-        return "GLD"
+        return "SPY"
     return "SPY"
 
 def benchmark_symbol(ticker: str, category: str) -> str:
@@ -258,11 +258,14 @@ def benchmark_candidates(ticker: str, category: str) -> List[str]:
         # Do not fall back to SPY for Taiwan beta. Better to return beta=None than mix regimes.
         candidates += ["^TWII", "0050.TW", "006208.TW"]
     elif is_gold_like_asset(ticker, category):
-        candidates += ["GLD", "IAU", "SGOL"]
+        # Official gold beta is risk-on / equity-market beta.
+        # Do NOT fall back to GLD here; GLD beta is tracking quality, not portfolio risk beta.
+        candidates += ["SPY", "QQQ"]
     elif is_crypto_asset(ticker, category):
-        # Official beta is vs SPY; if SPY is unavailable, QQQ is still a risk-on proxy.
-        # BTC-USD is last-resort diagnostic fallback and will be visible in beta_benchmark.
-        candidates += ["SPY", "QQQ", "BTC-USD"]
+        # Official crypto beta is risk-on beta vs equity market.
+        # Do NOT fall back to BTC-USD here; BTC vs BTC mechanically becomes beta=1
+        # and ETH vs BTC is a different diagnostic metric, not the dashboard beta.
+        candidates += ["SPY", "QQQ"]
     else:
         candidates += ["SPY"]
 
@@ -729,6 +732,14 @@ def compute_meta(ticker: str, category: str, df: pd.DataFrame, source: str, extr
     ma20_gap, ma60_gap, ma200_gap = pct(last_price, ma20), pct(last_price, ma60), pct(last_price, ma200)
     mdd_1y = max_drawdown(close.tail(min(len(close), 252)))
     beta, corr, bench_symbol = compute_beta_with_benchmark_candidates(df, benchmark_candidates(ticker, category))
+
+    tracking_beta = None
+    tracking_corr = None
+    tracking_benchmark = None
+    if is_gold_like_asset(ticker, category):
+        tracking_beta, tracking_corr = compute_beta_and_corr(df, get_benchmark("GLD"))
+        tracking_benchmark = "GLD"
+
     trend = score_trend(mom1, mom3, mom6, mom12, ma60_gap, ma200_gap)
     risk_s = score_risk(vol60, vol252, mdd_1y, beta, corr)
     tech = score_technical(rsi_val, macd_h, ma20_gap, ma60_gap, ma200_gap)
@@ -775,6 +786,10 @@ def compute_meta(ticker: str, category: str, df: pd.DataFrame, source: str, extr
         "beta_benchmark": bench_symbol,
         "beta_method": "cash_like_override" if bench_symbol == "CASH" else "auto_inferred_benchmark_daily_return_covariance",
         "beta_inference_rule": "auto_infer_from_ticker_category_with_optional_override",
+        "tracking_beta": round(tracking_beta, 2) if tracking_beta is not None else None,
+        "tracking_corr": round(tracking_corr, 4) if tracking_corr is not None else None,
+        "tracking_benchmark": tracking_benchmark,
+        "tracking_method": "gold_tracking_vs_gld" if tracking_benchmark == "GLD" else None,
         "source": source,
         "lookback_days": int(len(df)),
         "coverage_score": round(coverage_score, 3),
@@ -794,6 +809,10 @@ def compute_meta(ticker: str, category: str, df: pd.DataFrame, source: str, extr
         "beta_benchmark",
         "beta_method",
         "beta_inference_rule",
+        "tracking_beta",
+        "tracking_corr",
+        "tracking_benchmark",
+        "tracking_method",
     }
     return {k: v for k, v in meta.items() if v is not None or k in clearable_keys}
 
@@ -1174,6 +1193,7 @@ def main() -> None:
                 f"OK {ticker}: source={source}, "
                 f"beta={meta.get('beta')}, beta_benchmark={meta.get('beta_benchmark')}, "
                 f"corr={meta.get('corr')}, "
+                f"tracking_beta={meta.get('tracking_beta')}, tracking_benchmark={meta.get('tracking_benchmark')}, "
                 f"health={meta.get('quant_health_score')}, trend={meta.get('trend_score')}, risk={meta.get('risk_score')}"
             )
         except Exception as exc:
