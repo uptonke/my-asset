@@ -680,8 +680,11 @@ ${JSON.stringify(payload, null, 2)}
                     ...h,
                     isUSD,
                     riskLevel: meta.risk || 'High',
-                    beta: meta.beta || 1.0,
-                    stdDev: meta.std || 20.0,
+                    // Preserve valid zero values. `|| 1.0` turns BOXX/CASH beta=0 into beta=1.
+                    beta: Number.isFinite(Number(meta.beta)) ? Number(meta.beta) : 1.0,
+                    stdDev: Number.isFinite(Number(meta.std)) ? Number(meta.std) : 20.0,
+                    betaBenchmark: meta.beta_benchmark || meta.benchmark || '',
+                    betaMethod: meta.beta_method || '',
                     liquidityScore,
                     contagionScore,
                     techSignals: {

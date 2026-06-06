@@ -248,9 +248,10 @@ def benchmark_candidates(ticker: str, category: str) -> List[str]:
     elif is_gold_like_asset(ticker, category):
         candidates += ["GLD", "IAU", "SGOL"]
     elif is_crypto_asset(ticker, category):
-        # Official beta is vs SPY; if SPY is unavailable, QQQ is still a risk-on proxy.
-        # BTC-USD is last-resort diagnostic fallback and will be visible in beta_benchmark.
-        candidates += ["SPY", "QQQ", "BTC-USD"]
+        # Official crypto beta is risk-on beta vs equity market.
+        # Do NOT fall back to BTC-USD here; BTC vs BTC mechanically becomes beta=1
+        # and ETH vs BTC is a different diagnostic metric, not the dashboard beta.
+        candidates += ["SPY", "QQQ"]
     else:
         candidates += ["SPY"]
 
