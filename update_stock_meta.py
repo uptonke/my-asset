@@ -161,17 +161,117 @@ def coingecko_id(symbol: str) -> Optional[str]:
         return str(mapped["coingecko_id"])
     return {"BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana"}.get(t)
 
-def benchmark_symbol(ticker: str, category: str) -> str:
-    mapped = TICKER_MAP.get(ticker.upper(), {})
-    if mapped.get("benchmark"):
-        return str(mapped["benchmark"])
-    if is_taiwan_asset(ticker, category):
-        return "SPY"  # 避免 ^TWII 在 GitHub Actions/yfinance 失敗時拖累 beta；台股仍可計 trend/risk.
-    if "加密" in str(category or "") or ticker.upper() in {"BTC-USD", "ETH-USD", "BTC", "ETH"}:
-        return "BTC-USD"
-    if "黃金" in str(category or "") or ticker.upper() in {"GLD", "GLDM", "IAU"}:
+def is_cash_like_asset(ticker: str, category: str) -> bool:
+    t = str(ticker or "").upper().strip()
+    cat = str(category or "")
+    return (
+        t in {"BOXX", "BIL", "SHV", "SGOV", "TBIL", "CASH", "TWD", "NTD", "USD"}
+        or "現金" in cat
+        or "貨幣" in cat
+        or "短債" in cat
+        or "CASH" in cat.upper()
+    )
+
+def is_gold_like_asset(ticker: str, category: str) -> bool:
+    t = str(ticker or "").upper().strip()
+    cat = str(category or "")
+    return (
+        t in {"GLD", "GLDM", "IAU", "SGOL", "SGLN", "PHYS"}
+        or "黃金" in cat
+        or "GOLD" in cat.upper()
+    )
+
+def is_crypto_asset(ticker: str, category: str) -> bool:
+    t = str(ticker or "").upper().strip()
+    cat = str(category or "")
+    return (
+        t in {"BTC", "ETH", "BTC-USD", "ETH-USD", "SOL", "SOL-USD"}
+        or t.endswith("-USD") and t.replace("-USD", "") in {"BTC", "ETH", "SOL"}
+        or "加密" in cat
+        or "CRYPTO" in cat.upper()
+    )
+
+def benchmark_override_symbol(ticker: str) -> str:
+    """
+    Explicit benchmark override.
+
+    New rule:
+    - data/quant_ticker_map.json is mainly for data-source mapping.
+    - Benchmark should be inferred automatically.
+    - Only these explicit fields override inference:
+      beta_benchmark_override / benchmark_override
+    - Old `benchmark` fields are ignored to avoid stale manual mappings such as Taiwan assets vs SPY.
+    """
+    mapped = TICKER_MAP.get(str(ticker or "").upper().strip(), {})
+    return str(mapped.get("beta_benchmark_override") or mapped.get("benchmark_override") or "").strip()
+
+def infer_primary_benchmark(ticker: str, category: str) -> str:
+    """
+    Infer the official dashboard beta benchmark from ticker/category.
+
+    Official beta is a consistent risk model input:
+    - Taiwan assets: local equity market beta (^TWII)
+    - US/global equities and ETFs: SPY risk-on beta
+    - Crypto: SPY risk-on beta, not BTC beta, so BTC/ETH can be compared to equity risk appetite
+    - Gold ETFs: GLD
+    - Cash-like assets: CASH override
+    """
+    t = str(ticker or "").upper().strip()
+
+    override = benchmark_override_symbol(t)
+    if override:
+        return override
+
+    if is_cash_like_asset(t, category):
+        return "CASH"
+    if is_taiwan_asset(t, category):
+        return "^TWII"
+    if is_gold_like_asset(t, category):
         return "GLD"
+    if is_crypto_asset(t, category):
+        return "SPY"
     return "SPY"
+
+def benchmark_symbol(ticker: str, category: str) -> str:
+    return infer_primary_benchmark(ticker, category)
+
+def benchmark_candidates(ticker: str, category: str) -> List[str]:
+    primary = infer_primary_benchmark(ticker, category)
+    if primary == "CASH":
+        return ["CASH"]
+
+    candidates = [primary]
+
+    if is_taiwan_asset(ticker, category):
+        # Do not fall back to SPY for Taiwan beta. Better to return beta=None than mix regimes.
+        candidates += ["^TWII", "0050.TW", "006208.TW"]
+    elif is_gold_like_asset(ticker, category):
+        candidates += ["GLD", "IAU", "SGOL"]
+    elif is_crypto_asset(ticker, category):
+        # Official beta is vs SPY; if SPY is unavailable, QQQ is still a risk-on proxy.
+        # BTC-USD is last-resort diagnostic fallback and will be visible in beta_benchmark.
+        candidates += ["SPY", "QQQ", "BTC-USD"]
+    else:
+        candidates += ["SPY"]
+
+    out: List[str] = []
+    seen = set()
+    for c in candidates:
+        c = str(c or "").strip()
+        if c and c not in seen:
+            out.append(c)
+            seen.add(c)
+    return out
+
+def compute_beta_with_benchmark_candidates(asset: pd.DataFrame, candidates: List[str]) -> Tuple[Optional[float], Optional[float], str]:
+    for bench_symbol in candidates:
+        if bench_symbol == "CASH":
+            return 0.0, 0.0, "CASH"
+        beta, corr = compute_beta_and_corr(asset, get_benchmark(bench_symbol))
+        if beta is not None:
+            return beta, corr, bench_symbol
+    return None, None, candidates[0] if candidates else ""
+
 
 def finmind_request(dataset: str, data_id: str, start_date: str, end_date: str) -> pd.DataFrame:
     if not FINMIND_TOKEN:
@@ -616,15 +716,16 @@ def compute_meta(ticker: str, category: str, df: pd.DataFrame, source: str, extr
     ma20, ma60, ma200 = safe_last(close.rolling(20).mean()), safe_last(close.rolling(60).mean()), safe_last(close.rolling(200).mean())
     ma20_gap, ma60_gap, ma200_gap = pct(last_price, ma20), pct(last_price, ma60), pct(last_price, ma200)
     mdd_1y = max_drawdown(close.tail(min(len(close), 252)))
-    bench_symbol = benchmark_symbol(ticker, category)
-    beta, corr = compute_beta_and_corr(df, get_benchmark(bench_symbol))
+    beta, corr, bench_symbol = compute_beta_with_benchmark_candidates(df, benchmark_candidates(ticker, category))
     trend = score_trend(mom1, mom3, mom6, mom12, ma60_gap, ma200_gap)
     risk_s = score_risk(vol60, vol252, mdd_1y, beta, corr)
     tech = score_technical(rsi_val, macd_h, ma20_gap, ma60_gap, ma200_gap)
     chip = score_chip(extras)
     valuation, valuation_pressure = score_valuation(extras)
     liquidity = score_liquidity(df)
-    contagion = clamp((abs(beta or 1.0) * 3.0) + (abs(corr or 0.0) * 4.0))
+    beta_for_risk = beta if beta is not None else 1.0
+    corr_for_risk = corr if corr is not None else 0.0
+    contagion = clamp((abs(beta_for_risk) * 3.0) + (abs(corr_for_risk) * 4.0))
     quant_health = clamp(0.30 * trend + 0.20 * tech + 0.15 * (chip if chip is not None else 5.0) + 0.15 * valuation + 0.20 * (10.0 - risk_s))
     last_date = pd.to_datetime(df["date"].iloc[-1]).date()
     days_stale = (TODAY_TPE - last_date).days
@@ -658,6 +759,9 @@ def compute_meta(ticker: str, category: str, df: pd.DataFrame, source: str, extr
         "contagion_score": contagion,
         "quant_health_score": quant_health,
         "benchmark": bench_symbol,
+        "beta_benchmark": bench_symbol,
+        "beta_method": "cash_like_override" if bench_symbol == "CASH" else "auto_inferred_benchmark_daily_return_covariance",
+        "beta_inference_rule": "auto_infer_from_ticker_category_with_optional_override",
         "source": source,
         "lookback_days": int(len(df)),
         "coverage_score": round(coverage_score, 3),
