@@ -544,6 +544,111 @@ chartCML.data.datasets = [
     }
 });
 
+
+        const allocationGovernance = computed(() => {
+            const sr = syntheticRiskMeta?.value || null;
+            const confidence = sr?.confidence || 'N/A';
+            const status = sr?.status || 'PENDING';
+            const sampleCount = Number(sr?.metrics?.sample_count || 0);
+            const alertCount = Number(rebalanceMonitor?.value?.alertCount || 0);
+            const bufferBlocked = !!rebalanceMonitor?.value?.bufferBlockingRiskBuys;
+
+            const hardFlags = [];
+            const softFlags = [];
+
+            if (status === 'FAILED' || status === 'INVALID' || confidence === 'INVALID') {
+                hardFlags.push({
+                    code: 'SYNTHETIC_RISK_INVALID',
+                    label: '合成風險資料不可用',
+                    detail: sr?.confidence_reason || 'synthetic risk 尚未產生或資料不足。'
+                });
+            }
+
+            if (bufferBlocked) {
+                hardFlags.push({
+                    code: 'BUFFER_BLOCK',
+                    label: '流動性緩衝不足',
+                    detail: '再平衡監控顯示暫停新增風險資產。'
+                });
+            }
+
+            if (alertCount >= 3) {
+                softFlags.push({
+                    code: 'REBALANCE_ALERTS',
+                    label: '再平衡警示偏多',
+                    detail: `目前有 ${alertCount} 個再平衡警示。`
+                });
+            }
+
+            if (confidence === 'LOW' || (sampleCount > 0 && sampleCount < 750)) {
+                softFlags.push({
+                    code: 'SHORT_SAMPLE',
+                    label: '樣本偏短',
+                    detail: `synthetic risk 樣本日數 ${sampleCount || 'N/A'}；可看方向，不宜當成硬交易規則。`
+                });
+            }
+
+            if (confidence === 'MEDIUM') {
+                softFlags.push({
+                    code: 'MEDIUM_CONFIDENCE',
+                    label: '模型信心中等',
+                    detail: '樣本與涵蓋度可作主要風控參考，但仍需人工判讀。'
+                });
+            }
+
+            let mode = 'MC_PRIMARY';
+            if (hardFlags.length) mode = 'CRO_VETO';
+            else if (softFlags.length) mode = 'CRO_CAUTION_MC_ALLOWED';
+
+            const base = {
+                mode,
+                hardFlags,
+                softFlags,
+                primaryReasons: (hardFlags.length ? hardFlags : softFlags).slice(0, 3),
+                deterministicNote: '這一層是 deterministic governance，不靠 prompt 自由發揮。'
+            };
+
+            if (mode === 'CRO_VETO') {
+                return {
+                    ...base,
+                    icon: 'fa-triangle-exclamation',
+                    badgeText: 'CRO 否決 / 風控紅燈',
+                    badgeClass: 'border-red-500/30 bg-red-500/10 text-red-300',
+                    panelClass: 'border-red-500/25 bg-red-500/5',
+                    headline: '風險資料或緩衝條件不足，先不要放大風險。',
+                    summary: 'synthetic risk 或再平衡監控出現 hard flag；先處理資料完整性、buffer 與集中度。',
+                    croRole: 'CRO = 否決層（整體投組風險裁決）',
+                    mcRole: 'MC = 配置器，但目前不可主導加風險'
+                };
+            }
+
+            if (mode === 'CRO_CAUTION_MC_ALLOWED') {
+                return {
+                    ...base,
+                    icon: 'fa-flask',
+                    badgeText: '樣本偏短 / 警戒',
+                    badgeClass: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+                    panelClass: 'border-amber-500/25 bg-amber-500/5',
+                    headline: '可看風險方向，但不能把模型結果當成硬指令。',
+                    summary: '目前沒有 hard veto；但 synthetic risk 樣本偏短或警示偏多，配置調整應保守。',
+                    croRole: 'CRO = 提醒整體投組風險，不搶單一資產權重',
+                    mcRole: 'MC = 風險資產配置器，可作主配置但需降自信'
+                };
+            }
+
+            return {
+                ...base,
+                icon: 'fa-circle-check',
+                badgeText: 'MC 主導',
+                badgeClass: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+                panelClass: 'border-emerald-500/25 bg-emerald-500/5',
+                headline: '無硬風險阻礙，由 MC 主導配置。',
+                summary: 'CRO 未見 hard veto；whole-portfolio 可以放行，risky sleeve 交由 MC 最佳化。',
+                croRole: 'CRO = 監督層，不主動搶配置權',
+                mcRole: 'MC = 風險資產配置器，主導權重建議'
+            };
+        });
+
         return { 
             currentTab, showHistoryModal, isUpdating,
             transactions, groupedHoldings, filteredGroupedHoldings, categoryTotals, riskTotals, portfolioStats, 
@@ -564,7 +669,7 @@ chartCML.data.datasets = [
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
-            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
+            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
         };
     }
 }).mount('#app');

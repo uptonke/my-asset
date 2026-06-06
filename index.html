@@ -300,7 +300,7 @@
             <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                 <div>
                     <div class="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border"
-                         :class="allocationGovernance.badgeClass">
+                         :class="allocationGovernance?.badgeClass || 'border-slate-500/40 bg-slate-500/10 text-slate-300'">
                         <i class="fas fa-compass-drafting"></i>
                         今日決策中心
                     </div>
@@ -343,8 +343,8 @@
                 <div class="ios-story-card">
                     <div class="ios-story-label">{{ decisionCenter.whyNowTitle }}</div>
                     <p class="ios-story-copy mb-3">{{ decisionCenter.whyNowSummary }}</p>
-                    <div v-if="allocationGovernance.primaryReasons.length" class="space-y-2">
-                        <div v-for="reason in allocationGovernance.primaryReasons.slice(0, 3)" :key="reason.code" class="ios-reason-chip">
+                    <div v-if="(allocationGovernance?.primaryReasons || []).length" class="space-y-2">
+                        <div v-for="reason in (allocationGovernance?.primaryReasons || []).slice(0, 3)" :key="reason.code" class="ios-reason-chip">
                             <div class="ios-reason-title">{{ reason.label }}</div>
                             <div class="ios-reason-detail">{{ reason.detail }}</div>
                         </div>
@@ -427,30 +427,30 @@
     </div>
 </div>
 
-                <div class="glass panel-card mt-6 overflow-hidden institutional-governance-shell" :class="allocationGovernance.panelClass">
+                <div class="glass panel-card mt-6 overflow-hidden institutional-governance-shell" :class="allocationGovernance?.panelClass || 'border-slate-500/25 bg-slate-500/5'">
                     <div class="p-5 md:p-6 border-b border-white/10">
                         <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                             <div>
                                 <div class="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border"
-                                     :class="allocationGovernance.badgeClass">
-                                    <i class="fas" :class="allocationGovernance.icon"></i>
-                                    {{ allocationGovernance.badgeText }}
+                                     :class="allocationGovernance?.badgeClass || 'border-slate-500/40 bg-slate-500/10 text-slate-300'">
+                                    <i class="fas" :class="allocationGovernance?.icon || 'fa-hourglass-half'"></i>
+                                    {{ allocationGovernance?.badgeText || '等待風控資料' }}
                                 </div>
                                 <h3 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
                                     <i class="fas fa-sitemap text-white/80"></i>
                                     MC / CRO 決策權治理
                                 </h3>
                                 <p class="text-xs md:text-sm text-gray-300 mt-2 leading-relaxed">
-                                    {{ allocationGovernance.headline }}
+                                    {{ allocationGovernance?.headline || '等待風控資料' }}
                                 </p>
                                 <p class="text-[11px] text-gray-500 mt-2">
-                                    {{ allocationGovernance.deterministicNote }}
+                                    {{ allocationGovernance?.deterministicNote || 'deterministic governance pending' }}
                                 </p>
                             </div>
 
                             <div class="text-right">
                                 <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-1">決策模式</div>
-                                <div class="font-mono text-sm font-bold text-white">{{ allocationGovernance.mode }}</div>
+                                <div class="font-mono text-sm font-bold text-white">{{ allocationGovernance?.mode || 'PENDING' }}</div>
                             </div>
                         </div>
                     </div>
@@ -458,15 +458,15 @@
                     <div class="p-5 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
                         <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
                             <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-2">CRO 角色</div>
-                            <div class="text-sm font-bold text-white">{{ allocationGovernance.croRole }}</div>
+                            <div class="text-sm font-bold text-white">{{ allocationGovernance?.croRole || 'CRO = 監督層' }}</div>
                         </div>
                         <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
                             <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-2">MC 角色</div>
-                            <div class="text-sm font-bold text-white">{{ allocationGovernance.mcRole }}</div>
+                            <div class="text-sm font-bold text-white">{{ allocationGovernance?.mcRole || 'MC = 配置器' }}</div>
                         </div>
                         <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
                             <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-2">整體投組裁決</div>
-                            <div class="text-sm text-gray-200 leading-relaxed">{{ allocationGovernance.summary }}</div>
+                            <div class="text-sm text-gray-200 leading-relaxed">{{ allocationGovernance?.summary || '等待風控資料載入。' }}</div>
                         </div>
                     </div>
 
@@ -480,8 +480,8 @@
                     <div class="px-5 md:px-6 pb-5 md:pb-6 grid grid-cols-1 xl:grid-cols-3 gap-4">
                         <div class="evidence-card">
                             <div class="evidence-title text-red-300">Hard Veto Signals</div>
-                            <div v-if="allocationGovernance.hardFlags.length" class="space-y-2 mt-3">
-                                <div v-for="reason in allocationGovernance.hardFlags.slice(0, 4)" :key="reason.code" class="evidence-item evidence-item-hard">
+                            <div v-if="(allocationGovernance?.hardFlags || []).length" class="space-y-2 mt-3">
+                                <div v-for="reason in (allocationGovernance?.hardFlags || []).slice(0, 4)" :key="reason.code" class="evidence-item evidence-item-hard">
                                     <div class="font-bold text-white mb-1">{{ reason.label }}</div>
                                     <div class="text-gray-300 leading-relaxed">{{ reason.detail }}</div>
                                 </div>
@@ -490,8 +490,8 @@
                         </div>
                         <div class="evidence-card">
                             <div class="evidence-title text-amber-300">Soft Caution Signals</div>
-                            <div v-if="allocationGovernance.softFlags.length" class="space-y-2 mt-3">
-                                <div v-for="reason in allocationGovernance.softFlags.slice(0, 4)" :key="reason.code" class="evidence-item evidence-item-soft">
+                            <div v-if="(allocationGovernance?.softFlags || []).length" class="space-y-2 mt-3">
+                                <div v-for="reason in (allocationGovernance?.softFlags || []).slice(0, 4)" :key="reason.code" class="evidence-item evidence-item-soft">
                                     <div class="font-bold text-white mb-1">{{ reason.label }}</div>
                                     <div class="text-gray-300 leading-relaxed">{{ reason.detail }}</div>
                                 </div>
@@ -1528,9 +1528,9 @@
                                 <i class="fas fa-brain text-yellow-500"></i> 量化風險分析
                              </h3>
                              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold border"
-                                  :class="allocationGovernance.badgeClass">
-                                <i class="fas" :class="allocationGovernance.icon"></i>
-                                {{ allocationGovernance.badgeText }}
+                                  :class="allocationGovernance?.badgeClass || 'border-slate-500/40 bg-slate-500/10 text-slate-300'">
+                                <i class="fas" :class="allocationGovernance?.icon || 'fa-hourglass-half'"></i>
+                                {{ allocationGovernance?.badgeText || '等待風控資料' }}
                              </div>
                         </div>
                         <div class="flex gap-4 items-end flex-wrap">
@@ -1905,8 +1905,8 @@
         <div class="stack-card stack-card-governance">
             <div class="stack-kicker">Layer 1 · Governance</div>
             <div class="stack-title">CRO 否決層</div>
-            <div class="stack-copy">{{ allocationGovernance.badgeText }}</div>
-            <div class="stack-note">{{ allocationGovernance.summary }}</div>
+            <div class="stack-copy">{{ allocationGovernance?.badgeText || '等待風控資料' }}</div>
+            <div class="stack-note">{{ allocationGovernance?.summary || '等待風控資料載入。' }}</div>
         </div>
         <div class="stack-card stack-card-execution">
             <div class="stack-kicker">Layer 2 · Execution</div>
@@ -1941,8 +1941,8 @@
             </div>
             <div class="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 terminal-exec-rule-box">
                 <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-1">Execution Rule</div>
-                <div class="text-sm font-bold text-white">{{ allocationGovernance.badgeText }}</div>
-                <div class="text-[11px] text-gray-400 mt-2">{{ allocationGovernance.summary }}</div>
+                <div class="text-sm font-bold text-white">{{ allocationGovernance?.badgeText || '等待風控資料' }}</div>
+                <div class="text-[11px] text-gray-400 mt-2">{{ allocationGovernance?.summary || '等待風控資料載入。' }}</div>
             </div>
         </div>
     </div>
@@ -2632,18 +2632,18 @@
     </div>
 
     <div class="relative z-10 p-5 md:p-6">
-        <div class="mb-4 rounded-2xl border px-4 py-3" :class="allocationGovernance.panelClass">
+        <div class="mb-4 rounded-2xl border px-4 py-3" :class="allocationGovernance?.panelClass || 'border-slate-500/25 bg-slate-500/5'">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
                     <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold border"
-                         :class="allocationGovernance.badgeClass">
-                        <i class="fas" :class="allocationGovernance.icon"></i>
-                        {{ allocationGovernance.badgeText }}
+                         :class="allocationGovernance?.badgeClass || 'border-slate-500/40 bg-slate-500/10 text-slate-300'">
+                        <i class="fas" :class="allocationGovernance?.icon || 'fa-hourglass-half'"></i>
+                        {{ allocationGovernance?.badgeText || '等待風控資料' }}
                     </div>
-                    <div class="text-sm font-bold text-white mt-2">{{ allocationGovernance.headline }}</div>
-                    <div class="text-[11px] text-gray-400 mt-1">{{ allocationGovernance.summary }}</div>
+                    <div class="text-sm font-bold text-white mt-2">{{ allocationGovernance?.headline || '等待風控資料' }}</div>
+                    <div class="text-[11px] text-gray-400 mt-1">{{ allocationGovernance?.summary || '等待風控資料載入。' }}</div>
                 </div>
-                <div class="text-[11px] text-gray-500 font-mono">{{ allocationGovernance.mode }}</div>
+                <div class="text-[11px] text-gray-500 font-mono">{{ allocationGovernance?.mode || 'PENDING' }}</div>
             </div>
         </div>
 
@@ -3286,9 +3286,9 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=11.10-jd-guide-fx-fix"></script>
+<script src="assets/js/app.bundle.js?v=11.12-debug-allocation-fix"></script>
 <script src="assets/js/quant-main-display.js?v=no-chip-terminal"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
-    <script src="assets/js/terminal-ia-phase2.js?v=ia-phase2"></script>
+    <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
 </body>
 </html>
