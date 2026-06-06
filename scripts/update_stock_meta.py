@@ -855,6 +855,27 @@ def fetch_usdtwd_series(static_fx: float) -> Tuple[pd.Series, str]:
 
 
 
+
+def max_drawdown_from_returns(returns: pd.Series) -> Optional[float]:
+    """
+    Max drawdown from a daily return series.
+    Returns decimal drawdown, e.g. -0.18 = -18%.
+    """
+    try:
+        r = pd.to_numeric(returns, errors="coerce").dropna()
+        if r.empty:
+            return None
+        curve = (1.0 + r).cumprod()
+        if curve.empty:
+            return None
+        peak = curve.cummax()
+        dd = curve / peak - 1.0
+        out = float(dd.min())
+        return out if math.isfinite(out) else None
+    except Exception:
+        return None
+
+
 def drawdown_details_from_returns(returns: pd.Series) -> Dict[str, Any]:
     r = pd.to_numeric(returns, errors="coerce").dropna()
     if r.empty:
