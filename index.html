@@ -2637,6 +2637,164 @@
                             </div>
 
 
+
+                            <!-- v1.4 Optimizer robustness check -->
+                            <div class="rounded-2xl border border-teal-500/20 bg-teal-500/[0.035] overflow-hidden">
+                                <div class="px-4 py-3 border-b border-white/10 bg-teal-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-wave-square text-teal-400"></i>
+                                            v1.4 Optimizer Robustness Check
+                                        </div>
+                                        <div class="text-[10px] text-gray-500 mt-1">
+                                            比較不同樣本視窗下 optimizer 權重是否穩定。此區塊回答「模型是不是對回看期間太敏感」，不是投資建議。
+                                        </div>
+                                    </div>
+                                    <div class="text-[11px] text-gray-400">
+                                        狀態：{{ optimizerRobustnessOutput?.status ?? '尚未讀取' }}，
+                                        Strict：{{ optimizerRobustnessOutput?.sample?.strict_sample ?? '-' }} 日
+                                    </div>
+                                </div>
+
+                                <div class="p-4 space-y-4">
+                                    <div v-if="!optimizerRobustnessOutput" class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-100 leading-relaxed">
+                                        <i class="fas fa-hourglass-half mr-2"></i>
+                                        尚未讀到 optimizer robustness output。請先跑 GitHub Actions 的 <span class="font-mono">Optimizer Robustness Sandbox</span>。
+                                        <div class="text-[11px] text-amber-200/80 mt-1" v-if="optimizerRobustnessError">{{ optimizerRobustnessError }}</div>
+                                        <button @click="loadOptimizerRobustnessOutput" class="mt-2 px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-100 text-xs hover:bg-amber-500/30">
+                                            重新讀取
+                                        </button>
+                                    </div>
+
+                                    <template v-else>
+                                        <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
+                                            <div class="quant-card border-teal-500/20 bg-teal-500/10">
+                                                <div class="quant-label text-teal-300">可用視窗</div>
+                                                <div class="quant-value text-white">{{ optimizerRobustnessWindows.filter(w => w.status === 'OK').length }}</div>
+                                            </div>
+                                            <div class="quant-card border-slate-500/20 bg-slate-500/10">
+                                                <div class="quant-label text-slate-300">Strict 樣本</div>
+                                                <div class="quant-value text-white">{{ optimizerRobustnessOutput?.sample?.strict_sample ?? '-' }}</div>
+                                            </div>
+                                            <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
+                                                <div class="quant-label text-emerald-300">最穩定方法</div>
+                                                <div class="quant-value text-white text-lg">{{ optimizerMostStableMethod?.key ?? '-' }}</div>
+                                            </div>
+                                            <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
+                                                <div class="quant-label text-emerald-300">平均換手</div>
+                                                <div class="quant-value text-white">{{ optimizerMostStableMethod?.avg_pairwise_weight_turnover_pct ?? '-' }}%</div>
+                                            </div>
+                                            <div class="quant-card border-red-500/20 bg-red-500/10">
+                                                <div class="quant-label text-red-300">不穩方法數</div>
+                                                <div class="quant-value text-white">{{ optimizerUnstableMethods.length }}</div>
+                                            </div>
+                                            <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                                <div class="quant-label text-cyan-300">6M</div>
+                                                <div class="quant-value text-white text-lg">{{ optimizerRobustnessWindows.find(w => w.label === '6M')?.status ?? '-' }}</div>
+                                            </div>
+                                            <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                                <div class="quant-label text-cyan-300">1Y</div>
+                                                <div class="quant-value text-white text-lg">{{ optimizerRobustnessWindows.find(w => w.label === '1Y')?.status ?? '-' }}</div>
+                                            </div>
+                                            <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                                <div class="quant-label text-cyan-300">2Y / 3Y</div>
+                                                <div class="quant-value text-white text-lg">
+                                                    {{ optimizerRobustnessWindows.find(w => w.label === '2Y')?.status ?? '-' }} / {{ optimizerRobustnessWindows.find(w => w.label === '3Y')?.status ?? '-' }}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                                            <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                                <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
+                                                    <i class="fas fa-calendar-days text-teal-400"></i>
+                                                    樣本視窗可用性
+                                                </div>
+                                                <div class="overflow-x-auto">
+                                                    <table class="w-full text-[11px]">
+                                                        <thead class="text-gray-500 border-b border-white/10">
+                                                            <tr>
+                                                                <th class="text-left px-3 py-2">視窗</th>
+                                                                <th class="text-left px-3 py-2">狀態</th>
+                                                                <th class="text-right px-3 py-2">樣本</th>
+                                                                <th class="text-left px-3 py-2">說明</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr v-for="row in optimizerRobustnessWindows" :key="row.label" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                                <td class="px-3 py-2 font-mono text-white">{{ row.label }}</td>
+                                                                <td class="px-3 py-2">
+                                                                    <span class="px-1.5 py-0.5 rounded border text-[10px]"
+                                                                          :class="row.status === 'OK' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-red-500/30 bg-red-500/10 text-red-300'">
+                                                                        {{ row.status }}
+                                                                    </span>
+                                                                </td>
+                                                                <td class="px-3 py-2 text-right text-gray-300">{{ row.sample_count ?? '-' }}</td>
+                                                                <td class="px-3 py-2 text-gray-400">{{ row.reason || ((row.start_date || '-') + ' → ' + (row.end_date || '-')) }}</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+
+                                            <div class="xl:col-span-2 rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                                <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
+                                                    <i class="fas fa-scale-unbalanced-flip text-teal-400"></i>
+                                                    Optimizer 權重穩健性
+                                                </div>
+                                                <div class="overflow-x-auto">
+                                                    <table class="w-full text-[11px]">
+                                                        <thead class="text-gray-500 border-b border-white/10">
+                                                            <tr>
+                                                                <th class="text-left px-3 py-2">方法</th>
+                                                                <th class="text-left px-3 py-2">判讀</th>
+                                                                <th class="text-right px-3 py-2">可用視窗</th>
+                                                                <th class="text-right px-3 py-2">平均換手</th>
+                                                                <th class="text-right px-3 py-2">最大權重差</th>
+                                                                <th class="text-left px-3 py-2">最大差異標的</th>
+                                                                <th class="text-right px-3 py-2">ES95 範圍</th>
+                                                                <th class="text-right px-3 py-2">Vol 範圍</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr v-for="row in optimizerRobustnessMethods" :key="row.key" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                                <td class="px-3 py-2 font-mono text-white">{{ row.key }}</td>
+                                                                <td class="px-3 py-2">
+                                                                    <span class="px-1.5 py-0.5 rounded border text-[10px]"
+                                                                          :class="row.verdict === '穩定' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : row.verdict === '不穩定' ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-amber-500/30 bg-amber-500/10 text-amber-300'">
+                                                                        {{ row.verdict }}
+                                                                    </span>
+                                                                </td>
+                                                                <td class="px-3 py-2 text-right text-gray-300">{{ row.available_windows ?? '-' }}</td>
+                                                                <td class="px-3 py-2 text-right text-cyan-300">{{ row.avg_pairwise_weight_turnover_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right text-orange-300">{{ row.max_asset_weight_range_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 font-mono text-gray-300">{{ row.max_asset_weight_range_ticker ?? '-' }}</td>
+                                                                <td class="px-3 py-2 text-right text-red-300">{{ row.es95_range_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right text-purple-300">{{ row.annual_vol_range_pct ?? '-' }}%</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3">
+                                            <div class="text-sm font-bold text-white flex items-center gap-2 mb-2">
+                                                <i class="fas fa-triangle-exclamation text-amber-400"></i>
+                                                v1.4 使用限制
+                                            </div>
+                                            <ul class="space-y-1 text-[11px] text-gray-400 leading-relaxed">
+                                                <li v-for="item in (optimizerRobustnessOutput?.warnings || [])" :key="item" class="flex gap-2">
+                                                    <i class="fas fa-check text-amber-400 mt-0.5"></i>
+                                                    <span>{{ item }}</span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+
                             <!-- Risk contribution + model assumptions -->
                             <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
                                 <div class="xl:col-span-2 rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
@@ -4292,7 +4450,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=11.29-v13-unified-optimizer-comparison"></script>
+<script src="assets/js/app.bundle.js?v=11.30-v14-optimizer-robustness"></script>
 <script src="assets/js/quant-main-display.js?v=no-chip-terminal"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>

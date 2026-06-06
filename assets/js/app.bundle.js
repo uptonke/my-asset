@@ -1530,6 +1530,50 @@ const psr_hist = computePSR({
     return Array.isArray(p?.weights) ? p.weights : [];
 });
 
+       const optimizerRobustnessOutput = ref(null);
+       const optimizerRobustnessError = ref('');
+
+       async function loadOptimizerRobustnessOutput() {
+    try {
+        optimizerRobustnessError.value = '';
+        const response = await fetch(`data/optimizer/optimizer_robustness_latest.json?v=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) {
+            optimizerRobustnessOutput.value = null;
+            optimizerRobustnessError.value = `尚未讀到 optimizer robustness output (${response.status})`;
+            return;
+        }
+        const data = await response.json();
+        optimizerRobustnessOutput.value = data && typeof data === 'object' ? data : null;
+    } catch (err) {
+        optimizerRobustnessOutput.value = null;
+        optimizerRobustnessError.value = err?.message || String(err);
+    }
+}
+
+       const optimizerRobustnessWindows = computed(() => {
+    return Array.isArray(optimizerRobustnessOutput.value?.windows) ? optimizerRobustnessOutput.value.windows : [];
+});
+
+       const optimizerRobustnessMethods = computed(() => {
+    const stability = optimizerRobustnessOutput.value?.method_stability || {};
+    return Object.keys(stability).map((key) => ({ key, ...stability[key] }))
+        .sort((a, b) => {
+            const order = { '穩定': 0, '可觀察': 1, '不穩定': 2, '樣本不足': 3 };
+            const av = order[a.verdict] ?? 9;
+            const bv = order[b.verdict] ?? 9;
+            if (av !== bv) return av - bv;
+            return Number(a.avg_pairwise_weight_turnover_pct ?? 999) - Number(b.avg_pairwise_weight_turnover_pct ?? 999);
+        });
+});
+
+       const optimizerMostStableMethod = computed(() => {
+    return optimizerRobustnessMethods.value.find((x) => x.status === 'OK') || null;
+});
+
+       const optimizerUnstableMethods = computed(() => {
+    return optimizerRobustnessMethods.value.filter((x) => x.verdict === '不穩定');
+});
+
        const tailStatsLite = ref({
     conditionalCorr: '-',
     crisisCorr: '-',
@@ -3362,6 +3406,7 @@ chartCML.data.datasets = [
     loadDataFromCloud();
     loadOptimizerSandboxOutput();
     loadRiskfolioSandboxOutput();
+    loadOptimizerRobustnessOutput();
 
     window.addEventListener('resize', () => {
         resizeAllCharts();
@@ -3883,7 +3928,7 @@ chartCML.data.datasets = [
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr, navOverlayMode, navOverlayOptions, setNavOverlayMode, navMaConfig, riskRegimeStrip, navTrendSummary,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
-            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
+            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
         };
     }
 }).mount('#app');
