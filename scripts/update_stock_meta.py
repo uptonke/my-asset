@@ -163,12 +163,24 @@ def coingecko_id(symbol: str) -> Optional[str]:
 def is_cash_like_asset(ticker: str, category: str) -> bool:
     t = str(ticker or "").upper().strip()
     cat = str(category or "")
+    cat_upper = cat.upper()
+
+    # Important:
+    # "加密貨幣" contains "貨幣", so a broad `"貨幣" in category` rule
+    # incorrectly classifies BTC/ETH as CASH. Keep cash-like detection narrow.
+    if is_crypto_asset(t, cat):
+        return False
+
     return (
         t in {"BOXX", "BIL", "SHV", "SGOV", "TBIL", "CASH", "TWD", "NTD", "USD"}
         or "現金" in cat
-        or "貨幣" in cat
+        or "現金替代" in cat
+        or "貨幣市場" in cat
         or "短債" in cat
-        or "CASH" in cat.upper()
+        or "CASH" in cat_upper
+        or "MONEY MARKET" in cat_upper
+        or "T-BILL" in cat_upper
+        or "TREASURY BILL" in cat_upper
     )
 
 def is_gold_like_asset(ticker: str, category: str) -> bool:
@@ -221,14 +233,14 @@ def infer_primary_benchmark(ticker: str, category: str) -> str:
     if override:
         return override
 
+    if is_crypto_asset(t, category):
+        return "SPY"
     if is_cash_like_asset(t, category):
         return "CASH"
     if is_taiwan_asset(t, category):
         return "^TWII"
     if is_gold_like_asset(t, category):
         return "GLD"
-    if is_crypto_asset(t, category):
-        return "SPY"
     return "SPY"
 
 def benchmark_symbol(ticker: str, category: str) -> str:
