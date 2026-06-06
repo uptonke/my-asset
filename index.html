@@ -344,9 +344,9 @@
                     <div class="ios-story-label">{{ decisionCenter.whyNowTitle }}</div>
                     <p class="ios-story-copy mb-3">{{ decisionCenter.whyNowSummary }}</p>
                     <div v-if="(allocationGovernance?.primaryReasons || []).length" class="space-y-2">
-                        <div v-for="reason in (allocationGovernance?.primaryReasons || []).slice(0, 3)" :key="reason.code" class="ios-reason-chip">
-                            <div class="ios-reason-title">{{ reason.label }}</div>
-                            <div class="ios-reason-detail">{{ reason.detail }}</div>
+                        <div v-for="reason in (allocationGovernance?.primaryReasons || []).slice(0, 3)" :key="reason?.code || reason?.label || JSON.stringify(reason)" class="ios-reason-chip">
+                            <div class="ios-reason-title">{{ reason?.label || reason?.code || '風控訊號' }}</div>
+                            <div class="ios-reason-detail">{{ reason?.detail || reason?.label || '等待資料' }}</div>
                         </div>
                     </div>
                     <div v-else class="ios-reason-chip">
@@ -415,7 +415,7 @@
                                 <span class="alert-action-chip">{{ item.suggestedAction }}</span>
                             </div>
                             <div class="text-sm font-bold text-white">{{ item.title }}</div>
-                            <div class="text-xs text-gray-300 mt-2 leading-relaxed">{{ item.detail }}</div>
+                            <div class="text-xs text-gray-300 mt-2 leading-relaxed">{{ item?.detail || item?.note || '' }}</div>
                         </div>
                         <button @click="goToTab(item.tab)" class="shrink-0 text-[11px] px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/[0.04] text-gray-200 hover:text-white hover:bg-white/10 transition">
                             {{ item.ctaLabel }}
@@ -481,9 +481,9 @@
                         <div class="evidence-card">
                             <div class="evidence-title text-red-300">Hard Veto Signals</div>
                             <div v-if="(allocationGovernance?.hardFlags || []).length" class="space-y-2 mt-3">
-                                <div v-for="reason in (allocationGovernance?.hardFlags || []).slice(0, 4)" :key="reason.code" class="evidence-item evidence-item-hard">
-                                    <div class="font-bold text-white mb-1">{{ reason.label }}</div>
-                                    <div class="text-gray-300 leading-relaxed">{{ reason.detail }}</div>
+                                <div v-for="reason in (allocationGovernance?.hardFlags || []).slice(0, 4)" :key="reason?.code || reason?.label || JSON.stringify(reason)" class="evidence-item evidence-item-hard">
+                                    <div class="font-bold text-white mb-1">{{ reason?.label || reason?.code || '風控訊號' }}</div>
+                                    <div class="text-gray-300 leading-relaxed">{{ reason?.detail || reason?.label || '等待資料' }}</div>
                                 </div>
                             </div>
                             <div v-else class="text-sm text-emerald-300 mt-3">目前沒有 hard veto。</div>
@@ -491,9 +491,9 @@
                         <div class="evidence-card">
                             <div class="evidence-title text-amber-300">Soft Caution Signals</div>
                             <div v-if="(allocationGovernance?.softFlags || []).length" class="space-y-2 mt-3">
-                                <div v-for="reason in (allocationGovernance?.softFlags || []).slice(0, 4)" :key="reason.code" class="evidence-item evidence-item-soft">
-                                    <div class="font-bold text-white mb-1">{{ reason.label }}</div>
-                                    <div class="text-gray-300 leading-relaxed">{{ reason.detail }}</div>
+                                <div v-for="reason in (allocationGovernance?.softFlags || []).slice(0, 4)" :key="reason?.code || reason?.label || JSON.stringify(reason)" class="evidence-item evidence-item-soft">
+                                    <div class="font-bold text-white mb-1">{{ reason?.label || reason?.code || '風控訊號' }}</div>
+                                    <div class="text-gray-300 leading-relaxed">{{ reason?.detail || reason?.label || '等待資料' }}</div>
                                 </div>
                             </div>
                             <div v-else class="text-sm text-emerald-300 mt-3">目前沒有額外 soft caution。</div>
@@ -3286,7 +3286,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=11.14-badge-guards"></script>
+<script src="assets/js/app.bundle.js?v=11.15-detail-guards"></script>
 <script src="assets/js/quant-main-display.js?v=no-chip-terminal"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
