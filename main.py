@@ -10,8 +10,8 @@ import zipfile
 import numpy as np
 import pandas as pd
 import yfinance as yf
-# pandas_ta is optional. GitHub Actions may not have it installed.
-# Fallback below keeps RSI/MACD working without adding a fragile dependency.
+# pandas_ta is optional in GitHub Actions.
+# Fallback keeps RSI / MACD running when pandas_ta is not installed.
 try:
     import pandas_ta as ta
 except ModuleNotFoundError:
@@ -28,14 +28,15 @@ warnings.filterwarnings('ignore')
 # Optional technical-analysis fallback
 # ==========================================
 class _TAFallback:
-    """Minimal pandas_ta-compatible fallback for the two indicators used here."""
+    """Minimal pandas_ta-compatible fallback for the RSI/MACD indicators used here."""
 
     @staticmethod
     def rsi(close, length=14):
         try:
+            raw = pd.Series(close)
             series = pd.Series(close, dtype="float64").dropna()
             if len(series) < max(length + 1, 3):
-                return pd.Series([50.0] * len(pd.Series(close)), index=pd.Series(close).index)
+                return pd.Series([50.0] * len(raw), index=raw.index)
 
             delta = series.diff()
             gain = delta.clip(lower=0)
@@ -49,20 +50,20 @@ class _TAFallback:
             out = out.replace([np.inf, -np.inf], np.nan).fillna(50.0)
             return out
         except Exception:
-            s = pd.Series(close)
-            return pd.Series([50.0] * len(s), index=s.index)
+            raw = pd.Series(close)
+            return pd.Series([50.0] * len(raw), index=raw.index)
 
     @staticmethod
     def macd(close, fast=12, slow=26, signal=9):
         try:
+            raw = pd.Series(close)
             series = pd.Series(close, dtype="float64").dropna()
             if len(series) < max(slow + signal, 3):
-                idx = pd.Series(close).index
                 return pd.DataFrame({
-                    "MACD_12_26_9": [0.0] * len(idx),
-                    "MACDh_12_26_9": [0.0] * len(idx),
-                    "MACDs_12_26_9": [0.0] * len(idx),
-                }, index=idx)
+                    "MACD_12_26_9": [0.0] * len(raw),
+                    "MACDh_12_26_9": [0.0] * len(raw),
+                    "MACDs_12_26_9": [0.0] * len(raw),
+                }, index=raw.index)
 
             ema_fast = series.ewm(span=fast, adjust=False).mean()
             ema_slow = series.ewm(span=slow, adjust=False).mean()
@@ -76,16 +77,95 @@ class _TAFallback:
                 "MACDs_12_26_9": signal_line,
             })
         except Exception:
-            idx = pd.Series(close).index
+            raw = pd.Series(close)
             return pd.DataFrame({
-                "MACD_12_26_9": [0.0] * len(idx),
-                "MACDh_12_26_9": [0.0] * len(idx),
-                "MACDs_12_26_9": [0.0] * len(idx),
-            }, index=idx)
+                "MACD_12_26_9": [0.0] * len(raw),
+                "MACDh_12_26_9": [0.0] * len(raw),
+                "MACDs_12_26_9": [0.0] * len(raw),
+            }, index=raw.index)
 
 
 if ta is None:
     ta = _TAFallback()
+
+# ==========================================
+# Google Sheet ticker whitelist
+# ==========================================
+GOOGLE_SHEET_TICKER_CSV_URL_DEFAULT = "https://docs.google.com/spreadsheets/d/1cVoE67-mR9lQQLn4FE_GYftAOAR2RjvaL3MgqIUQ880/export?format=csv&gid=0"
+
+def normalize_ticker_symbol(value):
+    """Normalize user-maintained ticker strings from Google Sheet / ledger."""
+    if value is None:
+        return ""
+    t = str(value).strip().upper()
+    if not t or t in {"NAN", "NONE", "NULL", "-"}:
+        return ""
+    return t
+
+def load_google_sheet_ticker_whitelist():
+    """
+    Load a one-column Google Sheet ticker whitelist.
+
+    Expected sheet:
+    - Column name can be `ticker`, `Ticker`, `代號`, `標的`, or no header.
+    - Values are normalized to uppercase strings.
+    - This controls the active universe only; shares/current weight still come from Supabase ledger.
+    """
+    url = os.getenv("GOOGLE_SHEET_TICKER_CSV_URL", "").strip() or GOOGLE_SHEET_TICKER_CSV_URL_DEFAULT
+    if not url:
+        print("📄 Google Sheet ticker whitelist disabled: no URL", flush=True)
+        return []
+
+    try:
+        df = pd.read_csv(url)
+        if df.empty:
+            print("📄 Google Sheet ticker whitelist empty", flush=True)
+            return []
+
+        normalized_cols = {str(c).strip().lower(): c for c in df.columns}
+        col = None
+        for candidate in ["ticker", "symbol", "代號", "標的"]:
+            if candidate.lower() in normalized_cols:
+                col = normalized_cols[candidate.lower()]
+                break
+
+        if col is None:
+            # If the sheet has a single column but no recognized header, use the first column.
+            if len(df.columns) == 1:
+                col = df.columns[0]
+            else:
+                print(
+                    "⚠️ Google Sheet ticker whitelist ignored: missing ticker column. "
+                    f"columns={list(df.columns)}",
+                    flush=True
+                )
+                return []
+
+        tickers = []
+        for value in df[col].tolist():
+            t = normalize_ticker_symbol(value)
+            if t:
+                tickers.append(t)
+
+        # Stable de-duplication while preserving sheet order.
+        seen = set()
+        unique = []
+        for t in tickers:
+            if t not in seen:
+                unique.append(t)
+                seen.add(t)
+
+        print(
+            "📄 Google Sheet ticker whitelist loaded: "
+            + (", ".join(unique) if unique else "NONE"),
+            flush=True
+        )
+        return unique
+
+    except Exception as exc:
+        print(f"⚠️ Google Sheet ticker whitelist failed, fallback to ledger active holdings: {exc}", flush=True)
+        return []
+
 
 
 import shutil
@@ -1412,8 +1492,55 @@ try:
                 
                 current_shares[t] = current_shares.get(t, 0) + (s_val * (-1 if str(tx.get("type", "buy")).lower() in ["sell", "賣出"] else 1))
 
-            active_tickers = [t for t, s in current_shares.items() if s > 0.0001]
+            ledger_active_tickers = [t for t, s in current_shares.items() if s > 0.0001]
+            closed_tickers = sorted([t for t, s in current_shares.items() if abs(s) <= 0.0001])
+
+            sheet_tickers = load_google_sheet_ticker_whitelist()
+            if sheet_tickers:
+                active_tickers = sheet_tickers
+                print(
+                    "🎯 Active universe overridden by Google Sheet ticker whitelist: "
+                    + ", ".join(active_tickers),
+                    flush=True
+                )
+            else:
+                active_tickers = ledger_active_tickers
+
             pipeline_tickers = active_tickers[:]
+
+            print(
+                "📌 Active holdings from ledger: "
+                + (", ".join(ledger_active_tickers) if ledger_active_tickers else "NONE"),
+                flush=True
+            )
+            print(
+                "📌 Active universe used by pipeline: "
+                + (", ".join(active_tickers) if active_tickers else "NONE"),
+                flush=True
+            )
+
+            sheet_only_tickers = sorted(set(active_tickers) - set(ledger_active_tickers))
+            ledger_only_tickers = sorted(set(ledger_active_tickers) - set(active_tickers))
+            if sheet_only_tickers:
+                print(
+                    "📄 Sheet-only tickers, currently zero-share in ledger: "
+                    + ", ".join(sheet_only_tickers),
+                    flush=True
+                )
+            if ledger_only_tickers:
+                print(
+                    "🧹 Ledger active but excluded by Google Sheet whitelist: "
+                    + ", ".join(ledger_only_tickers),
+                    flush=True
+                )
+
+            if closed_tickers:
+                print(
+                    "📌 Closed / zero-share tickers from ledger: "
+                    + ", ".join(closed_tickers[:20])
+                    + (" ..." if len(closed_tickers) > 20 else ""),
+                    flush=True
+                )
             ticker_to_yf = dict(zip(all_tickers, yf_tickers))
             valid_investable = [yf_t for t in active_tickers if (yf_t := ticker_to_yf.get(t)) and yf_t in returns.columns and yf_t not in [tw_bench, us_bench]]
             
@@ -1657,14 +1784,42 @@ try:
                 buffer_buy_signals = []
                 risk_buy_signals = []
             
-                for t in all_tickers:
+                stale_meta_tickers = sorted([
+                    t for t in all_tickers
+                    if t not in active_tickers and not is_hard_buffer_ticker(t)
+                ])
+                for stale_ticker in stale_meta_tickers:
+                    if stale_ticker in stock_meta and isinstance(stock_meta.get(stale_ticker), dict):
+                        # Keep historical metadata, but do not let stale target_weight create false BUY signals.
+                        stock_meta[stale_ticker]["target_weight"] = 0.0
+                        stock_meta[stale_ticker]["is_active_holding"] = False
+
+                if stale_meta_tickers:
+                    print(
+                        "🧹 已排除非持倉 / 已平倉標的，不產生再平衡訊號: "
+                        + ", ".join(stale_meta_tickers[:20])
+                        + (" ..." if len(stale_meta_tickers) > 20 else ""),
+                        flush=True
+                    )
+
+                rebalance_universe = sorted(set(active_tickers) | set(available_buffer_names))
+                print(
+                    "🎯 Rebalance universe 只使用 active holdings + buffer: "
+                    + ", ".join(rebalance_universe),
+                    flush=True
+                )
+
+                for t in rebalance_universe:
+                    if t not in stock_meta:
+                        stock_meta[t] = {}
+                    stock_meta[t]["is_active_holding"] = bool(t in active_tickers)
                     base_tw = float(stock_meta.get(t, {}).get("target_weight", 0.0) or 0.0)
                     cw = asset_values.get(t, 0.0) / portfolio_value if portfolio_value > 0 else 0.0
-            
+
                     effective_tw = base_tw
                     if is_hard_buffer_ticker(t):
                         effective_tw = max(base_tw, cw + per_buffer_fill_wt)
-            
+
                     delta_w = effective_tw - cw
                     if abs(delta_w) <= 0.01:
                         continue
