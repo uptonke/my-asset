@@ -862,46 +862,46 @@
     </h4>
     <p class="panel-subtitle">觀察資產淨值隨時間的變化，並加入短期 / 長期趨勢線與 Cost 對照。</p>
     <div class="terminal-inline-note mt-3 flex flex-wrap items-center gap-2 text-[11px]">
-        <span class="terminal-chip">{{ navMaConfig.monthLabel }}</span>
-        <span class="terminal-chip">{{ navMaConfig.yearLabel }}</span>
-        <span class="terminal-chip" :class="riskRegimeStrip.class">{{ riskRegimeStrip.label }}</span>
-        <span class="text-gray-500">{{ navMaConfig.frequencyNote }}</span>
+        <span class="terminal-chip">{{ navMaConfig?.monthLabel || '短期趨勢：N/A' }}</span>
+        <span class="terminal-chip">{{ navMaConfig?.yearLabel || '長期趨勢：N/A' }}</span>
+        <span class="terminal-chip" :class="riskRegimeStrip?.class || 'border-slate-500/30 bg-slate-500/10 text-slate-300'">{{ riskRegimeStrip?.label || '等待風控資料' }}</span>
+        <span class="text-gray-500">{{ navMaConfig?.frequencyNote || '資料載入中' }}</span>
     </div>
     <div class="mt-3 flex flex-wrap items-center gap-2">
-        <button v-for="opt in navOverlayOptions"
-                :key="opt.value"
-                @click="setNavOverlayMode(opt.value)"
+        <button v-for="opt in (navOverlayOptions || [])"
+                :key="opt?.value || opt?.label || JSON.stringify(opt)"
+                @click="setNavOverlayMode(opt?.value || 'nav')"
                 class="nav-overlay-btn"
-                :class="navOverlayMode === opt.value ? 'is-active' : ''">
-            {{ opt.label }}
+                :class="navOverlayMode === opt?.value ? 'is-active' : ''">
+            {{ opt?.label || 'Overlay' }}
         </button>
     </div>
     <div class="text-[11px] text-gray-500 mt-2 leading-relaxed">回撤疊圖（Drawdown Overlay）＝把回撤曲線疊加到 NAV 圖上，拿來一起看最大跌幅、目前仍在水下多少，以及修復進度。</div>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
         <div class="terminal-mini-stat soft">
             <div class="terminal-mini-label">NAV vs 短期</div>
-            <div class="terminal-mini-value">{{ navTrendSummary.navVsMonth }}</div>
+            <div class="terminal-mini-value">{{ navTrendSummary?.navVsMonth || 'N/A' }}</div>
         </div>
         <div class="terminal-mini-stat soft">
             <div class="terminal-mini-label">NAV vs 長期</div>
-            <div class="terminal-mini-value">{{ navTrendSummary.navVsYear }}</div>
+            <div class="terminal-mini-value">{{ navTrendSummary?.navVsYear || 'N/A' }}</div>
         </div>
         <div class="terminal-mini-stat soft">
             <div class="terminal-mini-label">短期斜率</div>
-            <div class="terminal-mini-value">{{ navTrendSummary.monthSlope }}</div>
+            <div class="terminal-mini-value">{{ navTrendSummary?.monthSlope || 'N/A' }}</div>
         </div>
         <div class="terminal-mini-stat soft">
             <div class="terminal-mini-label">長期斜率</div>
-            <div class="terminal-mini-value">{{ navTrendSummary.yearSlope }}</div>
+            <div class="terminal-mini-value">{{ navTrendSummary?.yearSlope || 'N/A' }}</div>
         </div>
         <div class="terminal-mini-stat soft sm:col-span-2">
             <div class="terminal-mini-label">目前距前高跌幅</div>
-            <div class="terminal-mini-value">{{ navTrendSummary.currentDrawdown }}</div>
+            <div class="terminal-mini-value">{{ navTrendSummary?.currentDrawdown || 'N/A' }}</div>
         </div>
     </div>
-    <div class="terminal-regime-strip mt-3 rounded-2xl border px-4 py-3" :class="riskRegimeStrip.class">
+    <div class="terminal-regime-strip mt-3 rounded-2xl border px-4 py-3" :class="riskRegimeStrip?.class || 'border-slate-500/30 bg-slate-500/10 text-slate-300'">
         <div class="text-[11px] uppercase tracking-[0.14em] opacity-75">Trend / Regime Strip</div>
-        <div class="text-xs text-white mt-1">{{ riskRegimeStrip.note }} · Overlay：{{ navTrendSummary.overlayModeLabel }}</div>
+        <div class="text-xs text-white mt-1">{{ riskRegimeStrip?.note || '等待資料載入' }} · Overlay：{{ navTrendSummary?.overlayModeLabel || 'NAV' }}</div>
     </div>
 </div>
                             </div>
@@ -941,11 +941,11 @@
                         <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
                             <div class="flex flex-wrap gap-2">
                                 <button v-for="opt in holdingsViewOptions"
-                                        :key="opt.value"
+                                        :key="opt?.value || opt?.label || JSON.stringify(opt)"
                                         @click="holdingsActionFilter = opt.value"
                                         class="holdings-filter-btn"
                                         :class="holdingsActionFilter === opt.value ? 'is-active' : ''">
-                                    {{ opt.label }}
+                                    {{ opt?.label || 'Overlay' }}
                                     <span class="opacity-70 ml-1">
                                         <template v-if="opt.value==='all'">{{ holdingsActionSummary.total }}</template>
                                         <template v-else-if="opt.value==='trim'">{{ holdingsActionSummary.trim }}</template>
@@ -960,7 +960,7 @@
                             </div>
                             <div class="flex flex-wrap items-center gap-2 text-xs">
                                 <select v-model="holdingsSortKey" class="input-dark rounded-lg px-3 py-2 text-xs min-w-[180px]">
-                                    <option v-for="opt in holdingsSortOptions" :key="opt.value" :value="opt.value">排序：{{ opt.label }}</option>
+                                    <option v-for="opt in holdingsSortOptions" :key="opt?.value || opt?.label || JSON.stringify(opt)" :value="opt.value">排序：{{ opt?.label || 'Overlay' }}</option>
                                 </select>
                                 <span class="px-2.5 py-2 rounded-lg border border-white/10 bg-white/[0.04] text-gray-300">
                                     顯示 {{ holdingsVisibleStats.visible }} / {{ holdingsVisibleStats.total }} 檔
@@ -3286,7 +3286,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=11.16-deep-template-guards"></script>
+<script src="assets/js/app.bundle.js?v=11.17-nav-template-guards"></script>
 <script src="assets/js/quant-main-display.js?v=no-chip-terminal"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>

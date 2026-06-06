@@ -941,7 +941,78 @@ const isCashAlert = computed(() => isCashNegative.value || isCashTooHigh.value);
                         : 0;
                 }
 
+        
+        const navOverlayMode = ref('nav');
+        const navOverlayOptions = [
+            { value: 'nav', label: 'NAV' },
+            { value: 'drawdown', label: '回撤' },
+            { value: 'both', label: 'NAV + 回撤' }
+        ];
+        const setNavOverlayMode = (mode) => {
+            const allowed = new Set(navOverlayOptions.map(opt => opt.value));
+            navOverlayMode.value = allowed.has(mode) ? mode : 'nav';
+            try {
+                setTimeout(() => updateCharts && updateCharts(), 0);
+            } catch (err) {
+                console.warn('setNavOverlayMode chart refresh skipped:', err);
+            }
+        };
+        const navMaConfig = computed(() => ({
+            monthLabel: '短期趨勢：3M MA',
+            yearLabel: '長期趨勢：12M MA',
+            frequencyNote: '以現有 NAV history 計算；資料不足時顯示為 N/A'
+        }));
+        const riskRegimeStrip = computed(() => {
+            const sr = syntheticRiskMeta?.value || null;
+            const confidence = sr?.confidence || 'N/A';
+            const mdd = Number(sr?.metrics?.max_drawdown_pct || 0);
+            const es95 = Number(sr?.metrics?.es95_pct || 0);
+            if (sr?.status === 'FAILED' || sr?.status === 'INVALID') {
                 return {
+                    class: 'border-red-500/30 bg-red-500/10 text-red-200',
+                    label: '風控資料不足',
+                    note: 'synthetic risk 尚未可用'
+                };
+            }
+            if (mdd <= -20 || es95 >= 6) {
+                return {
+                    class: 'border-orange-500/30 bg-orange-500/10 text-orange-200',
+                    label: '風險偏高',
+                    note: '尾部風險或回撤偏高'
+                };
+            }
+            if (confidence === 'LOW') {
+                return {
+                    class: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
+                    label: '樣本偏短',
+                    note: '模型方向可參考，信心偏低'
+                };
+            }
+            return {
+                class: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200',
+                label: '風險穩定',
+                note: '目前未見 hard veto'
+            };
+        });
+        const navTrendSummary = computed(() => {
+            const modeMap = {
+                nav: 'NAV',
+                drawdown: 'Drawdown',
+                both: 'NAV + Drawdown'
+            };
+            return {
+                navVsMonth: 'N/A',
+                navVsYear: 'N/A',
+                monthSlope: 'N/A',
+                yearSlope: 'N/A',
+                currentDrawdown: syntheticRiskMeta?.value?.metrics?.max_drawdown_pct != null
+                    ? `${syntheticRiskMeta.value.metrics.max_drawdown_pct}%`
+                    : 'N/A',
+                overlayModeLabel: modeMap[navOverlayMode.value] || 'NAV'
+            };
+        });
+
+        return {
                     ...item,
                     dailyReturn,
                     withdrawal: -periodExternalFlow, // 為了相容你的 UI 欄位
@@ -3253,7 +3324,7 @@ chartCML.data.datasets = [
             isAuthenticating, handleLogin, handleLogout, checkAuth, fireProgress, 
             updateCharts, addFireTarget, macroRegime, enableBlackSwan, mcRisk, blViews, mcAvailableAssets, addBlView, enableInflation,
             generateAutoViews, runMonteCarlo, stressTestResults,
-            expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr,
+            expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr, navOverlayMode, navOverlayOptions, setNavOverlayMode, navMaConfig, riskRegimeStrip, navTrendSummary,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
             xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
