@@ -92,7 +92,7 @@ kelly_sizing: {
     buffer_floor_pct: rebalanceMonitor.value.bufferFloorPct + '%',
     current_buffer_pct: rebalanceMonitor.value.currentBufferPct + '%',
     buffer_gap_pct: rebalanceMonitor.value.bufferGapPct + '%',
-    buffer_blocking_risk_buys: rebalanceMonitor.value.bufferBlockingRiskBuys ? 'YES' : 'NO',
+    buffer_blocking_risk_buys: rebalanceMonitor.value.bufferBlockingRiskBuys ? '是' : '否',
     hard_buffer_tickers: (rebalanceMonitor.value.hardBufferTickers || []).join(' + '),
 
     rebalance_alerts: rebalanceMonitor.value.alerts.slice(0, 5)
@@ -175,7 +175,7 @@ State whether the portfolio is being paid enough for the risk it is taking.
 If PSR or DSR is present, explicitly judge whether the observed Sharpe is statistically credible or likely inflated by selection / optimization.
 Treat DSR as more important than raw Sharpe when Monte Carlo optimization has tested many candidate portfolios.
 3. 【Portfolio X-Ray】Use PC1 explained, PC1-3 cumulative explained, USD exposure, FX impact, and top risk contributors. Judge whether the portfolio is truly diversified or only appears diversified.
-4. 【Regime / Rebalance Monitor】Use trim candidates, high-priority alerts, leverage volatility drag, buffer_floor_pct, current_buffer_pct, buffer_gap_pct, buffer_blocking_risk_buys, hard_buffer_tickers, and rebalance alerts. Judge whether risk is drifting because the user failed to rebalance, and whether the portfolio is currently constrained by a Buffer Floor shortfall.
+4. 【市場狀態 / 再平衡監控】Use trim candidates, high-priority alerts, leverage volatility drag, buffer_floor_pct, current_buffer_pct, buffer_gap_pct, buffer_blocking_risk_buys, hard_buffer_tickers, and rebalance alerts. Judge whether risk is drifting because the user failed to rebalance, and whether the portfolio is currently constrained by a Buffer Floor shortfall.
 5. 【Tail / Crash Radar】Use conditional correlation, crisis correlation, downside beta, stressed CVaR, joint downside hit rate, co-drawdown frequency, tail dependence lite, and rolling CVaR. Judge how fragile the portfolio becomes in bad states.
 6. 【Jump-Diffusion / EVT】If jump_diffusion or evt_tail is present, you MUST explicitly compare historical tail metrics vs jump-adjusted tail metrics vs EVT-implied tail metrics. State whether historical CVaR is understating discontinuous crash risk or fat-tail risk. Use jd_var95, jd_es95, jd_crash_prob, jd_tail_loss, evt_var95, evt_es95, evt_shape_xi, evt_threshold, and evt_exceedance_count.
 7. 【肥尾與痛苦結構】Use Kurtosis, Skewness, MDD, UI, TUW, and Calmar. Judge whether the portfolio is psychologically and statistically survivable.
@@ -609,12 +609,12 @@ ${JSON.stringify(payload, null, 2)}
                 if(!tx.ticker || tx.type !== 'Buy') return;
                 const t = tx.ticker.toUpperCase();
                 const txDate = new Date(tx.date);
-                const daysHeld = Math.max(1, (today - txDate) / (1000 * 60 * 60 * 24)); 
+                const 日Held = Math.max(1, (today - txDate) / (1000 * 60 * 60 * 24)); 
                 const investedAmount = Math.abs(tx.totalCashFlow);
 
                 if (!holdingDaysMap[t]) holdingDaysMap[t] = { totalInvested: 0, weightedDaysSum: 0 };
                 holdingDaysMap[t].totalInvested += investedAmount;
-                holdingDaysMap[t].weightedDaysSum += (investedAmount * daysHeld);
+                holdingDaysMap[t].weightedDaysSum += (investedAmount * 日Held);
             });
 
             holdingsFlat.value.forEach(h => {

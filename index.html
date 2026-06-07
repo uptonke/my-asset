@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>股票紀錄 v11.7 (Chaos UI Ready)</title>
+    <title>投資組合儀表板 v11.7（穩定版）</title>
     
     <link rel="stylesheet" href="assets/css/tailwind-built.css">
 
@@ -35,22 +35,22 @@
         <div class="glass p-8 rounded-3xl w-full max-w-sm border border-white/20 shadow-2xl">
             <div class="text-center mb-8">
                 <div class="text-5xl mb-3 text-yellow-500"><i class="fas fa-chart-line"></i></div>
-                <h2 class="text-2xl font-black text-white tracking-widest">PORTFOLIO</h2>
-                <div class="text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-widest">Secure Access Only</div>
+                <h2 class="text-2xl font-black text-white tracking-widest">投資組合</h2>
+                <div class="text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-widest">安全存取</div>
             </div>
             <form @submit.prevent="handleLogin" class="space-y-5">
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1 uppercase font-bold">Email</label>
+                    <label class="block text-xs text-gray-400 mb-1 uppercase font-bold">電子郵件</label>
                     <input v-model="loginEmail" type="email" required class="w-full bg-[#1e293b] border border-slate-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-yellow-500 transition-colors">
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1 uppercase font-bold">Password</label>
+                    <label class="block text-xs text-gray-400 mb-1 uppercase font-bold">密碼</label>
                     <input v-model="loginPassword" type="password" required class="w-full bg-[#1e293b] border border-slate-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-yellow-500 transition-colors">
                 </div>
                 <div v-if="loginError" class="text-xs text-red-400 text-center bg-red-400/10 py-2 rounded">{{ loginError }}</div>
                 <button type="submit" :disabled="isAuthenticating" class="w-full btn-gold text-black font-black py-3 rounded-xl mt-6 transition-colors tracking-wider flex justify-center items-center">
                     <i v-if="isAuthenticating" class="fas fa-spinner fa-spin mr-2"></i>
-                    {{ isAuthenticating ? 'AUTHENTICATING...' : 'LOGIN 登入' }}
+                    {{ isAuthenticating ? '驗證中...' : '登入' }}
                 </button>
             </form>
         </div>
@@ -58,7 +58,7 @@
     
     <div v-if="!isAppReady" class="fixed inset-0 z-[999] bg-[#0f172a] flex flex-col items-center justify-center text-white">
         <i class="fas fa-circle-notch fa-spin text-4xl text-yellow-500 mb-4"></i>
-        <p class="text-lg font-bold tracking-widest animate-pulse">系統初始化中 (Supabase Syncing)...</p>
+        <p class="text-lg font-bold tracking-widest animate-pulse">系統初始化中（Supabase 同步中）...</p>
     </div>
 
     <header class="sticky top-0 z-50 flex-none shadow-lg backdrop-blur-xl border-b border-white/10 transition-colors duration-500 glass">
@@ -71,11 +71,11 @@
                 </div>
                 <div class="min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
-                        <h1 class="font-bold text-lg md:text-xl tracking-wide text-white truncate">Stock Portfolio</h1>
+                        <h1 class="font-bold text-lg md:text-xl tracking-wide text-white truncate">投資組合</h1>
                         <span class="text-xs bg-yellow-600 px-2 py-0.5 rounded text-black font-bold">v11.7</span>
                         <i v-if="isDbSyncing" class="fas fa-cloud-upload-alt animate-bounce text-blue-400 text-sm" title="雲端同步中"></i>
                     </div>
-                    <p class="text-xs text-gray-400 mt-1">投資儀表板 / Portfolio Dashboard</p>
+                    <p class="text-xs text-gray-400 mt-1">投資組合儀表板</p>
                 </div>
             </div>
 
@@ -381,7 +381,7 @@
             <div class="rounded-2xl border border-white/10 bg-black/20 p-4 md:p-5 decision-allocation-card">
                 <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-4">
                     <div>
-                        <div class="text-[11px] uppercase tracking-[0.18em] text-yellow-400 font-bold">Asset Allocation</div>
+                        <div class="text-[11px] uppercase tracking-[0.18em] text-yellow-400 font-bold">資產配置</div>
                         <div class="text-sm md:text-base font-bold text-white mt-1">資產配置</div>
                         <div class="text-xs text-gray-400 mt-2">把配置圖塞回今日決策中心內，先看警報與治理，再看目前風險資產分布。</div>
                     </div>
@@ -404,7 +404,7 @@
                     </div>
                     <p class="text-xs text-gray-400 mt-2">不是把所有數據攤開，而是先把最該動手的事排前面。</p>
                 </div>
-                <div class="text-[11px] text-gray-500 font-mono">{{ (alertCenterItems || []).length }} items</div>
+                <div class="text-[11px] text-gray-500 font-mono">{{ (alertCenterItems || []).length }} 項</div>
             </div>
         </div>
         <div class="p-4 md:p-5 space-y-4">
@@ -418,8 +418,8 @@
                                     <i class="fas" :class="item?.icon || 'fa-circle-info'"></i>
                                     {{ (item?.tone || 'info').toUpperCase() }}
                                 </div>
-                                <span class="alert-source-chip">{{ item?.sourceLabel || 'System' }}</span>
-                                <span class="alert-action-chip">{{ item?.suggestedAction || 'Review' }}</span>
+                                <span class="alert-source-chip">{{ item?.sourceLabel || '系統' }}</span>
+                                <span class="alert-action-chip">{{ item?.suggestedAction || '檢視' }}</span>
                             </div>
                             <div class="text-sm font-bold text-white">{{ item?.title || '等待資料' }}</div>
                             <div class="text-xs text-gray-300 mt-2 leading-relaxed">{{ item?.detail || item?.note || '' }}</div>
@@ -479,14 +479,14 @@
 
                     <div class="px-5 md:px-6 pb-4">
                         <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
-                            <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-2">Governance Logic</div>
+                            <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-2">治理邏輯</div>
                             <div class="text-sm text-gray-200 leading-relaxed">{{ governanceLogicLine }}</div>
                         </div>
                     </div>
 
                     <div class="px-5 md:px-6 pb-5 md:pb-6 grid grid-cols-1 xl:grid-cols-3 gap-4">
                         <div class="evidence-card">
-                            <div class="evidence-title text-red-300">Hard Veto Signals</div>
+                            <div class="evidence-title text-red-300">硬性否決訊號</div>
                             <div v-if="(allocationGovernance?.hardFlags || []).length" class="space-y-2 mt-3">
                                 <div v-for="reason in (allocationGovernance?.hardFlags || []).slice(0, 4)" :key="reason?.code || reason?.label || JSON.stringify(reason)" class="evidence-item evidence-item-hard">
                                     <div class="font-bold text-white mb-1">{{ reason?.label || reason?.code || '風控訊號' }}</div>
@@ -496,7 +496,7 @@
                             <div v-else class="text-sm text-emerald-300 mt-3">目前沒有 hard veto。</div>
                         </div>
                         <div class="evidence-card">
-                            <div class="evidence-title text-amber-300">Soft Caution Signals</div>
+                            <div class="evidence-title text-amber-300">軟性警示訊號</div>
                             <div v-if="(allocationGovernance?.softFlags || []).length" class="space-y-2 mt-3">
                                 <div v-for="reason in (allocationGovernance?.softFlags || []).slice(0, 4)" :key="reason?.code || reason?.label || JSON.stringify(reason)" class="evidence-item evidence-item-soft">
                                     <div class="font-bold text-white mb-1">{{ reason?.label || reason?.code || '風控訊號' }}</div>
@@ -507,7 +507,7 @@
                         </div>
                         <div class="evidence-card">
                             <div class="flex items-center justify-between gap-2">
-                                <div class="evidence-title text-cyan-300">History Integrity</div>
+                                <div class="evidence-title text-cyan-300">歷史資料完整性</div>
                                 <span class="holding-governance-badge" :class="historyIntegrityBadge?.badgeClass || 'border-slate-500/40 bg-slate-500/10 text-slate-300'">{{ historyIntegrityBadge?.label || '等待資料' }}</span>
                             </div>
                             <div class="text-sm text-gray-200 leading-relaxed mt-3">{{ historyIntegrityBadge?.detail || '等待資料載入。' }}</div>
@@ -546,7 +546,7 @@
     <div class="p-5 md:p-6">
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
     <div class="rounded-2xl border border-red-500/20 bg-red-500/10 p-4">
-        <div class="text-[11px] uppercase tracking-wider text-red-300 font-bold mb-2">Liquidity Run</div>
+        <div class="text-[11px] uppercase tracking-wider text-red-300 font-bold mb-2">流動性擠兌</div>
         <div class="text-2xl font-bold font-mono text-red-400">
             {{ chaosMeta?.liquidity_run_probability ?? '-' }}%
         </div>
@@ -554,7 +554,7 @@
     </div>
 
     <div class="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4">
-        <div class="text-[11px] uppercase tracking-wider text-yellow-300 font-bold mb-2">Stressed VaR 95</div>
+        <div class="text-[11px] uppercase tracking-wider text-yellow-300 font-bold mb-2">壓力 VaR 95</div>
         <div class="text-2xl font-bold font-mono text-yellow-300">
             {{ chaosMeta?.stressed_var95 ?? '-' }}%
         </div>
@@ -562,7 +562,7 @@
     </div>
 
     <div class="rounded-2xl border border-orange-500/20 bg-orange-500/10 p-4">
-        <div class="text-[11px] uppercase tracking-wider text-orange-300 font-bold mb-2">Stressed ES 95</div>
+        <div class="text-[11px] uppercase tracking-wider text-orange-300 font-bold mb-2">壓力 ES 95</div>
         <div class="text-2xl font-bold font-mono text-orange-300">
             {{ chaosMeta?.stressed_es95 ?? '-' }}%
         </div>
@@ -570,7 +570,7 @@
     </div>
 
     <div class="rounded-2xl border border-purple-500/20 bg-purple-500/10 p-4">
-        <div class="text-[11px] uppercase tracking-wider text-purple-300 font-bold mb-2">Contagion Loss</div>
+        <div class="text-[11px] uppercase tracking-wider text-purple-300 font-bold mb-2">傳染損失</div>
         <div class="text-2xl font-bold font-mono text-purple-300">
             {{ chaosMeta?.contagion_loss_pct ?? '-' }}%
         </div>
@@ -587,7 +587,7 @@
 
         <div class="flex flex-wrap gap-3 text-xs">
             <div class="px-3 py-2 rounded-xl border border-red-500/20 bg-red-500/10">
-                <div class="text-gray-500 mb-1">JD Crash Prob</div>
+                <div class="text-gray-500 mb-1">JD 崩跌機率</div>
                 <div class="font-mono font-bold"
                      :class="parseFloat(chaosMeta?.jump_diffusion?.jd_crash_prob ?? chaosMeta?.tail_meta?.jd_crash_prob ?? 0) >= 10 ? 'text-red-300' : 'text-white'">
                     {{ chaosMeta?.jump_diffusion?.jd_crash_prob ?? chaosMeta?.tail_meta?.jd_crash_prob ?? '-' }}
@@ -595,7 +595,7 @@
             </div>
 
             <div class="px-3 py-2 rounded-xl border border-purple-500/20 bg-purple-500/10">
-                <div class="text-gray-500 mb-1">EVT Shape ξ</div>
+                <div class="text-gray-500 mb-1">EVT 形狀參數 ξ</div>
                 <div class="font-mono font-bold"
                      :class="parseFloat(chaosMeta?.evt_tail?.evt_shape_xi ?? chaosMeta?.tail_meta?.evt_shape_xi ?? 0) > 0 ? 'text-red-300' : 'text-white'">
                     {{ chaosMeta?.evt_tail?.evt_shape_xi ?? chaosMeta?.tail_meta?.evt_shape_xi ?? '-' }}
@@ -638,19 +638,19 @@
                         </div>
                     </div>
                     <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                        <div class="text-gray-500 mb-1">VIX Shock</div>
+                        <div class="text-gray-500 mb-1">VIX 衝擊</div>
                         <div class="text-white font-mono font-bold">
                             {{ chaosMeta?.scenario?.vix_shock ?? '-' }}
                         </div>
                     </div>
                     <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                        <div class="text-gray-500 mb-1">HY Spread</div>
+                        <div class="text-gray-500 mb-1">高收益利差</div>
                         <div class="text-white font-mono font-bold">
                             {{ chaosMeta?.scenario?.hy_spread_shock ?? '-' }}
                         </div>
                     </div>
                     <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                        <div class="text-gray-500 mb-1">Fire-sale Loss</div>
+                        <div class="text-gray-500 mb-1">拋售折價損失</div>
                         <div class="text-white font-mono font-bold">
                             {{ chaosMeta?.fire_sale_loss_pct ?? '-' }}%
                         </div>
@@ -806,7 +806,7 @@
                     <i class="fas fa-file-lines text-indigo-400"></i>
                     診斷重點
                 </div>
-                <div class="text-[11px] text-gray-500">Generated Summary</div>
+                <div class="text-[11px] text-gray-500">生成摘要</div>
             </div>
 
             <ul class="p-4 md:p-5 space-y-3">
@@ -843,7 +843,7 @@
                     <div class="flex justify-between items-start mb-2">
                         <div>
                             <h4 class="text-white font-bold mb-1 flex items-center gap-2">
-                                <i class="fas fa-th text-blue-400"></i> 資產相關性矩陣 (Systemic Risk)
+                                <i class="fas fa-th text-blue-400"></i> 資產相關性矩陣（系統性風險）
                             </h4>
                             <p class="text-xs text-gray-400">衡量庫存標的齊漲齊跌程度。深綠代表正相關，深紅代表負相關（具避險效果）。</p>
                         </div>
@@ -880,7 +880,7 @@
                 @click="setNavOverlayMode(opt?.value || 'nav')"
                 class="nav-overlay-btn"
                 :class="navOverlayMode === opt?.value ? 'is-active' : ''">
-            {{ opt?.label || 'Overlay' }}
+            {{ opt?.label || '疊圖' }}
         </button>
     </div>
     <div class="text-[11px] text-gray-500 mt-2 leading-relaxed">回撤疊圖（Drawdown Overlay）＝把回撤曲線疊加到 NAV 圖上，拿來一起看最大跌幅、目前仍在水下多少，以及修復進度。</div>
@@ -907,7 +907,7 @@
         </div>
     </div>
     <div class="terminal-regime-strip mt-3 rounded-2xl border px-4 py-3" :class="riskRegimeStrip?.class || 'border-slate-500/30 bg-slate-500/10 text-slate-300'">
-        <div class="text-[11px] uppercase tracking-[0.14em] opacity-75">Trend / Regime Strip</div>
+        <div class="text-[11px] uppercase tracking-[0.14em] opacity-75">趨勢 / 市場狀態帶</div>
         <div class="text-xs text-white mt-1">{{ riskRegimeStrip?.note || '等待資料載入' }} · Overlay：{{ navTrendSummary?.overlayModeLabel || 'NAV' }}</div>
     </div>
 </div>
@@ -932,7 +932,7 @@
             <i class="fas fa-layer-group text-yellow-500"></i>
             庫存明細
         </h3>
-        <p class="panel-subtitle">Risk Monitor / 權重、風險與技術訊號總覽</p>
+        <p class="panel-subtitle">風險監控 / 權重、風險與技術訊號總覽</p>
     </div>
 
     <div class="flex flex-wrap items-center gap-2 text-xs">
@@ -952,7 +952,7 @@
                                         @click="holdingsActionFilter = opt.value"
                                         class="holdings-filter-btn"
                                         :class="holdingsActionFilter === opt.value ? 'is-active' : ''">
-                                    {{ opt?.label || 'Overlay' }}
+                                    {{ opt?.label || '疊圖' }}
                                     <span class="opacity-70 ml-1">
                                         <template v-if="opt.value==='all'">{{ holdingsActionSummary?.total ?? 0 }}</template>
                                         <template v-else-if="opt.value==='trim'">{{ holdingsActionSummary?.trim ?? 0 }}</template>
@@ -967,7 +967,7 @@
                             </div>
                             <div class="flex flex-wrap items-center gap-2 text-xs">
                                 <select v-model="holdingsSortKey" class="input-dark rounded-lg px-3 py-2 text-xs min-w-[180px]">
-                                    <option v-for="opt in holdingsSortOptions" :key="opt?.value || opt?.label || JSON.stringify(opt)" :value="opt.value">排序：{{ opt?.label || 'Overlay' }}</option>
+                                    <option v-for="opt in holdingsSortOptions" :key="opt?.value || opt?.label || JSON.stringify(opt)" :value="opt.value">排序：{{ opt?.label || '疊圖' }}</option>
                                 </select>
                                 <span class="px-2.5 py-2 rounded-lg border border-white/10 bg-white/[0.04] text-gray-300">
                                     顯示 {{ holdingsVisibleStats?.visible ?? 0 }} / {{ holdingsVisibleStats?.total ?? 0 }} 檔
@@ -977,7 +977,7 @@
                     </div>
                     <div class="overflow-visible flex-1 p-2 md:p-0 bg-[#0f172a]/50"> 
                         <div class="hidden md:block rounded-b-2xl relative">
-    <!-- 假表頭：固定在主 header 下方 -->
+    <!-- 表頭固定於主導覽列下方 -->
     <div class="holdings-fake-header-anchor">
     <div class="holdings-fake-header">
         <div id="holdingsHeaderScroll" class="overflow-hidden">
@@ -1105,7 +1105,7 @@
                         </td>
                         <td>
                            <select v-model="stock.riskLevel" @change="updateMeta(stock)" class="risk-select" :class="stock.riskLevel === 'Low' ? 'risk-low' : 'risk-high'">
-                                <option value="High">High</option><option value="Low">Low</option>
+                                <option value="High">高風險</option><option value="Low">低風險</option>
                            </select>
                         </td>
                         <td>
@@ -1341,8 +1341,8 @@
                                             <div class="bg-black/30 p-2 rounded-lg flex flex-col items-center">
                                                 <span class="text-gray-500 mb-1">防禦屬性</span>
                                                 <select v-model="stock.riskLevel" @change="updateMeta(stock)" class="w-full bg-transparent text-center outline-none font-bold" :class="stock.riskLevel === 'Low' ? 'text-green-400' : 'text-red-400'">
-                                                    <option value="High" class="bg-gray-800">High</option>
-                                                    <option value="Low" class="bg-gray-800">Low</option>
+                                                    <option value="High" class="bg-gray-800">高風險</option>
+                                                    <option value="Low" class="bg-gray-800">低風險</option>
                                                 </select>
                                             </div>
                                             <div class="bg-black/30 p-2 rounded-lg flex flex-col items-center">
@@ -1395,14 +1395,14 @@
                         <div class="space-y-3">
                              <div>
                                  <div class="flex justify-between text-xs mb-1">
-                                     <span class="text-red-400 font-bold">高風險資 assets (High)</span>
+                                     <span class="text-red-400 font-bold">高風險資產（High）</span>
                                      <span class="font-mono text-white">{{ formatNumber(riskTotals.High) }} ({{ formatPercent(riskTotals.High / totalStockValueTwd) }})</span>
                                  </div>
                                  <div class="bg-gray-700 h-1.5 rounded-full overflow-hidden"><div class="h-full bg-red-500" :style="{ width: ((riskTotals.High / totalStockValueTwd) * 100) + '%' }"></div></div>
                              </div>
                              <div>
                                  <div class="flex justify-between text-xs mb-1">
-                                     <span class="text-green-400 font-bold">低風險資產 (Low)</span>
+                                     <span class="text-green-400 font-bold">低風險資產（Low）</span>
                                      <span class="font-mono text-white">{{ formatNumber(riskTotals.Low) }} ({{ formatPercent(riskTotals.Low / totalStockValueTwd) }})</span>
                                  </div>
                                  <div class="bg-gray-700 h-1.5 rounded-full overflow-hidden"><div class="h-full bg-green-500" :style="{ width: ((riskTotals.Low / totalStockValueTwd) * 100) + '%' }"></div></div>
@@ -1615,7 +1615,7 @@
                         <template v-else>
                             <!-- v1.9 Core analytics wrapper -->
                             <div v-show="analyticsViewMode === 'risk'" class="space-y-5">
-                            <!-- Top risk metrics -->
+                            <!-- 核心風險指標 -->
                             <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
                                 <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
                                     <div class="quant-label text-emerald-300">年化波動</div>
@@ -1651,7 +1651,7 @@
                                 </div>
                             </div>
 
-                            <!-- v0.2.1 coverage and confidence -->
+                            <!-- v0.2.1 覆蓋率與信心分級 -->
                             <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
                                 <div class="rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
                                     <div class="px-4 py-3 border-b border-white/10 bg-white/[0.03]">
@@ -1706,7 +1706,7 @@
                                                 <span class="font-mono text-white">{{ syntheticRiskMeta?.confidence_detail?.breakdown?.sample_length?.level ?? '-' }}</span>
                                             </div>
                                             <div class="text-[10px] text-gray-500 mt-1">
-                                                Strict {{ syntheticRiskMeta?.confidence_detail?.breakdown?.sample_length?.strict_days ?? '-' }} / Flexible {{ syntheticRiskMeta?.confidence_detail?.breakdown?.sample_length?.flexible_days ?? '-' }} days
+                                                嚴格樣本 {{ syntheticRiskMeta?.confidence_detail?.breakdown?.sample_length?.strict_days ?? '-' }} / 彈性樣本 {{ syntheticRiskMeta?.confidence_detail?.breakdown?.sample_length?.flexible_days ?? '-' }} 日
                                             </div>
                                         </div>
                                         <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3">
@@ -1715,7 +1715,7 @@
                                                 <span class="font-mono text-white">{{ syntheticRiskMeta?.confidence_detail?.breakdown?.asset_coverage?.level ?? '-' }}</span>
                                             </div>
                                             <div class="text-[10px] text-gray-500 mt-1">
-                                                usable weight {{ syntheticRiskMeta?.confidence_detail?.breakdown?.asset_coverage?.usable_weight_pct ?? '-' }}%
+                                                可用權重 {{ syntheticRiskMeta?.confidence_detail?.breakdown?.asset_coverage?.usable_weight_pct ?? '-' }}%
                                             </div>
                                         </div>
                                         <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3">
@@ -1724,7 +1724,7 @@
                                                 <span class="font-mono text-white">{{ syntheticRiskMeta?.confidence_detail?.breakdown?.date_coverage?.level ?? '-' }}</span>
                                             </div>
                                             <div class="text-[10px] text-gray-500 mt-1">
-                                                avg {{ syntheticRiskMeta?.confidence_detail?.breakdown?.date_coverage?.strict_weight_coverage_avg_pct ?? '-' }}%
+                                                平均 {{ syntheticRiskMeta?.confidence_detail?.breakdown?.date_coverage?.strict_weight_coverage_avg_pct ?? '-' }}%
                                             </div>
                                         </div>
                                         <div class="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
@@ -1748,7 +1748,7 @@
                                         <table class="w-full text-[11px]">
                                             <thead class="text-gray-500 border-b border-white/10 sticky top-0 bg-slate-950/90 backdrop-blur">
                                                 <tr>
-                                                    <th class="text-left px-3 py-2">Ticker</th>
+                                                    <th class="text-left px-3 py-2">代號</th>
                                                     <th class="text-right px-3 py-2">權重</th>
                                                     <th class="text-right px-3 py-2">樣本</th>
                                                     <th class="text-right px-3 py-2">Strict</th>
@@ -1763,7 +1763,7 @@
                                                     <td class="px-3 py-2 text-right">
                                                         <span class="px-1.5 py-0.5 rounded border text-[10px]"
                                                               :class="row.strict_included ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-red-500/30 bg-red-500/10 text-red-300'">
-                                                            {{ row.strict_included ? 'YES' : 'NO' }}
+                                                            {{ row.strict_included ? '是' : '否' }}
                                                         </span>
                                                     </td>
                                                     <td class="px-3 py-2 text-gray-500">{{ row.source ?? row.skip_reason ?? '-' }}</td>
@@ -1774,7 +1774,7 @@
                                 </div>
                             </div>
 
-                            <!-- v0.3 QuantStats-style report -->
+                            <!-- v0.3 類 QuantStats 報告 -->
                             <div class="rounded-2xl border border-purple-500/20 bg-purple-500/[0.04] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-purple-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
@@ -1797,31 +1797,31 @@
                                         <div class="quant-value text-white">{{ syntheticRiskMeta?.quantstats?.cagr_pct ?? '-' }}%</div>
                                     </div>
                                     <div class="quant-card border-purple-500/20 bg-purple-500/10">
-                                        <div class="quant-label text-purple-300">年化波動 Ann Vol</div>
+                                        <div class="quant-label text-purple-300">年化波動</div>
                                         <div class="quant-value text-white">{{ syntheticRiskMeta?.quantstats?.annual_vol_pct ?? '-' }}%</div>
                                     </div>
                                     <div class="quant-card border-yellow-500/20 bg-yellow-500/10">
-                                        <div class="quant-label text-yellow-300">夏普 Sharpe</div>
+                                        <div class="quant-label text-yellow-300">夏普比率</div>
                                         <div class="quant-value text-white">{{ syntheticRiskMeta?.quantstats?.sharpe ?? '-' }}</div>
                                     </div>
                                     <div class="quant-card border-yellow-500/20 bg-yellow-500/10">
-                                        <div class="quant-label text-yellow-300">索提諾 Sortino</div>
+                                        <div class="quant-label text-yellow-300">索提諾比率</div>
                                         <div class="quant-value text-white">{{ syntheticRiskMeta?.quantstats?.sortino ?? '-' }}</div>
                                     </div>
                                     <div class="quant-card border-yellow-500/20 bg-yellow-500/10">
-                                        <div class="quant-label text-yellow-300">卡瑪 Calmar</div>
+                                        <div class="quant-label text-yellow-300">卡瑪比率</div>
                                         <div class="quant-value text-white">{{ syntheticRiskMeta?.quantstats?.calmar ?? '-' }}</div>
                                     </div>
                                     <div class="quant-card border-red-500/20 bg-red-500/10">
-                                        <div class="quant-label text-red-300">目前回撤 Current DD</div>
+                                        <div class="quant-label text-red-300">目前回撤</div>
                                         <div class="quant-value text-white">{{ syntheticRiskMeta?.quantstats?.current_drawdown_pct ?? '-' }}%</div>
                                     </div>
                                     <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
-                                        <div class="quant-label text-cyan-300">勝率 Win Rate</div>
+                                        <div class="quant-label text-cyan-300">勝率</div>
                                         <div class="quant-value text-white">{{ syntheticRiskMeta?.quantstats?.win_rate_pct ?? '-' }}%</div>
                                     </div>
                                     <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
-                                        <div class="quant-label text-cyan-300">尾部比率 Tail Ratio</div>
+                                        <div class="quant-label text-cyan-300">尾部比率</div>
                                         <div class="quant-value text-white">{{ syntheticRiskMeta?.quantstats?.tail_ratio ?? '-' }}</div>
                                     </div>
                                 </div>
@@ -1835,7 +1835,7 @@
                                             → {{ syntheticRiskMeta?.quantstats?.max_drawdown_end ?? '-' }}
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
-                                            recovery：{{ syntheticRiskMeta?.quantstats?.max_drawdown_recovery_date ?? '尚未或無資料' }}
+                                            修復日：{{ syntheticRiskMeta?.quantstats?.max_drawdown_recovery_date ?? '尚未或無資料' }}
                                         </div>
                                     </div>
                                     <div class="rounded-xl border border-white/10 bg-black/20 p-3">
@@ -1848,7 +1848,7 @@
                                         </div>
                                     </div>
                                     <div class="rounded-xl border border-white/10 bg-black/20 p-3">
-                                        <div class="text-gray-500 mb-2">Rolling regime</div>
+                                        <div class="text-gray-500 mb-2">滾動市場狀態</div>
                                         <div class="grid grid-cols-2 gap-2">
                                             <div>21D 波動 <span class="font-mono text-cyan-300">{{ syntheticRiskMeta?.quantstats?.rolling_vol_21d_pct ?? '-' }}%</span></div>
                                             <div>63D 波動 <span class="font-mono text-cyan-300">{{ syntheticRiskMeta?.quantstats?.rolling_vol_63d_pct ?? '-' }}%</span></div>
@@ -1860,16 +1860,16 @@
                             </div>
 
 
-                            <!-- v0.4 EWMA covariance / correlation regime -->
+                            <!-- v0.4 EWMA 共變異數 / 相關性市場狀態 -->
                             <div class="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-cyan-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-network-wired text-cyan-400"></i>
-                                            v0.4 EWMA 共變異數與相關性 Regime
+                                            v0.4 EWMA 共變異數與相關性市場狀態
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
-                                            以嚴格樣本日報酬計算 EWMA covariance / correlation，監控風險聚集與分散效果。
+                                            以嚴格樣本日報酬計算 EWMA 共變異數 / 相關性，監控風險聚集與分散效果。
                                         </div>
                                     </div>
                                     <div class="text-[11px] text-gray-400">
@@ -1884,7 +1884,7 @@
                                         <div class="quant-value text-white">{{ syntheticRiskMeta?.ewma_regime?.portfolio_ewma_vol_pct ?? '-' }}%</div>
                                     </div>
                                     <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
-                                        <div class="quant-label text-cyan-300">Regime</div>
+                                        <div class="quant-label text-cyan-300">市場狀態</div>
                                         <div class="quant-value text-white text-lg">{{ syntheticRiskMeta?.ewma_regime?.regime_label ?? '-' }}</div>
                                     </div>
                                     <div class="quant-card border-amber-500/20 bg-amber-500/10">
@@ -1947,7 +1947,7 @@
                                                         <th class="text-left px-3 py-2">標的</th>
                                                         <th class="text-right px-3 py-2">權重</th>
                                                         <th class="text-right px-3 py-2">RC</th>
-                                                        <th class="text-right px-3 py-2">EWMA Vol</th>
+                                                        <th class="text-right px-3 py-2">EWMA 波動</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -1965,7 +1965,7 @@
                                     <div class="xl:col-span-2 rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3">
                                         <div class="text-sm font-bold text-white flex items-center gap-2 mb-2">
                                             <i class="fas fa-triangle-exclamation text-amber-400"></i>
-                                            Regime 警示
+                                            市場狀態警示
                                         </div>
                                         <div v-if="!(syntheticRiskMeta?.ewma_regime?.alerts || []).length" class="text-[11px] text-gray-400">
                                             目前沒有 EWMA correlation regime 警示。
@@ -1982,7 +1982,7 @@
 
 
 
-                            <!-- v0.5 Component VaR / ES + v0.6 Risk Budgeting / HRP-lite -->
+                            <!-- v0.5 成分 VaR / ES + v0.6 Risk Budgeting / HRP-lite -->
                             <div class="rounded-2xl border border-red-500/20 bg-red-500/[0.035] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-red-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
@@ -1991,7 +1991,7 @@
                                             v0.5 尾部風險歸因 + v0.6 風險預算 / HRP-lite
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
-                                            Component VaR / ES 用歷史尾部日歸因；HRP-lite 用 EWMA covariance 產生無外部套件風險預算參考權重。
+                                            成分 VaR / ES 用歷史尾部日歸因；HRP-lite 用 EWMA covariance 產生無外部套件風險預算參考權重。
                                         </div>
                                     </div>
                                     <div class="text-[11px] text-gray-400">
@@ -2014,7 +2014,7 @@
                                         <div class="quant-value text-white">{{ syntheticRiskMeta?.component_tail_risk?.var_es_95?.tail_concentration_hhi ?? '-' }}</div>
                                     </div>
                                     <div class="quant-card border-slate-500/20 bg-slate-500/10">
-                                        <div class="quant-label text-slate-300">Tail Days</div>
+                                        <div class="quant-label text-slate-300">尾部天數</div>
                                         <div class="quant-value text-white">{{ syntheticRiskMeta?.component_tail_risk?.var_es_95?.tail_count ?? '-' }}</div>
                                     </div>
                                     <div class="quant-card border-purple-500/20 bg-purple-500/10">
@@ -2114,13 +2114,13 @@
                             </div>
 
 
-                            <!-- v0.7 Optimizer Dependency Probe -->
+                            <!-- v0.7 最佳化器依賴檢查 -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-blue-500/20 bg-blue-500/[0.035] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-blue-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-plug-circle-check text-blue-400"></i>
-                                            v0.7 Optimizer Dependency Probe
+                                            v0.7 最佳化器依賴檢查
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
                                             只檢查 GitHub Actions 能否 import 外部最佳化套件；不執行最佳化、不產生交易建議。
@@ -2153,7 +2153,7 @@
                                         <div class="quant-value text-white">{{ optimizerDependencyStatus?.summary?.cvxpy_solver_count ?? '-' }}</div>
                                     </div>
                                     <div class="quant-card border-slate-500/20 bg-slate-500/10">
-                                        <div class="quant-label text-slate-300">Safe Mode</div>
+                                        <div class="quant-label text-slate-300">安全模式</div>
                                         <div class="quant-value text-white text-lg">{{ optimizerDependencyStatus?.safe_mode ? 'ON' : '-' }}</div>
                                     </div>
                                 </div>
@@ -2169,7 +2169,7 @@
                                                 <thead class="text-gray-500 border-b border-white/10">
                                                     <tr>
                                                         <th class="text-left px-3 py-2">套件</th>
-                                                        <th class="text-left px-3 py-2">Import</th>
+                                                        <th class="text-left px-3 py-2">Import 檢查</th>
                                                         <th class="text-left px-3 py-2">狀態</th>
                                                         <th class="text-left px-3 py-2">版本</th>
                                                     </tr>
@@ -2202,7 +2202,7 @@
                                             </p>
                                         </div>
                                         <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-[11px] text-gray-300">
-                                            <div class="text-gray-500 mb-1">cvxpy solvers</div>
+                                            <div class="text-gray-500 mb-1">cvxpy 求解器</div>
                                             <div class="font-mono break-all">{{ (optimizerDependencyStatus?.cvxpy_solvers || []).join(', ') || '-' }}</div>
                                         </div>
                                         <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-[11px] text-gray-300">
@@ -2218,13 +2218,13 @@
 
 
 
-                            <!-- v1.0.1 / v1.0.2 skfolio sandbox output + integrated comparison -->
+                            <!-- v1.0.1 / v1.0.2 skfolio 沙盒輸出與整合比較 -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-indigo-500/20 bg-indigo-500/[0.035] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-indigo-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-diagram-project text-indigo-400"></i>
-                                            v1.0.1 skfolio Sandbox Output + v1.0.2 整合比較
+                                            v1.0.1 skfolio 沙盒輸出 + v1.0.2 整合比較
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
                                             讀取 <span class="font-mono">data/optimizer/skfolio_sandbox_latest.json</span>，比較目前權重、inverse-vol、scipy、skfolio min variance、skfolio CVaR，並對照 v0.5 Component ES 與 v0.6 HRP-lite。
@@ -2286,7 +2286,7 @@
                                             <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                                 <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
                                                     <i class="fas fa-table-list text-indigo-400"></i>
-                                                    skfolio Sandbox Portfolio 比較
+                                                    skfolio 沙盒投組比較
                                                 </div>
                                                 <div class="overflow-x-auto">
                                                     <table class="w-full text-[11px]">
@@ -2294,10 +2294,10 @@
                                                             <tr>
                                                                 <th class="text-left px-3 py-2">組合</th>
                                                                 <th class="text-left px-3 py-2">狀態</th>
-                                                                <th class="text-right px-3 py-2">Ann Vol</th>
+                                                                <th class="text-right px-3 py-2">年化波動</th>
                                                                 <th class="text-right px-3 py-2">VaR95</th>
                                                                 <th class="text-right px-3 py-2">ES95</th>
-                                                                <th class="text-right px-3 py-2">MDD</th>
+                                                                <th class="text-right px-3 py-2">最大回撤</th>
                                                                 <th class="text-right px-3 py-2">換手率</th>
                                                             </tr>
                                                         </thead>
@@ -2359,7 +2359,7 @@
                                             <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                                 <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
                                                     <i class="fas fa-weight-hanging text-indigo-400"></i>
-                                                    skfolio Min Variance 權重差異 Top 25
+                                                    skfolio 最小變異數權重差異 Top 25
                                                 </div>
                                                 <div class="overflow-x-auto max-h-[390px]">
                                                     <table class="w-full text-[11px]">
@@ -2441,13 +2441,13 @@
 
 
 
-                            <!-- v1.3 skfolio vs Riskfolio vs HRP-lite unified comparison -->
+                            <!-- v1.3 skfolio / Riskfolio / HRP-lite 統一比較 -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-fuchsia-500/20 bg-fuchsia-500/[0.035] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-fuchsia-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-layer-group text-fuchsia-400"></i>
-                                            v1.3 skfolio vs Riskfolio-Lib vs HRP-lite 統一比較
+                                            v1.3 skfolio / Riskfolio-Lib / HRP-lite 統一比較
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
                                             同時讀取 skfolio 與 Riskfolio-Lib sandbox output，並對照 v0.6 HRP-lite 與 v0.5 Component ES。此區塊只做風險診斷，不產生 BUY / SELL。
@@ -2527,10 +2527,10 @@
                                                             <th class="text-left px-3 py-2">候選</th>
                                                             <th class="text-left px-3 py-2">來源</th>
                                                             <th class="text-left px-3 py-2">判讀</th>
-                                                            <th class="text-right px-3 py-2">Ann Vol</th>
+                                                            <th class="text-right px-3 py-2">年化波動</th>
                                                             <th class="text-right px-3 py-2">VaR95</th>
                                                             <th class="text-right px-3 py-2">ES95</th>
-                                                            <th class="text-right px-3 py-2">MDD</th>
+                                                            <th class="text-right px-3 py-2">最大回撤</th>
                                                             <th class="text-right px-3 py-2">ES 差異</th>
                                                             <th class="text-right px-3 py-2">換手率</th>
                                                         </tr>
@@ -2563,7 +2563,7 @@
                                             <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                                 <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
                                                     <i class="fas fa-weight-hanging text-fuchsia-400"></i>
-                                                    Riskfolio Min Variance 權重差異 Top 25
+                                                    Riskfolio 最小變異數權重差異 Top 25
                                                 </div>
                                                 <div class="overflow-x-auto max-h-[390px]">
                                                     <table class="w-full text-[11px]">
@@ -2649,13 +2649,13 @@
 
 
 
-                            <!-- v1.4 Optimizer robustness check -->
+                            <!-- v1.4 最佳化器穩健性檢查 -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-teal-500/20 bg-teal-500/[0.035] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-teal-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-wave-square text-teal-400"></i>
-                                            v1.4 Optimizer Robustness Check
+                                            v1.4 最佳化器穩健性檢查
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
                                             比較不同樣本視窗下 optimizer 權重是否穩定。此區塊回答「模型是不是對回看期間太敏感」，不是投資建議。
@@ -2670,7 +2670,7 @@
                                 <div class="p-4 space-y-4">
                                     <div v-if="!optimizerRobustnessOutput" class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-100 leading-relaxed">
                                         <i class="fas fa-hourglass-half mr-2"></i>
-                                        尚未讀到 optimizer robustness output。請先跑 GitHub Actions 的 <span class="font-mono">Optimizer Robustness Sandbox</span>。
+                                        尚未讀到 optimizer robustness output。請先跑 GitHub Actions 的 <span class="font-mono">最佳化器穩健性沙盒</span>。
                                         <div class="text-[11px] text-amber-200/80 mt-1" v-if="optimizerRobustnessError">{{ optimizerRobustnessError }}</div>
                                         <button @click="loadOptimizerRobustnessOutput" class="mt-2 px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-100 text-xs hover:bg-amber-500/30">
                                             重新讀取
@@ -2751,7 +2751,7 @@
                                             <div class="xl:col-span-2 rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                                 <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
                                                     <i class="fas fa-scale-unbalanced-flip text-teal-400"></i>
-                                                    Optimizer 權重穩健性
+                                                    最佳化器權重穩健性
                                                 </div>
                                                 <div class="overflow-x-auto">
                                                     <table class="w-full text-[11px]">
@@ -2807,13 +2807,13 @@
 
 
 
-                            <!-- v1.6 Constraint + Existing Trade Buffer Integration -->
+                            <!-- v1.6 約束 + 既有交易緩衝整合 -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.035] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-emerald-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-road-barrier text-emerald-400"></i>
-                                            v1.6 Constraint + Existing Trade Buffer Sandbox
+                                            v1.6 約束 + 既有交易緩衝沙盒
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
                                             直接沿用現有 Trade Buffer / No-Trade Zone，將 optimizer 目標權重轉成 HOLD / ADD / TRIM / PENDING。這不是正式交易建議。
@@ -2943,7 +2943,7 @@
                                                             <tr>
                                                                 <th class="text-left px-3 py-2">標的</th>
                                                                 <th class="text-right px-3 py-2">目前</th>
-                                                                <th class="text-right px-3 py-2">Optimizer</th>
+                                                                <th class="text-right px-3 py-2">最佳化器</th>
                                                                 <th class="text-right px-3 py-2">Buffer 後</th>
                                                                 <th class="text-right px-3 py-2">差距</th>
                                                                 <th class="text-left px-3 py-2">動作</th>
@@ -3000,13 +3000,13 @@
 
 
 
-                            <!-- v1.6.1 Constraint Policy Layer -->
+                            <!-- v1.6.1 約束政策層 -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-lime-500/20 bg-lime-500/[0.035] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-lime-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-shield-check text-lime-400"></i>
-                                            v1.6.1 Constraint Policy Layer
+                                            v1.6.1 約束政策層
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
                                             在 v1.6 的 Trade Buffer 後權重上檢查投組政策限制：單檔上限、台股上限、加密上限、黃金區間、BOXX 下限、主題 ETF 與高波動資產集中度。
@@ -3148,16 +3148,16 @@
 
 
 
-                            <!-- v1.7 Optimizer Stress Test -->
+                            <!-- v1.7 最佳化器壓力測試 -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-rose-500/20 bg-rose-500/[0.035] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-rose-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-bolt text-rose-400"></i>
-                                            v1.7 Stress Test Optimizer Weights
+                                            v1.7 最佳化權重壓力測試
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
-                                            對 skfolio / Riskfolio / baseline 候選權重套用 deterministic scenario shocks。這是壓力診斷，不是預測。
+                                            對 skfolio / Riskfolio / baseline 候選權重套用 確定性情境衝擊。這是壓力診斷，不是預測。
                                         </div>
                                     </div>
                                     <div class="text-[11px] text-gray-400">
@@ -3169,7 +3169,7 @@
                                 <div class="p-4 space-y-4">
                                     <div v-if="!optimizerStressOutput" class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-100 leading-relaxed">
                                         <i class="fas fa-hourglass-half mr-2"></i>
-                                        尚未讀到 optimizer stress output。請先跑 GitHub Actions 的 <span class="font-mono">Optimizer Stress Tests</span>。
+                                        尚未讀到 optimizer stress output。請先跑 GitHub Actions 的 <span class="font-mono">最佳化器壓力測試</span>。
                                         <div class="text-[11px] text-amber-200/80 mt-1" v-if="optimizerStressError">{{ optimizerStressError }}</div>
                                         <button @click="loadOptimizerStressOutput" class="mt-2 px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-100 text-xs hover:bg-amber-500/30">
                                             重新讀取
@@ -3245,7 +3245,7 @@
                                                                 <th class="text-right px-3 py-2">Worst</th>
                                                                 <th class="text-right px-3 py-2">Average</th>
                                                                 <th class="text-right px-3 py-2">Best</th>
-                                                                <th class="text-right px-3 py-2">Turnover</th>
+                                                                <th class="text-right px-3 py-2">換手率</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
@@ -3339,7 +3339,7 @@
                                     <template v-else>
                                         <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
                                             <div class="quant-card border-sky-500/20 bg-sky-500/10">
-                                                <div class="quant-label text-sky-300">Decision</div>
+                                                <div class="quant-label text-sky-300">裁定</div>
                                                 <div class="quant-value text-white text-lg">{{ selectedOptimizerExplainability?.decision ?? '-' }}</div>
                                             </div>
                                             <div class="quant-card border-red-500/20 bg-red-500/10">
@@ -3384,7 +3384,7 @@
                                                             <tr>
                                                                 <th class="text-left px-3 py-2">候選</th>
                                                                 <th class="text-left px-3 py-2">來源</th>
-                                                                <th class="text-left px-3 py-2">Decision</th>
+                                                                <th class="text-left px-3 py-2">裁定</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
@@ -3502,7 +3502,7 @@
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-user-check text-amber-400"></i>
-                                            v2.4 Human Approval Layer ＋ v2.5 Action Audit Trail
+                                            v2.4 人工確認層 ＋ v2.5 行動審計軌跡
                                         </div>
                                         <div class="text-[11px] text-gray-400 mt-1">
                                             所有候選都標示「需要人工確認」；本區只做決策支援與審計紀錄，不是自動交易系統。
@@ -3566,7 +3566,7 @@
                                                             <th class="text-left px-3 py-2">Ticket</th>
                                                             <th class="text-left px-3 py-2">來源</th>
                                                             <th class="text-left px-3 py-2">人工狀態</th>
-                                                            <th class="text-right px-3 py-2">Turnover</th>
+                                                            <th class="text-right px-3 py-2">換手率</th>
                                                             <th class="text-left px-3 py-2">標示</th>
                                                         </tr>
                                                     </thead>
@@ -3586,7 +3586,7 @@
                                                             </td>
                                                         </tr>
                                                         <tr v-if="!humanApprovalVisibleTickets.length">
-                                                            <td colspan="5" class="px-3 py-4 text-center text-gray-500">尚未讀到 v2.4 approval tickets。</td>
+                                                            <td colspan="5" class="px-3 py-4 text-center text-gray-500">尚未讀到 v2.4 審核票據。</td>
                                                         </tr>
                                                     </tbody>
                                                 </table>
@@ -3624,7 +3624,7 @@
                                                             </td>
                                                         </tr>
                                                         <tr v-if="!actionAuditEvents.length">
-                                                            <td colspan="5" class="px-3 py-4 text-center text-gray-500">尚未讀到 v2.5 audit events。</td>
+                                                            <td colspan="5" class="px-3 py-4 text-center text-gray-500">尚未讀到 v2.5 審計事件。</td>
                                                         </tr>
                                                     </tbody>
                                                 </table>
@@ -3640,10 +3640,10 @@
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-chess-board text-violet-400"></i>
-                                            v3.0 Regime-Aware Optimizer ＋ v3.1 Bayesian / Black-Litterman Sandbox
+                                            v3.0 市場狀態感知最佳化器 ＋ v3.1 Bayesian / Black-Litterman 沙盒
                                         </div>
                                         <div class="text-[11px] text-gray-400 mt-1">
-                                            根據 regime 切換 covariance policy、constraint、risk budget；Black-Litterman 只使用規則化 view engine，避免主觀 views。
+                                            根據市場狀態切換共變異數政策、約束與風險預算；Black-Litterman 只使用規則化 view engine，避免主觀 views。
                                         </div>
                                     </div>
                                     <div class="flex gap-2">
@@ -3702,14 +3702,14 @@
                                             </div>
                                         </div>
                                         <div class="text-[11px] text-gray-400 mt-3 leading-relaxed">
-                                            {{ regimeAwareCovariancePolicy?.note ?? '尚無 covariance policy 說明。' }} v3.1 禁止任意手動 views；目前只接受 v3.0 regime policy 轉出的 deterministic views。
+                                            {{ regimeAwareCovariancePolicy?.note ?? '尚無共變異數政策說明。' }} v3.1 禁止任意手動 views；目前只接受 v3.0 市場狀態政策轉出的確定性 views。
                                         </div>
                                     </div>
 
                                     <div class="grid grid-cols-1 2xl:grid-cols-2 gap-4">
                                         <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                             <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
-                                                <div class="text-xs font-bold text-white">v3.0 Regime-aware 草案</div>
+                                                <div class="text-xs font-bold text-white">v3.0 市場狀態感知草案</div>
                                                 <div class="text-[10px] text-gray-500">latest 10</div>
                                             </div>
                                             <div class="overflow-x-auto">
@@ -3718,7 +3718,7 @@
                                                         <tr>
                                                             <th class="text-left px-3 py-2">草案</th>
                                                             <th class="text-left px-3 py-2">狀態</th>
-                                                            <th class="text-right px-3 py-2">Turnover</th>
+                                                            <th class="text-right px-3 py-2">換手率</th>
                                                             <th class="text-right px-3 py-2">Cash</th>
                                                             <th class="text-right px-3 py-2">Crypto</th>
                                                             <th class="text-right px-3 py-2">Taiwan Tech</th>
@@ -3734,7 +3734,7 @@
                                                             <td class="px-3 py-2 text-right text-sky-300">{{ draft.exposure?.taiwan_tech_pct ?? '-' }}%</td>
                                                         </tr>
                                                         <tr v-if="!regimeAwareVisibleDrafts.length">
-                                                            <td colspan="6" class="px-3 py-4 text-center text-gray-500">尚未讀到 v3.0 regime-aware drafts。</td>
+                                                            <td colspan="6" class="px-3 py-4 text-center text-gray-500">尚未讀到 v3.0 市場狀態感知草案。</td>
                                                         </tr>
                                                     </tbody>
                                                 </table>
@@ -3743,14 +3743,14 @@
 
                                         <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                             <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
-                                                <div class="text-xs font-bold text-white">v3.1 Black-Litterman Views</div>
+                                                <div class="text-xs font-bold text-white">v3.1 Black-Litterman Views（觀點）</div>
                                                 <div class="text-[10px] text-gray-500">rules-based only</div>
                                             </div>
                                             <div class="overflow-x-auto">
                                                 <table class="w-full text-[11px]">
                                                     <thead class="text-gray-500 border-b border-white/10">
                                                         <tr>
-                                                            <th class="text-left px-3 py-2">Bucket</th>
+                                                            <th class="text-left px-3 py-2">資產桶</th>
                                                             <th class="text-left px-3 py-2">方向</th>
                                                             <th class="text-right px-3 py-2">Magnitude</th>
                                                             <th class="text-right px-3 py-2">Confidence</th>
@@ -3766,7 +3766,7 @@
                                                             <td class="px-3 py-2 text-gray-400 max-w-[300px] truncate" :title="view.rationale">{{ view.rationale }}</td>
                                                         </tr>
                                                         <tr v-if="!blackLittermanViews.length">
-                                                            <td colspan="5" class="px-3 py-4 text-center text-gray-500">尚未讀到 v3.1 views。</td>
+                                                            <td colspan="5" class="px-3 py-4 text-center text-gray-500">尚未讀到 v3.1 views（觀點）。</td>
                                                         </tr>
                                                     </tbody>
                                                 </table>
@@ -3776,7 +3776,7 @@
 
                                     <div class="rounded-xl border border-red-500/20 bg-red-500/[0.04] p-3 text-[11px] text-gray-400 leading-relaxed">
                                         <span class="font-bold text-red-200">安全邊界：</span>
-                                        v3.0 / v3.1 全部輸出仍是 watch-only sandbox。Black-Litterman 沒有啟用 expected return alpha model，也沒有任意手動 views；任何草案都需要人工確認，不是交易指令。
+                                        v3.0 / v3.1 全部輸出仍是僅觀察沙盒。Black-Litterman 沒有啟用預期報酬 alpha 模型，也沒有任意手動 views；任何草案都需要人工確認，不是交易指令。
                                     </div>
                                 </div>
                             </div>
@@ -3789,10 +3789,10 @@
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-scale-balanced text-cyan-400"></i>
-                                            v3.2 Expected Return Model ＋ v3.3 Walk-forward Backtest ＋ v3.4 Model Governance
+                                            v3.2 預期報酬模型 ＋ v3.3 Walk-forward 回測 ＋ v3.4 模型治理
                                         </div>
                                         <div class="text-[11px] text-gray-400 mt-1">
-                                            Expected return 僅為 relative prior，不啟用最大夏普；Walk-forward 驗證 optimizer 是否真的優於 current；Governance 追蹤模型版本、樣本品質與失效條件。
+                                            預期報酬僅為相對 prior，不啟用最大夏普；Walk-forward 驗證最佳化器是否真的優於目前投組；模型治理追蹤模型版本、樣本品質與失效條件。
                                         </div>
                                     </div>
                                     <div class="flex flex-wrap gap-2">
@@ -3836,17 +3836,17 @@
                                     <div class="grid grid-cols-1 2xl:grid-cols-3 gap-4">
                                         <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                             <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
-                                                <div class="text-xs font-bold text-white">v3.2 Bucket Priors</div>
-                                                <div class="text-[10px] text-gray-500">relative only</div>
+                                                <div class="text-xs font-bold text-white">v3.2 資產桶 Priors</div>
+                                                <div class="text-[10px] text-gray-500">僅相對值</div>
                                             </div>
                                             <div class="overflow-x-auto">
                                                 <table class="w-full text-[11px]">
                                                     <thead class="text-gray-500 border-b border-white/10">
                                                         <tr>
-                                                            <th class="text-left px-3 py-2">Bucket</th>
-                                                            <th class="text-right px-3 py-2">Score</th>
-                                                            <th class="text-left px-3 py-2">Band</th>
-                                                            <th class="text-right px-3 py-2">Conf.</th>
+                                                            <th class="text-left px-3 py-2">資產桶</th>
+                                                            <th class="text-right px-3 py-2">分數</th>
+                                                            <th class="text-left px-3 py-2">區間</th>
+                                                            <th class="text-right px-3 py-2">信心</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -3857,7 +3857,7 @@
                                                             <td class="px-3 py-2 text-right text-gray-400">{{ row.confidence }}</td>
                                                         </tr>
                                                         <tr v-if="!expectedReturnVisibleBuckets.length">
-                                                            <td colspan="4" class="px-3 py-4 text-center text-gray-500">尚未讀到 v3.2 bucket priors。</td>
+                                                            <td colspan="4" class="px-3 py-4 text-center text-gray-500">尚未讀到 v3.2 資產桶 priors。</td>
                                                         </tr>
                                                     </tbody>
                                                 </table>
@@ -3867,17 +3867,17 @@
                                         <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                             <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
                                                 <div class="text-xs font-bold text-white">v3.3 Walk-forward 驗證</div>
-                                                <div class="text-[10px] text-gray-500">optimizer vs current</div>
+                                                <div class="text-[10px] text-gray-500">最佳化器 vs 目前投組</div>
                                             </div>
                                             <div class="overflow-x-auto">
                                                 <table class="w-full text-[11px]">
                                                     <thead class="text-gray-500 border-b border-white/10">
                                                         <tr>
-                                                            <th class="text-left px-3 py-2">Method</th>
-                                                            <th class="text-right px-3 py-2">Folds</th>
+                                                            <th class="text-left px-3 py-2">方法</th>
+                                                            <th class="text-right px-3 py-2">折數</th>
                                                             <th class="text-right px-3 py-2">ES95</th>
-                                                            <th class="text-right px-3 py-2">Turnover</th>
-                                                            <th class="text-left px-3 py-2">Decision</th>
+                                                            <th class="text-right px-3 py-2">換手率</th>
+                                                            <th class="text-left px-3 py-2">裁定</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -3889,7 +3889,7 @@
                                                             <td class="px-3 py-2 text-gray-400 max-w-[180px] truncate" :title="row.decision">{{ row.decision }}</td>
                                                         </tr>
                                                         <tr v-if="!walkForwardVisibleRows.length">
-                                                            <td colspan="5" class="px-3 py-4 text-center text-gray-500">尚未讀到 v3.3 walk-forward rows。</td>
+                                                            <td colspan="5" class="px-3 py-4 text-center text-gray-500">尚未讀到 v3.3 walk-forward 列。</td>
                                                         </tr>
                                                     </tbody>
                                                 </table>
@@ -3898,16 +3898,16 @@
 
                                         <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                             <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
-                                                <div class="text-xs font-bold text-white">v3.4 Governance Flags</div>
-                                                <div class="text-[10px] text-gray-500">model risk</div>
+                                                <div class="text-xs font-bold text-white">v3.4 治理旗標</div>
+                                                <div class="text-[10px] text-gray-500">模型風險</div>
                                             </div>
                                             <div class="overflow-x-auto">
                                                 <table class="w-full text-[11px]">
                                                     <thead class="text-gray-500 border-b border-white/10">
                                                         <tr>
-                                                            <th class="text-left px-3 py-2">Severity</th>
-                                                            <th class="text-left px-3 py-2">Code</th>
-                                                            <th class="text-left px-3 py-2">Message</th>
+                                                            <th class="text-left px-3 py-2">嚴重度</th>
+                                                            <th class="text-left px-3 py-2">代碼</th>
+                                                            <th class="text-left px-3 py-2">訊息</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -3917,7 +3917,7 @@
                                                             <td class="px-3 py-2 text-gray-400 max-w-[260px] truncate" :title="flag.message">{{ flag.message }}</td>
                                                         </tr>
                                                         <tr v-if="!modelGovernanceVisibleFlags.length">
-                                                            <td colspan="3" class="px-3 py-4 text-center text-gray-500">目前沒有 governance flags。</td>
+                                                            <td colspan="3" class="px-3 py-4 text-center text-gray-500">目前沒有治理旗標。</td>
                                                         </tr>
                                                     </tbody>
                                                 </table>
@@ -3927,7 +3927,7 @@
 
                                     <div class="rounded-xl border border-red-500/20 bg-red-500/[0.04] p-3 text-[11px] text-gray-400 leading-relaxed">
                                         <span class="font-bold text-red-200">安全邊界：</span>
-                                        v3.2 不輸出絕對 alpha，不允許最大夏普；v3.3 若樣本不足只能作驗證參考；v3.4 若出現 critical flag，所有候選維持 blocked / watch-only。全流程仍不是交易指令。
+                                        v3.2 不輸出絕對 alpha，不允許最大夏普；v3.3 若樣本不足只能作驗證參考；v3.4 若出現 critical 旗標，所有候選維持 blocked / 僅觀察。全流程仍不是交易指令。
                                     </div>
                                 </div>
                             </div>
@@ -4361,7 +4361,7 @@
             <table class="w-full text-left whitespace-nowrap cockpit-table">
                 <thead class="bg-[#0f172a] text-[11px] text-gray-400 uppercase font-semibold border-b border-gray-700">
                     <tr>
-                        <th class="p-3 pl-4">Ticker</th>
+                        <th class="p-3 pl-4">代號</th>
                         <th class="p-3">類別</th>
                         <th class="p-3 text-right">現有%</th>
                         <th class="p-3 text-right">目標%</th>
@@ -4501,7 +4501,7 @@
                                     <table class="w-full text-left whitespace-nowrap">
                                         <thead class="bg-[#0f172a] text-[11px] text-gray-400 uppercase font-semibold border-b border-gray-700">
                                             <tr>
-                                                <th class="p-3 pl-4">Ticker</th>
+                                                <th class="p-3 pl-4">代號</th>
                                                 <th class="p-3 text-right">資金%</th>
                                                 <th class="p-3 text-right">風險%</th>
                                                 <th class="p-3 text-right">MRC邊際風險貢獻度</th>
@@ -4650,7 +4650,7 @@
                                 <div>
                                     <div class="badge badge-red mb-3">
                                         <i class="fas fa-bell"></i>
-                                        Regime / Rebalance Monitor
+                                        市場狀態 / 再平衡監控
                                     </div>
                                     <h4 class="text-white font-bold text-lg md:text-xl flex items-center gap-2">
                                         <i class="fas fa-arrows-rotate text-yellow-400"></i>
@@ -4737,23 +4737,23 @@
 <!-- 👇 新增的 Kelly 曝險建議卡片 👇 -->
 <div class="mt-4 p-3 bg-indigo-900/20 border border-indigo-800/50 rounded-lg">
     <h5 class="text-[10px] text-indigo-300 uppercase tracking-wider mb-2 border-b border-indigo-800/50 pb-1 flex items-center gap-2">
-        <i class="fas fa-scale-balanced"></i> Kelly Criterion 曝險建議
+        <i class="fas fa-scale-balanced"></i> Kelly 準則曝險建議
     </h5>
     <div class="text-[10px] text-gray-400 mb-2 leading-relaxed">
         MC = risky sleeve allocator，不是 whole-portfolio veto layer。
     </div>
     
     <div class="flex justify-between text-xs text-gray-300 mb-1">
-        <span title="追求極限複利成長，但風險極高">Full Kelly (理論極限)</span>
+        <span title="追求極限複利成長，但風險極高">Full Kelly（理論極限）</span>
         <span class="font-mono text-white">{{ mcOptimal?.fullKelly ?? '-' }}%</span>
     </div>
     <div class="flex justify-between text-xs text-gray-300 mb-2">
-        <span class="text-indigo-400 font-bold" title="實務黃金標準，兼顧成長與避險">Half-Kelly (實務建議)</span>
+        <span class="text-indigo-400 font-bold" title="實務黃金標準，兼顧成長與避險">Half-Kelly（實務建議）</span>
         <span class="font-mono text-indigo-300 font-bold">{{ mcOptimal?.halfKelly ?? '-' }}%</span>
     </div>
     
     <div class="mt-2 pt-2 border-t border-indigo-800/30 flex items-center justify-between">
-        <span class="text-[11px] text-gray-400">依據 Half-Kelly 推算之<br>最佳現金緩衝 (Buffer)</span>
+        <span class="text-[11px] text-gray-400">依據 Half-Kelly 推算之<br>最佳現金緩衝（Buffer）</span>
         <button v-if="mcOptimal?.recommendedBuffer" @click="applyLiquidityBuffer(mcOptimal.recommendedBuffer)" 
                 class="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-2.5 py-1 rounded transition shadow-sm">
             套用 {{ mcOptimal.recommendedBuffer }}%
@@ -5518,7 +5518,7 @@
         </div>
 
         <div class="flex justify-between text-gray-300">
-            <span>Jump Tail Loss</span>
+            <span>跳躍尾部損失</span>
             <span class="font-mono text-orange-400">{{ mcOptimal.jumpTailLossPct }}%</span>
         </div>
     </div>
@@ -5534,20 +5534,20 @@
 <!-- 👇 新增的 Kelly 曝險建議卡片 👇 -->
 <div class="mt-4 p-3 bg-indigo-900/20 border border-indigo-800/50 rounded-lg">
     <h5 class="text-[10px] text-indigo-300 uppercase tracking-wider mb-2 border-b border-indigo-800/50 pb-1 flex items-center gap-2">
-        <i class="fas fa-scale-balanced"></i> Kelly Criterion 曝險建議
+        <i class="fas fa-scale-balanced"></i> Kelly 準則曝險建議
     </h5>
     
     <div class="flex justify-between text-xs text-gray-300 mb-1">
-        <span title="追求極限複利成長，但風險極高">Full Kelly (理論極限)</span>
+        <span title="追求極限複利成長，但風險極高">Full Kelly（理論極限）</span>
         <span class="font-mono text-white">{{ mcOptimal.fullKelly }}%</span>
     </div>
     <div class="flex justify-between text-xs text-gray-300 mb-2">
-        <span class="text-indigo-400 font-bold" title="實務黃金標準，兼顧成長與避險">Half-Kelly (實務建議)</span>
+        <span class="text-indigo-400 font-bold" title="實務黃金標準，兼顧成長與避險">Half-Kelly（實務建議）</span>
         <span class="font-mono text-indigo-300 font-bold">{{ mcOptimal.halfKelly }}%</span>
     </div>
     
     <div class="mt-2 pt-2 border-t border-indigo-800/30 flex items-center justify-between">
-        <span class="text-[11px] text-gray-400">依據 Half-Kelly 推算之<br>最佳現金緩衝 (Buffer)</span>
+        <span class="text-[11px] text-gray-400">依據 Half-Kelly 推算之<br>最佳現金緩衝（Buffer）</span>
         <button v-if="mcOptimal.recommendedBuffer" @click="applyLiquidityBuffer(mcOptimal.recommendedBuffer)" 
                 class="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-2.5 py-1 rounded transition shadow-sm">
             套用 {{ mcOptimal.recommendedBuffer }}%
@@ -5556,7 +5556,7 @@
 </div>
 <!-- 👆 新增結束 👆 -->
 
-                                <h5 class="text-[10px] text-gray-400 uppercase tracking-wider mb-2 mt-4 border-b border-gray-700 pb-1">Rebalance 具體調整清單</h5>
+                                <h5 class="text-[10px] text-gray-400 uppercase tracking-wider mb-2 mt-4 border-b border-gray-700 pb-1">再平衡具體調整清單</h5>
                                 <div v-for="item in mcOptimal.weights" :key="item.ticker" class="mb-3 bg-gray-900/50 p-2 rounded border border-gray-700/50">
                                     <div class="flex justify-between text-xs mb-1">
                                         <span class="text-white font-bold">{{ item.ticker }}</span>
@@ -5571,7 +5571,7 @@
                                 </div>
 
                                 <div class="mt-4 p-3 bg-blue-900/20 border border-blue-800 rounded-lg text-[10px] text-blue-200 leading-relaxed">
-                                    <p class="font-bold mb-1 text-blue-300"><i class="fas fa-info-circle"></i> 調整指南 (How to Trade)</p>
+                                    <p class="font-bold mb-1 text-blue-300"><i class="fas fa-info-circle"></i> 調整指南（如何換算金額）</p>
                                     <ul class="list-disc pl-4 opacity-90 space-y-1">
                                         <li>將 <strong>加/減碼 %</strong> 乘以「總資產規模」即為買賣金額。</li>
                                         <li><strong>加碼</strong>：動用閒置現金，或由減碼資金轉入。</li>
@@ -5591,8 +5591,8 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=v3-2-v3-4-governance"></script>
-<script src="assets/js/quant-main-display.js?v=market-intel-anchor-fix"></script>
+<script src="assets/js/app.bundle.js?v=frontend-zh-1"></script>
+<script src="assets/js/quant-main-display.js?v=frontend-zh-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
 </body>

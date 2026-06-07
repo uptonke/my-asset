@@ -164,7 +164,7 @@
   }
 
   function moduleCard(key, mod) {
-    const names = { trend: "Trend 趨勢", breadth: "Breadth 廣度", credit: "Credit 信用", volatility: "Volatility 波動", liquidity: "Liquidity 流動性", cross_asset: "Cross-Asset 跨資產" };
+    const names = { trend: "Trend 趨勢", breadth: "Breadth 廣度", credit: "信用 信用", volatility: "Volatility 波動", liquidity: "Liquidity 流動性", cross_asset: "Cross-Asset 跨資產" };
     const score = Number(mod?.score);
     return `<div class="qmi-card"><div class="qmi-k">${names[key] || key}</div><div class="qmi-v ${scoreClass(score)}">${Number.isFinite(score) ? score.toFixed(1) : "N/A"}</div><div class="qmi-note"><b>${esc(mod?.label || "")}</b><br>${esc(mod?.note || "")}</div></div>`;
   }
@@ -196,22 +196,22 @@
     const p = ensureSummaryPanel();
     if (!p) return;
     const { c, o } = compassData(data);
-    if (data.error) { p.innerHTML = `<div class="qmi-head"><div><div class="qmi-title">Market Intelligence 讀取失敗</div><div class="qmi-sub">${esc(data.error)}</div></div></div>`; return; }
-    if (!c) { p.innerHTML = `<div class="qmi-head"><div><div class="qmi-title">Market Intelligence｜市場環境總覽</div><div class="qmi-sub">尚未偵測到 macro_meta.market_compass。</div></div></div>`; return; }
+    if (data.error) { p.innerHTML = `<div class="qmi-head"><div><div class="qmi-title">市場情報讀取失敗</div><div class="qmi-sub">${esc(data.error)}</div></div></div>`; return; }
+    if (!c) { p.innerHTML = `<div class="qmi-head"><div><div class="qmi-title">市場情報｜市場環境總覽</div><div class="qmi-sub">尚未偵測到 macro_meta.market_compass。</div></div></div>`; return; }
     const dq = c.data_quality || {};
     const topPen = arr(c.penalties).slice(0, 3);
-    p.innerHTML = `<div class="qmi-head"><div><div class="qmi-title">Market Intelligence｜市場環境總覽</div><div class="qmi-sub">總覽頁簡版：看市場狀態、資料品質與主要扣分，不展開完整模型。</div></div><div class="qmi-meta">更新=${esc(c.date || "N/A")}<br>Regime=${esc(c.regime || c.label || "N/A")}</div></div><div class="qmi-body"><div class="qmi-grid">${chip("Adjusted Score", `${n(c.adjusted_score ?? c.score,1)}/100`)}${chip("Raw Score", `${n(c.raw_score ?? c.score,1)}/100`)}${chip("Penalty", `-${n(c.penalty_points ?? 0,1)}`)}${chip("Data Quality", dq.overall || "N/A")}${chip("FRED", c.fred_status || dq.fred_status || "N/A")}${chip("Credit", dq.credit_quality || "N/A")}${chip("Yahoo", dq.yahoo_status || "N/A")}${chip("TWSE", o?.twse?.errors?.length ? "ERROR" : "OK")}</div><div class="qmi-section warn"><div class="qmi-label">Top Penalty Reasons</div>${list(topPen)}</div>${aiBlock(c.ai_data_deep_analysis,true)}</div>`;
+    p.innerHTML = `<div class="qmi-head"><div><div class="qmi-title">市場情報｜市場環境總覽</div><div class="qmi-sub">總覽頁簡版：看市場狀態、資料品質與主要扣分，不展開完整模型。</div></div><div class="qmi-meta">更新=${esc(c.date || "N/A")}<br>市場狀態=${esc(c.regime || c.label || "N/A")}</div></div><div class="qmi-body"><div class="qmi-grid">${chip("調整後分數", `${n(c.adjusted_score ?? c.score,1)}/100`)}${chip("原始分數", `${n(c.raw_score ?? c.score,1)}/100`)}${chip("扣分", `-${n(c.penalty_points ?? 0,1)}`)}${chip("資料品質", dq.overall || "N/A")}${chip("FRED", c.fred_status || dq.fred_status || "N/A")}${chip("信用", dq.credit_quality || "N/A")}${chip("Yahoo", dq.yahoo_status || "N/A")}${chip("TWSE", o?.twse?.errors?.length ? "ERROR" : "OK")}</div><div class="qmi-section warn"><div class="qmi-label">Top 扣分 Reasons</div>${list(topPen)}</div>${aiBlock(c.ai_data_deep_analysis,true)}</div>`;
   }
 
   function renderAnalysis(data) {
     const p = ensureAnalysisPanel();
     if (!p) return;
     const { c, o } = compassData(data);
-    if (!c) { p.innerHTML = `<div class="qmi-head"><div><div class="qmi-title">Market Intelligence｜市場環境完整版</div><div class="qmi-sub">尚未偵測到 macro_meta.market_compass。</div></div></div>`; return; }
+    if (!c) { p.innerHTML = `<div class="qmi-head"><div><div class="qmi-title">市場情報｜市場環境完整版</div><div class="qmi-sub">尚未偵測到 macro_meta.market_compass。</div></div></div>`; return; }
     const dq = c.data_quality || {};
     const mods = c.modules || {};
     const order = ["trend","breadth","credit","volatility","liquidity","cross_asset"];
-    p.innerHTML = `<div class="qmi-head"><div><div class="qmi-title">Market Intelligence｜市場環境完整版</div><div class="qmi-sub">分析頁完整版：Market Compass + Official Data Health + AI 數據深度分析。</div></div><div class="qmi-meta">更新=${esc(c.date || "N/A")}<br>FRED=${esc(c.fred_status || dq.fred_status || "N/A")}</div></div><div class="qmi-body"><div class="qmi-grid">${chip("Adjusted Score", `${n(c.adjusted_score ?? c.score,1)}/100`)}${chip("Raw Score", `${n(c.raw_score ?? c.score,1)}/100`)}${chip("Regime", c.regime || c.label || "N/A")}${chip("Credit", dq.credit_quality || "N/A")}</div><div class="qmi-section"><div class="qmi-label">Primary Reasons</div>${list(c.reasons)}</div><div class="qmi-section warn"><div class="qmi-label">Penalty Reasons</div>${list(c.penalties)}</div><div class="qmi-grid6">${order.map((k)=>moduleCard(k,mods[k]||{})).join("")}</div><div class="qmi-section"><div class="qmi-label">Official Data Health</div><div class="qmi-grid">${officialChips(o)}</div></div>${aiBlock(c.ai_data_deep_analysis,false)}</div>`;
+    p.innerHTML = `<div class="qmi-head"><div><div class="qmi-title">市場情報｜市場環境完整版</div><div class="qmi-sub">分析頁完整版：Market Compass + 官方資料健康度 + AI 數據深度分析。</div></div><div class="qmi-meta">更新=${esc(c.date || "N/A")}<br>FRED=${esc(c.fred_status || dq.fred_status || "N/A")}</div></div><div class="qmi-body"><div class="qmi-grid">${chip("調整後分數", `${n(c.adjusted_score ?? c.score,1)}/100`)}${chip("原始分數", `${n(c.raw_score ?? c.score,1)}/100`)}${chip("市場狀態", c.regime || c.label || "N/A")}${chip("信用", dq.credit_quality || "N/A")}</div><div class="qmi-section"><div class="qmi-label">主要理由</div>${list(c.reasons)}</div><div class="qmi-section warn"><div class="qmi-label">扣分 Reasons</div>${list(c.penalties)}</div><div class="qmi-grid6">${order.map((k)=>moduleCard(k,mods[k]||{})).join("")}</div><div class="qmi-section"><div class="qmi-label">官方資料健康度</div><div class="qmi-grid">${officialChips(o)}</div></div>${aiBlock(c.ai_data_deep_analysis,false)}</div>`;
   }
 
   async function render(force = false) {
