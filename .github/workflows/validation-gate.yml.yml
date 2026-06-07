@@ -41,16 +41,9 @@ jobs:
               cat data/repo_architecture/validation_gate_summary.md
             fi
             if [ -f data/repo_architecture/validation_gate_latest.json ]; then
-              python - <<'PY'
-import json
-from pathlib import Path
-p = Path("data/repo_architecture/validation_gate_latest.json")
-d = json.loads(p.read_text(encoding="utf-8"))
-print("VALIDATION_ERRORS_JSON_BEGIN")
-for i, e in enumerate(d.get("errors", [])[:50], 1):
-    print(f"{i}. [{e.get('category')}] {e.get('path')}: {e.get('message')}")
-print("VALIDATION_ERRORS_JSON_END")
-PY
+              echo "VALIDATION_GATE_LATEST_JSON_BEGIN"
+              cat data/repo_architecture/validation_gate_latest.json
+              echo "VALIDATION_GATE_LATEST_JSON_END"
             fi
             exit 1
           }
