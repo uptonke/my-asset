@@ -1,0 +1,179 @@
+{
+  "version": "v4.7",
+  "generated_at": "2026-06-07T08:53:46.838444+00:00",
+  "status": "PLAN_ONLY",
+  "mode": "dead_file_cleanup_plan",
+  "safe_mode": true,
+  "auto_delete_enabled": false,
+  "delete_command_generated": false,
+  "safe_delete_candidates": [
+    {
+      "path": "README_FRONTEND_MIGRATION.md",
+      "exists": true,
+      "bytes": 1154,
+      "reason": "root-level stale workflow/readme duplicate or migration note; not a runtime path"
+    },
+    {
+      "path": "README_TERMINAL_DESIGN_SYSTEM.md",
+      "exists": true,
+      "bytes": 1486,
+      "reason": "root-level stale workflow/readme duplicate or migration note; not a runtime path"
+    },
+    {
+      "path": "README_V05_V06_OVERLAY.md",
+      "exists": true,
+      "bytes": 1873,
+      "reason": "root-level stale workflow/readme duplicate or migration note; not a runtime path"
+    },
+    {
+      "path": "daily_update.yml",
+      "exists": true,
+      "bytes": 1578,
+      "reason": "root-level stale workflow/readme duplicate or migration note; not a runtime path"
+    },
+    {
+      "path": "weekly_macro_update.yml",
+      "exists": true,
+      "bytes": 1750,
+      "reason": "root-level stale workflow/readme duplicate or migration note; not a runtime path"
+    },
+    {
+      "path": "frontend_tailwind_migration.yml",
+      "exists": true,
+      "bytes": 1458,
+      "reason": "root-level stale workflow/readme duplicate or migration note; not a runtime path"
+    }
+  ],
+  "review_before_delete": [
+    {
+      "path": "00-bootstrap-and-cro.js",
+      "exists": true,
+      "bytes": 6866,
+      "reason": "root-level JS/Python candidate; delete only after confirming no external link or GitHub Pages reference"
+    },
+    {
+      "path": "00-tailwind-config.js",
+      "exists": true,
+      "bytes": 4228,
+      "reason": "root-level JS/Python candidate; delete only after confirming no external link or GitHub Pages reference"
+    },
+    {
+      "path": "10-state-auth-cloud.js",
+      "exists": true,
+      "bytes": 8696,
+      "reason": "root-level JS/Python candidate; delete only after confirming no external link or GitHub Pages reference"
+    },
+    {
+      "path": "30-risk-xray-tail.js",
+      "exists": true,
+      "bytes": 18992,
+      "reason": "root-level JS/Python candidate; delete only after confirming no external link or GitHub Pages reference"
+    },
+    {
+      "path": "40-actions-history-buffer.js",
+      "exists": true,
+      "bytes": 178922,
+      "reason": "root-level JS/Python candidate; delete only after confirming no external link or GitHub Pages reference"
+    },
+    {
+      "path": "60-ui-and-charts.js",
+      "exists": true,
+      "bytes": 132805,
+      "reason": "root-level JS/Python candidate; delete only after confirming no external link or GitHub Pages reference"
+    },
+    {
+      "path": "app.bundle.js",
+      "exists": true,
+      "bytes": 132805,
+      "reason": "root-level JS/Python candidate; delete only after confirming no external link or GitHub Pages reference"
+    },
+    {
+      "path": "quant-main-display.js",
+      "exists": true,
+      "bytes": 16260,
+      "reason": "root-level JS/Python candidate; delete only after confirming no external link or GitHub Pages reference"
+    },
+    {
+      "path": "backup.py",
+      "exists": true,
+      "bytes": 1824,
+      "reason": "root-level JS/Python candidate; delete only after confirming no external link or GitHub Pages reference"
+    }
+  ],
+  "do_not_delete": [
+    {
+      "path": "index.html",
+      "exists": true,
+      "bytes": 428891,
+      "reason": "runtime, source-of-truth, validation, schema, or workflow-critical file"
+    },
+    {
+      "path": "assets/js/app.bundle.js",
+      "exists": true,
+      "bytes": 205768,
+      "reason": "runtime, source-of-truth, validation, schema, or workflow-critical file"
+    },
+    {
+      "path": "assets/js/src/app.bundle.source.js",
+      "exists": true,
+      "bytes": 205768,
+      "reason": "runtime, source-of-truth, validation, schema, or workflow-critical file"
+    },
+    {
+      "path": "assets/js/quant-main-display.js",
+      "exists": true,
+      "bytes": 16952,
+      "reason": "runtime, source-of-truth, validation, schema, or workflow-critical file"
+    },
+    {
+      "path": "assets/css/tailwind-built.css",
+      "exists": true,
+      "bytes": 1950878,
+      "reason": "runtime, source-of-truth, validation, schema, or workflow-critical file"
+    },
+    {
+      "path": ".github/workflows/optimizer-lab.yml.yml",
+      "exists": true,
+      "bytes": 10021,
+      "reason": "runtime, source-of-truth, validation, schema, or workflow-critical file"
+    },
+    {
+      "path": ".github/workflows/validation-gate.yml.yml",
+      "exists": true,
+      "bytes": 2492,
+      "reason": "runtime, source-of-truth, validation, schema, or workflow-critical file"
+    },
+    {
+      "path": ".github/workflows/repo-architecture-audit.yml.yml",
+      "exists": true,
+      "bytes": 2700,
+      "reason": "runtime, source-of-truth, validation, schema, or workflow-critical file"
+    },
+    {
+      "path": "scripts/validate_repo_integrity.py",
+      "exists": true,
+      "bytes": 16416,
+      "reason": "runtime, source-of-truth, validation, schema, or workflow-critical file"
+    },
+    {
+      "path": "scripts/build_frontend_bundle.py",
+      "exists": true,
+      "bytes": 6875,
+      "reason": "runtime, source-of-truth, validation, schema, or workflow-critical file"
+    },
+    {
+      "path": "schemas/schema_registry.json",
+      "exists": true,
+      "bytes": 5507,
+      "reason": "runtime, source-of-truth, validation, schema, or workflow-critical file"
+    }
+  ],
+  "policy": {
+    "rule": "This plan never deletes files automatically.",
+    "required_before_delete": [
+      "Validation Gate OK",
+      "GitHub Pages manual smoke test",
+      "No unresolved audit warnings"
+    ]
+  }
+}

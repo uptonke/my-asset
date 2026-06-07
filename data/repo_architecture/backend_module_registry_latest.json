@@ -1,0 +1,99 @@
+{
+  "version": "v4.4",
+  "generated_at": "2026-06-07T08:53:43.292838+00:00",
+  "status": "OK",
+  "mode": "backend_script_split_registry",
+  "safe_mode": true,
+  "runtime_refactor_enabled": false,
+  "module_count": 5,
+  "modules": [
+    {
+      "id": "data_fetch",
+      "path": "scripts/modules/data_fetch.py",
+      "target_source": "update_stock_meta.py",
+      "split_status": "boundary_registered",
+      "exists": true,
+      "bytes": 387,
+      "module_id": "data_fetch",
+      "owned_concerns": [
+        "market data retrieval",
+        "raw price input",
+        "ticker metadata input"
+      ],
+      "side_effects_allowed": false
+    },
+    {
+      "id": "beta",
+      "path": "scripts/modules/beta.py",
+      "target_source": "update_stock_meta.py",
+      "split_status": "boundary_registered",
+      "exists": true,
+      "bytes": 232,
+      "module_id": "beta",
+      "owned_concerns": [
+        "beta",
+        "rolling correlation",
+        "market exposure diagnostics"
+      ],
+      "side_effects_allowed": false
+    },
+    {
+      "id": "synthetic_risk",
+      "path": "scripts/modules/synthetic_risk.py",
+      "target_source": "update_stock_meta.py",
+      "split_status": "boundary_registered",
+      "exists": true,
+      "bytes": 234,
+      "module_id": "synthetic_risk",
+      "owned_concerns": [
+        "synthetic risk scores",
+        "risk flags",
+        "risk bucket mapping"
+      ],
+      "side_effects_allowed": false
+    },
+    {
+      "id": "optimizer_outputs",
+      "path": "scripts/modules/optimizer_outputs.py",
+      "target_source": "scripts/build_*optimizer*.py",
+      "split_status": "boundary_registered",
+      "exists": true,
+      "bytes": 255,
+      "module_id": "optimizer_outputs",
+      "owned_concerns": [
+        "optimizer JSON output",
+        "safe-mode flags",
+        "decision support artifacts"
+      ],
+      "side_effects_allowed": false
+    },
+    {
+      "id": "stock_meta_schema",
+      "path": "scripts/modules/stock_meta_schema.py",
+      "target_source": "update_stock_meta.py",
+      "split_status": "boundary_registered",
+      "exists": true,
+      "bytes": 256,
+      "module_id": "stock_meta_schema",
+      "owned_concerns": [
+        "stock_meta contract",
+        "schema compatibility",
+        "frontend field stability"
+      ],
+      "side_effects_allowed": false
+    }
+  ],
+  "split_policy": {
+    "current_runtime": [
+      "update_stock_meta.py",
+      "main.py",
+      "scripts/build_*"
+    ],
+    "rule": "Registry-first split only; do not move side-effecting code until tests and schemas pass.",
+    "forbidden": [
+      "change Supabase writes during split",
+      "change optimizer output semantics during split"
+    ]
+  },
+  "errors": []
+}

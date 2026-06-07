@@ -36,8 +36,21 @@ REQUIRED_FILES = [
     "package.json",
     "split-manifest.json",
     "schemas/schema_registry.json",
+    "scripts/build_frontend_bundle.py",
+    "scripts/validate_repo_integrity.py",
+    "scripts/build_ui_component_registry.py",
+    "scripts/build_backend_module_registry.py",
+    "scripts/build_dead_file_cleanup_plan.py",
+    "scripts/build_consolidated_release_manifest.py",
+    "docs/FRONTEND_SOURCE_OF_TRUTH.md",
+    "docs/SCHEMA_REGISTRY.md",
+    "docs/UI_COMPONENT_SPLIT.md",
+    "docs/BACKEND_SCRIPT_SPLIT.md",
+    "docs/DEAD_FILE_CLEANUP_PLAN.md",
+    "docs/V4_CONSOLIDATED_RELEASE.md",
     ".github/workflows/optimizer-lab.yml.yml",
     ".github/workflows/repo-architecture-audit.yml.yml",
+    ".github/workflows/validation-gate.yml.yml",
 ]
 
 REQUIRED_WORKFLOW_DIR = ".github/workflows"
@@ -232,7 +245,9 @@ def check_schema_registry(errors, warnings) -> Dict[str, Any]:
 def check_python_compile(errors, warnings) -> Dict[str, Any]:
     compiled = []
     failed = []
-    for p in sorted((ROOT / "scripts").glob("*.py")):
+    for p in sorted((ROOT / "scripts").rglob("*.py")):
+        if "__pycache__" in p.parts:
+            continue
         try:
             py_compile.compile(str(p), doraise=True)
             compiled.append(rel(p))

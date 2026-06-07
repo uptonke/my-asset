@@ -1,14 +1,14 @@
 {
   "version": "v4.6",
   "status": "OK",
-  "generated_at": "2026-06-07T08:49:33.948617+00:00",
+  "generated_at": "2026-06-07T08:53:57.382596+00:00",
   "mode": "validation_gate",
   "safe_mode": true,
   "summary": {
     "error_count": 0,
     "warning_count": 0,
-    "schema_validated_count": 18,
-    "python_compiled_count": 31
+    "schema_validated_count": 22,
+    "python_compiled_count": 41
   },
   "checks": {
     "required_files": {
@@ -20,8 +20,21 @@
         "package.json",
         "split-manifest.json",
         "schemas/schema_registry.json",
+        "scripts/build_frontend_bundle.py",
+        "scripts/validate_repo_integrity.py",
+        "scripts/build_ui_component_registry.py",
+        "scripts/build_backend_module_registry.py",
+        "scripts/build_dead_file_cleanup_plan.py",
+        "scripts/build_consolidated_release_manifest.py",
+        "docs/FRONTEND_SOURCE_OF_TRUTH.md",
+        "docs/SCHEMA_REGISTRY.md",
+        "docs/UI_COMPONENT_SPLIT.md",
+        "docs/BACKEND_SCRIPT_SPLIT.md",
+        "docs/DEAD_FILE_CLEANUP_PLAN.md",
+        "docs/V4_CONSOLIDATED_RELEASE.md",
         ".github/workflows/optimizer-lab.yml.yml",
-        ".github/workflows/repo-architecture-audit.yml.yml"
+        ".github/workflows/repo-architecture-audit.yml.yml",
+        ".github/workflows/validation-gate.yml.yml"
       ],
       "missing": [],
       "workflow_files": [
@@ -35,13 +48,13 @@
       ]
     },
     "json_parse": {
-      "parsed_count": 52,
+      "parsed_count": 60,
       "failed": []
     },
     "schema_registry": {
       "status": "OK",
-      "registry_version": "v4.5",
-      "validated_count": 18,
+      "registry_version": "v4.8",
+      "validated_count": 22,
       "validated": [
         {
           "path": "data/optimizer/skfolio_sandbox_latest.json",
@@ -132,13 +145,33 @@
           "path": "data/repo_architecture/frontend_build_status_latest.json",
           "schema": "schemas/repo_architecture/frontend_build_status.schema.json",
           "required": false
+        },
+        {
+          "path": "data/repo_architecture/ui_component_registry_latest.json",
+          "schema": "schemas/repo_architecture/ui_component_registry.schema.json",
+          "required": false
+        },
+        {
+          "path": "data/repo_architecture/backend_module_registry_latest.json",
+          "schema": "schemas/repo_architecture/backend_module_registry.schema.json",
+          "required": false
+        },
+        {
+          "path": "data/repo_architecture/dead_file_cleanup_plan_latest.json",
+          "schema": "schemas/repo_architecture/dead_file_cleanup_plan.schema.json",
+          "required": false
+        },
+        {
+          "path": "data/repo_architecture/consolidated_release_manifest_latest.json",
+          "schema": "schemas/repo_architecture/consolidated_release_manifest.schema.json",
+          "required": false
         }
       ],
       "skipped": [],
       "errors": []
     },
     "python_compile": {
-      "compiled_count": 31,
+      "compiled_count": 41,
       "failed": []
     },
     "frontend_source_runtime": {

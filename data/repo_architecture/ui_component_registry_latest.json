@@ -1,0 +1,92 @@
+{
+  "version": "v4.3",
+  "generated_at": "2026-06-07T08:53:39.548239+00:00",
+  "status": "OK",
+  "mode": "ui_component_split_registry",
+  "safe_mode": true,
+  "source_of_truth": "assets/js/src/app.bundle.source.js",
+  "runtime_bundle": "assets/js/app.bundle.js",
+  "component_count": 4,
+  "runtime_split_enabled": false,
+  "components": [
+    {
+      "id": "quant-risk",
+      "name": "Quant Risk",
+      "label_zh": "量化風控",
+      "source_module": "assets/js/src/components/quant-risk.component.js",
+      "runtime_anchor": "analyticsViewMode === 'risk'",
+      "current_runtime": "assets/js/src/app.bundle.source.js",
+      "split_status": "registry_first_not_runtime_split",
+      "risk_level": "medium",
+      "owns": [
+        "risk metrics",
+        "VaR/ES",
+        "drawdown",
+        "risk contribution"
+      ],
+      "module_exists": true,
+      "bytes": 420
+    },
+    {
+      "id": "optimizer-lab",
+      "name": "Optimizer Lab",
+      "label_zh": "最佳化",
+      "source_module": "assets/js/src/components/optimizer-lab.component.js",
+      "runtime_anchor": "analyticsViewMode === 'optimizer'",
+      "current_runtime": "assets/js/src/app.bundle.source.js",
+      "split_status": "registry_first_not_runtime_split",
+      "risk_level": "high",
+      "owns": [
+        "decision center",
+        "rebalance candidates",
+        "approval",
+        "audit",
+        "governance"
+      ],
+      "module_exists": true,
+      "bytes": 513
+    },
+    {
+      "id": "macro-intelligence",
+      "name": "Macro Intelligence",
+      "label_zh": "市場環境",
+      "source_module": "assets/js/src/components/macro-intelligence.component.js",
+      "runtime_anchor": "overview/analysis anchor only",
+      "current_runtime": "assets/js/quant-main-display.js",
+      "split_status": "anchor_stabilized_not_runtime_split",
+      "risk_level": "medium",
+      "owns": [
+        "market intelligence overview",
+        "macro context"
+      ],
+      "module_exists": true,
+      "bytes": 443
+    },
+    {
+      "id": "holding-cards",
+      "name": "Holding Cards",
+      "label_zh": "持倉卡片",
+      "source_module": "assets/js/src/components/holding-cards.component.js",
+      "runtime_anchor": "portfolio holdings/table sections",
+      "current_runtime": "assets/js/src/app.bundle.source.js",
+      "split_status": "registry_first_not_runtime_split",
+      "risk_level": "medium",
+      "owns": [
+        "position cards",
+        "holding-level display"
+      ],
+      "module_exists": true,
+      "bytes": 425
+    }
+  ],
+  "migration_policy": {
+    "step_1": "Keep app.bundle.source.js authoritative.",
+    "step_2": "Register component boundaries and owners.",
+    "step_3": "Only move executable code after validation gate stays green.",
+    "forbidden": [
+      "hand-edit assets/js/app.bundle.js",
+      "split optimizer runtime without schema gate"
+    ]
+  },
+  "missing_modules": []
+}

@@ -1,6 +1,6 @@
 {
-  "version": "v4.5",
-  "generated_by": "Schema Registry",
+  "version": "v4.8",
+  "generated_by": "Schema Registry + Consolidated Release v4.8",
   "policy": {
     "mode": "permissive_structural_validation",
     "strictness": "top_level_contract_plus_safety_flags",
@@ -10,7 +10,8 @@
       "Outputs containing not_trade_order must keep it true.",
       "Expected-return and Black-Litterman sandbox must not enable official alpha or max Sharpe execution.",
       "Schema validation is a pre-commit gate for workflow-generated outputs."
-    ]
+    ],
+    "v4_8_release_boundary": "Component/backend split is registry-first; dead-file cleanup is plan-only; no auto-delete and no trading execution."
   },
   "files": [
     {
@@ -118,6 +119,30 @@
     {
       "path": "data/repo_architecture/frontend_build_status_latest.json",
       "schema": "schemas/repo_architecture/frontend_build_status.schema.json",
+      "required": false,
+      "domain": "repo_architecture"
+    },
+    {
+      "path": "data/repo_architecture/ui_component_registry_latest.json",
+      "schema": "schemas/repo_architecture/ui_component_registry.schema.json",
+      "required": false,
+      "domain": "repo_architecture"
+    },
+    {
+      "path": "data/repo_architecture/backend_module_registry_latest.json",
+      "schema": "schemas/repo_architecture/backend_module_registry.schema.json",
+      "required": false,
+      "domain": "repo_architecture"
+    },
+    {
+      "path": "data/repo_architecture/dead_file_cleanup_plan_latest.json",
+      "schema": "schemas/repo_architecture/dead_file_cleanup_plan.schema.json",
+      "required": false,
+      "domain": "repo_architecture"
+    },
+    {
+      "path": "data/repo_architecture/consolidated_release_manifest_latest.json",
+      "schema": "schemas/repo_architecture/consolidated_release_manifest.schema.json",
       "required": false,
       "domain": "repo_architecture"
     }

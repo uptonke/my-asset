@@ -1,0 +1,109 @@
+{
+  "version": "v4.8",
+  "generated_at": "2026-06-07T08:53:50.094927+00:00",
+  "status": "READY_FOR_REVIEW",
+  "mode": "full_consolidated_release_manifest",
+  "safe_mode": true,
+  "release_overlay_generated": true,
+  "auto_delete_enabled": false,
+  "core_runtime": [
+    {
+      "path": "index.html",
+      "exists": true,
+      "bytes": 428891
+    },
+    {
+      "path": "assets/css/tailwind-built.css",
+      "exists": true,
+      "bytes": 1950878
+    },
+    {
+      "path": "assets/js/app.bundle.js",
+      "exists": true,
+      "bytes": 205768
+    },
+    {
+      "path": "assets/js/quant-main-display.js",
+      "exists": true,
+      "bytes": 16952
+    },
+    {
+      "path": "assets/js/terminal-ui-polish.js",
+      "exists": true,
+      "bytes": 1203
+    },
+    {
+      "path": "assets/js/terminal-ia-phase2.js",
+      "exists": true,
+      "bytes": 212
+    },
+    {
+      "path": "data/optimizer/decision_center_latest.json",
+      "exists": true,
+      "bytes": 95149
+    },
+    {
+      "path": "data/optimizer/model_governance_dashboard_latest.json",
+      "exists": true,
+      "bytes": 6521
+    },
+    {
+      "path": "data/repo_architecture/validation_gate_latest.json",
+      "exists": true,
+      "bytes": 7017
+    }
+  ],
+  "source_of_truth": [
+    {
+      "path": "assets/js/src/app.bundle.source.js",
+      "exists": true,
+      "bytes": 205768
+    },
+    {
+      "path": "scripts/build_frontend_bundle.py",
+      "exists": true,
+      "bytes": 6875
+    },
+    {
+      "path": "schemas/schema_registry.json",
+      "exists": true,
+      "bytes": 5507
+    },
+    {
+      "path": "scripts/validate_repo_integrity.py",
+      "exists": true,
+      "bytes": 16416
+    }
+  ],
+  "workflow_contract": [
+    {
+      "path": ".github/workflows/optimizer-lab.yml.yml",
+      "exists": true,
+      "bytes": 10021
+    },
+    {
+      "path": ".github/workflows/validation-gate.yml.yml",
+      "exists": true,
+      "bytes": 2492
+    },
+    {
+      "path": ".github/workflows/repo-architecture-audit.yml.yml",
+      "exists": true,
+      "bytes": 2700
+    }
+  ],
+  "missing_required_for_release_review": [],
+  "release_policy": {
+    "runtime_bundle": "assets/js/app.bundle.js",
+    "frontend_source": "assets/js/src/app.bundle.source.js",
+    "backend_split_mode": "registry_first",
+    "component_split_mode": "registry_first",
+    "validation_required_before_merge": true,
+    "trade_execution_enabled": false
+  },
+  "next_allowed_steps": [
+    "Review v4.7 cleanup plan manually.",
+    "Delete only safe candidates after a green validation gate.",
+    "Defer actual UI/backend runtime split until after consolidated release is stable."
+  ]
+}

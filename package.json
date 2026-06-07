@@ -1,6 +1,6 @@
 {
   "name": "my-asset-frontend",
-  "version": "12.1.0",
+  "version": "12.2.0",
   "private": true,
   "scripts": {
     "build:css": "tailwindcss -c tailwind.config.js -i assets/css/tailwind-input.css -o assets/css/tailwind-built.css --minify",
@@ -11,7 +11,12 @@
     "check:frontend": "npm run check:js",
     "validate:repo": "python scripts/validate_repo_integrity.py",
     "validate:schemas": "python scripts/validate_repo_integrity.py --no-node",
-    "check:all": "npm run check:frontend && npm run validate:repo"
+    "check:all": "npm run check:frontend && npm run validate:repo",
+    "build:ui-registry": "python scripts/build_ui_component_registry.py",
+    "build:backend-registry": "python scripts/build_backend_module_registry.py",
+    "audit:dead-files": "python scripts/build_dead_file_cleanup_plan.py",
+    "release:manifest": "python scripts/build_consolidated_release_manifest.py",
+    "audit:v4": "npm run audit:repo && npm run build:ui-registry && npm run build:backend-registry && npm run audit:dead-files && npm run release:manifest"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.21",
