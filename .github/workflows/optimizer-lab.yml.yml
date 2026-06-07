@@ -178,6 +178,12 @@ jobs:
           set -euo pipefail
           python scripts/build_optimizer_decision_center.py
 
+      - name: Build Rebalance Candidate Generator v2.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build_rebalance_candidate_generator.py
+
       - name: Upload Optimizer Lab artifacts
         uses: actions/upload-artifact@v4
         with:
