@@ -241,9 +241,28 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python scripts/validate_repo_integrity.py
+          python scripts/validate_repo_integrity.py || {
+            echo "Validation Gate failed. Dumping summary:"
+            if [ -f data/repo_architecture/validation_gate_summary.md ]; then
+              cat data/repo_architecture/validation_gate_summary.md
+            fi
+            if [ -f data/repo_architecture/validation_gate_latest.json ]; then
+              python - <<'PY'
+import json
+from pathlib import Path
+p = Path("data/repo_architecture/validation_gate_latest.json")
+d = json.loads(p.read_text(encoding="utf-8"))
+print("VALIDATION_ERRORS_JSON_BEGIN")
+for i, e in enumerate(d.get("errors", [])[:50], 1):
+    print(f"{i}. [{e.get('category')}] {e.get('path')}: {e.get('message')}")
+print("VALIDATION_ERRORS_JSON_END")
+PY
+            fi
+            exit 1
+          }
 
       - name: Upload Optimizer Lab artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: optimizer-lab-${{ github.event.inputs.task }}
