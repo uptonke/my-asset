@@ -24,5 +24,19 @@
     "node_modules excluded from my-quant-dashboard",
     "runtime uses bundled JS for no-build execution",
     "source fragments kept for maintainability"
-  ]
+  ],
+  "frontend_source_of_truth": {
+    "version": "v4.1",
+    "policy": "canonical_single_bundle_source",
+    "canonical_source": "assets/js/src/app.bundle.source.js",
+    "runtime_bundle": "assets/js/app.bundle.js",
+    "legacy_fragments_status": "preserved_for_reference_not_authoritative",
+    "build_command": "python scripts/build_frontend_bundle.py",
+    "check_command": "python scripts/build_frontend_bundle.py --check",
+    "notes": [
+      "Current assets/js/app.bundle.js contains newer frontend patches than legacy fragments.",
+      "v4.1 freezes current runtime into assets/js/src/app.bundle.source.js.",
+      "Future edits should target the canonical source and regenerate runtime bundle."
+    ]
+  }
 }

@@ -3,7 +3,12 @@
   "version": "12.0.0",
   "private": true,
   "scripts": {
-    "build:css": "tailwindcss -c tailwind.config.js -i assets/css/tailwind-input.css -o assets/css/tailwind-built.css --minify"
+    "build:css": "tailwindcss -c tailwind.config.js -i assets/css/tailwind-input.css -o assets/css/tailwind-built.css --minify",
+    "build:js": "python scripts/build_frontend_bundle.py",
+    "check:js": "python scripts/build_frontend_bundle.py --check",
+    "audit:repo": "python scripts/audit_repo_architecture.py",
+    "build:frontend": "npm run build:css && npm run build:js",
+    "check:frontend": "npm run check:js"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.21",
