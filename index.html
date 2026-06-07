@@ -2795,6 +2795,199 @@
                             </div>
 
 
+
+                            <!-- v1.6 Constraint + Existing Trade Buffer Integration -->
+                            <div class="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.035] overflow-hidden">
+                                <div class="px-4 py-3 border-b border-white/10 bg-emerald-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-road-barrier text-emerald-400"></i>
+                                            v1.6 Constraint + Existing Trade Buffer Sandbox
+                                        </div>
+                                        <div class="text-[10px] text-gray-500 mt-1">
+                                            直接沿用現有 Trade Buffer / No-Trade Zone，將 optimizer 目標權重轉成 HOLD / ADD / TRIM / PENDING。這不是正式交易建議。
+                                        </div>
+                                    </div>
+                                    <div class="text-[11px] text-gray-400">
+                                        Base Buffer：±{{ tradeBufferSummary?.basePct ?? tradeBufferBasePct }}%，
+                                        Mode：{{ tradeBufferProfile?.mode ?? '-' }}
+                                    </div>
+                                </div>
+
+                                <div class="p-4 space-y-4">
+                                    <div v-if="!optimizerBufferCandidateSummaries.length" class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-100 leading-relaxed">
+                                        <i class="fas fa-hourglass-half mr-2"></i>
+                                        尚未取得 optimizer 權重資料。請確認 skfolio / Riskfolio sandbox output 已部署，並且 v1.3 統一比較已能讀取。
+                                    </div>
+
+                                    <template v-else>
+                                        <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
+                                            <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
+                                                <div class="quant-label text-emerald-300">Base Buffer</div>
+                                                <div class="quant-value text-white">±{{ tradeBufferSummary?.basePct ?? tradeBufferBasePct }}%</div>
+                                            </div>
+                                            <div class="quant-card border-red-500/20 bg-red-500/10">
+                                                <div class="quant-label text-red-300">Trim 門檻</div>
+                                                <div class="quant-value text-white">{{ tradeBufferSummary?.trimThresholdPct ?? tradeBufferBasePct }}%</div>
+                                            </div>
+                                            <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                                <div class="quant-label text-cyan-300">Add 門檻</div>
+                                                <div class="quant-value text-white">{{ tradeBufferSummary?.addThresholdPct ?? tradeBufferBasePct }}%</div>
+                                            </div>
+                                            <div class="quant-card border-slate-500/20 bg-slate-500/10">
+                                                <div class="quant-label text-slate-300">候選組合</div>
+                                                <div class="quant-value text-white">{{ optimizerBufferCandidateSummaries.length }}</div>
+                                            </div>
+                                            <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
+                                                <div class="quant-label text-emerald-300">ADD</div>
+                                                <div class="quant-value text-white">{{ optimizerBufferActionSummary.add }}</div>
+                                            </div>
+                                            <div class="quant-card border-red-500/20 bg-red-500/10">
+                                                <div class="quant-label text-red-300">TRIM</div>
+                                                <div class="quant-value text-white">{{ optimizerBufferActionSummary.trim }}</div>
+                                            </div>
+                                            <div class="quant-card border-amber-500/20 bg-amber-500/10">
+                                                <div class="quant-label text-amber-300">PENDING</div>
+                                                <div class="quant-value text-white">{{ optimizerBufferActionSummary.pending }}</div>
+                                            </div>
+                                            <div class="quant-card border-slate-500/20 bg-slate-500/10">
+                                                <div class="quant-label text-slate-300">HOLD</div>
+                                                <div class="quant-value text-white">{{ optimizerBufferActionSummary.hold }}</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="rounded-xl border border-white/10 bg-black/20 p-3">
+                                            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                                                <div>
+                                                    <div class="text-sm font-bold text-white flex items-center gap-2">
+                                                        <i class="fas fa-sliders text-emerald-400"></i>
+                                                        使用既有 Trade Buffer 設定
+                                                    </div>
+                                                    <div class="text-[11px] text-gray-500 mt-1">
+                                                        調整上方 Trade Buffer 後，本區 ADD / TRIM / HOLD 會即時重算。
+                                                    </div>
+                                                </div>
+                                                <div class="flex flex-wrap gap-2">
+                                                    <button v-for="p in tradeBufferPresets" :key="'v16-buffer-' + p"
+                                                            @click="applyTradeBuffer(p)"
+                                                            class="px-2.5 py-1 rounded-lg border text-[11px]"
+                                                            :class="Number(tradeBufferBasePct) === Number(p) ? 'border-emerald-400 bg-emerald-500/20 text-emerald-100' : 'border-white/10 bg-white/[0.03] text-gray-300 hover:bg-white/[0.06]'">
+                                                        ±{{ p }}%
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="mt-2 text-[11px] text-gray-400">
+                                                {{ tradeBufferProfile?.modeNote ?? '' }}
+                                            </div>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                                            <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                                <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
+                                                    <i class="fas fa-list-check text-emerald-400"></i>
+                                                    Candidate Buffer Summary
+                                                </div>
+                                                <div class="overflow-x-auto max-h-[420px]">
+                                                    <table class="w-full text-[11px]">
+                                                        <thead class="text-gray-500 border-b border-white/10 sticky top-0 bg-slate-950/90 backdrop-blur">
+                                                            <tr>
+                                                                <th class="text-left px-3 py-2">候選</th>
+                                                                <th class="text-left px-3 py-2">來源</th>
+                                                                <th class="text-right px-3 py-2">Raw TO</th>
+                                                                <th class="text-right px-3 py-2">Buffer TO</th>
+                                                                <th class="text-right px-3 py-2">Active</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr v-for="row in optimizerBufferCandidateSummaries" :key="row.key"
+                                                                @click="setOptimizerBufferCandidate(row.key)"
+                                                                class="border-b border-white/5 hover:bg-white/[0.05] cursor-pointer"
+                                                                :class="selectedOptimizerBufferCandidate?.key === row.key ? 'bg-emerald-500/[0.08]' : ''">
+                                                                <td class="px-3 py-2 font-mono text-white">{{ row.label }}</td>
+                                                                <td class="px-3 py-2 text-gray-400">{{ row.source }}</td>
+                                                                <td class="px-3 py-2 text-right text-gray-300">{{ row.raw_turnover_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right text-emerald-300">{{ row.buffer_turnover_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right text-cyan-300">{{ row.active_count ?? '-' }}</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+
+                                            <div class="xl:col-span-2 rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                                <div class="px-3 py-2 border-b border-white/10 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                                    <div class="text-sm font-bold text-white flex items-center gap-2">
+                                                        <i class="fas fa-arrow-right-arrow-left text-emerald-400"></i>
+                                                        選定候選：{{ selectedOptimizerBufferCandidate?.label ?? '-' }}
+                                                    </div>
+                                                    <div class="text-[11px] text-gray-400">
+                                                        Raw TO：{{ selectedOptimizerBufferCandidate?.raw_turnover_pct ?? '-' }}% →
+                                                        Buffer TO：{{ selectedOptimizerBufferCandidate?.buffer_turnover_pct ?? '-' }}%
+                                                        （減少 {{ selectedOptimizerBufferCandidate?.turnover_reduction_pct ?? '-' }}%）
+                                                    </div>
+                                                </div>
+                                                <div class="overflow-x-auto max-h-[520px]">
+                                                    <table class="w-full text-[11px]">
+                                                        <thead class="text-gray-500 border-b border-white/10 sticky top-0 bg-slate-950/90 backdrop-blur">
+                                                            <tr>
+                                                                <th class="text-left px-3 py-2">標的</th>
+                                                                <th class="text-right px-3 py-2">目前</th>
+                                                                <th class="text-right px-3 py-2">Optimizer</th>
+                                                                <th class="text-right px-3 py-2">Buffer 後</th>
+                                                                <th class="text-right px-3 py-2">差距</th>
+                                                                <th class="text-left px-3 py-2">動作</th>
+                                                                <th class="text-right px-3 py-2">估計金額</th>
+                                                                <th class="text-left px-3 py-2">理由</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr v-for="row in selectedOptimizerBufferRows" :key="row.ticker" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                                <td class="px-3 py-2 font-mono text-white">{{ row.ticker }}</td>
+                                                                <td class="px-3 py-2 text-right text-gray-300">{{ row.current_weight_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right text-indigo-300">{{ row.target_weight_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right text-emerald-300">{{ row.buffered_target_weight_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right" :class="(row.drift_pct || 0) > 0 ? 'text-emerald-300' : (row.drift_pct || 0) < 0 ? 'text-red-300' : 'text-gray-400'">
+                                                                    {{ row.drift_pct ?? '-' }}%
+                                                                </td>
+                                                                <td class="px-3 py-2">
+                                                                    <span class="px-1.5 py-0.5 rounded border text-[10px]" :class="row.actionClass">
+                                                                        {{ row.action_zh }}
+                                                                    </span>
+                                                                </td>
+                                                                <td class="px-3 py-2 text-right font-mono text-gray-300">{{ formatNumber(row.action_value_twd || 0) }}</td>
+                                                                <td class="px-3 py-2 text-gray-400 min-w-[220px]">{{ row.reason }}</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3">
+                                            <div class="text-sm font-bold text-white flex items-center gap-2 mb-2">
+                                                <i class="fas fa-triangle-exclamation text-amber-400"></i>
+                                                v1.6 使用限制
+                                            </div>
+                                            <ul class="space-y-1 text-[11px] text-gray-400 leading-relaxed">
+                                                <li class="flex gap-2">
+                                                    <i class="fas fa-check text-amber-400 mt-0.5"></i>
+                                                    <span>本版沿用現有 Trade Buffer；沒有另建一套後端 buffer，因此前端調整會即時反映。</span>
+                                                </li>
+                                                <li class="flex gap-2">
+                                                    <i class="fas fa-check text-amber-400 mt-0.5"></i>
+                                                    <span>No-Trade Zone 只能降低噪音交易，不等於完整手續費、稅、滑價、換匯成本模型。</span>
+                                                </li>
+                                                <li class="flex gap-2">
+                                                    <i class="fas fa-check text-amber-400 mt-0.5"></i>
+                                                    <span>PENDING_ADD 代表 CRO VETO 下只列候補，不視為可執行加碼。</span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+
                             <!-- Risk contribution + model assumptions -->
                             <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
                                 <div class="xl:col-span-2 rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
@@ -4450,7 +4643,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=11.30-v14-optimizer-robustness"></script>
+<script src="assets/js/app.bundle.js?v=11.31-v16-trade-buffer-integration"></script>
 <script src="assets/js/quant-main-display.js?v=no-chip-terminal"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>

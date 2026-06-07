@@ -1530,6 +1530,188 @@ const psr_hist = computePSR({
     return Array.isArray(p?.weights) ? p.weights : [];
 });
 
+       const selectedOptimizerBufferCandidateKey = ref('');
+
+       function optimizerBufferWeightRows(candidate) {
+    if (!candidate || candidate.status !== 'OK') return [];
+
+    if (candidate.key === 'hrp_lite_v06') {
+        return (candidate.weights || []).map((row) => {
+            const current = Number(row.current_weight_pct ?? 0);
+            const target = Number(row.hrp_lite_weight_pct ?? row.weight_pct ?? current);
+            return {
+                ticker: row.ticker,
+                current_weight_pct: current,
+                target_weight_pct: target
+            };
+        }).filter((row) => row.ticker);
+    }
+
+    return (candidate.weights || []).map((row) => {
+        const current = Number(row.current_weight_pct ?? 0);
+        const target = Number(row.weight_pct ?? current);
+        return {
+            ticker: row.ticker,
+            current_weight_pct: current,
+            target_weight_pct: target
+        };
+    }).filter((row) => row.ticker);
+}
+
+       function buildTradeBufferCandidate(candidate) {
+    const base = Number(tradeBufferBasePct?.value || 3);
+    const addDisabled = !!tradeBufferProfile?.value?.addDisabled;
+    const nav = Number(totalPortfolioNav?.value || totalStockValueTwd?.value || 0);
+    const rowsRaw = optimizerBufferWeightRows(candidate);
+
+    let addCount = 0;
+    let trimCount = 0;
+    let holdCount = 0;
+    let pendingCount = 0;
+    let rawAbsGapSum = 0;
+    let bufferedAbsGapSum = 0;
+
+    const rows = rowsRaw.map((row) => {
+        const current = Number(row.current_weight_pct || 0);
+        const target = Number(row.target_weight_pct || 0);
+        const drift = target - current;
+        rawAbsGapSum += Math.abs(drift);
+
+        let bucket = 'hold';
+        let action = 'HOLD';
+        let actionZh = '暫不動';
+        let reason = `差距 ${drift.toFixed(2)}%，仍在 ±${base.toFixed(1)}% No-Trade Zone 內。`;
+        let actionClass = 'text-slate-300 bg-slate-500/10 border-slate-500/20';
+        let bufferedTarget = current;
+
+        if (drift <= -base) {
+            bucket = 'trim';
+            action = 'TRIM';
+            actionZh = '減碼';
+            reason = `低於 Trim 門檻：${drift.toFixed(2)}% ≤ -${base.toFixed(1)}%。`;
+            actionClass = 'text-red-300 bg-red-500/10 border-red-500/20';
+            bufferedTarget = target;
+            trimCount += 1;
+        } else if (drift >= base && addDisabled) {
+            bucket = 'pending';
+            action = 'PENDING_ADD';
+            actionZh = '候補加碼';
+            reason = `超過 Add 門檻，但 CRO_VETO 啟動，只列候補不執行。`;
+            actionClass = 'text-amber-300 bg-amber-500/10 border-amber-500/20';
+            bufferedTarget = current;
+            pendingCount += 1;
+        } else if (drift >= base) {
+            bucket = 'add';
+            action = 'ADD';
+            actionZh = '加碼';
+            reason = `高於 Add 門檻：${drift.toFixed(2)}% ≥ +${base.toFixed(1)}%。`;
+            actionClass = 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20';
+            bufferedTarget = target;
+            addCount += 1;
+        } else {
+            holdCount += 1;
+        }
+
+        const bufferedGap = bufferedTarget - current;
+        bufferedAbsGapSum += Math.abs(bufferedGap);
+
+        return {
+            ticker: row.ticker,
+            current_weight_pct: Number(current.toFixed(3)),
+            target_weight_pct: Number(target.toFixed(3)),
+            buffered_target_weight_pct: Number(bufferedTarget.toFixed(3)),
+            drift_pct: Number(drift.toFixed(3)),
+            action,
+            action_zh: actionZh,
+            bucket,
+            reason,
+            actionClass,
+            action_value_twd: Math.round(nav * Math.abs(bufferedGap) / 100),
+            raw_action_value_twd: Math.round(nav * Math.abs(drift) / 100),
+            no_trade_zone_low_pct: Number((current - base).toFixed(3)),
+            no_trade_zone_high_pct: Number((current + base).toFixed(3))
+        };
+    }).sort((a, b) => Math.abs(b.drift_pct) - Math.abs(a.drift_pct));
+
+    const rawTurnover = Number((rawAbsGapSum / 2).toFixed(2));
+    const bufferedTurnover = Number((bufferedAbsGapSum / 2).toFixed(2));
+    const turnoverReduction = Number((rawTurnover - bufferedTurnover).toFixed(2));
+
+    return {
+        key: candidate.key,
+        label: candidate.label || candidate.key,
+        source: candidate.source || '-',
+        status: candidate.status || 'N/A',
+        verdict: candidate.verdict || '-',
+        base_buffer_pct: base,
+        trim_threshold_pct: base,
+        add_threshold_pct: addDisabled ? null : base,
+        add_disabled: addDisabled,
+        raw_turnover_pct: Number(Number(candidate.turnover_vs_current_pct ?? rawTurnover).toFixed(2)),
+        buffer_turnover_pct: bufferedTurnover,
+        turnover_reduction_pct: turnoverReduction,
+        add_count: addCount,
+        trim_count: trimCount,
+        hold_count: holdCount,
+        pending_count: pendingCount,
+        active_count: addCount + trimCount,
+        rows
+    };
+}
+
+       const optimizerBufferCandidateSummaries = computed(() => {
+    const exclude = new Set(['current_weight']);
+    return (unifiedOptimizerComparison.value || [])
+        .filter((candidate) => candidate && candidate.status === 'OK' && !exclude.has(candidate.key))
+        .filter((candidate) => Array.isArray(candidate.weights) && candidate.weights.length)
+        .map(buildTradeBufferCandidate)
+        .sort((a, b) => {
+            const ar = Number(a.buffer_turnover_pct ?? 999);
+            const br = Number(b.buffer_turnover_pct ?? 999);
+            if (ar !== br) return ar - br;
+            return String(a.label).localeCompare(String(b.label));
+        });
+});
+
+       const selectedOptimizerBufferCandidate = computed(() => {
+    const list = optimizerBufferCandidateSummaries.value || [];
+    if (!list.length) return null;
+    const selected = selectedOptimizerBufferCandidateKey.value
+        ? list.find((x) => x.key === selectedOptimizerBufferCandidateKey.value)
+        : null;
+    if (selected) return selected;
+
+    const bestEs = unifiedOptimizerBestByES.value?.key;
+    if (bestEs) {
+        const best = list.find((x) => x.key === bestEs);
+        if (best) return best;
+    }
+    return list[0];
+});
+
+       const selectedOptimizerBufferRows = computed(() => {
+    return selectedOptimizerBufferCandidate.value?.rows || [];
+});
+
+       const optimizerBufferActionSummary = computed(() => {
+    const c = selectedOptimizerBufferCandidate.value;
+    if (!c) {
+        return { add: 0, trim: 0, hold: 0, pending: 0, active: 0 };
+    }
+    return {
+        add: c.add_count || 0,
+        trim: c.trim_count || 0,
+        hold: c.hold_count || 0,
+        pending: c.pending_count || 0,
+        active: c.active_count || 0
+    };
+});
+
+       function setOptimizerBufferCandidate(key) {
+    selectedOptimizerBufferCandidateKey.value = key;
+}
+
+
        const optimizerRobustnessOutput = ref(null);
        const optimizerRobustnessError = ref('');
 
@@ -3928,7 +4110,7 @@ chartCML.data.datasets = [
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr, navOverlayMode, navOverlayOptions, setNavOverlayMode, navMaConfig, riskRegimeStrip, navTrendSummary,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
-            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
+            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
         };
     }
 }).mount('#app');
