@@ -279,6 +279,7 @@ ${JSON.stringify(payload, null, 2)}
         }
 
         const currentTab = ref('summary');
+        const analyticsViewMode = ref('risk');
         const isAiExpanded = ref(false); 
         const isHistoryExpanded = ref(false);
         
@@ -4492,7 +4493,7 @@ chartCML.data.datasets = [
         });
 
         return { 
-            filteredHoldingsGroups, holdingsVisibleStats, holdingsActionFilter, holdingsViewOptions, holdingsActionSummary, goToTab, historyIntegrityRisk, historyIntegrityBadge, alertCenterItems, alertCenterSections, tradeBufferBasePct, tradeBufferPresets, tradeBufferProfile, applyTradeBuffer, nudgeTradeBuffer, rebalanceCockpitRows, rebalanceCockpitBuckets, tradeBufferSummary, rebalancePostTradeEstimate, txPreview,
+            filteredHoldingsGroups, holdingsVisibleStats, analyticsViewMode, holdingsActionFilter, holdingsViewOptions, holdingsActionSummary, goToTab, historyIntegrityRisk, historyIntegrityBadge, alertCenterItems, alertCenterSections, tradeBufferBasePct, tradeBufferPresets, tradeBufferProfile, applyTradeBuffer, nudgeTradeBuffer, rebalanceCockpitRows, rebalanceCockpitBuckets, tradeBufferSummary, rebalancePostTradeEstimate, txPreview,
             currentTab, showHistoryModal, isUpdating,
             transactions, groupedHoldings, filteredGroupedHoldings, categoryTotals, riskTotals, portfolioStats, 
             totalStockValueTwd, totalStockCostTwd, totalStockUnrealizedPL, totalStockReturnRate, 
