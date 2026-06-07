@@ -32,6 +32,8 @@ jobs:
           SUPABASE_TABLE: portfolio_db
           PORTFOLIO_ROW_ID: '1'
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: gemini-2.5-flash
         run: python scripts/update_market_compass.py
 
       - name: 🏛️ 更新 Weekly Official Macro Layer
@@ -40,15 +42,6 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SUPABASE_TABLE: portfolio_db
           PORTFOLIO_ROW_ID: '1'
-
-          # Optional override：公開資料 URL 預設讀 config/official_data_sources.json；Variables 只用來臨時覆蓋，不要放 Secrets。
-          TAIWAN_BUSINESS_SIGNAL_URL: ${{ vars.TAIWAN_BUSINESS_SIGNAL_URL }}
-          TAIWAN_EXPORT_ORDERS_URL: ${{ vars.TAIWAN_EXPORT_ORDERS_URL }}
-          TAIWAN_CPI_URL: ${{ vars.TAIWAN_CPI_URL }}
-          TAIWAN_GDP_URL: ${{ vars.TAIWAN_GDP_URL }}
-          TAIWAN_MONEY_SUPPLY_URL: ${{ vars.TAIWAN_MONEY_SUPPLY_URL }}
-          TAIWAN_FX_RESERVES_URL: ${{ vars.TAIWAN_FX_RESERVES_URL }}
-
           # Optional override：BIS/OECD/IMF 慢變數層。JSON object，key=指標名，value=可直接 GET 的 API URL。
           BIS_API_URLS: ${{ vars.BIS_API_URLS }}
           OECD_API_URLS: ${{ vars.OECD_API_URLS }}

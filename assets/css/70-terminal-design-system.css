@@ -1,0 +1,231 @@
+/*
+  70-terminal-design-system.css
+  Dark Institutional Brokerage Terminal overlay.
+  Reduce vibecoding look without rewriting Vue/app.bundle.js.
+*/
+
+:root {
+  --terminal-bg-0: #070b14;
+  --terminal-bg-1: #0b1120;
+  --terminal-bg-2: #0f172a;
+  --terminal-panel: rgba(15, 23, 42, 0.94);
+  --terminal-border: rgba(148, 163, 184, 0.18);
+  --terminal-border-strong: rgba(148, 163, 184, 0.28);
+  --terminal-text: #e5e7eb;
+  --terminal-muted: #94a3b8;
+  --terminal-positive: #22c55e;
+  --terminal-negative: #ef4444;
+  --terminal-warning: #f59e0b;
+  --terminal-info: #38bdf8;
+  --terminal-shadow: 0 1px 0 rgba(255,255,255,.035), 0 14px 32px rgba(0,0,0,.28);
+  --terminal-font-number: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+html, body { background: var(--terminal-bg-0) !important; }
+
+body, #app {
+  color: var(--terminal-text);
+  font-feature-settings: "tnum" 1, "cv02" 1, "cv03" 1, "cv04" 1;
+}
+
+.glass,
+.panel-card,
+.ios-story-card,
+.executive-command-card,
+.executive-alert-card,
+.institutional-governance-shell,
+.terminal-trade-buffer-panel,
+.avoid-card,
+.cockpit-bucket-card,
+.rounded-2xl.border,
+.rounded-3xl.border {
+  background: linear-gradient(180deg, rgba(15,23,42,.96), rgba(10,15,26,.96)) !important;
+  border: 1px solid var(--terminal-border) !important;
+  box-shadow: var(--terminal-shadow) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.bg-gradient-to-r,
+.bg-gradient-to-br,
+.bg-gradient-to-b { background-image: none !important; }
+
+.panel-card > div:first-child,
+.glass > div:first-child,
+.qmi-head {
+  background: rgba(15,23,42,.98) !important;
+  border-bottom: 1px solid var(--terminal-border) !important;
+}
+
+.panel-card h2,
+.panel-card h3,
+.glass h2,
+.glass h3,
+.qmi-title {
+  letter-spacing: .01em !important;
+  font-weight: 800 !important;
+  color: #f8fafc !important;
+}
+
+.panel-card p,
+.glass p,
+.qmi-sub,
+.text-gray-400,
+.text-gray-500 { color: var(--terminal-muted) !important; }
+
+.font-mono,
+.terminal-number,
+[class*="value"],
+[class*="Value"],
+td,
+.terminal-mini-value,
+.qmi-v,
+.cockpit-bucket-value {
+  font-family: var(--terminal-font-number) !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
+thead,
+th {
+  background: rgba(2,6,23,.94) !important;
+  color: var(--terminal-muted) !important;
+  font-size: 10px !important;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-weight: 800 !important;
+}
+
+td {
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+}
+
+tr:hover td { background-color: rgba(56,189,248,.045) !important; }
+tbody tr:nth-child(even) td { background-color: rgba(255,255,255,.012); }
+
+.badge,
+.holding-action-badge,
+.holding-governance-badge,
+.alert-source-chip,
+.alert-action-chip,
+.qmi-pill,
+.qmi-card .badge,
+span[class*="badge"],
+span[class*="Badge"] {
+  border-radius: 999px !important;
+  border: 1px solid var(--terminal-border) !important;
+  background: rgba(148,163,184,.08) !important;
+  box-shadow: none !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  letter-spacing: .02em !important;
+}
+
+.text-green-400,
+.text-emerald-300,
+.text-emerald-400,
+.ok { color: var(--terminal-positive) !important; }
+
+.text-red-300,
+.text-red-400,
+.text-red-500,
+.bad { color: var(--terminal-negative) !important; }
+
+.text-yellow-300,
+.text-yellow-400,
+.text-amber-300,
+.text-amber-400,
+.mid { color: var(--terminal-warning) !important; }
+
+.text-cyan-300,
+.text-cyan-400,
+.text-blue-300,
+.text-blue-400 { color: var(--terminal-info) !important; }
+
+.bg-red-500\/10,
+.bg-red-900\/10,
+.bg-yellow-500\/10,
+.bg-amber-500\/10,
+.bg-green-500\/10,
+.bg-emerald-500\/10,
+.bg-cyan-500\/10,
+.bg-blue-500\/10,
+.bg-purple-500\/10,
+.bg-indigo-900\/20,
+.bg-blue-900\/20 {
+  background-color: rgba(15,23,42,.62) !important;
+}
+
+.border-red-500\/20,
+.border-yellow-500\/20,
+.border-amber-500\/20,
+.border-green-500\/20,
+.border-cyan-500\/20,
+.border-blue-500\/20,
+.border-purple-500\/20,
+.border-indigo-800\/50 {
+  border-color: var(--terminal-border) !important;
+}
+
+.terminal-mini-stat,
+.cockpit-bucket-card,
+.qmi-card,
+[class*="mini-stat"],
+[class*="kpi"],
+[class*="Kpi"] {
+  background: rgba(2,6,23,.35) !important;
+  border: 1px solid var(--terminal-border) !important;
+  border-radius: 14px !important;
+}
+
+button,
+.tool-btn,
+.terminal-buffer-btn,
+.terminal-step-btn {
+  box-shadow: none !important;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease !important;
+}
+
+button:hover,
+.tool-btn:hover,
+.terminal-buffer-btn:hover,
+.terminal-step-btn:hover {
+  transform: none !important;
+}
+
+i.fas, i.fa, svg { opacity: .82; }
+
+.fixed.inset-0 .glass {
+  background: rgba(15,23,42,.98) !important;
+  border: 1px solid var(--terminal-border-strong) !important;
+}
+
+#quant-meta-inline-panel-v10,
+#market-intelligence-summary-panel-v2,
+#market-intelligence-analysis-panel-v2 {
+  background: var(--terminal-panel) !important;
+  border: 1px solid var(--terminal-border) !important;
+  box-shadow: var(--terminal-shadow) !important;
+}
+
+#quant-meta-inline-panel-v10 table th,
+#quant-meta-inline-panel-v10 table td {
+  padding: 8px 10px !important;
+}
+
+.ios-story-copy,
+.alert-section-title,
+.qmi-note { color: var(--terminal-muted) !important; }
+
+@media (max-width: 768px) {
+  .panel-card,
+  .glass { border-radius: 14px !important; }
+  td { font-size: 11px !important; }
+  .qmi-grid,
+  .qmi-grid6 { gap: 8px !important; }
+}

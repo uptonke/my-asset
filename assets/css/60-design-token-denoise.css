@@ -1,0 +1,79 @@
+/*
+  Phase 1 visual denoise layer.
+  Goal: reduce heavy glassmorphism without deleting the existing 00–50 CSS stack.
+  This file intentionally keeps the dark institutional terminal identity.
+*/
+:root {
+  --terminal-panel-bg: rgba(15, 23, 42, 0.90);
+  --terminal-panel-bg-soft: rgba(15, 23, 42, 0.78);
+  --terminal-border-soft: rgba(148, 163, 184, 0.16);
+  --terminal-border-strong: rgba(250, 204, 21, 0.18);
+  --terminal-shadow-soft: 0 12px 28px rgba(0, 0, 0, 0.26);
+  --terminal-shadow-flat: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+
+.glass,
+.panel-card,
+.ios-story-card,
+.cockpit-bucket-card,
+.terminal-trade-buffer-panel,
+.executive-alert-card,
+.institutional-governance-shell,
+.decision-allocation-card {
+  background: var(--terminal-panel-bg) !important;
+  border-color: var(--terminal-border-soft) !important;
+  box-shadow: var(--terminal-shadow-soft), var(--terminal-shadow-flat) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+}
+
+.glass:hover,
+.panel-card:hover,
+.ios-story-card:hover,
+.cockpit-bucket-card:hover {
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.30), var(--terminal-shadow-flat) !important;
+}
+
+[class*="bg-"][class*="/10"],
+[class*="bg-"][class*="/20"] {
+  backdrop-filter: none;
+}
+
+.qmi-head,
+.qmi-card,
+.qmi-section,
+.terminal-mini-stat,
+.ios-reason-chip,
+.ios-step,
+.alert-source-chip,
+.alert-action-chip {
+  box-shadow: none !important;
+}
+
+#quant-meta-inline-panel-v10,
+#market-intelligence-summary-panel-v2,
+#market-intelligence-analysis-panel-v2 {
+  background: var(--terminal-panel-bg) !important;
+  border-color: var(--terminal-border-soft) !important;
+  box-shadow: var(--terminal-shadow-soft), var(--terminal-shadow-flat) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+}
+
+@media (max-width: 768px) {
+  .glass,
+  .panel-card,
+  .ios-story-card,
+  .cockpit-bucket-card,
+  .terminal-trade-buffer-panel,
+  .executive-alert-card,
+  .institutional-governance-shell,
+  .decision-allocation-card,
+  #quant-meta-inline-panel-v10,
+  #market-intelligence-summary-panel-v2,
+  #market-intelligence-analysis-panel-v2 {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.24) !important;
+  }
+}
