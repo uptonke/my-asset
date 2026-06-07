@@ -1,14 +1,14 @@
 {
   "version": "v4.6",
   "status": "OK",
-  "generated_at": "2026-06-07T10:19:28.378253+00:00",
+  "generated_at": "2026-06-07T13:45:57.385597+00:00",
   "mode": "validation_gate",
   "safe_mode": true,
   "summary": {
     "error_count": 0,
     "warning_count": 0,
     "schema_validated_count": 22,
-    "python_compiled_count": 41
+    "python_compiled_count": 42
   },
   "checks": {
     "required_files": {
@@ -39,6 +39,7 @@
       "missing": [],
       "workflow_files": [
         ".github/workflows/daily_update.yml",
+        ".github/workflows/dead-file-cleanup.yml.yml",
         ".github/workflows/optimizer-lab.yml.yml",
         ".github/workflows/repo-architecture-audit.yml.yml",
         ".github/workflows/update_stock_meta.yml.yml",
@@ -48,7 +49,7 @@
       ]
     },
     "json_parse": {
-      "parsed_count": 60,
+      "parsed_count": 61,
       "failed": []
     },
     "schema_registry": {
@@ -171,7 +172,7 @@
       "errors": []
     },
     "python_compile": {
-      "compiled_count": 41,
+      "compiled_count": 42,
       "failed": []
     },
     "frontend_source_runtime": {
@@ -179,10 +180,16 @@
       "command_output": "Wrote data/repo_architecture/frontend_build_status_latest.json\nWrote data/repo_architecture/frontend_build_status_summary.md\nStatus: OK\nRuntime matches source: True"
     },
     "workflows": {
-      "workflow_count": 7,
+      "workflow_count": 8,
       "workflows": [
         {
           "path": ".github/workflows/daily_update.yml",
+          "has_name": true,
+          "has_on": true,
+          "has_jobs": true
+        },
+        {
+          "path": ".github/workflows/dead-file-cleanup.yml.yml",
           "has_name": true,
           "has_on": true,
           "has_jobs": true

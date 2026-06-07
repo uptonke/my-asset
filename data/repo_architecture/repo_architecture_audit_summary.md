@@ -1,8 +1,8 @@
 # v4.0 Repo Architecture Audit
 
-- Generated: `2026-06-07T09:04:31.805239+00:00`
-- Total files scanned: `195`
-- GitHub workflow files: `7`
+- Generated: `2026-06-07T13:45:56.733262+00:00`
+- Total files scanned: `185`
+- GitHub workflow files: `8`
 - Optimizer output files: `31`
 
 ## v4.1 Frontend Source of Truth
@@ -24,26 +24,15 @@
 - `assets/css/70-terminal-design-system.css` — 5739 bytes
 - `assets/css/90-typography.css` — 6326 bytes
 - `assets/css/tailwind-built.css` — 1950878 bytes
-- `assets/js/app.bundle.js` — 205768 bytes
-- `assets/js/quant-main-display.js` — 16952 bytes
+- `assets/js/app.bundle.js` — 210770 bytes
+- `assets/js/quant-main-display.js` — 16932 bytes
 - `assets/js/terminal-ia-phase2.js` — 212 bytes
 - `assets/js/terminal-ui-polish.js` — 1203 bytes
 
 ## Review-before-delete candidates
 
-- `00-bootstrap-and-cro.js` — same filename exists under assets/js/src; same filename exists under assets/js
-- `00-tailwind-config.js` — same filename exists under assets/js
-- `10-state-auth-cloud.js` — same filename exists under assets/js/src; same filename exists under assets/js
-- `30-risk-xray-tail.js` — same filename exists under assets/js/src; same filename exists under assets/js
-- `40-actions-history-buffer.js` — same filename exists under assets/js/src; same filename exists under assets/js
-- `60-ui-and-charts.js` — same filename exists under assets/js/src; same filename exists under assets/js
-- `app.bundle.js` — same filename exists under assets/js; root bundle conflicts with runtime bundle assets/js/app.bundle.js
 - `postcss.config.js` — root-level JS should be reviewed before deletion
-- `quant-main-display.js` — same filename exists under assets/js; index.html references assets/js/quant-main-display.js, not root quant-main-display.js
 - `tailwind.config.js` — root-level JS should be reviewed before deletion
-- `daily_update.yml` — workflow-like YAML outside .github/workflows; GitHub Actions will not execute it from root
-- `frontend_tailwind_migration.yml` — workflow-like YAML outside .github/workflows; GitHub Actions will not execute it from root
-- `weekly_macro_update.yml` — workflow-like YAML outside .github/workflows; GitHub Actions will not execute it from root
 
 ## Do-not-delete without tests
 
