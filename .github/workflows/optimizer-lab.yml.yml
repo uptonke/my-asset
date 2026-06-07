@@ -184,6 +184,18 @@ jobs:
           set -euo pipefail
           python scripts/build_rebalance_candidate_generator.py
 
+      - name: Build Risk Reduction Simulator v2.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build_risk_reduction_simulator.py
+
+      - name: Build Constraint-Aware Rebalance Sandbox v2.3
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build_constraint_aware_rebalance_sandbox.py
+
       - name: Upload Optimizer Lab artifacts
         uses: actions/upload-artifact@v4
         with:
