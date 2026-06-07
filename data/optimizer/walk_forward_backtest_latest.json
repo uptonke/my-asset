@@ -1,0 +1,200 @@
+{
+  "version": "v3.3",
+  "status": "PROXY_ONLY",
+  "generated_at": "2026-06-07T08:05:09+00:00",
+  "mode": "walk_forward_backtest",
+  "safe_mode": true,
+  "safe_mode_note": "v3.3 Walk-forward Backtest 用於檢查 optimizer 是否在樣本外風險/報酬表現上優於 current portfolio；輸出僅供模型驗證，不產生 BUY / SELL 指令，不自動交易，不寫入 Supabase，不修改正式持倉或正式權重。",
+  "source_files": {
+    "skfolio": "data/optimizer/skfolio_sandbox_latest.json",
+    "riskfolio": "data/optimizer/riskfolio_sandbox_latest.json",
+    "optimizer_robustness": "data/optimizer/optimizer_robustness_latest.json",
+    "optimizer_stress": "data/optimizer/optimizer_stress_latest.json",
+    "expected_return_model": "data/optimizer/expected_return_model_latest.json"
+  },
+  "backtest_policy": {
+    "auto_promotion_to_candidate": false,
+    "requires_manual_review": true,
+    "return_forecast_used": false,
+    "transaction_cost_model": "not_included_yet",
+    "lookahead_guard": "train_window_weights_applied_to_next_test_window_when_true_walk_forward_available"
+  },
+  "mode_detail": "proxy_from_robustness_windows_not_true_walk_forward",
+  "sample": {
+    "strict_sample": 375,
+    "strict_start": "2025-05-28",
+    "strict_end": "2026-06-06",
+    "asset_count": 16,
+    "fx_source": "YahooChart:TWD=X"
+  },
+  "folds": [],
+  "aggregate_results": [
+    {
+      "method": "riskfolio_cvar_minimize",
+      "fold_count": 4,
+      "window_labels": [
+        "6M",
+        "1Y",
+        "FULL_STRICT",
+        "2Y"
+      ],
+      "avg_es95_pct": 0.631,
+      "avg_annual_vol_pct": 5.13,
+      "avg_turnover_vs_current_pct": 71.727,
+      "stability_verdict": "可觀察",
+      "avg_pairwise_weight_turnover_pct": 13.78,
+      "worst_stress_pct": null,
+      "decision": "proxy_only_no_out_of_sample_claim"
+    },
+    {
+      "method": "skfolio_cvar_minimize",
+      "fold_count": 4,
+      "window_labels": [
+        "6M",
+        "1Y",
+        "FULL_STRICT",
+        "2Y"
+      ],
+      "avg_es95_pct": 0.631,
+      "avg_annual_vol_pct": 5.13,
+      "avg_turnover_vs_current_pct": 71.727,
+      "stability_verdict": "可觀察",
+      "avg_pairwise_weight_turnover_pct": 13.78,
+      "worst_stress_pct": null,
+      "decision": "proxy_only_no_out_of_sample_claim"
+    },
+    {
+      "method": "scipy_min_variance_fallback",
+      "fold_count": 4,
+      "window_labels": [
+        "6M",
+        "1Y",
+        "FULL_STRICT",
+        "2Y"
+      ],
+      "avg_es95_pct": 0.662,
+      "avg_annual_vol_pct": 4.605,
+      "avg_turnover_vs_current_pct": 78.83,
+      "stability_verdict": "穩定",
+      "avg_pairwise_weight_turnover_pct": 6.56,
+      "worst_stress_pct": null,
+      "decision": "proxy_only_no_out_of_sample_claim"
+    },
+    {
+      "method": "skfolio_min_variance",
+      "fold_count": 4,
+      "window_labels": [
+        "6M",
+        "1Y",
+        "FULL_STRICT",
+        "2Y"
+      ],
+      "avg_es95_pct": 0.665,
+      "avg_annual_vol_pct": 4.605,
+      "avg_turnover_vs_current_pct": 78.58,
+      "stability_verdict": "穩定",
+      "avg_pairwise_weight_turnover_pct": 6.02,
+      "worst_stress_pct": null,
+      "decision": "proxy_only_no_out_of_sample_claim"
+    },
+    {
+      "method": "riskfolio_min_variance",
+      "fold_count": 4,
+      "window_labels": [
+        "6M",
+        "1Y",
+        "FULL_STRICT",
+        "2Y"
+      ],
+      "avg_es95_pct": 0.666,
+      "avg_annual_vol_pct": 4.605,
+      "avg_turnover_vs_current_pct": 78.56,
+      "stability_verdict": "穩定",
+      "avg_pairwise_weight_turnover_pct": 6.01,
+      "worst_stress_pct": null,
+      "decision": "proxy_only_no_out_of_sample_claim"
+    },
+    {
+      "method": "riskfolio_hrp_mv",
+      "fold_count": 4,
+      "window_labels": [
+        "6M",
+        "1Y",
+        "FULL_STRICT",
+        "2Y"
+      ],
+      "avg_es95_pct": 0.936,
+      "avg_annual_vol_pct": 6.37,
+      "avg_turnover_vs_current_pct": 46.705,
+      "stability_verdict": "可觀察",
+      "avg_pairwise_weight_turnover_pct": 14.76,
+      "worst_stress_pct": null,
+      "decision": "proxy_only_no_out_of_sample_claim"
+    },
+    {
+      "method": "riskfolio_risk_parity_mv",
+      "fold_count": 4,
+      "window_labels": [
+        "6M",
+        "1Y",
+        "FULL_STRICT",
+        "2Y"
+      ],
+      "avg_es95_pct": 1.17,
+      "avg_annual_vol_pct": 8.127,
+      "avg_turnover_vs_current_pct": 31.703,
+      "stability_verdict": "可觀察",
+      "avg_pairwise_weight_turnover_pct": 9.45,
+      "worst_stress_pct": null,
+      "decision": "proxy_only_no_out_of_sample_claim"
+    },
+    {
+      "method": "inverse_vol_baseline",
+      "fold_count": 4,
+      "window_labels": [
+        "6M",
+        "1Y",
+        "FULL_STRICT",
+        "2Y"
+      ],
+      "avg_es95_pct": 1.43,
+      "avg_annual_vol_pct": 9.535,
+      "avg_turnover_vs_current_pct": 24.133,
+      "stability_verdict": "穩定",
+      "avg_pairwise_weight_turnover_pct": 5.02,
+      "worst_stress_pct": null,
+      "decision": "proxy_only_no_out_of_sample_claim"
+    },
+    {
+      "method": "current_weight",
+      "fold_count": 4,
+      "window_labels": [
+        "6M",
+        "1Y",
+        "FULL_STRICT",
+        "2Y"
+      ],
+      "avg_es95_pct": 1.71,
+      "avg_annual_vol_pct": 11.69,
+      "avg_turnover_vs_current_pct": 0.0,
+      "stability_verdict": "穩定",
+      "avg_pairwise_weight_turnover_pct": 0.0,
+      "worst_stress_pct": null,
+      "decision": "baseline"
+    }
+  ],
+  "summary": {
+    "method_count": 9,
+    "fold_count": 4,
+    "likely_better_than_current_count": 0,
+    "likely_better_than_current": [],
+    "verdict": "proxy_only_insufficient_for_model_promotion"
+  },
+  "warnings": [
+    "True walk-forward unavailable; fallback proxy used. Reason: No module named 'run_skfolio_sandbox'",
+    "This is not a true out-of-sample walk-forward backtest; it uses robustness windows as proxy."
+  ],
+  "execution_permission": false,
+  "not_trade_order": true,
+  "requires_manual_approval": true
+}

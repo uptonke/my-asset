@@ -4106,6 +4106,99 @@ chartCML.data.datasets = [
     return Array.isArray(rows) ? rows : [];
 });
 
+
+       const expectedReturnModel = ref(null);
+       const expectedReturnError = ref('');
+
+       async function loadExpectedReturnModel() {
+    try {
+        expectedReturnError.value = '';
+        const response = await fetch(`data/optimizer/expected_return_model_latest.json?v=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) {
+            expectedReturnModel.value = null;
+            expectedReturnError.value = `尚未讀到 v3.2 Expected Return Model (${response.status})`;
+            return;
+        }
+        const data = await response.json();
+        expectedReturnModel.value = data && typeof data === 'object' ? data : null;
+    } catch (err) {
+        expectedReturnModel.value = null;
+        expectedReturnError.value = err?.message || String(err);
+    }
+}
+
+       const expectedReturnSummary = computed(() => expectedReturnModel.value?.summary || {});
+       const expectedReturnPolicy = computed(() => expectedReturnModel.value?.model_policy || {});
+       const expectedReturnBucketPriors = computed(() => {
+    const rows = expectedReturnModel.value?.bucket_priors || [];
+    return Array.isArray(rows) ? rows : [];
+});
+       const expectedReturnAssetPriors = computed(() => {
+    const rows = expectedReturnModel.value?.asset_expected_return_priors || [];
+    return Array.isArray(rows) ? rows : [];
+});
+       const expectedReturnVisibleBuckets = computed(() => expectedReturnBucketPriors.value.slice(0, 10));
+       const expectedReturnVisibleAssets = computed(() => expectedReturnAssetPriors.value.slice(0, 10));
+
+       const walkForwardBacktest = ref(null);
+       const walkForwardError = ref('');
+
+       async function loadWalkForwardBacktest() {
+    try {
+        walkForwardError.value = '';
+        const response = await fetch(`data/optimizer/walk_forward_backtest_latest.json?v=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) {
+            walkForwardBacktest.value = null;
+            walkForwardError.value = `尚未讀到 v3.3 Walk-forward Backtest (${response.status})`;
+            return;
+        }
+        const data = await response.json();
+        walkForwardBacktest.value = data && typeof data === 'object' ? data : null;
+    } catch (err) {
+        walkForwardBacktest.value = null;
+        walkForwardError.value = err?.message || String(err);
+    }
+}
+
+       const walkForwardSummary = computed(() => walkForwardBacktest.value?.summary || {});
+       const walkForwardAggregate = computed(() => {
+    const rows = walkForwardBacktest.value?.aggregate_results || [];
+    return Array.isArray(rows) ? rows : [];
+});
+       const walkForwardVisibleRows = computed(() => walkForwardAggregate.value.slice(0, 10));
+
+       const modelGovernanceDashboard = ref(null);
+       const modelGovernanceError = ref('');
+
+       async function loadModelGovernanceDashboard() {
+    try {
+        modelGovernanceError.value = '';
+        const response = await fetch(`data/optimizer/model_governance_dashboard_latest.json?v=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) {
+            modelGovernanceDashboard.value = null;
+            modelGovernanceError.value = `尚未讀到 v3.4 Model Governance Dashboard (${response.status})`;
+            return;
+        }
+        const data = await response.json();
+        modelGovernanceDashboard.value = data && typeof data === 'object' ? data : null;
+    } catch (err) {
+        modelGovernanceDashboard.value = null;
+        modelGovernanceError.value = err?.message || String(err);
+    }
+}
+
+       const modelGovernanceSummary = computed(() => modelGovernanceDashboard.value?.summary || {});
+       const modelGovernanceRegistry = computed(() => {
+    const rows = modelGovernanceDashboard.value?.model_registry || [];
+    return Array.isArray(rows) ? rows : [];
+});
+       const modelGovernanceFlags = computed(() => {
+    const rows = modelGovernanceDashboard.value?.governance_flags || [];
+    return Array.isArray(rows) ? rows : [];
+});
+       const modelGovernanceVisibleRegistry = computed(() => modelGovernanceRegistry.value.slice(0, 16));
+       const modelGovernanceVisibleFlags = computed(() => modelGovernanceFlags.value.slice(0, 10));
+
        function approvalBadgeClass(status) {
     const s = String(status || '').toLowerCase();
     if (s.includes('approved')) return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300';
@@ -4127,6 +4220,9 @@ chartCML.data.datasets = [
     loadActionAuditTrail();
     loadRegimeAwareOptimizer();
     loadBlackLittermanSandbox();
+    loadExpectedReturnModel();
+    loadWalkForwardBacktest();
+    loadModelGovernanceDashboard();
 
     window.addEventListener('resize', () => {
         resizeAllCharts();
@@ -4659,7 +4755,7 @@ chartCML.data.datasets = [
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr, navOverlayMode, navOverlayOptions, setNavOverlayMode, navMaConfig, riskRegimeStrip, navTrendSummary,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
-            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerConstraintRules, optimizerConstraintPolicySummaries, selectedOptimizerConstraintPolicy, selectedOptimizerConstraintRows, selectedOptimizerConstraintIssues, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, optimizerStressOutput, optimizerStressError, optimizerStressScenarios, optimizerStressRows, optimizerStressWorstRows, optimizerStressBestWorst, optimizerStressMostFragile, selectedStressScenarioKey, selectedStressScenario, selectedStressScenarioRows, setStressScenario, loadOptimizerStressOutput, humanApprovalLayer, humanApprovalLayerError, humanApprovalTickets, humanApprovalSummary, humanApprovalVisibleTickets, loadHumanApprovalLayer, actionAuditTrail, actionAuditTrailError, actionAuditSummary, actionAuditEvents, loadActionAuditTrail, regimeAwareOptimizer, regimeAwareError, regimeAwareSummary, regimeAwareRegime, regimeAwareActivePolicy, regimeAwareCovariancePolicy, regimeAwareDrafts, regimeAwareVisibleDrafts, loadRegimeAwareOptimizer, blackLittermanSandbox, blackLittermanError, blackLittermanSummary, blackLittermanViewEngine, blackLittermanViews, blackLittermanPosteriorCandidates, loadBlackLittermanSandbox, approvalBadgeClass, selectedOptimizerExplainKey, optimizerExplainabilityCandidates, selectedOptimizerExplainability, setOptimizerExplainCandidate, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
+            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerConstraintRules, optimizerConstraintPolicySummaries, selectedOptimizerConstraintPolicy, selectedOptimizerConstraintRows, selectedOptimizerConstraintIssues, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, optimizerStressOutput, optimizerStressError, optimizerStressScenarios, optimizerStressRows, optimizerStressWorstRows, optimizerStressBestWorst, optimizerStressMostFragile, selectedStressScenarioKey, selectedStressScenario, selectedStressScenarioRows, setStressScenario, loadOptimizerStressOutput, humanApprovalLayer, humanApprovalLayerError, humanApprovalTickets, humanApprovalSummary, humanApprovalVisibleTickets, loadHumanApprovalLayer, actionAuditTrail, actionAuditTrailError, actionAuditSummary, actionAuditEvents, loadActionAuditTrail, regimeAwareOptimizer, regimeAwareError, regimeAwareSummary, regimeAwareRegime, regimeAwareActivePolicy, regimeAwareCovariancePolicy, regimeAwareDrafts, regimeAwareVisibleDrafts, loadRegimeAwareOptimizer, blackLittermanSandbox, blackLittermanError, blackLittermanSummary, blackLittermanViewEngine, blackLittermanViews, blackLittermanPosteriorCandidates, loadBlackLittermanSandbox, expectedReturnModel, expectedReturnError, expectedReturnSummary, expectedReturnPolicy, expectedReturnBucketPriors, expectedReturnAssetPriors, expectedReturnVisibleBuckets, expectedReturnVisibleAssets, loadExpectedReturnModel, walkForwardBacktest, walkForwardError, walkForwardSummary, walkForwardAggregate, walkForwardVisibleRows, loadWalkForwardBacktest, modelGovernanceDashboard, modelGovernanceError, modelGovernanceSummary, modelGovernanceRegistry, modelGovernanceFlags, modelGovernanceVisibleRegistry, modelGovernanceVisibleFlags, loadModelGovernanceDashboard, approvalBadgeClass, selectedOptimizerExplainKey, optimizerExplainabilityCandidates, selectedOptimizerExplainability, setOptimizerExplainCandidate, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
         };
     }
 }).mount('#app');

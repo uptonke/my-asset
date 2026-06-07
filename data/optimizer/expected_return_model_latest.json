@@ -1,0 +1,424 @@
+{
+  "version": "v3.2",
+  "status": "OK",
+  "generated_at": "2026-06-07T08:05:06+00:00",
+  "mode": "conservative_expected_return_model",
+  "safe_mode": true,
+  "safe_mode_note": "v3.2 Expected Return Model 是 relative prior / expected-return proxy sandbox；不啟用 alpha forecast、不啟用最大夏普最佳化、不產生 BUY / SELL 指令，不自動交易，不寫入 Supabase，不修改正式持倉或正式權重。",
+  "source_files": {
+    "skfolio": "data/optimizer/skfolio_sandbox_latest.json",
+    "riskfolio": "data/optimizer/riskfolio_sandbox_latest.json",
+    "regime_aware_optimizer": "data/optimizer/regime_aware_optimizer_latest.json",
+    "black_litterman_sandbox": "data/optimizer/black_litterman_sandbox_latest.json",
+    "optimizer_robustness": "data/optimizer/optimizer_robustness_latest.json",
+    "optimizer_stress": "data/optimizer/optimizer_stress_latest.json"
+  },
+  "model_policy": {
+    "absolute_expected_return_forecast_enabled": false,
+    "alpha_model_enabled": false,
+    "maximum_sharpe_optimization_enabled": false,
+    "allowed_use": "relative_prior_context_only",
+    "disallowed_use": [
+      "BUY_SELL",
+      "auto_trade",
+      "official_weight_update",
+      "supabase_write"
+    ]
+  },
+  "sample_quality": {
+    "strict_sample": 375,
+    "three_year_window_available": false,
+    "confidence_cap": 0.75
+  },
+  "bucket_priors": [
+    {
+      "bucket": "cash",
+      "relative_score": 2.05,
+      "prior_band": "relative_overweight_prior",
+      "confidence": 0.75,
+      "base_score": 0.4,
+      "regime_adjustment": 0.8,
+      "black_litterman_view_adjustment": 0.85,
+      "absolute_expected_return_pct": null,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "bucket": "gold",
+      "relative_score": 0.622,
+      "prior_band": "neutral_or_no_edge_prior",
+      "confidence": 0.75,
+      "base_score": 0.1,
+      "regime_adjustment": 0.25,
+      "black_litterman_view_adjustment": 0.272,
+      "absolute_expected_return_pct": null,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "bucket": "global_equity",
+      "relative_score": 0.0,
+      "prior_band": "neutral_or_no_edge_prior",
+      "confidence": 0.75,
+      "base_score": 0.0,
+      "regime_adjustment": 0.0,
+      "black_litterman_view_adjustment": 0.0,
+      "absolute_expected_return_pct": null,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "bucket": "other",
+      "relative_score": 0.0,
+      "prior_band": "neutral_or_no_edge_prior",
+      "confidence": 0.75,
+      "base_score": 0.0,
+      "regime_adjustment": 0.0,
+      "black_litterman_view_adjustment": 0.0,
+      "absolute_expected_return_pct": null,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "bucket": "us_equity",
+      "relative_score": 0.0,
+      "prior_band": "neutral_or_no_edge_prior",
+      "confidence": 0.75,
+      "base_score": 0.0,
+      "regime_adjustment": 0.0,
+      "black_litterman_view_adjustment": 0.0,
+      "absolute_expected_return_pct": null,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "bucket": "commodity_equity",
+      "relative_score": -0.1,
+      "prior_band": "neutral_or_no_edge_prior",
+      "confidence": 0.75,
+      "base_score": -0.1,
+      "regime_adjustment": 0.0,
+      "black_litterman_view_adjustment": 0.0,
+      "absolute_expected_return_pct": null,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "bucket": "emerging_market",
+      "relative_score": -0.35,
+      "prior_band": "neutral_or_no_edge_prior",
+      "confidence": 0.7,
+      "base_score": -0.1,
+      "regime_adjustment": -0.25,
+      "black_litterman_view_adjustment": 0.0,
+      "absolute_expected_return_pct": null,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "bucket": "theme_etf",
+      "relative_score": -0.45,
+      "prior_band": "neutral_or_no_edge_prior",
+      "confidence": 0.7,
+      "base_score": -0.15,
+      "regime_adjustment": -0.3,
+      "black_litterman_view_adjustment": 0.0,
+      "absolute_expected_return_pct": null,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "bucket": "taiwan_tech",
+      "relative_score": -0.55,
+      "prior_band": "neutral_or_no_edge_prior",
+      "confidence": 0.75,
+      "base_score": -0.2,
+      "regime_adjustment": -0.35,
+      "black_litterman_view_adjustment": 0.0,
+      "absolute_expected_return_pct": null,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "bucket": "us_tech",
+      "relative_score": -0.94,
+      "prior_band": "relative_underweight_prior",
+      "confidence": 0.75,
+      "base_score": -0.15,
+      "regime_adjustment": -0.45,
+      "black_litterman_view_adjustment": -0.34,
+      "absolute_expected_return_pct": null,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "bucket": "crypto",
+      "relative_score": -1.98,
+      "prior_band": "relative_underweight_prior",
+      "confidence": 0.7,
+      "base_score": -0.4,
+      "regime_adjustment": -0.9,
+      "black_litterman_view_adjustment": -0.68,
+      "absolute_expected_return_pct": null,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    }
+  ],
+  "asset_expected_return_priors": [
+    {
+      "ticker": "BOXX",
+      "bucket": "cash",
+      "current_weight_pct": 11.668,
+      "relative_score": 2.05,
+      "prior_band": "relative_overweight_prior",
+      "confidence": 0.75,
+      "absolute_expected_return_pct": null,
+      "max_sharpe_input_allowed": false,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "ticker": "GLDM",
+      "bucket": "gold",
+      "current_weight_pct": 0.852,
+      "relative_score": 0.622,
+      "prior_band": "neutral_or_no_edge_prior",
+      "confidence": 0.75,
+      "absolute_expected_return_pct": null,
+      "max_sharpe_input_allowed": false,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "ticker": "2330",
+      "bucket": "other",
+      "current_weight_pct": 1.494,
+      "relative_score": 0.0,
+      "prior_band": "neutral_or_no_edge_prior",
+      "confidence": 0.75,
+      "absolute_expected_return_pct": null,
+      "max_sharpe_input_allowed": false,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "ticker": "AVUV",
+      "bucket": "other",
+      "current_weight_pct": 8.956,
+      "relative_score": 0.0,
+      "prior_band": "neutral_or_no_edge_prior",
+      "confidence": 0.75,
+      "absolute_expected_return_pct": null,
+      "max_sharpe_input_allowed": false,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "ticker": "PICK",
+      "bucket": "other",
+      "current_weight_pct": 4.314,
+      "relative_score": 0.0,
+      "prior_band": "neutral_or_no_edge_prior",
+      "confidence": 0.75,
+      "absolute_expected_return_pct": null,
+      "max_sharpe_input_allowed": false,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "ticker": "USMV",
+      "bucket": "other",
+      "current_weight_pct": 6.679,
+      "relative_score": 0.0,
+      "prior_band": "neutral_or_no_edge_prior",
+      "confidence": 0.75,
+      "absolute_expected_return_pct": null,
+      "max_sharpe_input_allowed": false,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "ticker": "VEA",
+      "bucket": "other",
+      "current_weight_pct": 8.281,
+      "relative_score": 0.0,
+      "prior_band": "neutral_or_no_edge_prior",
+      "confidence": 0.75,
+      "absolute_expected_return_pct": null,
+      "max_sharpe_input_allowed": false,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "ticker": "VOO",
+      "bucket": "us_equity",
+      "current_weight_pct": 10.146,
+      "relative_score": 0.0,
+      "prior_band": "neutral_or_no_edge_prior",
+      "confidence": 0.75,
+      "absolute_expected_return_pct": null,
+      "max_sharpe_input_allowed": false,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "ticker": "VNM",
+      "bucket": "emerging_market",
+      "current_weight_pct": 3.41,
+      "relative_score": -0.35,
+      "prior_band": "neutral_or_no_edge_prior",
+      "confidence": 0.7,
+      "absolute_expected_return_pct": null,
+      "max_sharpe_input_allowed": false,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "ticker": "GRID",
+      "bucket": "theme_etf",
+      "current_weight_pct": 3.742,
+      "relative_score": -0.45,
+      "prior_band": "neutral_or_no_edge_prior",
+      "confidence": 0.7,
+      "absolute_expected_return_pct": null,
+      "max_sharpe_input_allowed": false,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "ticker": "IFRA",
+      "bucket": "theme_etf",
+      "current_weight_pct": 5.808,
+      "relative_score": -0.45,
+      "prior_band": "neutral_or_no_edge_prior",
+      "confidence": 0.7,
+      "absolute_expected_return_pct": null,
+      "max_sharpe_input_allowed": false,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "ticker": "SRVR",
+      "bucket": "theme_etf",
+      "current_weight_pct": 2.867,
+      "relative_score": -0.45,
+      "prior_band": "neutral_or_no_edge_prior",
+      "confidence": 0.7,
+      "absolute_expected_return_pct": null,
+      "max_sharpe_input_allowed": false,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "ticker": "00981A",
+      "bucket": "taiwan_tech",
+      "current_weight_pct": 9.45,
+      "relative_score": -0.55,
+      "prior_band": "neutral_or_no_edge_prior",
+      "confidence": 0.75,
+      "absolute_expected_return_pct": null,
+      "max_sharpe_input_allowed": false,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "ticker": "QQQ",
+      "bucket": "us_tech",
+      "current_weight_pct": 10.551,
+      "relative_score": -0.94,
+      "prior_band": "relative_underweight_prior",
+      "confidence": 0.75,
+      "absolute_expected_return_pct": null,
+      "max_sharpe_input_allowed": false,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "ticker": "BTC-USD",
+      "bucket": "crypto",
+      "current_weight_pct": 8.042,
+      "relative_score": -1.98,
+      "prior_band": "relative_underweight_prior",
+      "confidence": 0.7,
+      "absolute_expected_return_pct": null,
+      "max_sharpe_input_allowed": false,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "ticker": "ETH-USD",
+      "bucket": "crypto",
+      "current_weight_pct": 3.739,
+      "relative_score": -1.98,
+      "prior_band": "relative_underweight_prior",
+      "confidence": 0.7,
+      "absolute_expected_return_pct": null,
+      "max_sharpe_input_allowed": false,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    }
+  ],
+  "method_relative_priors": [
+    {
+      "method": "inverse_vol_baseline",
+      "relative_model_prior_score": 0.45,
+      "robustness_bonus": 0.45,
+      "stress_penalty": 0.0,
+      "decision_use": "ranking_context_only",
+      "max_sharpe_input_allowed": false
+    },
+    {
+      "method": "riskfolio_min_variance",
+      "relative_model_prior_score": 0.45,
+      "robustness_bonus": 0.45,
+      "stress_penalty": 0.0,
+      "decision_use": "ranking_context_only",
+      "max_sharpe_input_allowed": false
+    },
+    {
+      "method": "scipy_min_variance_fallback",
+      "relative_model_prior_score": 0.45,
+      "robustness_bonus": 0.45,
+      "stress_penalty": 0.0,
+      "decision_use": "ranking_context_only",
+      "max_sharpe_input_allowed": false
+    },
+    {
+      "method": "skfolio_min_variance",
+      "relative_model_prior_score": 0.45,
+      "robustness_bonus": 0.45,
+      "stress_penalty": 0.0,
+      "decision_use": "ranking_context_only",
+      "max_sharpe_input_allowed": false
+    },
+    {
+      "method": "riskfolio_risk_parity_mv",
+      "relative_model_prior_score": 0.2,
+      "robustness_bonus": 0.2,
+      "stress_penalty": 0.0,
+      "decision_use": "ranking_context_only",
+      "max_sharpe_input_allowed": false
+    },
+    {
+      "method": "current_weight",
+      "relative_model_prior_score": 0.0,
+      "robustness_bonus": 0.0,
+      "stress_penalty": 0.0,
+      "decision_use": "ranking_context_only",
+      "max_sharpe_input_allowed": false
+    },
+    {
+      "method": "riskfolio_cvar_minimize",
+      "relative_model_prior_score": 0.0,
+      "robustness_bonus": 0.0,
+      "stress_penalty": 0.0,
+      "decision_use": "ranking_context_only",
+      "max_sharpe_input_allowed": false
+    },
+    {
+      "method": "riskfolio_hrp_mv",
+      "relative_model_prior_score": 0.0,
+      "robustness_bonus": 0.0,
+      "stress_penalty": 0.0,
+      "decision_use": "ranking_context_only",
+      "max_sharpe_input_allowed": false
+    },
+    {
+      "method": "skfolio_cvar_minimize",
+      "relative_model_prior_score": 0.0,
+      "robustness_bonus": 0.0,
+      "stress_penalty": 0.0,
+      "decision_use": "ranking_context_only",
+      "max_sharpe_input_allowed": false
+    }
+  ],
+  "summary": {
+    "asset_count": 16,
+    "bucket_count": 11,
+    "positive_prior_bucket_count": 2,
+    "negative_prior_bucket_count": 3,
+    "max_confidence": 0.75,
+    "verdict": "relative_prior_only_no_max_sharpe"
+  },
+  "warnings": [
+    "3Y robustness window unavailable; expected return confidence capped.",
+    "Absolute expected return forecast is disabled by design.",
+    "Maximum Sharpe optimization is disabled; no alpha model is trusted enough."
+  ],
+  "execution_permission": false,
+  "not_trade_order": true,
+  "requires_manual_approval": true
+}

@@ -3781,6 +3781,157 @@
                                 </div>
                             </div>
 
+
+
+                            <!-- v3.2 + v3.3 + v3.4 Validation / Governance Layer -->
+                            <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.035] overflow-hidden">
+                                <div class="px-4 py-3 border-b border-white/10 bg-cyan-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-scale-balanced text-cyan-400"></i>
+                                            v3.2 Expected Return Model ＋ v3.3 Walk-forward Backtest ＋ v3.4 Model Governance
+                                        </div>
+                                        <div class="text-[11px] text-gray-400 mt-1">
+                                            Expected return 僅為 relative prior，不啟用最大夏普；Walk-forward 驗證 optimizer 是否真的優於 current；Governance 追蹤模型版本、樣本品質與失效條件。
+                                        </div>
+                                    </div>
+                                    <div class="flex flex-wrap gap-2">
+                                        <button @click="loadExpectedReturnModel" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-100 text-xs hover:bg-cyan-500/30">重新讀取 v3.2</button>
+                                        <button @click="loadWalkForwardBacktest" class="px-3 py-1.5 rounded-lg bg-blue-500/20 border border-blue-500/30 text-blue-100 text-xs hover:bg-blue-500/30">重新讀取 v3.3</button>
+                                        <button @click="loadModelGovernanceDashboard" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-100 text-xs hover:bg-emerald-500/30">重新讀取 v3.4</button>
+                                    </div>
+                                </div>
+
+                                <div class="p-4 space-y-4">
+                                    <div v-if="expectedReturnError || walkForwardError || modelGovernanceError" class="rounded-xl border border-red-500/20 bg-red-500/[0.05] p-3 text-xs text-red-200 space-y-1">
+                                        <div v-if="expectedReturnError">{{ expectedReturnError }}</div>
+                                        <div v-if="walkForwardError">{{ walkForwardError }}</div>
+                                        <div v-if="modelGovernanceError">{{ modelGovernanceError }}</div>
+                                    </div>
+
+                                    <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+                                        <div class="rounded-xl border border-white/10 bg-black/20 p-3 md:col-span-2">
+                                            <div class="quant-label text-cyan-300">v3.2 模型口徑</div>
+                                            <div class="quant-value text-white text-base">{{ expectedReturnSummary?.verdict ?? '-' }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">Max Sharpe: {{ expectedReturnPolicy?.maximum_sharpe_optimization_enabled === false ? 'disabled' : 'review' }}</div>
+                                        </div>
+                                        <div class="rounded-xl border border-white/10 bg-black/20 p-3">
+                                            <div class="quant-label text-cyan-300">Asset Priors</div>
+                                            <div class="quant-value text-white">{{ expectedReturnSummary?.asset_count ?? 0 }}</div>
+                                        </div>
+                                        <div class="rounded-xl border border-white/10 bg-black/20 p-3">
+                                            <div class="quant-label text-blue-300">WF Status</div>
+                                            <div class="quant-value text-white">{{ walkForwardBacktest?.status ?? '-' }}</div>
+                                        </div>
+                                        <div class="rounded-xl border border-white/10 bg-black/20 p-3">
+                                            <div class="quant-label text-blue-300">WF Folds</div>
+                                            <div class="quant-value text-white">{{ walkForwardSummary?.fold_count ?? 0 }}</div>
+                                        </div>
+                                        <div class="rounded-xl border border-white/10 bg-black/20 p-3">
+                                            <div class="quant-label text-emerald-300">Governance</div>
+                                            <div class="quant-value text-white">{{ modelGovernanceSummary?.governance_score ?? '-' }}</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 2xl:grid-cols-3 gap-4">
+                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
+                                                <div class="text-xs font-bold text-white">v3.2 Bucket Priors</div>
+                                                <div class="text-[10px] text-gray-500">relative only</div>
+                                            </div>
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full text-[11px]">
+                                                    <thead class="text-gray-500 border-b border-white/10">
+                                                        <tr>
+                                                            <th class="text-left px-3 py-2">Bucket</th>
+                                                            <th class="text-right px-3 py-2">Score</th>
+                                                            <th class="text-left px-3 py-2">Band</th>
+                                                            <th class="text-right px-3 py-2">Conf.</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="row in expectedReturnVisibleBuckets" :key="row.bucket" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                            <td class="px-3 py-2 font-mono text-white">{{ row.bucket }}</td>
+                                                            <td class="px-3 py-2 text-right text-cyan-200">{{ row.relative_score }}</td>
+                                                            <td class="px-3 py-2 text-gray-300 max-w-[170px] truncate" :title="row.prior_band">{{ row.prior_band }}</td>
+                                                            <td class="px-3 py-2 text-right text-gray-400">{{ row.confidence }}</td>
+                                                        </tr>
+                                                        <tr v-if="!expectedReturnVisibleBuckets.length">
+                                                            <td colspan="4" class="px-3 py-4 text-center text-gray-500">尚未讀到 v3.2 bucket priors。</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
+                                                <div class="text-xs font-bold text-white">v3.3 Walk-forward 驗證</div>
+                                                <div class="text-[10px] text-gray-500">optimizer vs current</div>
+                                            </div>
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full text-[11px]">
+                                                    <thead class="text-gray-500 border-b border-white/10">
+                                                        <tr>
+                                                            <th class="text-left px-3 py-2">Method</th>
+                                                            <th class="text-right px-3 py-2">Folds</th>
+                                                            <th class="text-right px-3 py-2">ES95</th>
+                                                            <th class="text-right px-3 py-2">Turnover</th>
+                                                            <th class="text-left px-3 py-2">Decision</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="row in walkForwardVisibleRows" :key="row.method" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                            <td class="px-3 py-2 font-mono text-white max-w-[180px] truncate" :title="row.method">{{ row.method }}</td>
+                                                            <td class="px-3 py-2 text-right text-gray-300">{{ row.fold_count }}</td>
+                                                            <td class="px-3 py-2 text-right text-blue-200">{{ row.avg_es95_pct ?? '-' }}</td>
+                                                            <td class="px-3 py-2 text-right text-gray-300">{{ row.avg_turnover_vs_current_pct ?? '-' }}%</td>
+                                                            <td class="px-3 py-2 text-gray-400 max-w-[180px] truncate" :title="row.decision">{{ row.decision }}</td>
+                                                        </tr>
+                                                        <tr v-if="!walkForwardVisibleRows.length">
+                                                            <td colspan="5" class="px-3 py-4 text-center text-gray-500">尚未讀到 v3.3 walk-forward rows。</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
+                                                <div class="text-xs font-bold text-white">v3.4 Governance Flags</div>
+                                                <div class="text-[10px] text-gray-500">model risk</div>
+                                            </div>
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full text-[11px]">
+                                                    <thead class="text-gray-500 border-b border-white/10">
+                                                        <tr>
+                                                            <th class="text-left px-3 py-2">Severity</th>
+                                                            <th class="text-left px-3 py-2">Code</th>
+                                                            <th class="text-left px-3 py-2">Message</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="flag in modelGovernanceVisibleFlags" :key="flag.code" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                            <td class="px-3 py-2"><span class="px-2 py-0.5 rounded border text-[10px]" :class="approvalBadgeClass(flag.severity)">{{ flag.severity }}</span></td>
+                                                            <td class="px-3 py-2 font-mono text-white max-w-[160px] truncate" :title="flag.code">{{ flag.code }}</td>
+                                                            <td class="px-3 py-2 text-gray-400 max-w-[260px] truncate" :title="flag.message">{{ flag.message }}</td>
+                                                        </tr>
+                                                        <tr v-if="!modelGovernanceVisibleFlags.length">
+                                                            <td colspan="3" class="px-3 py-4 text-center text-gray-500">目前沒有 governance flags。</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-xl border border-red-500/20 bg-red-500/[0.04] p-3 text-[11px] text-gray-400 leading-relaxed">
+                                        <span class="font-bold text-red-200">安全邊界：</span>
+                                        v3.2 不輸出絕對 alpha，不允許最大夏普；v3.3 若樣本不足只能作驗證參考；v3.4 若出現 critical flag，所有候選維持 blocked / watch-only。全流程仍不是交易指令。
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Risk contribution + model assumptions -->
                             <div v-show="analyticsViewMode === 'risk'" class="grid grid-cols-1 xl:grid-cols-3 gap-4">
                                 <div class="xl:col-span-2 rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
@@ -5440,7 +5591,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=11.42-v30-v31-regime-bl"></script>
+<script src="assets/js/app.bundle.js?v=v3-2-v3-4-governance"></script>
 <script src="assets/js/quant-main-display.js?v=market-intel-anchor-fix"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
