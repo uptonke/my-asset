@@ -172,6 +172,12 @@ jobs:
               ;;
           esac
 
+      - name: Build Portfolio Optimizer Decision Center v2.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build_optimizer_decision_center.py
+
       - name: Upload Optimizer Lab artifacts
         uses: actions/upload-artifact@v4
         with:
