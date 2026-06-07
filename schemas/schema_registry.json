@@ -1,0 +1,125 @@
+{
+  "version": "v4.5",
+  "generated_by": "Schema Registry",
+  "policy": {
+    "mode": "permissive_structural_validation",
+    "strictness": "top_level_contract_plus_safety_flags",
+    "purpose": "Catch missing files, JSON breakage, unsafe execution flags, and major schema drift without overfitting to every model-specific field.",
+    "safety_invariants": [
+      "Optimizer outputs must not enable execution_permission.",
+      "Outputs containing not_trade_order must keep it true.",
+      "Expected-return and Black-Litterman sandbox must not enable official alpha or max Sharpe execution.",
+      "Schema validation is a pre-commit gate for workflow-generated outputs."
+    ]
+  },
+  "files": [
+    {
+      "path": "data/optimizer/skfolio_sandbox_latest.json",
+      "schema": "schemas/optimizer/sandbox_optimizer.schema.json",
+      "required": true,
+      "domain": "optimizer"
+    },
+    {
+      "path": "data/optimizer/riskfolio_sandbox_latest.json",
+      "schema": "schemas/optimizer/sandbox_optimizer.schema.json",
+      "required": true,
+      "domain": "optimizer"
+    },
+    {
+      "path": "data/optimizer/optimizer_robustness_latest.json",
+      "schema": "schemas/optimizer/risk_diagnostics.schema.json",
+      "required": true,
+      "domain": "optimizer"
+    },
+    {
+      "path": "data/optimizer/optimizer_stress_latest.json",
+      "schema": "schemas/optimizer/risk_diagnostics.schema.json",
+      "required": true,
+      "domain": "optimizer"
+    },
+    {
+      "path": "data/optimizer/decision_center_latest.json",
+      "schema": "schemas/optimizer/decision_center.schema.json",
+      "required": true,
+      "domain": "optimizer"
+    },
+    {
+      "path": "data/optimizer/rebalance_candidates_latest.json",
+      "schema": "schemas/optimizer/rebalance_candidates.schema.json",
+      "required": true,
+      "domain": "optimizer"
+    },
+    {
+      "path": "data/optimizer/risk_reduction_simulator_latest.json",
+      "schema": "schemas/optimizer/risk_reduction_simulator.schema.json",
+      "required": true,
+      "domain": "optimizer"
+    },
+    {
+      "path": "data/optimizer/constraint_aware_rebalance_latest.json",
+      "schema": "schemas/optimizer/constraint_aware_rebalance.schema.json",
+      "required": true,
+      "domain": "optimizer"
+    },
+    {
+      "path": "data/optimizer/human_approval_layer_latest.json",
+      "schema": "schemas/optimizer/human_approval_layer.schema.json",
+      "required": true,
+      "domain": "optimizer"
+    },
+    {
+      "path": "data/optimizer/action_audit_trail_latest.json",
+      "schema": "schemas/optimizer/action_audit_trail.schema.json",
+      "required": true,
+      "domain": "optimizer"
+    },
+    {
+      "path": "data/optimizer/regime_aware_optimizer_latest.json",
+      "schema": "schemas/optimizer/regime_aware_optimizer.schema.json",
+      "required": true,
+      "domain": "optimizer"
+    },
+    {
+      "path": "data/optimizer/black_litterman_sandbox_latest.json",
+      "schema": "schemas/optimizer/black_litterman_sandbox.schema.json",
+      "required": true,
+      "domain": "optimizer"
+    },
+    {
+      "path": "data/optimizer/expected_return_model_latest.json",
+      "schema": "schemas/optimizer/expected_return_model.schema.json",
+      "required": true,
+      "domain": "optimizer"
+    },
+    {
+      "path": "data/optimizer/walk_forward_backtest_latest.json",
+      "schema": "schemas/optimizer/walk_forward_backtest.schema.json",
+      "required": true,
+      "domain": "optimizer"
+    },
+    {
+      "path": "data/optimizer/model_governance_dashboard_latest.json",
+      "schema": "schemas/optimizer/model_governance_dashboard.schema.json",
+      "required": true,
+      "domain": "optimizer"
+    },
+    {
+      "path": "data/repo_architecture/repo_architecture_audit_latest.json",
+      "schema": "schemas/repo_architecture/repo_architecture_audit.schema.json",
+      "required": false,
+      "domain": "repo_architecture"
+    },
+    {
+      "path": "data/repo_architecture/frontend_source_of_truth_latest.json",
+      "schema": "schemas/repo_architecture/frontend_source_of_truth.schema.json",
+      "required": false,
+      "domain": "repo_architecture"
+    },
+    {
+      "path": "data/repo_architecture/frontend_build_status_latest.json",
+      "schema": "schemas/repo_architecture/frontend_build_status.schema.json",
+      "required": false,
+      "domain": "repo_architecture"
+    }
+  ]
+}

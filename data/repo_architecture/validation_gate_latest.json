@@ -1,0 +1,213 @@
+{
+  "version": "v4.6",
+  "status": "OK",
+  "generated_at": "2026-06-07T08:29:24.342666+00:00",
+  "mode": "validation_gate",
+  "safe_mode": true,
+  "summary": {
+    "error_count": 0,
+    "warning_count": 0,
+    "schema_validated_count": 18,
+    "python_compiled_count": 31
+  },
+  "checks": {
+    "required_files": {
+      "present": [
+        "index.html",
+        "assets/js/app.bundle.js",
+        "assets/js/src/app.bundle.source.js",
+        "assets/js/quant-main-display.js",
+        "package.json",
+        "split-manifest.json",
+        "schemas/schema_registry.json",
+        ".github/workflows/optimizer-lab.yml.yml",
+        ".github/workflows/repo-architecture-audit.yml"
+      ],
+      "missing": [],
+      "workflow_files": [
+        ".github/workflows/daily_update.yml",
+        ".github/workflows/optimizer-lab.yml.yml",
+        ".github/workflows/repo-architecture-audit.yml",
+        ".github/workflows/update_stock_meta.yml.yml",
+        ".github/workflows/validation-gate.yml",
+        ".github/workflows/weekly_backup.yml.yml",
+        ".github/workflows/weekly_macro_update.yml.yml"
+      ]
+    },
+    "json_parse": {
+      "parsed_count": 51,
+      "failed": []
+    },
+    "schema_registry": {
+      "status": "OK",
+      "registry_version": "v4.5",
+      "validated_count": 18,
+      "validated": [
+        {
+          "path": "data/optimizer/skfolio_sandbox_latest.json",
+          "schema": "schemas/optimizer/sandbox_optimizer.schema.json",
+          "required": true
+        },
+        {
+          "path": "data/optimizer/riskfolio_sandbox_latest.json",
+          "schema": "schemas/optimizer/sandbox_optimizer.schema.json",
+          "required": true
+        },
+        {
+          "path": "data/optimizer/optimizer_robustness_latest.json",
+          "schema": "schemas/optimizer/risk_diagnostics.schema.json",
+          "required": true
+        },
+        {
+          "path": "data/optimizer/optimizer_stress_latest.json",
+          "schema": "schemas/optimizer/risk_diagnostics.schema.json",
+          "required": true
+        },
+        {
+          "path": "data/optimizer/decision_center_latest.json",
+          "schema": "schemas/optimizer/decision_center.schema.json",
+          "required": true
+        },
+        {
+          "path": "data/optimizer/rebalance_candidates_latest.json",
+          "schema": "schemas/optimizer/rebalance_candidates.schema.json",
+          "required": true
+        },
+        {
+          "path": "data/optimizer/risk_reduction_simulator_latest.json",
+          "schema": "schemas/optimizer/risk_reduction_simulator.schema.json",
+          "required": true
+        },
+        {
+          "path": "data/optimizer/constraint_aware_rebalance_latest.json",
+          "schema": "schemas/optimizer/constraint_aware_rebalance.schema.json",
+          "required": true
+        },
+        {
+          "path": "data/optimizer/human_approval_layer_latest.json",
+          "schema": "schemas/optimizer/human_approval_layer.schema.json",
+          "required": true
+        },
+        {
+          "path": "data/optimizer/action_audit_trail_latest.json",
+          "schema": "schemas/optimizer/action_audit_trail.schema.json",
+          "required": true
+        },
+        {
+          "path": "data/optimizer/regime_aware_optimizer_latest.json",
+          "schema": "schemas/optimizer/regime_aware_optimizer.schema.json",
+          "required": true
+        },
+        {
+          "path": "data/optimizer/black_litterman_sandbox_latest.json",
+          "schema": "schemas/optimizer/black_litterman_sandbox.schema.json",
+          "required": true
+        },
+        {
+          "path": "data/optimizer/expected_return_model_latest.json",
+          "schema": "schemas/optimizer/expected_return_model.schema.json",
+          "required": true
+        },
+        {
+          "path": "data/optimizer/walk_forward_backtest_latest.json",
+          "schema": "schemas/optimizer/walk_forward_backtest.schema.json",
+          "required": true
+        },
+        {
+          "path": "data/optimizer/model_governance_dashboard_latest.json",
+          "schema": "schemas/optimizer/model_governance_dashboard.schema.json",
+          "required": true
+        },
+        {
+          "path": "data/repo_architecture/repo_architecture_audit_latest.json",
+          "schema": "schemas/repo_architecture/repo_architecture_audit.schema.json",
+          "required": false
+        },
+        {
+          "path": "data/repo_architecture/frontend_source_of_truth_latest.json",
+          "schema": "schemas/repo_architecture/frontend_source_of_truth.schema.json",
+          "required": false
+        },
+        {
+          "path": "data/repo_architecture/frontend_build_status_latest.json",
+          "schema": "schemas/repo_architecture/frontend_build_status.schema.json",
+          "required": false
+        }
+      ],
+      "skipped": [],
+      "errors": []
+    },
+    "python_compile": {
+      "compiled_count": 31,
+      "failed": []
+    },
+    "frontend_source_runtime": {
+      "status": "OK",
+      "command_output": "Wrote data/repo_architecture/frontend_build_status_latest.json\nWrote data/repo_architecture/frontend_build_status_summary.md\nStatus: OK\nRuntime matches source: True"
+    },
+    "workflows": {
+      "workflow_count": 7,
+      "workflows": [
+        {
+          "path": ".github/workflows/daily_update.yml",
+          "has_name": true,
+          "has_on": true,
+          "has_jobs": true
+        },
+        {
+          "path": ".github/workflows/optimizer-lab.yml.yml",
+          "has_name": true,
+          "has_on": true,
+          "has_jobs": true
+        },
+        {
+          "path": ".github/workflows/repo-architecture-audit.yml",
+          "has_name": true,
+          "has_on": true,
+          "has_jobs": true
+        },
+        {
+          "path": ".github/workflows/update_stock_meta.yml.yml",
+          "has_name": true,
+          "has_on": true,
+          "has_jobs": true
+        },
+        {
+          "path": ".github/workflows/validation-gate.yml",
+          "has_name": true,
+          "has_on": true,
+          "has_jobs": true
+        },
+        {
+          "path": ".github/workflows/weekly_backup.yml.yml",
+          "has_name": true,
+          "has_on": true,
+          "has_jobs": true
+        },
+        {
+          "path": ".github/workflows/weekly_macro_update.yml.yml",
+          "has_name": true,
+          "has_on": true,
+          "has_jobs": true
+        }
+      ]
+    },
+    "node_check": {
+      "status": "OK",
+      "checked": [
+        "assets/js/app.bundle.js",
+        "assets/js/quant-main-display.js",
+        "assets/js/terminal-ui-polish.js",
+        "assets/js/terminal-ia-phase2.js"
+      ],
+      "failed": []
+    }
+  },
+  "errors": [],
+  "warnings": [],
+  "safety_boundary": [
+    "Validation gate only checks repository integrity and schema contracts.",
+    "It does not approve trades, does not write Supabase, and does not enable execution.",
+    "If status is FAIL, downstream workflow commit should be blocked."
+  ]
+}
