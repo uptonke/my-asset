@@ -1,0 +1,619 @@
+{
+  "version": "v2.1",
+  "status": "OK",
+  "generated_at": "2026-06-07T06:17:30+00:00",
+  "mode": "rebalance_candidate_generator",
+  "safe_mode": true,
+  "safe_mode_note": "v2.1 只產生再平衡候選草案，不產生 BUY / SELL 指令，不寫入 Supabase，不修改正式持倉或正式權重；所有草案都需要人工確認。",
+  "source_files": {
+    "decision_center": "data/optimizer/decision_center_latest.json",
+    "skfolio": "data/optimizer/skfolio_sandbox_latest.json",
+    "riskfolio": "data/optimizer/riskfolio_sandbox_latest.json"
+  },
+  "input_gate": {
+    "candidate_for_v2_1": [],
+    "top_ranked": [
+      "inverse_vol_baseline",
+      "riskfolio_risk_parity_mv",
+      "riskfolio_hrp_mv"
+    ],
+    "decision_center_verdict": "僅供觀察"
+  },
+  "policy": {
+    "approved_candidate_step_fraction": 0.5,
+    "approved_candidate_max_single_step_pct": 4.0,
+    "watch_step_fraction": 0.25,
+    "watch_max_single_step_pct": 2.0,
+    "material_delta_threshold_pct": 0.75,
+    "output_is_not_trade_order": true
+  },
+  "approved_candidates": [],
+  "watchlist_drafts": [
+    {
+      "proposal_id": "v2_1_inverse_vol_baseline",
+      "source_model_id": "inverse_vol_baseline",
+      "source_model_name": "inverse vol baseline",
+      "source": "skfolio/baseline",
+      "gate": "watch_review_only",
+      "review_status": "watch_only_not_approved",
+      "execution_permission": false,
+      "requires_manual_approval": true,
+      "not_trade_order": true,
+      "step_policy": {
+        "step_fraction_of_model_delta": 0.25,
+        "max_single_step_pct": 2.0,
+        "material_delta_threshold_pct": 0.75,
+        "note": "候選草案只走向模型目標的一部分，避免一次性高換手率。"
+      },
+      "source_decision": {
+        "status": "watch",
+        "score": 15.81,
+        "reason": "ES95 較目前改善 0.186 個百分點。；年化波動較目前降低 1.63 個百分點。；最差壓力情境較目前改善 4.46 個百分點。；跨樣本穩健性標記為穩定。；需要 22.38% 換手率。"
+      },
+      "risk_snapshot": {
+        "annual_vol_pct": 9.26,
+        "es95_pct": 1.374,
+        "max_drawdown_pct": -4.99,
+        "turnover_vs_current_pct": 22.38,
+        "worst_scenario_return_pct": -20.711,
+        "robustness_status": "OK"
+      },
+      "exposure_snapshot": {
+        "cash_pct": 16.856,
+        "gold_pct": 4.232,
+        "crypto_pct": 4.361,
+        "taiwan_pct": 7.585,
+        "other_pct": 66.967,
+        "max_single_weight_pct": 10.248,
+        "max_single_ticker": "USMV"
+      },
+      "constraint_summary": {
+        "violation_count": 0,
+        "warning_count": 0,
+        "flags": []
+      },
+      "turnover_estimate": {
+        "full_model_turnover_pct": 22.377,
+        "proposed_candidate_turnover_pct": 5.594
+      },
+      "material_adjustments": [
+        {
+          "ticker": "00981A",
+          "current_weight_pct": 9.449,
+          "model_target_weight_pct": 3.686,
+          "full_delta_pct": -5.763,
+          "proposed_delta_pct": -1.441,
+          "proposed_candidate_weight_pct": 8.008,
+          "direction": "DOWN",
+          "is_material": true
+        },
+        {
+          "ticker": "BTC-USD",
+          "current_weight_pct": 8.047,
+          "model_target_weight_pct": 2.675,
+          "full_delta_pct": -5.372,
+          "proposed_delta_pct": -1.343,
+          "proposed_candidate_weight_pct": 6.704,
+          "direction": "DOWN",
+          "is_material": true
+        },
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 11.667,
+          "model_target_weight_pct": 16.856,
+          "full_delta_pct": 5.189,
+          "proposed_delta_pct": 1.297,
+          "proposed_candidate_weight_pct": 12.964,
+          "direction": "UP",
+          "is_material": true
+        },
+        {
+          "ticker": "QQQ",
+          "current_weight_pct": 10.55,
+          "model_target_weight_pct": 6.856,
+          "full_delta_pct": -3.694,
+          "proposed_delta_pct": -0.924,
+          "proposed_candidate_weight_pct": 9.627,
+          "direction": "DOWN",
+          "is_material": true
+        },
+        {
+          "ticker": "SRVR",
+          "current_weight_pct": 2.867,
+          "model_target_weight_pct": 6.446,
+          "full_delta_pct": 3.579,
+          "proposed_delta_pct": 0.895,
+          "proposed_candidate_weight_pct": 3.762,
+          "direction": "UP",
+          "is_material": true
+        },
+        {
+          "ticker": "USMV",
+          "current_weight_pct": 6.679,
+          "model_target_weight_pct": 10.248,
+          "full_delta_pct": 3.569,
+          "proposed_delta_pct": 0.892,
+          "proposed_candidate_weight_pct": 7.571,
+          "direction": "UP",
+          "is_material": true
+        },
+        {
+          "ticker": "GLDM",
+          "current_weight_pct": 0.852,
+          "model_target_weight_pct": 4.232,
+          "full_delta_pct": 3.38,
+          "proposed_delta_pct": 0.845,
+          "proposed_candidate_weight_pct": 1.697,
+          "direction": "UP",
+          "is_material": true
+        },
+        {
+          "ticker": "AVUV",
+          "current_weight_pct": 8.956,
+          "model_target_weight_pct": 6.187,
+          "full_delta_pct": -2.769,
+          "proposed_delta_pct": -0.692,
+          "proposed_candidate_weight_pct": 8.264,
+          "direction": "DOWN",
+          "is_material": true
+        },
+        {
+          "ticker": "2330",
+          "current_weight_pct": 1.494,
+          "model_target_weight_pct": 3.899,
+          "full_delta_pct": 2.405,
+          "proposed_delta_pct": 0.601,
+          "proposed_candidate_weight_pct": 2.095,
+          "direction": "UP",
+          "is_material": true
+        },
+        {
+          "ticker": "GRID",
+          "current_weight_pct": 3.742,
+          "model_target_weight_pct": 5.881,
+          "full_delta_pct": 2.139,
+          "proposed_delta_pct": 0.535,
+          "proposed_candidate_weight_pct": 4.277,
+          "direction": "UP",
+          "is_material": true
+        },
+        {
+          "ticker": "ETH-USD",
+          "current_weight_pct": 3.739,
+          "model_target_weight_pct": 1.686,
+          "full_delta_pct": -2.053,
+          "proposed_delta_pct": -0.513,
+          "proposed_candidate_weight_pct": 3.226,
+          "direction": "DOWN",
+          "is_material": true
+        },
+        {
+          "ticker": "IFRA",
+          "current_weight_pct": 5.808,
+          "model_target_weight_pct": 7.149,
+          "full_delta_pct": 1.341,
+          "proposed_delta_pct": 0.335,
+          "proposed_candidate_weight_pct": 6.143,
+          "direction": "UP",
+          "is_material": true
+        }
+      ],
+      "safety_boundary": [
+        "This is not a BUY / SELL list.",
+        "execution_permission is always false in v2.1.",
+        "No Supabase write.",
+        "No official portfolio weight update.",
+        "Human approval is mandatory before any real-world action."
+      ]
+    },
+    {
+      "proposal_id": "v2_1_riskfolio_risk_parity_mv",
+      "source_model_id": "riskfolio_risk_parity_mv",
+      "source_model_name": "riskfolio risk parity mv",
+      "source": "Riskfolio-Lib",
+      "gate": "watch_review_only",
+      "review_status": "watch_only_not_approved",
+      "execution_permission": false,
+      "requires_manual_approval": true,
+      "not_trade_order": true,
+      "step_policy": {
+        "step_fraction_of_model_delta": 0.25,
+        "max_single_step_pct": 2.0,
+        "material_delta_threshold_pct": 0.75,
+        "note": "候選草案只走向模型目標的一部分，避免一次性高換手率。"
+      },
+      "source_decision": {
+        "status": "watch",
+        "score": 14.35,
+        "reason": "ES95 較目前改善 0.375 個百分點。；年化波動較目前降低 2.61 個百分點。；最差壓力情境較目前改善 5.50 個百分點。；跨樣本穩健性僅為可觀察。；需要 28.05% 換手率。"
+      },
+      "risk_snapshot": {
+        "annual_vol_pct": 8.28,
+        "es95_pct": 1.185,
+        "max_drawdown_pct": -4.09,
+        "turnover_vs_current_pct": 28.05,
+        "worst_scenario_return_pct": -19.665,
+        "robustness_status": "OK"
+      },
+      "exposure_snapshot": {
+        "cash_pct": 22.835,
+        "gold_pct": 4.593,
+        "crypto_pct": 4.459,
+        "taiwan_pct": 14.782,
+        "other_pct": 53.331,
+        "max_single_weight_pct": 9.771,
+        "max_single_ticker": "USMV"
+      },
+      "constraint_summary": {
+        "violation_count": 0,
+        "warning_count": 0,
+        "flags": []
+      },
+      "turnover_estimate": {
+        "full_model_turnover_pct": 28.049,
+        "proposed_candidate_turnover_pct": 6.616
+      },
+      "material_adjustments": [
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 11.667,
+          "model_target_weight_pct": 22.835,
+          "full_delta_pct": 11.168,
+          "proposed_delta_pct": 2.0,
+          "proposed_candidate_weight_pct": 13.667,
+          "direction": "UP",
+          "is_material": true
+        },
+        {
+          "ticker": "2330",
+          "current_weight_pct": 1.494,
+          "model_target_weight_pct": 7.328,
+          "full_delta_pct": 5.834,
+          "proposed_delta_pct": 1.459,
+          "proposed_candidate_weight_pct": 2.953,
+          "direction": "UP",
+          "is_material": true
+        },
+        {
+          "ticker": "QQQ",
+          "current_weight_pct": 10.55,
+          "model_target_weight_pct": 4.998,
+          "full_delta_pct": -5.552,
+          "proposed_delta_pct": -1.388,
+          "proposed_candidate_weight_pct": 9.162,
+          "direction": "DOWN",
+          "is_material": true
+        },
+        {
+          "ticker": "BTC-USD",
+          "current_weight_pct": 8.047,
+          "model_target_weight_pct": 2.759,
+          "full_delta_pct": -5.288,
+          "proposed_delta_pct": -1.322,
+          "proposed_candidate_weight_pct": 6.725,
+          "direction": "DOWN",
+          "is_material": true
+        },
+        {
+          "ticker": "VOO",
+          "current_weight_pct": 10.146,
+          "model_target_weight_pct": 5.971,
+          "full_delta_pct": -4.175,
+          "proposed_delta_pct": -1.044,
+          "proposed_candidate_weight_pct": 9.102,
+          "direction": "DOWN",
+          "is_material": true
+        },
+        {
+          "ticker": "AVUV",
+          "current_weight_pct": 8.956,
+          "model_target_weight_pct": 5.065,
+          "full_delta_pct": -3.891,
+          "proposed_delta_pct": -0.973,
+          "proposed_candidate_weight_pct": 7.983,
+          "direction": "DOWN",
+          "is_material": true
+        },
+        {
+          "ticker": "GLDM",
+          "current_weight_pct": 0.852,
+          "model_target_weight_pct": 4.593,
+          "full_delta_pct": 3.741,
+          "proposed_delta_pct": 0.935,
+          "proposed_candidate_weight_pct": 1.787,
+          "direction": "UP",
+          "is_material": true
+        },
+        {
+          "ticker": "VEA",
+          "current_weight_pct": 8.28,
+          "model_target_weight_pct": 4.801,
+          "full_delta_pct": -3.479,
+          "proposed_delta_pct": -0.87,
+          "proposed_candidate_weight_pct": 7.41,
+          "direction": "DOWN",
+          "is_material": true
+        },
+        {
+          "ticker": "USMV",
+          "current_weight_pct": 6.679,
+          "model_target_weight_pct": 9.771,
+          "full_delta_pct": 3.092,
+          "proposed_delta_pct": 0.773,
+          "proposed_candidate_weight_pct": 7.452,
+          "direction": "UP",
+          "is_material": true
+        },
+        {
+          "ticker": "SRVR",
+          "current_weight_pct": 2.867,
+          "model_target_weight_pct": 4.984,
+          "full_delta_pct": 2.117,
+          "proposed_delta_pct": 0.529,
+          "proposed_candidate_weight_pct": 3.396,
+          "direction": "UP",
+          "is_material": true
+        },
+        {
+          "ticker": "ETH-USD",
+          "current_weight_pct": 3.739,
+          "model_target_weight_pct": 1.7,
+          "full_delta_pct": -2.039,
+          "proposed_delta_pct": -0.51,
+          "proposed_candidate_weight_pct": 3.229,
+          "direction": "DOWN",
+          "is_material": true
+        },
+        {
+          "ticker": "00981A",
+          "current_weight_pct": 9.449,
+          "model_target_weight_pct": 7.454,
+          "full_delta_pct": -1.995,
+          "proposed_delta_pct": -0.499,
+          "proposed_candidate_weight_pct": 8.95,
+          "direction": "DOWN",
+          "is_material": true
+        }
+      ],
+      "safety_boundary": [
+        "This is not a BUY / SELL list.",
+        "execution_permission is always false in v2.1.",
+        "No Supabase write.",
+        "No official portfolio weight update.",
+        "Human approval is mandatory before any real-world action."
+      ]
+    },
+    {
+      "proposal_id": "v2_1_riskfolio_hrp_mv",
+      "source_model_id": "riskfolio_hrp_mv",
+      "source_model_name": "riskfolio hrp mv",
+      "source": "Riskfolio-Lib",
+      "gate": "watch_review_only",
+      "review_status": "watch_only_not_approved",
+      "execution_permission": false,
+      "requires_manual_approval": true,
+      "not_trade_order": true,
+      "step_policy": {
+        "step_fraction_of_model_delta": 0.25,
+        "max_single_step_pct": 2.0,
+        "material_delta_threshold_pct": 0.75,
+        "note": "候選草案只走向模型目標的一部分，避免一次性高換手率。"
+      },
+      "source_decision": {
+        "status": "watch",
+        "score": 7.58,
+        "reason": "ES95 較目前改善 0.512 個百分點。；年化波動較目前降低 3.87 個百分點。；最差壓力情境較目前改善 10.74 個百分點。；跨樣本穩健性僅為可觀察。；需要 38.68% 換手率。"
+      },
+      "risk_snapshot": {
+        "annual_vol_pct": 7.02,
+        "es95_pct": 1.048,
+        "max_drawdown_pct": -3.21,
+        "turnover_vs_current_pct": 38.68,
+        "worst_scenario_return_pct": -14.425,
+        "robustness_status": "OK"
+      },
+      "exposure_snapshot": {
+        "cash_pct": 40.407,
+        "gold_pct": 2.465,
+        "crypto_pct": 2.105,
+        "taiwan_pct": 6.472,
+        "other_pct": 48.55,
+        "max_single_weight_pct": 11.12,
+        "max_single_ticker": "USMV"
+      },
+      "constraint_summary": {
+        "violation_count": 0,
+        "warning_count": 2,
+        "flags": [
+          {
+            "level": "warning",
+            "code": "turnover_high",
+            "message": "換手率 38.68% 偏高，需要摩擦成本與人工審查。"
+          },
+          {
+            "level": "warning",
+            "code": "cash_high",
+            "message": "現金 / BOXX 權重 40.41% 偏高，需要確認是否符合現金下限與機會成本。"
+          }
+        ]
+      },
+      "turnover_estimate": {
+        "full_model_turnover_pct": 38.684,
+        "proposed_candidate_turnover_pct": 7.079
+      },
+      "material_adjustments": [
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 11.667,
+          "model_target_weight_pct": 40.407,
+          "full_delta_pct": 28.74,
+          "proposed_delta_pct": 2.0,
+          "proposed_candidate_weight_pct": 13.667,
+          "direction": "UP",
+          "is_material": true
+        },
+        {
+          "ticker": "QQQ",
+          "current_weight_pct": 10.55,
+          "model_target_weight_pct": 3.845,
+          "full_delta_pct": -6.705,
+          "proposed_delta_pct": -1.676,
+          "proposed_candidate_weight_pct": 8.874,
+          "direction": "DOWN",
+          "is_material": true
+        },
+        {
+          "ticker": "BTC-USD",
+          "current_weight_pct": 8.047,
+          "model_target_weight_pct": 1.506,
+          "full_delta_pct": -6.541,
+          "proposed_delta_pct": -1.635,
+          "proposed_candidate_weight_pct": 6.412,
+          "direction": "DOWN",
+          "is_material": true
+        },
+        {
+          "ticker": "00981A",
+          "current_weight_pct": 9.449,
+          "model_target_weight_pct": 3.054,
+          "full_delta_pct": -6.395,
+          "proposed_delta_pct": -1.599,
+          "proposed_candidate_weight_pct": 7.85,
+          "direction": "DOWN",
+          "is_material": true
+        },
+        {
+          "ticker": "AVUV",
+          "current_weight_pct": 8.956,
+          "model_target_weight_pct": 3.324,
+          "full_delta_pct": -5.632,
+          "proposed_delta_pct": -1.408,
+          "proposed_candidate_weight_pct": 7.548,
+          "direction": "DOWN",
+          "is_material": true
+        },
+        {
+          "ticker": "USMV",
+          "current_weight_pct": 6.679,
+          "model_target_weight_pct": 11.12,
+          "full_delta_pct": 4.441,
+          "proposed_delta_pct": 1.11,
+          "proposed_candidate_weight_pct": 7.789,
+          "direction": "UP",
+          "is_material": true
+        },
+        {
+          "ticker": "VOO",
+          "current_weight_pct": 10.146,
+          "model_target_weight_pct": 6.578,
+          "full_delta_pct": -3.568,
+          "proposed_delta_pct": -0.892,
+          "proposed_candidate_weight_pct": 9.254,
+          "direction": "DOWN",
+          "is_material": true
+        },
+        {
+          "ticker": "ETH-USD",
+          "current_weight_pct": 3.739,
+          "model_target_weight_pct": 0.599,
+          "full_delta_pct": -3.14,
+          "proposed_delta_pct": -0.785,
+          "proposed_candidate_weight_pct": 2.954,
+          "direction": "DOWN",
+          "is_material": true
+        },
+        {
+          "ticker": "VEA",
+          "current_weight_pct": 8.28,
+          "model_target_weight_pct": 5.945,
+          "full_delta_pct": -2.335,
+          "proposed_delta_pct": -0.584,
+          "proposed_candidate_weight_pct": 7.696,
+          "direction": "DOWN",
+          "is_material": true
+        },
+        {
+          "ticker": "PICK",
+          "current_weight_pct": 4.314,
+          "model_target_weight_pct": 2.234,
+          "full_delta_pct": -2.08,
+          "proposed_delta_pct": -0.52,
+          "proposed_candidate_weight_pct": 3.794,
+          "direction": "DOWN",
+          "is_material": true
+        },
+        {
+          "ticker": "2330",
+          "current_weight_pct": 1.494,
+          "model_target_weight_pct": 3.418,
+          "full_delta_pct": 1.924,
+          "proposed_delta_pct": 0.481,
+          "proposed_candidate_weight_pct": 1.975,
+          "direction": "UP",
+          "is_material": true
+        },
+        {
+          "ticker": "GLDM",
+          "current_weight_pct": 0.852,
+          "model_target_weight_pct": 2.465,
+          "full_delta_pct": 1.613,
+          "proposed_delta_pct": 0.403,
+          "proposed_candidate_weight_pct": 1.255,
+          "direction": "UP",
+          "is_material": true
+        }
+      ],
+      "safety_boundary": [
+        "This is not a BUY / SELL list.",
+        "execution_permission is always false in v2.1.",
+        "No Supabase write.",
+        "No official portfolio weight update.",
+        "Human approval is mandatory before any real-world action."
+      ]
+    }
+  ],
+  "rejected_sources": [
+    {
+      "id": "scipy_min_variance_fallback",
+      "decision_status": "reject",
+      "reason": "ES95 較目前改善 0.809 個百分點。；年化波動較目前降低 5.82 個百分點。；最差壓力情境較目前改善 21.09 個百分點。；跨樣本穩健性標記為穩定。；需要 77.46% 換手率。"
+    },
+    {
+      "id": "skfolio_min_variance",
+      "decision_status": "reject",
+      "reason": "ES95 較目前改善 0.806 個百分點。；年化波動較目前降低 5.82 個百分點。；最差壓力情境較目前改善 21.34 個百分點。；跨樣本穩健性標記為穩定。；需要 76.62% 換手率。"
+    },
+    {
+      "id": "skfolio_cvar_minimize",
+      "decision_status": "reject",
+      "reason": "ES95 較目前改善 0.844 個百分點。；年化波動較目前降低 5.20 個百分點。；最差壓力情境較目前改善 16.75 個百分點。；跨樣本穩健性僅為可觀察。；需要 67.19% 換手率。"
+    },
+    {
+      "id": "riskfolio_min_variance",
+      "decision_status": "reject",
+      "reason": "ES95 較目前改善 0.805 個百分點。；年化波動較目前降低 5.82 個百分點。；最差壓力情境較目前改善 21.34 個百分點。；跨樣本穩健性標記為穩定。；需要 76.61% 換手率。"
+    },
+    {
+      "id": "riskfolio_cvar_minimize",
+      "decision_status": "reject",
+      "reason": "ES95 較目前改善 0.844 個百分點。；年化波動較目前降低 5.20 個百分點。；最差壓力情境較目前改善 16.75 個百分點。；跨樣本穩健性僅為可觀察。；需要 67.19% 換手率。"
+    }
+  ],
+  "skipped": [
+    {
+      "id": "current_weight",
+      "gate": "baseline_reference",
+      "decision_status": "baseline"
+    }
+  ],
+  "summary": {
+    "approved_candidate_count": 0,
+    "watchlist_draft_count": 3,
+    "rejected_source_count": 5,
+    "skipped_count": 1,
+    "execution_permission_count": 0,
+    "human_approval_required": true,
+    "verdict": "無可直接進入人工批准的候選；僅產生觀察草案。",
+    "top_watchlist_draft": "v2_1_inverse_vol_baseline"
+  }
+}
