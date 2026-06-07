@@ -1,7 +1,7 @@
 # Portfolio Optimizer Decision Center v2.0
 
 - Status: `OK`
-- Generated: `2026-06-07T06:48:50+00:00`
+- Generated: `2026-06-07T07:15:53+00:00`
 - Verdict: `僅供觀察`
 - Candidate for v2.1: `-`
 - Safety: no Supabase write, no holdings change, no execution instruction.
