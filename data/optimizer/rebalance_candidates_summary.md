@@ -1,6 +1,6 @@
 # Rebalance Candidate Generator v2.1
 
-Generated at: `2026-06-07T07:15:53+00:00`
+Generated at: `2026-06-07T07:58:50+00:00`
 
 ## Safety Boundary
 
@@ -25,16 +25,16 @@ None.
 
 | Proposal | Gate | Source model | Proposed turnover | Top material changes |
 |---|---|---|---:|---|
-| `v2_1_inverse_vol_baseline` | `watch_review_only` | inverse_vol_baseline | 5.626% | 00981A DOWN -1.433pp; BTC-USD DOWN -1.386pp; BOXX UP 1.307pp; QQQ DOWN -0.915pp; USMV UP 0.898pp |
-| `v2_1_riskfolio_risk_parity_mv` | `watch_review_only` | riskfolio_risk_parity_mv | 6.637% | BOXX UP 2.0pp; 2330 UP 1.46pp; QQQ DOWN -1.379pp; BTC-USD DOWN -1.365pp; VOO DOWN -1.035pp |
-| `v2_1_riskfolio_hrp_mv` | `watch_review_only` | riskfolio_hrp_mv | 7.097% | BOXX UP 2.0pp; BTC-USD DOWN -1.679pp; QQQ DOWN -1.667pp; 00981A DOWN -1.59pp; AVUV DOWN -1.401pp |
+| `v2_1_inverse_vol_baseline` | `watch_review_only` | inverse_vol_baseline | 5.63% | 00981A DOWN -1.432pp; BTC-USD DOWN -1.394pp; BOXX UP 1.308pp; QQQ DOWN -0.913pp; USMV UP 0.899pp |
+| `v2_1_riskfolio_risk_parity_mv` | `watch_review_only` | riskfolio_risk_parity_mv | 6.64% | BOXX UP 2.0pp; 2330 UP 1.46pp; QQQ DOWN -1.378pp; BTC-USD DOWN -1.372pp; VOO DOWN -1.034pp |
+| `v2_1_riskfolio_hrp_mv` | `watch_review_only` | riskfolio_hrp_mv | 7.099% | BOXX UP 2.0pp; BTC-USD DOWN -1.686pp; QQQ DOWN -1.666pp; 00981A DOWN -1.589pp; AVUV DOWN -1.4pp |
 
 ## Rejected Sources
 
 | Source | Reason |
 |---|---|
-| `scipy_min_variance_fallback` | ES95 較目前改善 0.819 個百分點。；年化波動較目前降低 5.88 個百分點。；最差壓力情境較目前改善 21.20 個百分點。；跨樣本穩健性標記為穩定。；需要 77.51% 換手率。 |
-| `skfolio_min_variance` | ES95 較目前改善 0.816 個百分點。；年化波動較目前降低 5.89 個百分點。；最差壓力情境較目前改善 21.44 個百分點。；跨樣本穩健性標記為穩定。；需要 76.68% 換手率。 |
-| `skfolio_cvar_minimize` | ES95 較目前改善 0.854 個百分點。；年化波動較目前降低 5.27 個百分點。；最差壓力情境較目前改善 16.85 個百分點。；跨樣本穩健性僅為可觀察。；需要 67.23% 換手率。 |
-| `riskfolio_min_variance` | ES95 較目前改善 0.815 個百分點。；年化波動較目前降低 5.89 個百分點。；最差壓力情境較目前改善 21.44 個百分點。；跨樣本穩健性標記為穩定。；需要 76.67% 換手率。 |
-| `riskfolio_cvar_minimize` | ES95 較目前改善 0.854 個百分點。；年化波動較目前降低 5.27 個百分點。；最差壓力情境較目前改善 16.85 個百分點。；跨樣本穩健性僅為可觀察。；需要 67.23% 換手率。 |
+| `scipy_min_variance_fallback` | ES95 較目前改善 0.819 個百分點。；年化波動較目前降低 5.88 個百分點。；最差壓力情境較目前改善 21.20 個百分點。；跨樣本穩健性標記為穩定。；需要 77.52% 換手率。 |
+| `skfolio_min_variance` | ES95 較目前改善 0.816 個百分點。；年化波動較目前降低 5.89 個百分點。；最差壓力情境較目前改善 21.45 個百分點。；跨樣本穩健性標記為穩定。；需要 76.68% 換手率。 |
+| `skfolio_cvar_minimize` | ES95 較目前改善 0.854 個百分點。；年化波動較目前降低 5.27 個百分點。；最差壓力情境較目前改善 16.86 個百分點。；跨樣本穩健性僅為可觀察。；需要 67.24% 換手率。 |
+| `riskfolio_min_variance` | ES95 較目前改善 0.815 個百分點。；年化波動較目前降低 5.89 個百分點。；最差壓力情境較目前改善 21.45 個百分點。；跨樣本穩健性標記為穩定。；需要 76.67% 換手率。 |
+| `riskfolio_cvar_minimize` | ES95 較目前改善 0.854 個百分點。；年化波動較目前降低 5.27 個百分點。；最差壓力情境較目前改善 16.86 個百分點。；跨樣本穩健性僅為可觀察。；需要 67.24% 換手率。 |
