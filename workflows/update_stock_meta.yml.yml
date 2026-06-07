@@ -1,0 +1,55 @@
+name: Update Stock Quant Meta
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run without writing back to Supabase"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+  schedule:
+    - cron: "40 10 * * 1-5"
+
+permissions:
+  contents: read
+
+jobs:
+  update-stock-meta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    env:
+      FINMIND_TOKEN: ${{ secrets.FINMIND_TOKEN }}
+      TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
+      SUPABASE_URL: ${{ vars.SUPABASE_URL || secrets.SUPABASE_URL }}
+      SUPABASE_TABLE: ${{ vars.SUPABASE_TABLE || secrets.SUPABASE_TABLE || 'portfolio_db' }}
+      PORTFOLIO_ROW_ID: ${{ vars.PORTFOLIO_ROW_ID || secrets.PORTFOLIO_ROW_ID || '1' }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install quant pipeline dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r scripts/quant_requirements.txt
+
+      - name: Update stock_meta quant factors
+        run: python scripts/update_stock_meta.py
+
+      - name: Remove chip from core factor layer
+        run: python scripts/remove_chip_core_factor.py
+
+      - name: Update weekly pivot confluence zones
+        run: python scripts/update_pivot_meta.py
