@@ -37,7 +37,7 @@ REQUIRED_FILES = [
     "split-manifest.json",
     "schemas/schema_registry.json",
     ".github/workflows/optimizer-lab.yml.yml",
-    ".github/workflows/repo-architecture-audit.yml",
+    ".github/workflows/repo-architecture-audit.yml.yml",
 ]
 
 REQUIRED_WORKFLOW_DIR = ".github/workflows"
