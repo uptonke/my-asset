@@ -49,8 +49,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Set up Node for terminal IA task
-        if: ${{ github.event.inputs.task == 'apply_terminal_ia_phase2' }}
+      - name: Set up Node for frontend and validation checks
         uses: actions/setup-node@v4
         with:
           node-version: "24"
@@ -238,6 +237,12 @@ jobs:
           set -euo pipefail
           python scripts/build_model_governance_dashboard.py
 
+      - name: Validation Gate v4.6
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/validate_repo_integrity.py
+
       - name: Upload Optimizer Lab artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -246,8 +251,12 @@ jobs:
           path: |
             data/optimizer/*.json
             data/optimizer/*.md
+            data/repo_architecture/*.json
+            data/repo_architecture/*.md
             data/repo_health/*.json
+            schemas/**/*.json
             docs/TECHNICAL_DEBT_MAP.md
+            docs/SCHEMA_REGISTRY.md
 
       - name: Commit task output
         shell: bash
@@ -256,8 +265,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add data/optimizer/ data/repo_health/ docs/ || true
-          git add .github/workflows/ scripts/README.md scripts/v191_workflow_consolidation_cleanup.py || true
+          git add data/optimizer/ data/repo_architecture/ data/repo_health/ docs/ schemas/ package.json split-manifest.json || true
+          git add .github/workflows/ scripts/README.md scripts/v191_workflow_consolidation_cleanup.py scripts/validate_repo_integrity.py || true
 
           if [ "${{ github.event.inputs.task }}" = "apply_terminal_ia_phase2" ]; then
             git add index.html assets/css/80-terminal-ia-phase2.css assets/js/terminal-ia-phase2.js scripts/apply_terminal_ia_phase2.py assets/css/tailwind-built.css || true
