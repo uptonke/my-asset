@@ -62,7 +62,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add data/repo_architecture/ docs/FRONTEND_SOURCE_OF_TRUTH.md split-manifest.json package.json scripts/audit_repo_architecture.py scripts/build_frontend_bundle.py .github/workflows/repo-architecture-audit.yml assets/js/src/app.bundle.source.js || true
+          git add -A data/repo_architecture/ docs/FRONTEND_SOURCE_OF_TRUTH.md split-manifest.json package.json scripts/audit_repo_architecture.py scripts/build_frontend_bundle.py assets/js/src/app.bundle.source.js || true
+          if [ -d .github/workflows ]; then
+            git add -A .github/workflows || true
+          fi
 
           if git diff --cached --quiet; then
             echo "No changes to commit."
