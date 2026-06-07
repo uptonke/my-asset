@@ -106,26 +106,31 @@
     return p;
   }
 
+  function tabSection(tabName) {
+    return Array.from(document.querySelectorAll("section")).find((el) =>
+      String(el.getAttribute("v-show") || "").includes(`currentTab === '${tabName}'`)
+    );
+  }
+
   function ensureAnalysisPanel() {
     let p = document.getElementById(MI_ANALYSIS_ID);
     if (p) return p;
-    const anchor = $(".analytics-command-toolbar") || $(".analytics-panel") || $("#analysis");
-    if (!anchor?.parentNode) return null;
+    const section = tabSection("advanced");
+    if (!section) return null;
     p = document.createElement("div");
     p.id = MI_ANALYSIS_ID;
-    anchor.parentNode.insertBefore(p, anchor);
+    section.insertBefore(p, section.firstElementChild);
     return p;
   }
 
   function ensureSummaryPanel() {
     let p = document.getElementById(MI_SUMMARY_ID);
     if (p) return p;
-    const anchors = [".overview-dashboard", ".dashboard-overview", ".portfolio-overview", ".main-dashboard", "#overview", ".analytics-command-toolbar"];
-    const anchor = anchors.map((s) => $(s)).find(Boolean);
-    if (!anchor?.parentNode) return null;
+    const section = tabSection("summary");
+    if (!section) return null;
     p = document.createElement("div");
     p.id = MI_SUMMARY_ID;
-    anchor.parentNode.insertBefore(p, anchor);
+    section.insertBefore(p, section.firstElementChild);
     return p;
   }
 
