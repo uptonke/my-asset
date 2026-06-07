@@ -1580,14 +1580,14 @@
                     </div>
                 </div>
 
-                <!-- ===== 合成投組風險引擎 v0.2.1 + v0.3 ===== -->
+                <!-- ===== 合成投組風險引擎 ===== -->
                 <div id="synthetic-risk-engine-v03" class="glass panel-card border-emerald-500/20 overflow-hidden">
                     <div class="p-5 md:p-6 border-b border-white/10 bg-emerald-500/5">
                         <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                             <div>
                                 <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border border-emerald-500/20 bg-emerald-500/10 text-emerald-300 w-max mb-3">
                                     <i class="fas fa-chart-line"></i>
-                                    v0.2.1 樣本覆蓋 + v0.3 風險報告
+                                    歷史風險投影
                                 </div>
                                 <h3 class="text-white font-bold text-lg md:text-xl flex items-center gap-2">
                                     <i class="fas fa-shield-virus text-emerald-400"></i>
@@ -1651,7 +1651,7 @@
                                 </div>
                             </div>
 
-                            <!-- v0.2.1 覆蓋率與信心分級 -->
+                            <!-- 覆蓋率與信心分級 -->
                             <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
                                 <div class="rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
                                     <div class="px-4 py-3 border-b border-white/10 bg-white/[0.03]">
@@ -1774,7 +1774,7 @@
                                 </div>
                             </div>
 
-                            <!-- v0.3 類 QuantStats 報告 -->
+                            <!-- 類 QuantStats 報告 -->
                             <div class="rounded-2xl border border-purple-500/20 bg-purple-500/[0.04] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-purple-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
@@ -1860,13 +1860,13 @@
                             </div>
 
 
-                            <!-- v0.4 EWMA 共變異數 / 相關性市場狀態 -->
+                            <!-- EWMA 共變異數 / 相關性市場狀態 -->
                             <div class="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-cyan-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-network-wired text-cyan-400"></i>
-                                            v0.4 EWMA 共變異數與相關性市場狀態
+                                            EWMA 共變異數與相關性市場狀態
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
                                             以嚴格樣本日報酬計算 EWMA 共變異數 / 相關性，監控風險聚集與分散效果。
@@ -1982,13 +1982,13 @@
 
 
 
-                            <!-- v0.5 成分 VaR / ES + v0.6 Risk Budgeting / HRP-lite -->
+                            <!-- 成分 VaR / ES + Risk Budgeting / HRP-lite -->
                             <div class="rounded-2xl border border-red-500/20 bg-red-500/[0.035] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-red-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-fire-flame-curved text-red-400"></i>
-                                            v0.5 尾部風險歸因 + v0.6 風險預算 / HRP-lite
+                                            尾部風險歸因 + 風險預算 / HRP-lite
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
                                             成分 VaR / ES 用歷史尾部日歸因；HRP-lite 用 EWMA covariance 產生無外部套件風險預算參考權重。
@@ -2099,7 +2099,7 @@
                                     <div class="xl:col-span-2 rounded-xl border border-white/10 bg-black/20 p-3">
                                         <div class="text-sm font-bold text-white flex items-center gap-2 mb-2">
                                             <i class="fas fa-circle-info text-amber-400"></i>
-                                            v0.5 / v0.6 方法限制
+                                            方法限制
                                         </div>
                                         <ul class="space-y-1 text-[11px] text-gray-400 leading-relaxed">
                                             <li v-for="item in ((syntheticRiskMeta?.component_tail_risk?.var_es_95?.notes || []).concat(syntheticRiskMeta?.risk_budgeting?.notes || []))" :key="item" class="flex gap-2">
@@ -2123,7 +2123,7 @@
                                             最佳化決策摘要
                                         </div>
                                         <div class="text-[11px] text-gray-400 mt-1">
-                                            主畫面只保留決策層資訊；v0.7～v1.8 依賴、沙盒、穩健性與壓力測試已收進下方「技術診斷與歷史沙盒」。
+                                            主畫面只保留決策層資訊；早期依賴、沙盒、穩健性與壓力測試已收進下方「技術診斷與歷史沙盒」。
                                         </div>
                                     </div>
                                     <div class="text-[11px] text-emerald-200 border border-emerald-500/20 bg-emerald-500/10 rounded-lg px-3 py-1.5">
@@ -2168,7 +2168,7 @@
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-box-archive text-slate-300"></i>
-                                            技術診斷與歷史沙盒｜v0.7～v1.8
+                                            技術診斷與歷史沙盒
                                         </div>
                                         <div class="text-[11px] text-gray-400 mt-1">
                                             依賴檢查、skfolio / Riskfolio 沙盒、穩健性、約束、壓力測試與解釋面板已收合；需要追查模型來源時再展開。
@@ -2179,13 +2179,13 @@
                                     </div>
                                 </summary>
                                 <div class="p-4 space-y-4">
-                            <!-- v0.7 最佳化器依賴檢查 -->
+                            <!-- 最佳化器依賴檢查 -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-blue-500/20 bg-blue-500/[0.035] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-blue-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-plug-circle-check text-blue-400"></i>
-                                            v0.7 最佳化器依賴檢查
+                                            最佳化器依賴檢查
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
                                             只檢查 GitHub Actions 能否 import 外部最佳化套件；不執行最佳化、不產生交易建議。
@@ -2260,7 +2260,7 @@
                                         <div>
                                             <div class="text-sm font-bold text-white flex items-center gap-2">
                                                 <i class="fas fa-road text-cyan-400"></i>
-                                                v1.0 接入判讀
+                                                接入判讀
                                             </div>
                                             <p class="text-[11px] text-gray-400 mt-2 leading-relaxed">
                                                 {{ zhText(optimizerDependencyStatus?.next_step || '尚未產生依賴檢查。請先跑 Update Stock Quant Meta。') }}
@@ -2271,11 +2271,11 @@
                                             <div class="font-mono break-all">{{ (optimizerDependencyStatus?.cvxpy_solvers || []).join(', ') || '-' }}</div>
                                         </div>
                                         <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-[11px] text-gray-300">
-                                            <div class="text-gray-500 mb-1">v1.0 skfolio 缺少套件</div>
+                                            <div class="text-gray-500 mb-1">skfolio 缺少套件</div>
                                             <div class="font-mono break-all">{{ (optimizerDependencyStatus?.missing_for_v1_0_skfolio || []).join(', ') || '無' }}</div>
                                         </div>
                                         <div class="text-[10px] text-gray-500 leading-relaxed">
-                                            {{ zhText(optimizerDependencyStatus?.safe_mode_note || 'v0.7 只做依賴檢查。') }}
+                                            {{ zhText(optimizerDependencyStatus?.safe_mode_note || '目前只做依賴檢查。') }}
                                         </div>
                                     </div>
                                 </div>
@@ -2283,16 +2283,16 @@
 
 
 
-                            <!-- v1.0.1 / v1.0.2 skfolio 沙盒輸出與整合比較 -->
+                            <!-- skfolio 沙盒輸出與整合比較 -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-indigo-500/20 bg-indigo-500/[0.035] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-indigo-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-diagram-project text-indigo-400"></i>
-                                            v1.0.1 skfolio 沙盒輸出 + v1.0.2 整合比較
+                                            skfolio 沙盒輸出 + 整合比較
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
-                                            讀取 <span class="font-mono">data/optimizer/skfolio_sandbox_latest.json</span>，比較目前權重、inverse-vol、scipy、skfolio min variance、skfolio CVaR，並對照 v0.5 Component ES 與 v0.6 HRP-lite。
+                                            讀取 <span class="font-mono">data/optimizer/skfolio_sandbox_latest.json</span>，比較目前權重、inverse-vol、scipy、skfolio min variance、skfolio CVaR，並對照 Component ES 與 HRP-lite。
                                         </div>
                                     </div>
                                     <div class="text-[11px] text-gray-400">
@@ -2389,7 +2389,7 @@
                                             <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                                 <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
                                                     <i class="fas fa-code-compare text-purple-400"></i>
-                                                    v1.0.2：對照目前權重 / HRP-lite / Component ES
+                                                    對照目前權重 / HRP-lite / Component ES
                                                 </div>
                                                 <div class="overflow-x-auto">
                                                     <table class="w-full text-[11px]">
@@ -2506,16 +2506,16 @@
 
 
 
-                            <!-- v1.3 skfolio / Riskfolio / HRP-lite 統一比較 -->
+                            <!-- skfolio / Riskfolio / HRP-lite 統一比較 -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-fuchsia-500/20 bg-fuchsia-500/[0.035] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-fuchsia-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-layer-group text-fuchsia-400"></i>
-                                            v1.3 skfolio / Riskfolio-Lib / HRP-lite 統一比較
+                                            skfolio / Riskfolio-Lib / HRP-lite 統一比較
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
-                                            同時讀取 skfolio 與 Riskfolio-Lib sandbox output，並對照 v0.6 HRP-lite 與 v0.5 Component ES。此區塊只做風險診斷，不產生 BUY / SELL。
+                                            同時讀取 skfolio 與 Riskfolio-Lib sandbox output，並對照 HRP-lite 與 Component ES。此區塊只做風險診斷，不產生 BUY / SELL。
                                         </div>
                                     </div>
                                     <div class="text-[11px] text-gray-400">
@@ -2691,7 +2691,7 @@
                                         <div class="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3">
                                             <div class="text-sm font-bold text-white flex items-center gap-2 mb-2">
                                                 <i class="fas fa-triangle-exclamation text-amber-400"></i>
-                                                v1.3 使用限制
+                                                使用限制
                                             </div>
                                             <ul class="space-y-1 text-[11px] text-gray-400 leading-relaxed">
                                                 <li class="flex gap-2">
@@ -2714,13 +2714,13 @@
 
 
 
-                            <!-- v1.4 最佳化器穩健性檢查 -->
+                            <!-- 最佳化器穩健性檢查 -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-teal-500/20 bg-teal-500/[0.035] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-teal-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-wave-square text-teal-400"></i>
-                                            v1.4 最佳化器穩健性檢查
+                                            最佳化器穩健性檢查
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
                                             比較不同樣本視窗下 optimizer 權重是否穩定。此區塊回答「模型是不是對回看期間太敏感」，不是投資建議。
@@ -2857,7 +2857,7 @@
                                         <div class="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3">
                                             <div class="text-sm font-bold text-white flex items-center gap-2 mb-2">
                                                 <i class="fas fa-triangle-exclamation text-amber-400"></i>
-                                                v1.4 使用限制
+                                                使用限制
                                             </div>
                                             <ul class="space-y-1 text-[11px] text-gray-400 leading-relaxed">
                                                 <li v-for="item in (optimizerRobustnessOutput?.warnings || [])" :key="item" class="flex gap-2">
@@ -2872,13 +2872,13 @@
 
 
 
-                            <!-- v1.6 約束 + 既有交易緩衝整合 -->
+                            <!-- 約束 + 既有交易緩衝整合 -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.035] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-emerald-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-road-barrier text-emerald-400"></i>
-                                            v1.6 約束 + 既有交易緩衝沙盒
+                                            約束 + 既有交易緩衝沙盒
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
                                             直接沿用現有 交易緩衝 / 不交易區間，將 optimizer 目標權重轉成 HOLD / 加碼 / 減碼 / 待處理。這不是正式交易建議。
@@ -3042,7 +3042,7 @@
                                         <div class="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3">
                                             <div class="text-sm font-bold text-white flex items-center gap-2 mb-2">
                                                 <i class="fas fa-triangle-exclamation text-amber-400"></i>
-                                                v1.6 使用限制
+                                                使用限制
                                             </div>
                                             <ul class="space-y-1 text-[11px] text-gray-400 leading-relaxed">
                                                 <li class="flex gap-2">
@@ -3065,16 +3065,16 @@
 
 
 
-                            <!-- v1.6.1 約束政策層 -->
+                            <!-- 約束政策層 -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-lime-500/20 bg-lime-500/[0.035] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-lime-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-shield-check text-lime-400"></i>
-                                            v1.6.1 約束政策層
+                                            約束政策層
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
-                                            在 v1.6 的 Trade 緩衝後權重上檢查投組政策限制：單檔上限、台股上限、加密上限、黃金區間、BOXX 下限、主題 ETF 與高波動資產集中度。
+                                            在交易緩衝後權重上檢查投組政策限制：單檔上限、台股上限、加密上限、黃金區間、BOXX 下限、主題 ETF 與高波動資產集中度。
                                         </div>
                                     </div>
                                     <div class="text-[11px] text-gray-400">
@@ -3196,7 +3196,7 @@
                                             </div>
                                             <div class="p-3 text-[11px] text-gray-300 space-y-1">
                                                 <div v-if="!selectedOptimizerConstraintIssues.length" class="text-emerald-300">
-                                                    目前選定候選通過 v1.6.1 政策規則。
+                                                    目前選定候選通過政策規則。
                                                 </div>
                                                 <div v-for="issue in selectedOptimizerConstraintIssues" :key="issue.rule + ':' + issue.message" class="flex gap-2">
                                                     <span class="mt-0.5 px-1.5 py-0.5 rounded border text-[10px]"
@@ -3213,13 +3213,13 @@
 
 
 
-                            <!-- v1.7 最佳化器壓力測試 -->
+                            <!-- 最佳化器壓力測試 -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-rose-500/20 bg-rose-500/[0.035] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-rose-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-bolt text-rose-400"></i>
-                                            v1.7 最佳化權重壓力測試
+                                            最佳化權重壓力測試
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
                                             對 skfolio / Riskfolio / baseline 候選權重套用 確定性情境衝擊。這是壓力診斷，不是預測。
@@ -3362,7 +3362,7 @@
                                         <div class="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3">
                                             <div class="text-sm font-bold text-white flex items-center gap-2 mb-2">
                                                 <i class="fas fa-triangle-exclamation text-amber-400"></i>
-                                                v1.7 使用限制
+                                                使用限制
                                             </div>
                                             <ul class="space-y-1 text-[11px] text-gray-400 leading-relaxed">
                                                 <li v-for="item in (optimizerStressOutput?.warnings || [])" :key="item" class="flex gap-2">
@@ -3377,16 +3377,16 @@
 
 
 
-                            <!-- v1.8 最佳化解釋面板 -->
+                            <!-- 最佳化解釋面板 -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-sky-500/20 bg-sky-500/[0.035] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-sky-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-magnifying-glass-chart text-sky-400"></i>
-                                            v1.8 最佳化解釋面板
+                                            最佳化解釋面板
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
-                                            將 v1.3、v1.4、v1.6、v1.6.1、v1.7 的資訊合併，解釋每個 最佳化候選為什麼值得觀察、為什麼需要排除或重做。
+                                            整合沙盒、穩健性、約束與壓力測試資訊，解釋每個最佳化候選為什麼值得觀察、為什麼需要排除或重做。
                                         </div>
                                     </div>
                                     <div class="text-[11px] text-gray-400">
@@ -3398,7 +3398,7 @@
                                 <div class="p-4 space-y-4">
                                     <div v-if="!optimizerExplainabilityCandidates.length" class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-100 leading-relaxed">
                                         <i class="fas fa-hourglass-half mr-2"></i>
-                                        尚未取得完整 解釋資料。請確認 skfolio、Riskfolio、穩健性、壓力測試輸出 已部署，且 v1.3～v1.7 面板可讀取。
+                                        尚未取得完整 解釋資料。請確認 skfolio、Riskfolio、穩健性、壓力測試輸出 已部署，且相關診斷面板可讀取。
                                     </div>
 
                                     <template v-else>
@@ -3548,7 +3548,7 @@
                                         <div class="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3">
                                             <div class="text-sm font-bold text-white flex items-center gap-2 mb-2">
                                                 <i class="fas fa-triangle-exclamation text-amber-400"></i>
-                                                v1.8 使用限制
+                                                使用限制
                                             </div>
                                             <div class="text-[11px] text-gray-400 leading-relaxed">
                                                 解釋面板只解釋模型候選的風險、政策、壓力測試與 buffer 狀態；它不是正式再平衡建議，也沒有納入完整交易稅費、滑價、換匯成本與人工審核紀錄。
