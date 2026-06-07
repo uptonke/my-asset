@@ -2114,6 +2114,71 @@
                             </div>
 
 
+                            <!-- v4.8.2 Optimizer UI Consolidation Summary -->
+                            <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.035] overflow-hidden">
+                                <div class="px-4 py-3 border-b border-white/10 bg-emerald-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-diagram-project text-emerald-400"></i>
+                                            最佳化決策摘要
+                                        </div>
+                                        <div class="text-[11px] text-gray-400 mt-1">
+                                            主畫面只保留決策層資訊；v0.7～v1.8 依賴、沙盒、穩健性與壓力測試已收進下方「技術診斷與歷史沙盒」。
+                                        </div>
+                                    </div>
+                                    <div class="text-[11px] text-emerald-200 border border-emerald-500/20 bg-emerald-500/10 rounded-lg px-3 py-1.5">
+                                        僅觀察｜非交易指令｜需人工確認
+                                    </div>
+                                </div>
+
+                                <div class="p-4 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+                                    <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
+                                        <div class="quant-label text-emerald-300">治理結論</div>
+                                        <div class="quant-value text-white text-sm leading-tight">{{ zhText(modelGovernanceSummary?.verdict || 'watch_only_with_governance_warnings') }}</div>
+                                    </div>
+                                    <div class="quant-card border-amber-500/20 bg-amber-500/10">
+                                        <div class="quant-label text-amber-300">人工確認</div>
+                                        <div class="quant-value text-white">{{ humanApprovalSummary?.pending_review ?? humanApprovalSummary?.pending_review_count ?? humanApprovalTickets?.length ?? '-' }}</div>
+                                    </div>
+                                    <div class="quant-card border-violet-500/20 bg-violet-500/10">
+                                        <div class="quant-label text-violet-300">市場狀態</div>
+                                        <div class="quant-value text-white text-sm leading-tight">{{ zhText(regimeAwareRegime?.selected_regime || regimeAwareRegime?.regime || '尚未讀取') }}</div>
+                                    </div>
+                                    <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                        <div class="quant-label text-cyan-300">候選草案</div>
+                                        <div class="quant-value text-white">{{ regimeAwareDrafts?.length ?? '-' }}</div>
+                                    </div>
+                                    <div class="quant-card border-sky-500/20 bg-sky-500/10">
+                                        <div class="quant-label text-sky-300">審計事件</div>
+                                        <div class="quant-value text-white">{{ actionAuditSummary?.stored_event_count ?? actionAuditSummary?.event_count ?? actionAuditEvents?.length ?? '-' }}</div>
+                                    </div>
+                                    <div class="quant-card border-red-500/20 bg-red-500/10">
+                                        <div class="quant-label text-red-300">自動執行</div>
+                                        <div class="quant-value text-white text-lg">關閉</div>
+                                    </div>
+                                </div>
+
+                                <div class="px-4 pb-4 text-[11px] text-gray-400 leading-relaxed">
+                                    讀法：先看本摘要，再看 v2.4～v3.4 的決策層卡片。下方歷史沙盒只用於追溯模型證據鏈，不再作為日常主畫面。
+                                </div>
+                            </div>
+
+                            <details v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-slate-600/30 bg-slate-900/35 overflow-hidden group">
+                                <summary class="cursor-pointer select-none px-4 py-3 border-b border-white/10 bg-slate-800/70 flex flex-col md:flex-row md:items-center md:justify-between gap-2 list-none">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-box-archive text-slate-300"></i>
+                                            技術診斷與歷史沙盒｜v0.7～v1.8
+                                        </div>
+                                        <div class="text-[11px] text-gray-400 mt-1">
+                                            依賴檢查、skfolio / Riskfolio 沙盒、穩健性、約束、壓力測試與解釋面板已收合；需要追查模型來源時再展開。
+                                        </div>
+                                    </div>
+                                    <div class="text-[11px] text-slate-300">
+                                        點擊展開／收合
+                                    </div>
+                                </summary>
+                                <div class="p-4 space-y-4">
                             <!-- v0.7 最佳化器依賴檢查 -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-blue-500/20 bg-blue-500/[0.035] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-blue-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
@@ -3496,16 +3561,21 @@
 
 
 
+                            </div>
+                            </details>
+
+
+
                             <!-- v2.4 + v2.5 Human Approval & Audit Trail -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-amber-500/20 bg-amber-500/[0.035] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-amber-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-user-check text-amber-400"></i>
-                                            v4.8.3 機器預審閘門 ＋ v2.5 行動審計軌跡
+                                            v2.4 人工確認層 ＋ v2.5 行動審計軌跡
                                         </div>
                                         <div class="text-[11px] text-gray-400 mt-1">
-                                            機器預審只做風險、約束、換手率與樣本品質篩選；「進一步研究」不代表買入、不代表看多、不代表正式調倉。
+                                            所有候選都標示「需要人工確認」；本區只做決策支援與審計紀錄，不是自動交易系統。
                                         </div>
                                     </div>
                                     <div class="flex gap-2">
@@ -3526,16 +3596,16 @@
 
                                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3">
-                                            <div class="quant-label text-amber-300">待判斷草案</div>
+                                            <div class="quant-label text-amber-300">待人工確認</div>
                                             <div class="quant-value text-white">{{ humanApprovalSummary?.pending_review ?? 0 }}</div>
                                         </div>
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3">
-                                            <div class="quant-label text-emerald-300">進一步研究</div>
-                                            <div class="quant-value text-white">{{ machineReviewSummary?.research ?? 0 }}</div>
+                                            <div class="quant-label text-emerald-300">約束通過待審</div>
+                                            <div class="quant-value text-white">{{ humanApprovalSummary?.constraint_pass_review_required ?? 0 }}</div>
                                         </div>
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3">
-                                            <div class="quant-label text-red-300">預審警示／排除</div>
-                                            <div class="quant-value text-white">{{ machineReviewSummary?.alert_or_reject ?? 0 }}</div>
+                                            <div class="quant-label text-red-300">允許自動執行</div>
+                                            <div class="quant-value text-white">{{ humanApprovalSummary?.execution_permission_true ?? 0 }}</div>
                                         </div>
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3">
                                             <div class="quant-label text-sky-300">審計事件</div>
@@ -3549,14 +3619,14 @@
                                             安全邊界
                                         </div>
                                         <div class="text-[11px] text-gray-400 mt-1 leading-relaxed">
-                                            本區是機器預審，不是自動批准。程式碼只負責把草案分成「進一步研究／風險降低候選／僅供觀察／高換手率警示／軟性約束提醒／排除」。通過預審不代表買入、不代表目前利多、不代表正式調倉；自動執行權限必須維持 false。
+                                            本頁所有草案都必須人工確認；自動執行權限應維持 false。任何採納、拒絕、觀察，都應另外留下人工理由。這不是 買賣指令，不會自動交易。
                                         </div>
                                     </div>
 
                                     <div class="grid grid-cols-1 2xl:grid-cols-2 gap-4">
                                         <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                             <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
-                                                <div class="text-xs font-bold text-white">v4.8.3 機器預審票據</div>
+                                                <div class="text-xs font-bold text-white">v2.4 審核票據</div>
                                                 <div class="text-[10px] text-gray-500">最近 12 筆</div>
                                             </div>
                                             <div class="overflow-x-auto">
@@ -3565,25 +3635,28 @@
                                                         <tr>
                                                             <th class="text-left px-3 py-2">票據</th>
                                                             <th class="text-left px-3 py-2">來源</th>
-                                                            <th class="text-left px-3 py-2">預審分類</th>
+                                                            <th class="text-left px-3 py-2">人工狀態</th>
                                                             <th class="text-right px-3 py-2">換手率</th>
-                                                            <th class="text-left px-3 py-2">預審理由</th>
+                                                            <th class="text-left px-3 py-2">標示</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
                                                         <tr v-for="ticket in humanApprovalVisibleTickets" :key="ticket.approval_ticket_id" class="border-b border-white/5 hover:bg-white/[0.03]">
                                                             <td class="px-3 py-2 font-mono text-white max-w-[180px] truncate" :title="ticket.approval_ticket_id">{{ ticket.approval_ticket_id }}</td>
-                                                            <td class="px-3 py-2 text-gray-300 max-w-[180px] truncate" :title="ticket.source_draft_id">{{ zhText(ticket.source_model_id || ticket.source_type) }}</td>
+                                                            <td class="px-3 py-2 text-gray-300 max-w-[180px] truncate" :title="ticket.source_draft_id">{{ zhText(ticket.source_type) }}</td>
                                                             <td class="px-3 py-2">
-                                                                <span class="px-1.5 py-0.5 rounded border text-[10px]" :class="machineReviewBadgeClass(ticket)">
-                                                                    {{ machineReviewLabel(ticket) }}
+                                                                <span class="px-1.5 py-0.5 rounded border text-[10px]" :class="approvalBadgeClass(ticket.human_approval?.status)">
+                                                                    {{ zhText(ticket.human_approval?.status || 'pending_review') }}
                                                                 </span>
                                                             </td>
                                                             <td class="px-3 py-2 text-right text-gray-300">{{ ticket.turnover_vs_current_pct ?? '-' }}%</td>
-                                                            <td class="px-3 py-2 text-gray-400 max-w-[260px] truncate" :title="machineReviewReason(ticket)">{{ machineReviewReason(ticket) }}</td>
+                                                            <td class="px-3 py-2 text-amber-200">
+                                                                <span class="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-[10px]">需要人工確認</span>
+                                                                <span class="ml-1 px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-red-200 text-[10px]">非交易指令</span>
+                                                            </td>
                                                         </tr>
                                                         <tr v-if="!humanApprovalVisibleTickets.length">
-                                                            <td colspan="5" class="px-3 py-4 text-center text-gray-500">尚未讀到 v4.8.3 機器預審票據。</td>
+                                                            <td colspan="5" class="px-3 py-4 text-center text-gray-500">尚未讀到 v2.4 審核票據。</td>
                                                         </tr>
                                                     </tbody>
                                                 </table>
@@ -3602,7 +3675,7 @@
                                                             <th class="text-left px-3 py-2">事件</th>
                                                             <th class="text-left px-3 py-2">候選</th>
                                                             <th class="text-left px-3 py-2">模型狀態</th>
-                                                            <th class="text-left px-3 py-2">紀錄狀態</th>
+                                                            <th class="text-left px-3 py-2">人工狀態</th>
                                                             <th class="text-left px-3 py-2">原因</th>
                                                         </tr>
                                                     </thead>
@@ -5588,7 +5661,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=machine-review-ui-1"></script>
+<script src="assets/js/app.bundle.js?v=optimizer-ui-consolidation-1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
