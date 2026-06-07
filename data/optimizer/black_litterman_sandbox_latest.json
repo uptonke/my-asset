@@ -1,0 +1,259 @@
+{
+  "version": "v3.1",
+  "status": "OK",
+  "generated_at": "2026-06-07T07:25:46+00:00",
+  "mode": "bayesian_black_litterman_sandbox",
+  "safe_mode": true,
+  "safe_mode_note": "v3.1 Bayesian / Black-Litterman Sandbox 使用 rules-based view engine，避免主觀 views 任意輸入；此版本是 posterior tilt proxy，不是正式 Black-Litterman 交易模型，不產生 BUY / SELL 指令，不自動交易，不寫入 Supabase，不修改正式持倉或正式權重。",
+  "source_files": {
+    "regime_aware_optimizer": "data/optimizer/regime_aware_optimizer_latest.json",
+    "skfolio": "data/optimizer/skfolio_sandbox_latest.json"
+  },
+  "selected_regime": "risk_off_liquidity_pressure",
+  "view_engine": {
+    "status": "rules_based_stable",
+    "subjective_views_allowed": false,
+    "manual_view_input_allowed": false,
+    "view_source": "v3.0 regime policy + deterministic rulebook",
+    "reason": "避免 Black-Litterman views 變成任意主觀輸入；v3.1 只接受可重現的 regime-derived views。"
+  },
+  "bayesian_policy": {
+    "method": "posterior_tilt_proxy",
+    "prior": "current portfolio + optional top v3.0 regime draft",
+    "tau": "not_estimated_in_proxy_version",
+    "omega": "derived_from_rule_confidence_proxy",
+    "expected_return_model": "disabled",
+    "execution_permission_default": false,
+    "not_trade_order": true
+  },
+  "views": [
+    {
+      "view_id": "v3_1_cash_overweight",
+      "bucket": "cash",
+      "direction": "overweight",
+      "magnitude_pct": 2.5,
+      "confidence": 0.85,
+      "rationale": "Risk-off regime raises liquidity buffer.",
+      "source": "rules_based_regime_view_engine",
+      "risk_budget_reference_pct": 12.0
+    },
+    {
+      "view_id": "v3_1_crypto_underweight",
+      "bucket": "crypto",
+      "direction": "underweight",
+      "magnitude_pct": 2.0,
+      "confidence": 0.85,
+      "rationale": "Crypto tail risk is penalized under liquidity pressure.",
+      "source": "rules_based_regime_view_engine",
+      "risk_budget_reference_pct": 8.0
+    },
+    {
+      "view_id": "v3_1_us_tech_underweight",
+      "bucket": "us_tech",
+      "direction": "underweight",
+      "magnitude_pct": 1.0,
+      "confidence": 0.85,
+      "rationale": "High-duration tech is stress-sensitive.",
+      "source": "rules_based_regime_view_engine",
+      "risk_budget_reference_pct": 18.0
+    },
+    {
+      "view_id": "v3_1_gold_overweight",
+      "bucket": "gold",
+      "direction": "overweight",
+      "magnitude_pct": 0.8,
+      "confidence": 0.85,
+      "rationale": "Small hedge allocation; not treated as guaranteed hedge.",
+      "source": "rules_based_regime_view_engine",
+      "risk_budget_reference_pct": 5.0
+    }
+  ],
+  "summary": {
+    "view_count": 4,
+    "posterior_candidate_count": 2,
+    "execution_permission_true": 0
+  },
+  "posterior_candidates": [
+    {
+      "candidate_id": "v3_1_current_prior_posterior_tilt",
+      "prior_source": "current_weight",
+      "posterior_method": "rules_based_bl_tilt_proxy",
+      "view_count": 4,
+      "turnover_vs_prior_pct": 1.874,
+      "prior_exposure": {
+        "cash": 11.668,
+        "gold": 0.852,
+        "crypto": 11.781,
+        "taiwan_tech": 10.944,
+        "us_tech": 10.551,
+        "theme_etf": 16.731,
+        "other": 37.472
+      },
+      "posterior_exposure": {
+        "cash": 13.304,
+        "gold": 1.09,
+        "crypto": 11.186,
+        "taiwan_tech": 10.944,
+        "us_tech": 9.51,
+        "theme_etf": 16.731,
+        "other": 37.234
+      },
+      "top_posterior_adjustments": [
+        {
+          "ticker": "BOXX",
+          "prior_weight_pct": 11.668,
+          "posterior_weight_pct": 13.304,
+          "delta_pct": 1.636,
+          "direction": "UP"
+        },
+        {
+          "ticker": "QQQ",
+          "prior_weight_pct": 10.551,
+          "posterior_weight_pct": 9.51,
+          "delta_pct": -1.041,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "BTC-USD",
+          "prior_weight_pct": 8.042,
+          "posterior_weight_pct": 7.636,
+          "delta_pct": -0.406,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "GLDM",
+          "prior_weight_pct": 0.852,
+          "posterior_weight_pct": 1.09,
+          "delta_pct": 0.238,
+          "direction": "UP"
+        },
+        {
+          "ticker": "VOO",
+          "prior_weight_pct": 10.146,
+          "posterior_weight_pct": 9.908,
+          "delta_pct": -0.238,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "ETH-USD",
+          "prior_weight_pct": 3.739,
+          "posterior_weight_pct": 3.55,
+          "delta_pct": -0.189,
+          "direction": "DOWN"
+        }
+      ],
+      "posterior_weights_pct": {
+        "00981A": 9.45,
+        "2330": 1.494,
+        "AVUV": 8.956,
+        "BOXX": 13.304,
+        "BTC-USD": 7.636,
+        "ETH-USD": 3.55,
+        "GLDM": 1.09,
+        "GRID": 3.742,
+        "IFRA": 5.808,
+        "PICK": 4.314,
+        "QQQ": 9.51,
+        "SRVR": 2.867,
+        "USMV": 6.679,
+        "VEA": 8.281,
+        "VNM": 3.41,
+        "VOO": 9.908
+      },
+      "execution_permission": false,
+      "not_trade_order": true,
+      "requires_manual_approval": true,
+      "model_status": "watch_only_bl_proxy_requires_review"
+    },
+    {
+      "candidate_id": "v3_1_v3_0_v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX_posterior_tilt",
+      "prior_source": "v3_0_v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX",
+      "posterior_method": "rules_based_bl_tilt_proxy_on_regime_draft",
+      "view_count": 4,
+      "turnover_vs_prior_pct": 1.071,
+      "turnover_vs_current_pct": 6.852,
+      "prior_exposure": {
+        "cash": 15.449,
+        "gold": 2.852,
+        "crypto": 8.0,
+        "taiwan_tech": 10.944,
+        "us_tech": 9.551,
+        "theme_etf": 16.731,
+        "other": 36.472
+      },
+      "posterior_exposure": {
+        "cash": 16.384,
+        "gold": 2.988,
+        "crypto": 7.66,
+        "taiwan_tech": 10.808,
+        "us_tech": 8.956,
+        "theme_etf": 16.731,
+        "other": 36.472
+      },
+      "top_posterior_adjustments": [
+        {
+          "ticker": "BOXX",
+          "prior_weight_pct": 15.449,
+          "posterior_weight_pct": 16.384,
+          "delta_pct": 0.935,
+          "direction": "UP"
+        },
+        {
+          "ticker": "QQQ",
+          "prior_weight_pct": 9.551,
+          "posterior_weight_pct": 8.956,
+          "delta_pct": -0.595,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "BTC-USD",
+          "prior_weight_pct": 8.0,
+          "posterior_weight_pct": 7.66,
+          "delta_pct": -0.34,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "00981A",
+          "prior_weight_pct": 9.45,
+          "posterior_weight_pct": 9.314,
+          "delta_pct": -0.136,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "GLDM",
+          "prior_weight_pct": 2.852,
+          "posterior_weight_pct": 2.988,
+          "delta_pct": 0.136,
+          "direction": "UP"
+        }
+      ],
+      "posterior_weights_pct": {
+        "00981A": 9.314,
+        "2330": 1.494,
+        "AVUV": 8.956,
+        "BOXX": 16.384,
+        "BTC-USD": 7.66,
+        "ETH-USD": 0.0,
+        "GLDM": 2.988,
+        "GRID": 3.742,
+        "IFRA": 5.808,
+        "PICK": 4.314,
+        "QQQ": 8.956,
+        "SRVR": 2.867,
+        "USMV": 6.679,
+        "VEA": 8.281,
+        "VNM": 3.41,
+        "VOO": 9.146
+      },
+      "execution_permission": false,
+      "not_trade_order": true,
+      "requires_manual_approval": true,
+      "model_status": "watch_only_bl_proxy_requires_review"
+    }
+  ],
+  "warnings": [
+    "This is a Black-Litterman-style sandbox/proxy, not a production BL optimizer.",
+    "Expected return model is disabled; no max-Sharpe / alpha model is introduced.",
+    "All posterior candidates require manual review and are not trade orders."
+  ]
+}

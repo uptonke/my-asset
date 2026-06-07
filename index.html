@@ -3634,6 +3634,153 @@
                                 </div>
                             </div>
 
+                            <!-- v3.0 + v3.1 Regime-Aware / Bayesian Sandbox -->
+                            <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-violet-500/20 bg-violet-500/[0.035] overflow-hidden">
+                                <div class="px-4 py-3 border-b border-white/10 bg-violet-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-chess-board text-violet-400"></i>
+                                            v3.0 Regime-Aware Optimizer ＋ v3.1 Bayesian / Black-Litterman Sandbox
+                                        </div>
+                                        <div class="text-[11px] text-gray-400 mt-1">
+                                            根據 regime 切換 covariance policy、constraint、risk budget；Black-Litterman 只使用規則化 view engine，避免主觀 views。
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button @click="loadRegimeAwareOptimizer" class="px-3 py-1.5 rounded-lg bg-violet-500/20 border border-violet-500/30 text-violet-100 text-xs hover:bg-violet-500/30">
+                                            重新讀取 v3.0
+                                        </button>
+                                        <button @click="loadBlackLittermanSandbox" class="px-3 py-1.5 rounded-lg bg-fuchsia-500/20 border border-fuchsia-500/30 text-fuchsia-100 text-xs hover:bg-fuchsia-500/30">
+                                            重新讀取 v3.1
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="p-4 space-y-4">
+                                    <div v-if="regimeAwareError || blackLittermanError" class="rounded-xl border border-red-500/20 bg-red-500/[0.05] p-3 text-xs text-red-200 space-y-1">
+                                        <div v-if="regimeAwareError">{{ regimeAwareError }}</div>
+                                        <div v-if="blackLittermanError">{{ blackLittermanError }}</div>
+                                    </div>
+
+                                    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                        <div class="rounded-xl border border-white/10 bg-black/20 p-3 md:col-span-2">
+                                            <div class="quant-label text-violet-300">目前 Regime</div>
+                                            <div class="quant-value text-white text-base">{{ regimeAwareRegime?.selected_regime ?? '-' }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">{{ regimeAwareRegime?.selected_regime_label ?? '' }}</div>
+                                        </div>
+                                        <div class="rounded-xl border border-white/10 bg-black/20 p-3">
+                                            <div class="quant-label text-violet-300">信心</div>
+                                            <div class="quant-value text-white">{{ regimeAwareRegime?.confidence ?? '-' }}</div>
+                                        </div>
+                                        <div class="rounded-xl border border-white/10 bg-black/20 p-3">
+                                            <div class="quant-label text-fuchsia-300">BL Views</div>
+                                            <div class="quant-value text-white">{{ blackLittermanSummary?.view_count ?? 0 }}</div>
+                                        </div>
+                                        <div class="rounded-xl border border-white/10 bg-black/20 p-3">
+                                            <div class="quant-label text-fuchsia-300">Posterior 草案</div>
+                                            <div class="quant-value text-white">{{ blackLittermanSummary?.posterior_candidate_count ?? 0 }}</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-3">
+                                        <div class="text-xs font-bold text-violet-200 flex items-center gap-2">
+                                            <i class="fas fa-code-branch text-violet-400"></i>
+                                            Covariance / Constraint / Risk Budget 切換口徑
+                                        </div>
+                                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 text-[11px]">
+                                            <div class="rounded-lg border border-white/10 bg-black/20 p-3">
+                                                <div class="text-gray-500 mb-1">Covariance policy</div>
+                                                <div class="text-white font-mono break-all">{{ regimeAwareCovariancePolicy?.mode ?? '-' }}</div>
+                                            </div>
+                                            <div class="rounded-lg border border-white/10 bg-black/20 p-3">
+                                                <div class="text-gray-500 mb-1">Shrinkage proxy</div>
+                                                <div class="text-white font-mono">{{ regimeAwareCovariancePolicy?.shrinkage_intensity_proxy ?? '-' }}</div>
+                                            </div>
+                                            <div class="rounded-lg border border-white/10 bg-black/20 p-3">
+                                                <div class="text-gray-500 mb-1">View engine</div>
+                                                <div class="text-white font-mono">{{ blackLittermanViewEngine?.status ?? '-' }}</div>
+                                            </div>
+                                        </div>
+                                        <div class="text-[11px] text-gray-400 mt-3 leading-relaxed">
+                                            {{ regimeAwareCovariancePolicy?.note ?? '尚無 covariance policy 說明。' }} v3.1 禁止任意手動 views；目前只接受 v3.0 regime policy 轉出的 deterministic views。
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 2xl:grid-cols-2 gap-4">
+                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
+                                                <div class="text-xs font-bold text-white">v3.0 Regime-aware 草案</div>
+                                                <div class="text-[10px] text-gray-500">latest 10</div>
+                                            </div>
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full text-[11px]">
+                                                    <thead class="text-gray-500 border-b border-white/10">
+                                                        <tr>
+                                                            <th class="text-left px-3 py-2">草案</th>
+                                                            <th class="text-left px-3 py-2">狀態</th>
+                                                            <th class="text-right px-3 py-2">Turnover</th>
+                                                            <th class="text-right px-3 py-2">Cash</th>
+                                                            <th class="text-right px-3 py-2">Crypto</th>
+                                                            <th class="text-right px-3 py-2">Taiwan Tech</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="draft in regimeAwareVisibleDrafts" :key="draft.draft_id" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                            <td class="px-3 py-2 font-mono text-white max-w-[220px] truncate" :title="draft.draft_id">{{ draft.draft_id }}</td>
+                                                            <td class="px-3 py-2 text-gray-300 max-w-[180px] truncate" :title="draft.model_status">{{ draft.model_status }}</td>
+                                                            <td class="px-3 py-2 text-right text-gray-300">{{ draft.turnover_vs_current_pct ?? '-' }}%</td>
+                                                            <td class="px-3 py-2 text-right text-emerald-300">{{ draft.exposure?.cash_pct ?? '-' }}%</td>
+                                                            <td class="px-3 py-2 text-right text-orange-300">{{ draft.exposure?.crypto_pct ?? '-' }}%</td>
+                                                            <td class="px-3 py-2 text-right text-sky-300">{{ draft.exposure?.taiwan_tech_pct ?? '-' }}%</td>
+                                                        </tr>
+                                                        <tr v-if="!regimeAwareVisibleDrafts.length">
+                                                            <td colspan="6" class="px-3 py-4 text-center text-gray-500">尚未讀到 v3.0 regime-aware drafts。</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
+                                                <div class="text-xs font-bold text-white">v3.1 Black-Litterman Views</div>
+                                                <div class="text-[10px] text-gray-500">rules-based only</div>
+                                            </div>
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full text-[11px]">
+                                                    <thead class="text-gray-500 border-b border-white/10">
+                                                        <tr>
+                                                            <th class="text-left px-3 py-2">Bucket</th>
+                                                            <th class="text-left px-3 py-2">方向</th>
+                                                            <th class="text-right px-3 py-2">Magnitude</th>
+                                                            <th class="text-right px-3 py-2">Confidence</th>
+                                                            <th class="text-left px-3 py-2">理由</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="view in blackLittermanViews" :key="view.view_id" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                            <td class="px-3 py-2 font-mono text-white">{{ view.bucket }}</td>
+                                                            <td class="px-3 py-2 text-fuchsia-200">{{ view.direction }}</td>
+                                                            <td class="px-3 py-2 text-right text-gray-300">{{ view.magnitude_pct ?? '-' }}pp</td>
+                                                            <td class="px-3 py-2 text-right text-gray-300">{{ view.confidence ?? '-' }}</td>
+                                                            <td class="px-3 py-2 text-gray-400 max-w-[300px] truncate" :title="view.rationale">{{ view.rationale }}</td>
+                                                        </tr>
+                                                        <tr v-if="!blackLittermanViews.length">
+                                                            <td colspan="5" class="px-3 py-4 text-center text-gray-500">尚未讀到 v3.1 views。</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-xl border border-red-500/20 bg-red-500/[0.04] p-3 text-[11px] text-gray-400 leading-relaxed">
+                                        <span class="font-bold text-red-200">安全邊界：</span>
+                                        v3.0 / v3.1 全部輸出仍是 watch-only sandbox。Black-Litterman 沒有啟用 expected return alpha model，也沒有任意手動 views；任何草案都需要人工確認，不是交易指令。
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Risk contribution + model assumptions -->
                             <div v-show="analyticsViewMode === 'risk'" class="grid grid-cols-1 xl:grid-cols-3 gap-4">
                                 <div class="xl:col-span-2 rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
@@ -5293,7 +5440,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=11.41-v24-v25-governance"></script>
+<script src="assets/js/app.bundle.js?v=11.42-v30-v31-regime-bl"></script>
 <script src="assets/js/quant-main-display.js?v=market-intel-anchor-fix"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>

@@ -4045,6 +4045,67 @@ chartCML.data.datasets = [
     return Array.isArray(rows) ? rows.slice(0, 12) : [];
 });
 
+       const regimeAwareOptimizer = ref(null);
+       const regimeAwareError = ref('');
+
+       async function loadRegimeAwareOptimizer() {
+    try {
+        regimeAwareError.value = '';
+        const response = await fetch(`data/optimizer/regime_aware_optimizer_latest.json?v=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) {
+            regimeAwareOptimizer.value = null;
+            regimeAwareError.value = `尚未讀到 v3.0 Regime-Aware Optimizer (${response.status})`;
+            return;
+        }
+        const data = await response.json();
+        regimeAwareOptimizer.value = data && typeof data === 'object' ? data : null;
+    } catch (err) {
+        regimeAwareOptimizer.value = null;
+        regimeAwareError.value = err?.message || String(err);
+    }
+}
+
+       const regimeAwareSummary = computed(() => regimeAwareOptimizer.value?.summary || {});
+       const regimeAwareRegime = computed(() => regimeAwareOptimizer.value?.regime || {});
+       const regimeAwareActivePolicy = computed(() => regimeAwareOptimizer.value?.active_policy || {});
+       const regimeAwareCovariancePolicy = computed(() => regimeAwareActivePolicy.value?.covariance_policy || {});
+       const regimeAwareDrafts = computed(() => {
+    const rows = regimeAwareOptimizer.value?.regime_aware_drafts || [];
+    return Array.isArray(rows) ? rows : [];
+});
+       const regimeAwareVisibleDrafts = computed(() => regimeAwareDrafts.value.slice(0, 10));
+
+       const blackLittermanSandbox = ref(null);
+       const blackLittermanError = ref('');
+
+       async function loadBlackLittermanSandbox() {
+    try {
+        blackLittermanError.value = '';
+        const response = await fetch(`data/optimizer/black_litterman_sandbox_latest.json?v=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) {
+            blackLittermanSandbox.value = null;
+            blackLittermanError.value = `尚未讀到 v3.1 Black-Litterman Sandbox (${response.status})`;
+            return;
+        }
+        const data = await response.json();
+        blackLittermanSandbox.value = data && typeof data === 'object' ? data : null;
+    } catch (err) {
+        blackLittermanSandbox.value = null;
+        blackLittermanError.value = err?.message || String(err);
+    }
+}
+
+       const blackLittermanSummary = computed(() => blackLittermanSandbox.value?.summary || {});
+       const blackLittermanViewEngine = computed(() => blackLittermanSandbox.value?.view_engine || {});
+       const blackLittermanViews = computed(() => {
+    const rows = blackLittermanSandbox.value?.views || [];
+    return Array.isArray(rows) ? rows : [];
+});
+       const blackLittermanPosteriorCandidates = computed(() => {
+    const rows = blackLittermanSandbox.value?.posterior_candidates || [];
+    return Array.isArray(rows) ? rows : [];
+});
+
        function approvalBadgeClass(status) {
     const s = String(status || '').toLowerCase();
     if (s.includes('approved')) return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300';
@@ -4064,6 +4125,8 @@ chartCML.data.datasets = [
     loadOptimizerStressOutput();
     loadHumanApprovalLayer();
     loadActionAuditTrail();
+    loadRegimeAwareOptimizer();
+    loadBlackLittermanSandbox();
 
     window.addEventListener('resize', () => {
         resizeAllCharts();
@@ -4596,7 +4659,7 @@ chartCML.data.datasets = [
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr, navOverlayMode, navOverlayOptions, setNavOverlayMode, navMaConfig, riskRegimeStrip, navTrendSummary,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
-            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerConstraintRules, optimizerConstraintPolicySummaries, selectedOptimizerConstraintPolicy, selectedOptimizerConstraintRows, selectedOptimizerConstraintIssues, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, optimizerStressOutput, optimizerStressError, optimizerStressScenarios, optimizerStressRows, optimizerStressWorstRows, optimizerStressBestWorst, optimizerStressMostFragile, selectedStressScenarioKey, selectedStressScenario, selectedStressScenarioRows, setStressScenario, loadOptimizerStressOutput, humanApprovalLayer, humanApprovalLayerError, humanApprovalTickets, humanApprovalSummary, humanApprovalVisibleTickets, loadHumanApprovalLayer, actionAuditTrail, actionAuditTrailError, actionAuditSummary, actionAuditEvents, loadActionAuditTrail, approvalBadgeClass, selectedOptimizerExplainKey, optimizerExplainabilityCandidates, selectedOptimizerExplainability, setOptimizerExplainCandidate, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
+            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerConstraintRules, optimizerConstraintPolicySummaries, selectedOptimizerConstraintPolicy, selectedOptimizerConstraintRows, selectedOptimizerConstraintIssues, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, optimizerStressOutput, optimizerStressError, optimizerStressScenarios, optimizerStressRows, optimizerStressWorstRows, optimizerStressBestWorst, optimizerStressMostFragile, selectedStressScenarioKey, selectedStressScenario, selectedStressScenarioRows, setStressScenario, loadOptimizerStressOutput, humanApprovalLayer, humanApprovalLayerError, humanApprovalTickets, humanApprovalSummary, humanApprovalVisibleTickets, loadHumanApprovalLayer, actionAuditTrail, actionAuditTrailError, actionAuditSummary, actionAuditEvents, loadActionAuditTrail, regimeAwareOptimizer, regimeAwareError, regimeAwareSummary, regimeAwareRegime, regimeAwareActivePolicy, regimeAwareCovariancePolicy, regimeAwareDrafts, regimeAwareVisibleDrafts, loadRegimeAwareOptimizer, blackLittermanSandbox, blackLittermanError, blackLittermanSummary, blackLittermanViewEngine, blackLittermanViews, blackLittermanPosteriorCandidates, loadBlackLittermanSandbox, approvalBadgeClass, selectedOptimizerExplainKey, optimizerExplainabilityCandidates, selectedOptimizerExplainability, setOptimizerExplainCandidate, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
         };
     }
 }).mount('#app');
