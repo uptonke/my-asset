@@ -1,0 +1,72 @@
+name: Repo Architecture Audit
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repo-architecture-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Run v4.0 repo architecture audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/audit_repo_architecture.py
+
+      - name: Check v4.2 frontend build source/runtime sync
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build_frontend_bundle.py --check
+          node --check assets/js/app.bundle.js
+          node --check assets/js/quant-main-display.js
+          node --check assets/js/terminal-ui-polish.js
+          node --check assets/js/terminal-ia-phase2.js
+
+      - name: Upload repo architecture artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: repo-architecture-audit
+          if-no-files-found: error
+          path: |
+            data/repo_architecture/*.json
+            data/repo_architecture/*.md
+            docs/FRONTEND_SOURCE_OF_TRUTH.md
+            split-manifest.json
+
+      - name: Commit repo architecture output
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add data/repo_architecture/ docs/FRONTEND_SOURCE_OF_TRUTH.md split-manifest.json package.json scripts/audit_repo_architecture.py scripts/build_frontend_bundle.py .github/workflows/repo-architecture-audit.yml assets/js/src/app.bundle.source.js || true
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Run repo architecture audit v4.0-v4.2"
+            git push
+          fi
