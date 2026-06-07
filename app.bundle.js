@@ -279,6 +279,7 @@ ${JSON.stringify(payload, null, 2)}
         }
 
         const currentTab = ref('summary');
+        const analyticsViewMode = ref('risk');
         const isAiExpanded = ref(false); 
         const isHistoryExpanded = ref(false);
         
@@ -676,12 +677,30 @@ ${JSON.stringify(payload, null, 2)}
                         ? rawContagionScore.toFixed(2)
                         : rawContagionScore;
 
+                const betaRaw = meta.beta;
+                const stdRaw = meta.std;
+                const betaValue = (
+                    betaRaw !== null &&
+                    betaRaw !== undefined &&
+                    betaRaw !== '' &&
+                    Number.isFinite(Number(betaRaw))
+                ) ? Number(betaRaw) : 1.0;
+                const stdValue = (
+                    stdRaw !== null &&
+                    stdRaw !== undefined &&
+                    stdRaw !== '' &&
+                    Number.isFinite(Number(stdRaw))
+                ) ? Number(stdRaw) : 20.0;
+
                 groups[h.category].items.push({
                     ...h,
                     isUSD,
                     riskLevel: meta.risk || 'High',
-                    beta: meta.beta || 1.0,
-                    stdDev: meta.std || 20.0,
+                    // Preserve valid zero values, but do not turn null/blank into zero.
+                    beta: betaValue,
+                    stdDev: stdValue,
+                    betaBenchmark: meta.beta_benchmark || meta.benchmark || '',
+                    betaMethod: meta.beta_method || '',
                     liquidityScore,
                     contagionScore,
                     techSignals: {
@@ -1261,6 +1280,883 @@ const psr_hist = computePSR({
     const meta = stockMeta.value?.__synthetic_portfolio_risk__;
     return meta && typeof meta === 'object' ? meta : null;
 });
+
+       const optimizerDependencyStatus = computed(() => {
+    const meta = stockMeta.value?.__optimizer_dependency_status__;
+    return meta && typeof meta === 'object' ? meta : null;
+});
+
+       const optimizerDependencyPackages = computed(() => {
+    const packages = optimizerDependencyStatus.value?.packages || {};
+    return Object.keys(packages).map((key) => ({ key, ...packages[key] }));
+});
+
+       const optimizerSandboxOutput = ref(null);
+       const optimizerSandboxError = ref('');
+
+       async function loadOptimizerSandboxOutput() {
+    try {
+        optimizerSandboxError.value = '';
+        const response = await fetch(`data/optimizer/skfolio_sandbox_latest.json?v=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) {
+            optimizerSandboxOutput.value = null;
+            optimizerSandboxError.value = `尚未讀到 skfolio sandbox output (${response.status})`;
+            return;
+        }
+        const data = await response.json();
+        optimizerSandboxOutput.value = data && typeof data === 'object' ? data : null;
+    } catch (err) {
+        optimizerSandboxOutput.value = null;
+        optimizerSandboxError.value = err?.message || String(err);
+    }
+}
+
+       const optimizerSandboxPortfolios = computed(() => {
+    const portfolios = optimizerSandboxOutput.value?.portfolios || {};
+    return Object.keys(portfolios).map((key) => {
+        const p = portfolios[key] || {};
+        const m = p.metrics || {};
+        return {
+            key,
+            label: key,
+            status: p.status || 'N/A',
+            annual_vol_pct: m.annual_vol_pct ?? null,
+            var95_pct: m.var95_pct ?? null,
+            es95_pct: m.es95_pct ?? null,
+            max_drawdown_pct: m.max_drawdown_pct ?? null,
+            sharpe: m.sharpe ?? null,
+            turnover_vs_current_pct: p.turnover_vs_current_pct ?? null,
+            weights: Array.isArray(p.weights) ? p.weights : [],
+            method: p.method || {}
+        };
+    });
+});
+
+       const optimizerSandboxBestByES = computed(() => {
+    return optimizerSandboxPortfolios.value
+        .filter((p) => p.status === 'OK' && Number.isFinite(Number(p.es95_pct)))
+        .slice()
+        .sort((a, b) => Number(a.es95_pct) - Number(b.es95_pct))[0] || null;
+});
+
+       const optimizerSandboxSkfolioWeights = computed(() => {
+    const p = optimizerSandboxOutput.value?.portfolios?.skfolio_min_variance;
+    return Array.isArray(p?.weights) ? p.weights : [];
+});
+
+       const optimizerSandboxCvarWeights = computed(() => {
+    const p = optimizerSandboxOutput.value?.portfolios?.skfolio_cvar_minimize;
+    return Array.isArray(p?.weights) ? p.weights : [];
+});
+
+       const optimizerIntegratedComparison = computed(() => {
+    const current = optimizerSandboxOutput.value?.portfolios?.current_weight?.metrics || {};
+    const hrp = syntheticRiskMeta.value?.risk_budgeting || {};
+    const componentEsRows = syntheticRiskMeta.value?.component_tail_risk?.var_es_95?.rows || [];
+    const topTail = Array.isArray(componentEsRows) && componentEsRows.length ? componentEsRows[0] : null;
+
+    return optimizerSandboxPortfolios.value.map((p) => {
+        const volDelta = Number.isFinite(Number(p.annual_vol_pct)) && Number.isFinite(Number(current.annual_vol_pct))
+            ? Number(p.annual_vol_pct) - Number(current.annual_vol_pct)
+            : null;
+        const esDelta = Number.isFinite(Number(p.es95_pct)) && Number.isFinite(Number(current.es95_pct))
+            ? Number(p.es95_pct) - Number(current.es95_pct)
+            : null;
+        const mddDelta = Number.isFinite(Number(p.max_drawdown_pct)) && Number.isFinite(Number(current.max_drawdown_pct))
+            ? Number(p.max_drawdown_pct) - Number(current.max_drawdown_pct)
+            : null;
+        return {
+            ...p,
+            vol_delta_vs_current_pct: volDelta === null ? null : Number(volDelta.toFixed(2)),
+            es_delta_vs_current_pct: esDelta === null ? null : Number(esDelta.toFixed(3)),
+            mdd_delta_vs_current_pct: mddDelta === null ? null : Number(mddDelta.toFixed(2)),
+            hrp_lite_vol_pct: hrp.hrp_lite_portfolio_ewma_vol_pct ?? null,
+            top_tail_ticker: topTail?.ticker ?? null,
+            top_tail_es_share_pct: topTail?.component_es_share_pct ?? null
+        };
+    });
+});
+
+       const riskfolioSandboxOutput = ref(null);
+       const riskfolioSandboxError = ref('');
+
+       async function loadRiskfolioSandboxOutput() {
+    try {
+        riskfolioSandboxError.value = '';
+        const response = await fetch(`data/optimizer/riskfolio_sandbox_latest.json?v=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) {
+            riskfolioSandboxOutput.value = null;
+            riskfolioSandboxError.value = `尚未讀到 Riskfolio sandbox output (${response.status})`;
+            return;
+        }
+        const data = await response.json();
+        riskfolioSandboxOutput.value = data && typeof data === 'object' ? data : null;
+    } catch (err) {
+        riskfolioSandboxOutput.value = null;
+        riskfolioSandboxError.value = err?.message || String(err);
+    }
+}
+
+       const riskfolioSandboxPortfolios = computed(() => {
+    const portfolios = riskfolioSandboxOutput.value?.portfolios || {};
+    return Object.keys(portfolios).map((key) => {
+        const p = portfolios[key] || {};
+        const m = p.metrics || {};
+        return {
+            key,
+            label: key,
+            source: key.startsWith('riskfolio_') ? 'Riskfolio-Lib' : 'Baseline',
+            status: p.status || 'N/A',
+            annual_vol_pct: m.annual_vol_pct ?? null,
+            var95_pct: m.var95_pct ?? null,
+            es95_pct: m.es95_pct ?? null,
+            max_drawdown_pct: m.max_drawdown_pct ?? null,
+            sharpe: m.sharpe ?? null,
+            turnover_vs_current_pct: p.turnover_vs_current_pct ?? null,
+            weights: Array.isArray(p.weights) ? p.weights : [],
+            method: p.method || {}
+        };
+    });
+});
+
+       function normalizeOptimizerRow(p, source, currentMetrics) {
+    const volDelta = Number.isFinite(Number(p.annual_vol_pct)) && Number.isFinite(Number(currentMetrics.annual_vol_pct))
+        ? Number(p.annual_vol_pct) - Number(currentMetrics.annual_vol_pct)
+        : null;
+    const esDelta = Number.isFinite(Number(p.es95_pct)) && Number.isFinite(Number(currentMetrics.es95_pct))
+        ? Number(p.es95_pct) - Number(currentMetrics.es95_pct)
+        : null;
+    const mddDelta = Number.isFinite(Number(p.max_drawdown_pct)) && Number.isFinite(Number(currentMetrics.max_drawdown_pct))
+        ? Number(p.max_drawdown_pct) - Number(currentMetrics.max_drawdown_pct)
+        : null;
+
+    const turnoverNum = Number(p.turnover_vs_current_pct);
+    let verdict = '觀察';
+    if (p.status !== 'OK') {
+        verdict = '失敗';
+    } else if (Number.isFinite(turnoverNum) && turnoverNum >= 80) {
+        verdict = '高換手';
+    } else if (esDelta !== null && esDelta < 0 && volDelta !== null && volDelta < 0) {
+        verdict = '風險降低';
+    } else if (esDelta !== null && esDelta < 0) {
+        verdict = '尾部改善';
+    } else if (esDelta !== null && esDelta > 0) {
+        verdict = '尾部變差';
+    }
+
+    return {
+        ...p,
+        source,
+        vol_delta_vs_current_pct: volDelta === null ? null : Number(volDelta.toFixed(2)),
+        es_delta_vs_current_pct: esDelta === null ? null : Number(esDelta.toFixed(3)),
+        mdd_delta_vs_current_pct: mddDelta === null ? null : Number(mddDelta.toFixed(2)),
+        verdict
+    };
+}
+
+       const unifiedOptimizerComparison = computed(() => {
+    const skfolioRows = optimizerSandboxPortfolios.value || [];
+    const riskfolioRows = riskfolioSandboxPortfolios.value || [];
+    const currentMetrics =
+        optimizerSandboxOutput.value?.portfolios?.current_weight?.metrics ||
+        riskfolioSandboxOutput.value?.portfolios?.current_weight?.metrics ||
+        {};
+
+    const keepSkfolio = new Set([
+        'current_weight',
+        'inverse_vol_baseline',
+        'scipy_min_variance_fallback',
+        'skfolio_min_variance',
+        'skfolio_cvar_minimize'
+    ]);
+    const keepRiskfolio = new Set([
+        'riskfolio_min_variance',
+        'riskfolio_cvar_minimize',
+        'riskfolio_risk_parity_mv',
+        'riskfolio_hrp_mv'
+    ]);
+
+    const rows = [];
+
+    skfolioRows.forEach((p) => {
+        if (keepSkfolio.has(p.key)) {
+            rows.push(normalizeOptimizerRow(p, p.key.startsWith('skfolio_') ? 'skfolio' : 'baseline', currentMetrics));
+        }
+    });
+
+    riskfolioRows.forEach((p) => {
+        if (keepRiskfolio.has(p.key)) {
+            rows.push(normalizeOptimizerRow(p, 'Riskfolio-Lib', currentMetrics));
+        }
+    });
+
+    const rb = syntheticRiskMeta.value?.risk_budgeting || {};
+    if (rb && rb.status === 'OK') {
+        rows.push({
+            key: 'hrp_lite_v06',
+            label: 'hrp_lite_v06',
+            source: 'v0.6 internal',
+            status: 'OK',
+            annual_vol_pct: rb.hrp_lite_portfolio_ewma_vol_pct ?? null,
+            var95_pct: null,
+            es95_pct: null,
+            max_drawdown_pct: null,
+            sharpe: null,
+            turnover_vs_current_pct: null,
+            vol_delta_vs_current_pct: null,
+            es_delta_vs_current_pct: null,
+            mdd_delta_vs_current_pct: null,
+            verdict: '內建基準',
+            weights: Array.isArray(rb.rows) ? rb.rows : []
+        });
+    }
+
+    return rows;
+});
+
+       const unifiedOptimizerBestByES = computed(() => {
+    return unifiedOptimizerComparison.value
+        .filter((p) => p.status === 'OK' && Number.isFinite(Number(p.es95_pct)))
+        .slice()
+        .sort((a, b) => Number(a.es95_pct) - Number(b.es95_pct))[0] || null;
+});
+
+       const riskfolioMinVarWeights = computed(() => {
+    const p = riskfolioSandboxOutput.value?.portfolios?.riskfolio_min_variance;
+    return Array.isArray(p?.weights) ? p.weights : [];
+});
+
+       const riskfolioCvarWeights = computed(() => {
+    const p = riskfolioSandboxOutput.value?.portfolios?.riskfolio_cvar_minimize;
+    return Array.isArray(p?.weights) ? p.weights : [];
+});
+
+       const selectedOptimizerBufferCandidateKey = ref('');
+
+       function optimizerBufferWeightRows(candidate) {
+    if (!candidate || candidate.status !== 'OK') return [];
+
+    if (candidate.key === 'hrp_lite_v06') {
+        return (candidate.weights || []).map((row) => {
+            const current = Number(row.current_weight_pct ?? 0);
+            const target = Number(row.hrp_lite_weight_pct ?? row.weight_pct ?? current);
+            return {
+                ticker: row.ticker,
+                current_weight_pct: current,
+                target_weight_pct: target
+            };
+        }).filter((row) => row.ticker);
+    }
+
+    return (candidate.weights || []).map((row) => {
+        const current = Number(row.current_weight_pct ?? 0);
+        const target = Number(row.weight_pct ?? current);
+        return {
+            ticker: row.ticker,
+            current_weight_pct: current,
+            target_weight_pct: target
+        };
+    }).filter((row) => row.ticker);
+}
+
+       function buildTradeBufferCandidate(candidate) {
+    const base = Number(tradeBufferBasePct?.value || 3);
+    const addDisabled = !!tradeBufferProfile?.value?.addDisabled;
+    const nav = Number(totalPortfolioNav?.value || totalStockValueTwd?.value || 0);
+    const rowsRaw = optimizerBufferWeightRows(candidate);
+
+    let addCount = 0;
+    let trimCount = 0;
+    let holdCount = 0;
+    let pendingCount = 0;
+    let rawAbsGapSum = 0;
+    let bufferedAbsGapSum = 0;
+
+    const rows = rowsRaw.map((row) => {
+        const current = Number(row.current_weight_pct || 0);
+        const target = Number(row.target_weight_pct || 0);
+        const drift = target - current;
+        rawAbsGapSum += Math.abs(drift);
+
+        let bucket = 'hold';
+        let action = 'HOLD';
+        let actionZh = '暫不動';
+        let reason = `差距 ${drift.toFixed(2)}%，仍在 ±${base.toFixed(1)}% No-Trade Zone 內。`;
+        let actionClass = 'text-slate-300 bg-slate-500/10 border-slate-500/20';
+        let bufferedTarget = current;
+
+        if (drift <= -base) {
+            bucket = 'trim';
+            action = 'TRIM';
+            actionZh = '減碼';
+            reason = `低於 Trim 門檻：${drift.toFixed(2)}% ≤ -${base.toFixed(1)}%。`;
+            actionClass = 'text-red-300 bg-red-500/10 border-red-500/20';
+            bufferedTarget = target;
+            trimCount += 1;
+        } else if (drift >= base && addDisabled) {
+            bucket = 'pending';
+            action = 'PENDING_ADD';
+            actionZh = '候補加碼';
+            reason = `超過 Add 門檻，但 CRO_VETO 啟動，只列候補不執行。`;
+            actionClass = 'text-amber-300 bg-amber-500/10 border-amber-500/20';
+            bufferedTarget = current;
+            pendingCount += 1;
+        } else if (drift >= base) {
+            bucket = 'add';
+            action = 'ADD';
+            actionZh = '加碼';
+            reason = `高於 Add 門檻：${drift.toFixed(2)}% ≥ +${base.toFixed(1)}%。`;
+            actionClass = 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20';
+            bufferedTarget = target;
+            addCount += 1;
+        } else {
+            holdCount += 1;
+        }
+
+        const bufferedGap = bufferedTarget - current;
+        bufferedAbsGapSum += Math.abs(bufferedGap);
+
+        return {
+            ticker: row.ticker,
+            current_weight_pct: Number(current.toFixed(3)),
+            target_weight_pct: Number(target.toFixed(3)),
+            buffered_target_weight_pct: Number(bufferedTarget.toFixed(3)),
+            drift_pct: Number(drift.toFixed(3)),
+            action,
+            action_zh: actionZh,
+            bucket,
+            reason,
+            actionClass,
+            action_value_twd: Math.round(nav * Math.abs(bufferedGap) / 100),
+            raw_action_value_twd: Math.round(nav * Math.abs(drift) / 100),
+            no_trade_zone_low_pct: Number((current - base).toFixed(3)),
+            no_trade_zone_high_pct: Number((current + base).toFixed(3))
+        };
+    }).sort((a, b) => Math.abs(b.drift_pct) - Math.abs(a.drift_pct));
+
+    const rawTurnover = Number((rawAbsGapSum / 2).toFixed(2));
+    const bufferedTurnover = Number((bufferedAbsGapSum / 2).toFixed(2));
+    const turnoverReduction = Number((rawTurnover - bufferedTurnover).toFixed(2));
+
+    return {
+        key: candidate.key,
+        label: candidate.label || candidate.key,
+        source: candidate.source || '-',
+        status: candidate.status || 'N/A',
+        verdict: candidate.verdict || '-',
+        base_buffer_pct: base,
+        trim_threshold_pct: base,
+        add_threshold_pct: addDisabled ? null : base,
+        add_disabled: addDisabled,
+        raw_turnover_pct: Number(Number(candidate.turnover_vs_current_pct ?? rawTurnover).toFixed(2)),
+        buffer_turnover_pct: bufferedTurnover,
+        turnover_reduction_pct: turnoverReduction,
+        add_count: addCount,
+        trim_count: trimCount,
+        hold_count: holdCount,
+        pending_count: pendingCount,
+        active_count: addCount + trimCount,
+        rows
+    };
+}
+
+       const optimizerBufferCandidateSummaries = computed(() => {
+    const exclude = new Set(['current_weight']);
+    return (unifiedOptimizerComparison.value || [])
+        .filter((candidate) => candidate && candidate.status === 'OK' && !exclude.has(candidate.key))
+        .filter((candidate) => Array.isArray(candidate.weights) && candidate.weights.length)
+        .map(buildTradeBufferCandidate)
+        .sort((a, b) => {
+            const ar = Number(a.buffer_turnover_pct ?? 999);
+            const br = Number(b.buffer_turnover_pct ?? 999);
+            if (ar !== br) return ar - br;
+            return String(a.label).localeCompare(String(b.label));
+        });
+});
+
+       const selectedOptimizerBufferCandidate = computed(() => {
+    const list = optimizerBufferCandidateSummaries.value || [];
+    if (!list.length) return null;
+    const selected = selectedOptimizerBufferCandidateKey.value
+        ? list.find((x) => x.key === selectedOptimizerBufferCandidateKey.value)
+        : null;
+    if (selected) return selected;
+
+    const bestEs = unifiedOptimizerBestByES.value?.key;
+    if (bestEs) {
+        const best = list.find((x) => x.key === bestEs);
+        if (best) return best;
+    }
+    return list[0];
+});
+
+       const selectedOptimizerBufferRows = computed(() => {
+    return selectedOptimizerBufferCandidate.value?.rows || [];
+});
+
+       const optimizerBufferActionSummary = computed(() => {
+    const c = selectedOptimizerBufferCandidate.value;
+    if (!c) {
+        return { add: 0, trim: 0, hold: 0, pending: 0, active: 0 };
+    }
+    return {
+        add: c.add_count || 0,
+        trim: c.trim_count || 0,
+        hold: c.hold_count || 0,
+        pending: c.pending_count || 0,
+        active: c.active_count || 0
+    };
+});
+
+       function setOptimizerBufferCandidate(key) {
+    selectedOptimizerBufferCandidateKey.value = key;
+}
+
+
+       function optimizerPolicyBucket(ticker) {
+    const t = String(ticker || '').toUpperCase();
+    if (!t) return 'other';
+    if (t === 'BOXX' || t.includes('CASH')) return 'cash';
+    if (t === 'GLDM' || t === 'GLD' || t.includes('GOLD')) return 'gold';
+    if (t === 'BTC-USD' || t === 'ETH-USD' || t.includes('BTC') || t.includes('ETH') || t.includes('加密')) return 'crypto';
+    if (/^[0-9]{4}[A-Z]?$/.test(t) || t === '2330' || t.includes('台灣')) return 'taiwan';
+    if (['GRID', 'IFRA', 'PICK', 'SRVR', 'VNM'].includes(t)) return 'theme';
+    if (['QQQ', 'VOO', 'VTI', 'AVUV', 'USMV'].includes(t)) return 'us_equity';
+    if (['VEA'].includes(t)) return 'intl_equity';
+    return 'other';
+}
+
+       const optimizerConstraintRules = computed(() => [
+    { key: 'single_max', label: '單檔上限', limit: '≤ 20%', severity: 'VIOLATION' },
+    { key: 'taiwan_max', label: '台股總上限', limit: '≤ 40%', severity: 'VIOLATION' },
+    { key: 'crypto_max', label: '加密總上限', limit: '≤ 15%', severity: 'VIOLATION' },
+    { key: 'gold_band', label: 'GLDM 黃金區間', limit: '3%–7%', severity: 'WARNING' },
+    { key: 'cash_floor', label: 'BOXX / 類現金下限', limit: '≥ 3%', severity: 'WARNING' },
+    { key: 'theme_single_max', label: '單一主題 ETF 上限', limit: '≤ 10%', severity: 'WARNING' },
+    { key: 'high_vol_max', label: '高波動資產總上限', limit: '≤ 35%', severity: 'VIOLATION' }
+]);
+
+       function evaluateOptimizerConstraintPolicy(candidate) {
+    if (!candidate || !Array.isArray(candidate.rows)) {
+        return {
+            key: candidate?.key || '',
+            status: 'NO_DATA',
+            issues: [],
+            rows: [],
+            totals: {},
+            violation_count: 0,
+            warning_count: 0,
+            most_severe_issue: '尚無資料'
+        };
+    }
+
+    const rows = candidate.rows.map((row) => {
+        const buffered = Number(row.buffered_target_weight_pct ?? row.target_weight_pct ?? row.current_weight_pct ?? 0);
+        const rawTarget = Number(row.target_weight_pct ?? buffered);
+        const bucket = optimizerPolicyBucket(row.ticker);
+        const rowIssues = [];
+        if (buffered > 20) {
+            rowIssues.push({
+                rule: 'single_max',
+                severity: 'VIOLATION',
+                message: `單檔 ${row.ticker} buffer 後權重 ${buffered.toFixed(2)}% > 20%。`
+            });
+        }
+        if (bucket === 'theme' && buffered > 10) {
+            rowIssues.push({
+                rule: 'theme_single_max',
+                severity: 'WARNING',
+                message: `主題 ETF ${row.ticker} buffer 後權重 ${buffered.toFixed(2)}% > 10%。`
+            });
+        }
+        return {
+            ...row,
+            policy_bucket: bucket,
+            policy_weight_pct: Number(buffered.toFixed(3)),
+            raw_target_weight_pct: Number(rawTarget.toFixed(3)),
+            policy_issues: rowIssues,
+            policy_status: rowIssues.some((x) => x.severity === 'VIOLATION') ? 'VIOLATION' : rowIssues.length ? 'WARNING' : 'PASS'
+        };
+    });
+
+    const sumBy = (predicate) => rows.reduce((sum, row) => sum + (predicate(row) ? Number(row.policy_weight_pct || 0) : 0), 0);
+    const totals = {
+        taiwan_pct: Number(sumBy((r) => r.policy_bucket === 'taiwan').toFixed(2)),
+        crypto_pct: Number(sumBy((r) => r.policy_bucket === 'crypto').toFixed(2)),
+        gold_pct: Number(sumBy((r) => r.policy_bucket === 'gold').toFixed(2)),
+        cash_pct: Number(sumBy((r) => r.policy_bucket === 'cash').toFixed(2)),
+        theme_pct: Number(sumBy((r) => r.policy_bucket === 'theme').toFixed(2)),
+        high_vol_pct: Number(sumBy((r) => ['crypto', 'theme'].includes(r.policy_bucket)).toFixed(2)),
+        max_single_pct: Number(Math.max(0, ...rows.map((r) => Number(r.policy_weight_pct || 0))).toFixed(2))
+    };
+
+    const issues = [];
+    rows.forEach((row) => (row.policy_issues || []).forEach((issue) => issues.push({ ticker: row.ticker, ...issue })));
+
+    if (totals.taiwan_pct > 40) {
+        issues.push({ rule: 'taiwan_max', severity: 'VIOLATION', message: `台股總權重 ${totals.taiwan_pct}% > 40%。` });
+    }
+    if (totals.crypto_pct > 15) {
+        issues.push({ rule: 'crypto_max', severity: 'VIOLATION', message: `加密總權重 ${totals.crypto_pct}% > 15%。` });
+    }
+    if (totals.high_vol_pct > 35) {
+        issues.push({ rule: 'high_vol_max', severity: 'VIOLATION', message: `高波動資產總權重 ${totals.high_vol_pct}% > 35%。` });
+    }
+    if (totals.gold_pct > 0 && (totals.gold_pct < 3 || totals.gold_pct > 7)) {
+        issues.push({ rule: 'gold_band', severity: 'WARNING', message: `GLDM / 黃金權重 ${totals.gold_pct}% 不在 3%–7% 區間。` });
+    }
+    if (totals.cash_pct < 3) {
+        issues.push({ rule: 'cash_floor', severity: 'WARNING', message: `BOXX / 類現金權重 ${totals.cash_pct}% < 3%。` });
+    }
+
+    const violationCount = issues.filter((x) => x.severity === 'VIOLATION').length;
+    const warningCount = issues.filter((x) => x.severity === 'WARNING').length;
+    const status = violationCount ? 'VIOLATION' : warningCount ? 'WARNING' : 'PASS';
+
+    return {
+        key: candidate.key,
+        label: candidate.label,
+        source: candidate.source,
+        status,
+        rows,
+        totals,
+        issues,
+        violation_count: violationCount,
+        warning_count: warningCount,
+        most_severe_issue: issues[0]?.message || '全部通過目前政策規則'
+    };
+}
+
+       const optimizerConstraintPolicySummaries = computed(() => {
+    return (optimizerBufferCandidateSummaries.value || []).map((candidate) => {
+        const policy = evaluateOptimizerConstraintPolicy(candidate);
+        return {
+            key: candidate.key,
+            label: candidate.label,
+            source: candidate.source,
+            buffer_turnover_pct: candidate.buffer_turnover_pct,
+            active_count: candidate.active_count,
+            policy_status: policy.status,
+            violation_count: policy.violation_count,
+            warning_count: policy.warning_count,
+            most_severe_issue: policy.most_severe_issue,
+            totals: policy.totals
+        };
+    });
+});
+
+       const selectedOptimizerConstraintPolicy = computed(() => {
+    const candidate = selectedOptimizerBufferCandidate.value;
+    return evaluateOptimizerConstraintPolicy(candidate);
+});
+
+       const selectedOptimizerConstraintRows = computed(() => {
+    return selectedOptimizerConstraintPolicy.value?.rows || [];
+});
+
+       const selectedOptimizerConstraintIssues = computed(() => {
+    return selectedOptimizerConstraintPolicy.value?.issues || [];
+});
+
+
+
+       const optimizerRobustnessOutput = ref(null);
+       const optimizerRobustnessError = ref('');
+
+       async function loadOptimizerRobustnessOutput() {
+    try {
+        optimizerRobustnessError.value = '';
+        const response = await fetch(`data/optimizer/optimizer_robustness_latest.json?v=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) {
+            optimizerRobustnessOutput.value = null;
+            optimizerRobustnessError.value = `尚未讀到 optimizer robustness output (${response.status})`;
+            return;
+        }
+        const data = await response.json();
+        optimizerRobustnessOutput.value = data && typeof data === 'object' ? data : null;
+    } catch (err) {
+        optimizerRobustnessOutput.value = null;
+        optimizerRobustnessError.value = err?.message || String(err);
+    }
+}
+
+       const optimizerRobustnessWindows = computed(() => {
+    return Array.isArray(optimizerRobustnessOutput.value?.windows) ? optimizerRobustnessOutput.value.windows : [];
+});
+
+       const optimizerRobustnessMethods = computed(() => {
+    const stability = optimizerRobustnessOutput.value?.method_stability || {};
+    return Object.keys(stability).map((key) => ({ key, ...stability[key] }))
+        .sort((a, b) => {
+            const order = { '穩定': 0, '可觀察': 1, '不穩定': 2, '樣本不足': 3 };
+            const av = order[a.verdict] ?? 9;
+            const bv = order[b.verdict] ?? 9;
+            if (av !== bv) return av - bv;
+            return Number(a.avg_pairwise_weight_turnover_pct ?? 999) - Number(b.avg_pairwise_weight_turnover_pct ?? 999);
+        });
+});
+
+       const optimizerMostStableMethod = computed(() => {
+    return optimizerRobustnessMethods.value.find((x) => x.status === 'OK') || null;
+});
+
+       const optimizerUnstableMethods = computed(() => {
+    return optimizerRobustnessMethods.value.filter((x) => x.verdict === '不穩定');
+});
+
+
+       const optimizerStressOutput = ref(null);
+       const optimizerStressError = ref('');
+
+       async function loadOptimizerStressOutput() {
+    try {
+        optimizerStressError.value = '';
+        const response = await fetch(`data/optimizer/optimizer_stress_latest.json?v=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) {
+            optimizerStressOutput.value = null;
+            optimizerStressError.value = `尚未讀到 optimizer stress output (${response.status})`;
+            return;
+        }
+        const data = await response.json();
+        optimizerStressOutput.value = data && typeof data === 'object' ? data : null;
+    } catch (err) {
+        optimizerStressOutput.value = null;
+        optimizerStressError.value = err?.message || String(err);
+    }
+}
+
+       const optimizerStressScenarios = computed(() => {
+    return Array.isArray(optimizerStressOutput.value?.scenarios) ? optimizerStressOutput.value.scenarios : [];
+});
+
+       const optimizerStressRows = computed(() => {
+    const rows = optimizerStressOutput.value?.comparison_rows;
+    return Array.isArray(rows) ? rows : [];
+});
+
+       const optimizerStressWorstRows = computed(() => {
+    return optimizerStressRows.value
+        .slice()
+        .sort((a, b) => Number(a.worst_scenario_return_pct ?? 0) - Number(b.worst_scenario_return_pct ?? 0));
+});
+
+       const optimizerStressBestWorst = computed(() => {
+    return optimizerStressWorstRows.value.length ? optimizerStressWorstRows.value[optimizerStressWorstRows.value.length - 1] : null;
+});
+
+       const optimizerStressMostFragile = computed(() => {
+    return optimizerStressWorstRows.value.length ? optimizerStressWorstRows.value[0] : null;
+});
+
+       const selectedStressScenarioKey = ref('');
+
+       const selectedStressScenario = computed(() => {
+    const scenarios = optimizerStressScenarios.value || [];
+    if (!scenarios.length) return null;
+    if (selectedStressScenarioKey.value) {
+        const found = scenarios.find((x) => x.key === selectedStressScenarioKey.value);
+        if (found) return found;
+    }
+    return scenarios[0];
+});
+
+       const selectedStressScenarioRows = computed(() => {
+    const key = selectedStressScenario.value?.key;
+    if (!key) return [];
+    return optimizerStressRows.value
+        .map((row) => {
+            const scenario = row.scenario_returns?.[key] || {};
+            return {
+                label: row.label,
+                source: row.source,
+                status: row.status,
+                scenario_return_pct: scenario.return_pct ?? null,
+                top_contributors: scenario.top_contributors || []
+            };
+        })
+        .sort((a, b) => Number(a.scenario_return_pct ?? 0) - Number(b.scenario_return_pct ?? 0));
+});
+
+       function setStressScenario(key) {
+    selectedStressScenarioKey.value = key;
+}
+
+
+       const selectedOptimizerExplainKey = ref('');
+
+       function getCandidateByKey(key) {
+    const rows = unifiedOptimizerComparison.value || [];
+    return rows.find((x) => x.key === key) || null;
+}
+
+       function getBufferSummaryByKey(key) {
+    return (optimizerBufferCandidateSummaries.value || []).find((x) => x.key === key) || null;
+}
+
+       function getPolicySummaryByKey(key) {
+    return (optimizerConstraintPolicySummaries.value || []).find((x) => x.key === key) || null;
+}
+
+       function getStressSummaryByKey(key) {
+    return (optimizerStressRows.value || []).find((x) => x.key === key) || null;
+}
+
+       function getRobustnessSummaryByKey(key) {
+    return (optimizerRobustnessMethods.value || []).find((x) => x.key === key) || null;
+}
+
+       function buildOptimizerExplainability(candidate) {
+    if (!candidate) {
+        return {
+            status: 'NO_DATA',
+            reasons: [],
+            watchpoints: [],
+            asset_reasons: []
+        };
+    }
+
+    const key = candidate.key;
+    const buffer = getBufferSummaryByKey(key) || {};
+    const policy = getPolicySummaryByKey(key) || {};
+    const stress = getStressSummaryByKey(key) || {};
+    const robust = getRobustnessSummaryByKey(key) || {};
+    const rows = (selectedOptimizerBufferCandidate?.value?.key === key ? selectedOptimizerBufferRows.value : (buffer.rows || [])) || [];
+
+    const reasons = [];
+    const watchpoints = [];
+
+    const esDelta = Number(candidate.es_delta_vs_current_pct);
+    const volDelta = Number(candidate.vol_delta_vs_current_pct);
+    const mddDelta = Number(candidate.mdd_delta_vs_current_pct);
+    const turnover = Number(candidate.turnover_vs_current_pct ?? buffer.raw_turnover_pct);
+    const bufferTurnover = Number(buffer.buffer_turnover_pct);
+    const worstStress = Number(stress.worst_scenario_return_pct);
+    const avgStress = Number(stress.avg_scenario_return_pct);
+
+    if (Number.isFinite(esDelta)) {
+        if (esDelta < 0) reasons.push(`ES95 較目前權重下降 ${Math.abs(esDelta).toFixed(2)} 個百分點，尾部風險較低。`);
+        if (esDelta > 0) watchpoints.push(`ES95 較目前權重上升 ${esDelta.toFixed(2)} 個百分點，尾部風險變差。`);
+    }
+    if (Number.isFinite(volDelta)) {
+        if (volDelta < 0) reasons.push(`年化波動較目前權重下降 ${Math.abs(volDelta).toFixed(2)} 個百分點。`);
+        if (volDelta > 0) watchpoints.push(`年化波動較目前權重上升 ${volDelta.toFixed(2)} 個百分點。`);
+    }
+    if (Number.isFinite(mddDelta)) {
+        if (mddDelta > 0) reasons.push(`歷史最大回撤較目前權重改善 ${mddDelta.toFixed(2)} 個百分點。`);
+        if (mddDelta < 0) watchpoints.push(`歷史最大回撤較目前權重惡化 ${Math.abs(mddDelta).toFixed(2)} 個百分點。`);
+    }
+    if (Number.isFinite(turnover)) {
+        if (turnover >= 80) watchpoints.push(`原始換手率約 ${turnover.toFixed(1)}%，實務摩擦成本可能很高。`);
+        else if (turnover >= 40) watchpoints.push(`原始換手率約 ${turnover.toFixed(1)}%，需要先過 Trade Buffer 與人工審核。`);
+        else reasons.push(`原始換手率約 ${turnover.toFixed(1)}%，相對可觀察。`);
+    }
+    if (Number.isFinite(bufferTurnover)) {
+        reasons.push(`套用目前 ±${tradeBufferBasePct.value}% No-Trade Zone 後，主動換手約 ${bufferTurnover.toFixed(1)}%。`);
+    }
+    if (policy.policy_status === 'PASS') {
+        reasons.push('通過 v1.6.1 Constraint Policy，目前沒有政策違規。');
+    } else if (policy.policy_status === 'WARNING') {
+        watchpoints.push(`政策層級為 WARNING：${policy.most_severe_issue || '存在警示項目。'}`);
+    } else if (policy.policy_status === 'VIOLATION') {
+        watchpoints.push(`政策層級為 VIOLATION：${policy.most_severe_issue || '存在違規項目。'}`);
+    }
+    if (robust.verdict) {
+        if (robust.verdict === '穩定') reasons.push(`v1.4 樣本穩健性判讀為「穩定」。`);
+        if (robust.verdict === '可觀察') watchpoints.push(`v1.4 樣本穩健性判讀為「可觀察」，仍需注意回看期敏感度。`);
+        if (robust.verdict === '不穩定') watchpoints.push(`v1.4 樣本穩健性判讀為「不穩定」，不適合作為主要候選。`);
+    }
+    if (Number.isFinite(worstStress)) {
+        if (worstStress <= -35) watchpoints.push(`壓力測試最差情境約 ${worstStress.toFixed(1)}%，極端情境損失較深。`);
+        else reasons.push(`壓力測試最差情境約 ${worstStress.toFixed(1)}%，相對可追蹤。`);
+    }
+    if (Number.isFinite(avgStress)) {
+        reasons.push(`六個壓力情境平均約 ${avgStress.toFixed(1)}%。`);
+    }
+
+    const assetRows = (selectedOptimizerBufferCandidate?.value?.key === key ? selectedOptimizerBufferRows.value : [])
+        .filter((row) => row && ['ADD', 'TRIM', 'PENDING_ADD'].includes(row.action))
+        .slice()
+        .sort((a, b) => Math.abs(Number(b.drift_pct || 0)) - Math.abs(Number(a.drift_pct || 0)))
+        .slice(0, 12)
+        .map((row) => {
+            const policyRow = (selectedOptimizerConstraintRows.value || []).find((x) => x.ticker === row.ticker) || {};
+            let why = '';
+            if (row.action === 'TRIM') why = `模型目標低於目前 ${Math.abs(Number(row.drift_pct || 0)).toFixed(2)}%，超過 Trim buffer。`;
+            else if (row.action === 'ADD') why = `模型目標高於目前 ${Math.abs(Number(row.drift_pct || 0)).toFixed(2)}%，超過 Add buffer。`;
+            else why = `超過 Add buffer，但 CRO_VETO 或風險控管使其列為候補。`;
+            if (policyRow.policy_status === 'VIOLATION') why += ' 但此標的或組合有政策違規，不能直接執行。';
+            if (policyRow.policy_status === 'WARNING') why += ' 需注意政策警示。';
+            return {
+                ticker: row.ticker,
+                action: row.action,
+                action_zh: row.action_zh,
+                drift_pct: row.drift_pct,
+                current_weight_pct: row.current_weight_pct,
+                target_weight_pct: row.target_weight_pct,
+                buffered_target_weight_pct: row.buffered_target_weight_pct,
+                policy_status: policyRow.policy_status || 'PASS',
+                why
+            };
+        });
+
+    let decision = 'WATCH';
+    if (policy.policy_status === 'VIOLATION' || robust.verdict === '不穩定' || (Number.isFinite(worstStress) && worstStress <= -40)) {
+        decision = 'REJECT_OR_REWORK';
+    } else if ((Number.isFinite(esDelta) && esDelta < 0) && policy.policy_status !== 'VIOLATION' && robust.verdict !== '不穩定' && (!Number.isFinite(bufferTurnover) || bufferTurnover <= 35)) {
+        decision = 'REVIEW_CANDIDATE';
+    }
+
+    if (!reasons.length) reasons.push('此候選沒有明確風險改善訊號，暫時只適合觀察。');
+    if (!watchpoints.length) watchpoints.push('尚無重大警示，但仍需人工審核與成本估算。');
+
+    return {
+        key,
+        label: candidate.label,
+        source: candidate.source,
+        status: 'OK',
+        decision,
+        reasons,
+        watchpoints,
+        asset_reasons: assetRows,
+        metrics: {
+            es_delta_vs_current_pct: candidate.es_delta_vs_current_pct,
+            vol_delta_vs_current_pct: candidate.vol_delta_vs_current_pct,
+            mdd_delta_vs_current_pct: candidate.mdd_delta_vs_current_pct,
+            turnover_vs_current_pct: candidate.turnover_vs_current_pct,
+            buffer_turnover_pct: buffer.buffer_turnover_pct ?? null,
+            policy_status: policy.policy_status ?? 'N/A',
+            robustness_verdict: robust.verdict ?? 'N/A',
+            worst_stress_pct: stress.worst_scenario_return_pct ?? null,
+            avg_stress_pct: stress.avg_scenario_return_pct ?? null
+        }
+    };
+}
+
+       const optimizerExplainabilityCandidates = computed(() => {
+    return (unifiedOptimizerComparison.value || [])
+        .filter((x) => x && x.status === 'OK')
+        .filter((x) => !['current_weight'].includes(x.key))
+        .filter((x) => x.key !== 'hrp_lite_v06' || Array.isArray(x.weights))
+        .map((candidate) => buildOptimizerExplainability(candidate));
+});
+
+       const selectedOptimizerExplainability = computed(() => {
+    const list = optimizerExplainabilityCandidates.value || [];
+    if (!list.length) return null;
+    if (selectedOptimizerExplainKey.value) {
+        const found = list.find((x) => x.key === selectedOptimizerExplainKey.value);
+        if (found) return found;
+    }
+    const review = list.find((x) => x.decision === 'REVIEW_CANDIDATE');
+    return review || list[0];
+});
+
+       function setOptimizerExplainCandidate(key) {
+    selectedOptimizerExplainKey.value = key;
+    setOptimizerBufferCandidate(key);
+}
+
+
 
        const tailStatsLite = ref({
     conditionalCorr: '-',
@@ -3092,6 +3988,10 @@ chartCML.data.datasets = [
 
     window.addEventListener('resize', updateStickyHeaderOffsets);
     loadDataFromCloud();
+    loadOptimizerSandboxOutput();
+    loadRiskfolioSandboxOutput();
+    loadOptimizerRobustnessOutput();
+    loadOptimizerStressOutput();
 
     window.addEventListener('resize', () => {
         resizeAllCharts();
@@ -3113,6 +4013,17 @@ chartCML.data.datasets = [
             }, 180);
         });
 
+        watch(analyticsViewMode, async () => {
+            await nextTick();
+            updateStickyHeaderOffsets();
+            resizeAllCharts();
+
+            setTimeout(() => {
+                updateStickyHeaderOffsets();
+                resizeAllCharts();
+            }, 120);
+        });
+
         watch([exchangeRate, sheetUrl, riskParams, quantStartDate, dataFrequency, fireTargets, correlationMatrix], () => updateCharts(), { deep: true });
         watch(liquidityBufferRatio, async (newVal, oldVal) => {
     const clamped = clampLiquidityBuffer(newVal);
@@ -3131,12 +4042,474 @@ chartCML.data.datasets = [
     }
 });
 
+
+        const allocationGovernance = computed(() => {
+            const sr = syntheticRiskMeta?.value || null;
+            const confidence = sr?.confidence || 'N/A';
+            const status = sr?.status || 'PENDING';
+            const sampleCount = Number(sr?.metrics?.sample_count || 0);
+            const alertCount = Number(rebalanceMonitor?.value?.alertCount || 0);
+            const bufferBlocked = !!rebalanceMonitor?.value?.bufferBlockingRiskBuys;
+
+            const hardFlags = [];
+            const softFlags = [];
+
+            if (status === 'FAILED' || status === 'INVALID' || confidence === 'INVALID') {
+                hardFlags.push({
+                    code: 'SYNTHETIC_RISK_INVALID',
+                    label: '合成風險資料不可用',
+                    detail: sr?.confidence_reason || 'synthetic risk 尚未產生或資料不足。'
+                });
+            }
+
+            if (bufferBlocked) {
+                hardFlags.push({
+                    code: 'BUFFER_BLOCK',
+                    label: '流動性緩衝不足',
+                    detail: '再平衡監控顯示暫停新增風險資產。'
+                });
+            }
+
+            if (alertCount >= 3) {
+                softFlags.push({
+                    code: 'REBALANCE_ALERTS',
+                    label: '再平衡警示偏多',
+                    detail: `目前有 ${alertCount} 個再平衡警示。`
+                });
+            }
+
+            if (confidence === 'LOW' || (sampleCount > 0 && sampleCount < 750)) {
+                softFlags.push({
+                    code: 'SHORT_SAMPLE',
+                    label: '樣本偏短',
+                    detail: `synthetic risk 樣本日數 ${sampleCount || 'N/A'}；可看方向，不宜當成硬交易規則。`
+                });
+            }
+
+            if (confidence === 'MEDIUM') {
+                softFlags.push({
+                    code: 'MEDIUM_CONFIDENCE',
+                    label: '模型信心中等',
+                    detail: '樣本與涵蓋度可作主要風控參考，但仍需人工判讀。'
+                });
+            }
+
+            let mode = 'MC_PRIMARY';
+            if (hardFlags.length) mode = 'CRO_VETO';
+            else if (softFlags.length) mode = 'CRO_CAUTION_MC_ALLOWED';
+
+            const base = {
+                mode,
+                hardFlags,
+                softFlags,
+                primaryReasons: (hardFlags.length ? hardFlags : softFlags).slice(0, 3),
+                deterministicNote: '這一層是 deterministic governance，不靠 prompt 自由發揮。'
+            };
+
+            if (mode === 'CRO_VETO') {
+                return {
+                    ...base,
+                    icon: 'fa-triangle-exclamation',
+                    badgeText: 'CRO 否決 / 風控紅燈',
+                    badgeClass: 'border-red-500/30 bg-red-500/10 text-red-300',
+                    panelClass: 'border-red-500/25 bg-red-500/5',
+                    headline: '風險資料或緩衝條件不足，先不要放大風險。',
+                    summary: 'synthetic risk 或再平衡監控出現 hard flag；先處理資料完整性、buffer 與集中度。',
+                    croRole: 'CRO = 否決層（整體投組風險裁決）',
+                    mcRole: 'MC = 配置器，但目前不可主導加風險'
+                };
+            }
+
+            if (mode === 'CRO_CAUTION_MC_ALLOWED') {
+                return {
+                    ...base,
+                    icon: 'fa-flask',
+                    badgeText: '樣本偏短 / 警戒',
+                    badgeClass: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+                    panelClass: 'border-amber-500/25 bg-amber-500/5',
+                    headline: '可看風險方向，但不能把模型結果當成硬指令。',
+                    summary: '目前沒有 hard veto；但 synthetic risk 樣本偏短或警示偏多，配置調整應保守。',
+                    croRole: 'CRO = 提醒整體投組風險，不搶單一資產權重',
+                    mcRole: 'MC = 風險資產配置器，可作主配置但需降自信'
+                };
+            }
+
+            return {
+                ...base,
+                icon: 'fa-circle-check',
+                badgeText: 'MC 主導',
+                badgeClass: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+                panelClass: 'border-emerald-500/25 bg-emerald-500/5',
+                headline: '無硬風險阻礙，由 MC 主導配置。',
+                summary: 'CRO 未見 hard veto；whole-portfolio 可以放行，risky sleeve 交由 MC 最佳化。',
+                croRole: 'CRO = 監督層，不主動搶配置權',
+                mcRole: 'MC = 風險資產配置器，主導權重建議'
+            };
+        });
+
+
+        const navOverlayMode = ref('nav');
+        const navOverlayOptions = [
+            { value: 'nav', label: 'NAV' },
+            { value: 'drawdown', label: '回撤' },
+            { value: 'both', label: 'NAV + 回撤' }
+        ];
+        const setNavOverlayMode = (mode) => {
+            const allowed = new Set(navOverlayOptions.map(opt => opt.value));
+            navOverlayMode.value = allowed.has(mode) ? mode : 'nav';
+            try {
+                setTimeout(() => updateCharts && updateCharts(), 0);
+            } catch (err) {
+                console.warn('setNavOverlayMode chart refresh skipped:', err);
+            }
+        };
+        const navMaConfig = computed(() => ({
+            monthLabel: '短期趨勢：3M MA',
+            yearLabel: '長期趨勢：12M MA',
+            frequencyNote: '以現有 NAV history 計算；資料不足時顯示為 N/A'
+        }));
+        const riskRegimeStrip = computed(() => {
+            const sr = syntheticRiskMeta?.value || null;
+            const confidence = sr?.confidence || 'N/A';
+            const mdd = Number(sr?.metrics?.max_drawdown_pct || 0);
+            const es95 = Number(sr?.metrics?.es95_pct || 0);
+            if (sr?.status === 'FAILED' || sr?.status === 'INVALID') {
+                return {
+                    class: 'border-red-500/30 bg-red-500/10 text-red-200',
+                    label: '風控資料不足',
+                    note: 'synthetic risk 尚未可用'
+                };
+            }
+            if (mdd <= -20 || es95 >= 6) {
+                return {
+                    class: 'border-orange-500/30 bg-orange-500/10 text-orange-200',
+                    label: '風險偏高',
+                    note: '尾部風險或回撤偏高'
+                };
+            }
+            if (confidence === 'LOW') {
+                return {
+                    class: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
+                    label: '樣本偏短',
+                    note: '模型方向可參考，信心偏低'
+                };
+            }
+            return {
+                class: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200',
+                label: '風險穩定',
+                note: '目前未見 hard veto'
+            };
+        });
+        const navTrendSummary = computed(() => {
+            const modeMap = {
+                nav: 'NAV',
+                drawdown: 'Drawdown',
+                both: 'NAV + Drawdown'
+            };
+            return {
+                navVsMonth: 'N/A',
+                navVsYear: 'N/A',
+                monthSlope: 'N/A',
+                yearSlope: 'N/A',
+                currentDrawdown: syntheticRiskMeta?.value?.metrics?.max_drawdown_pct != null
+                    ? `${syntheticRiskMeta.value.metrics.max_drawdown_pct}%`
+                    : 'N/A',
+                overlayModeLabel: modeMap[navOverlayMode.value] || 'NAV'
+            };
+        });
+
+
+
+        // ===== Compatibility layer for terminal IA template =====
+        // This block provides safe defaults for template-only variables so Vue render
+        // does not crash while cloud data is still loading.
+        const filteredHoldingsGroups = computed(() => filteredGroupedHoldings?.value || {});
+
+        const holdingsVisibleStats = computed(() => {
+            const groups = filteredHoldingsGroups.value || {};
+            let visible = 0;
+            Object.values(groups).forEach(group => {
+                if (Array.isArray(group?.items)) visible += group.items.length;
+                else if (Array.isArray(group)) visible += group.length;
+            });
+
+            let total = 0;
+            Object.values(groupedHoldings?.value || {}).forEach(group => {
+                if (Array.isArray(group?.items)) total += group.items.length;
+                else if (Array.isArray(group)) total += group.length;
+            });
+
+            return { visible, total };
+        });
+
+        const tradeBufferBasePct = ref(3.0);
+        const tradeBufferPresets = [1, 2, 3, 5, 7.5];
+
+        const holdingsActionFilter = ref('all');
+        const holdingsViewOptions = [
+            { value: 'all', label: '全部' },
+            { value: 'trim', label: '先減碼' },
+            { value: 'add', label: '可加碼' },
+            { value: 'locked', label: '鎖定' },
+            { value: 'watch', label: '觀察' },
+            { value: 'high_risk', label: '高風險' },
+            { value: 'overweight', label: '過重' },
+            { value: 'drift', label: 'Drift' }
+        ];
+
+        const goToTab = (tab) => {
+            if (!tab) return;
+            currentTab.value = tab;
+            try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch (err) {}
+        };
+
+        const flattenHoldingRows = (useFiltered = false) => {
+            const groups = useFiltered ? (filteredHoldingsGroups.value || {}) : (groupedHoldings?.value || {});
+            const rows = [];
+            Object.entries(groups || {}).forEach(([catName, group]) => {
+                const items = Array.isArray(group?.items) ? group.items : (Array.isArray(group) ? group : []);
+                items.forEach(stock => {
+                    if (stock) rows.push({ ...stock, categoryName: stock.categoryName || catName });
+                });
+            });
+            return rows;
+        };
+
+        const historyIntegrityRisk = computed(() => {
+            const reasons = [];
+            const hist = displayHistory?.value || [];
+            if (hist.length < 2) reasons.push('NAV history 少於 2 筆，績效與趨勢判讀信心低。');
+            const invalid = hist.filter(row => !row || !row.date || !Number.isFinite(Number(row.assets)));
+            if (invalid.length) reasons.push(`NAV history 有 ${invalid.length} 筆日期或資產值異常。`);
+            return { reasons };
+        });
+
+        const historyIntegrityBadge = computed(() => {
+            const reasons = historyIntegrityRisk.value?.reasons || [];
+            if (reasons.length) {
+                return {
+                    label: '需檢查',
+                    detail: reasons[0],
+                    badgeClass: 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+                };
+            }
+            return {
+                label: '樣本正常',
+                detail: '歷史樣本暫時沒有明顯污染跡象。',
+                badgeClass: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+            };
+        });
+
+        const tradeBufferProfile = computed(() => {
+            const ag = allocationGovernance?.value || {};
+            const addDisabled = ag.mode === 'CRO_VETO';
+            return {
+                mode: addDisabled ? 'CRO LOCK' : 'NORMAL',
+                addDisabled,
+                modeNote: addDisabled
+                    ? 'CRO 目前否決加風險：只允許減碼、降低集中度或提高現金緩衝。'
+                    : '沒有 hard veto：超出緩衝區才進入再平衡流程。'
+            };
+        });
+
+        const applyTradeBuffer = (value) => {
+            const n = Number(value);
+            if (!Number.isFinite(n)) return;
+            tradeBufferBasePct.value = Math.min(10, Math.max(0.5, n));
+        };
+
+        const nudgeTradeBuffer = (delta) => {
+            applyTradeBuffer(Number(tradeBufferBasePct.value || 0) + Number(delta || 0));
+        };
+
+        const rebalanceCockpitRows = computed(() => {
+            const rows = flattenHoldingRows(false).map(stock => {
+                const currentWeightPct = Number(stock.totalWeight || 0) * 100;
+                const targetWeightPct = Number(stock.blendedWeight ?? stock.targetWeight ?? 0);
+                const driftPct = targetWeightPct - currentWeightPct;
+                const base = Number(tradeBufferBasePct.value || 3);
+                const addDisabled = !!tradeBufferProfile.value.addDisabled;
+
+                let bucket = 'hold';
+                let action = '暫不動';
+                let actionClass = 'text-slate-300 bg-slate-500/10 border-slate-500/20';
+                if (driftPct <= -base) {
+                    bucket = 'trim';
+                    action = '減碼';
+                    actionClass = 'text-red-300 bg-red-500/10 border-red-500/20';
+                } else if (driftPct >= base && addDisabled) {
+                    bucket = 'pending';
+                    action = '候補加碼';
+                    actionClass = 'text-amber-300 bg-amber-500/10 border-amber-500/20';
+                } else if (driftPct >= base) {
+                    bucket = 'add';
+                    action = '加碼';
+                    actionClass = 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20';
+                }
+
+                const nav = Number(totalPortfolioNav?.value || totalStockValueTwd?.value || 0);
+                const actionValue = nav * Math.abs(driftPct) / 100;
+
+                return {
+                    ticker: stock.ticker || '-',
+                    categoryName: stock.categoryName || stock.category || '-',
+                    currentWeightPct,
+                    targetWeightPct,
+                    driftPct,
+                    driftText: `${driftPct >= 0 ? '+' : ''}${driftPct.toFixed(1)}%`,
+                    actionValueText: `NT$ ${formatNumber(actionValue)}`,
+                    action,
+                    actionClass,
+                    decisionOwner: bucket === 'pending' ? 'CRO' : 'MC',
+                    governanceNote: bucket === 'hold' ? '在 no-trade zone 內' : tradeBufferProfile.value.modeNote,
+                    bucket,
+                    trimThresholdPct: base,
+                    addThresholdPct: addDisabled ? Infinity : base
+                };
+            });
+
+            return rows.sort((a, b) => Math.abs(b.driftPct) - Math.abs(a.driftPct));
+        });
+
+        const rebalanceCockpitBuckets = computed(() => {
+            const buckets = { trim: [], add: [], pending: [], hold: [] };
+            (rebalanceCockpitRows.value || []).forEach(row => {
+                const key = buckets[row.bucket] ? row.bucket : 'hold';
+                buckets[key].push(row);
+            });
+            return buckets;
+        });
+
+        const tradeBufferSummary = computed(() => {
+            const buckets = rebalanceCockpitBuckets.value || { trim: [], add: [], pending: [], hold: [] };
+            const base = Number(tradeBufferBasePct.value || 3);
+            return {
+                basePct: base,
+                trimThresholdPct: base,
+                addThresholdPct: tradeBufferProfile.value.addDisabled ? 0 : base,
+                trimCount: (buckets.trim || []).length,
+                addCount: (buckets.add || []).length,
+                pendingAddCount: (buckets.pending || []).length,
+                holdCount: (buckets.hold || []).length
+            };
+        });
+
+        const holdingsActionSummary = computed(() => {
+            const rows = flattenHoldingRows(false);
+            const out = { total: rows.length, trim: 0, add: 0, locked: 0, watch: 0, highRisk: 0, overweight: 0, drift: 0 };
+            rows.forEach(stock => {
+                const currentPct = Number(stock.totalWeight || 0) * 100;
+                const targetPct = Number(stock.blendedWeight ?? stock.targetWeight ?? 0);
+                const gap = targetPct - currentPct;
+                if (gap <= -tradeBufferBasePct.value) out.trim++;
+                if (gap >= tradeBufferBasePct.value) out.add++;
+                if (Math.abs(gap) >= tradeBufferBasePct.value) out.drift++;
+                if (stock.isOverweight || currentPct >= 20) out.overweight++;
+                const riskScore = Number(stock.riskScore ?? stock.risk_score ?? stock.riskLevelScore ?? 0);
+                if (String(stock.riskLevel || '').toLowerCase() === 'high' || riskScore >= 7) out.highRisk++;
+                if (stock.governanceStatus && String(stock.governanceStatus).includes('鎖')) out.locked++;
+                if (Math.abs(gap) < tradeBufferBasePct.value && Math.abs(gap) >= Math.max(1, tradeBufferBasePct.value * 0.5)) out.watch++;
+            });
+            return out;
+        });
+
+        const rebalancePostTradeEstimate = computed(() => {
+            const rows = rebalanceCockpitRows.value || [];
+            const weights = rows.map(row => Number(row.currentWeightPct || 0)).filter(Number.isFinite);
+            const concentrationBefore = weights.length ? Math.max(...weights) : null;
+            const afterWeights = rows.map(row => {
+                const current = Number(row.currentWeightPct || 0);
+                const target = Number(row.targetWeightPct || current);
+                if (row.bucket === 'trim' || row.bucket === 'add') return target;
+                return current;
+            }).filter(Number.isFinite);
+            const concentrationAfter = afterWeights.length ? Math.max(...afterWeights) : null;
+            const active = rows.filter(row => row.bucket !== 'hold');
+            const avgGapBefore = active.length
+                ? active.reduce((sum, row) => sum + Math.abs(Number(row.driftPct || 0)), 0) / active.length
+                : 0;
+
+            return {
+                concentrationBefore,
+                concentrationAfter,
+                bufferGapBefore: avgGapBefore,
+                bufferGapAfter: Math.max(0, avgGapBefore - Number(tradeBufferBasePct.value || 3))
+            };
+        });
+
+        const alertCenterItems = computed(() => {
+            const items = [];
+            const ag = allocationGovernance?.value || null;
+            if (ag) {
+                items.push({
+                    id: 'allocation-governance',
+                    tone: ag.mode === 'CRO_VETO' ? 'risk' : 'info',
+                    badgeClass: ag.badgeClass || 'border-slate-500/40 bg-slate-500/10 text-slate-300',
+                    panelClass: ag.panelClass || 'border-white/10 bg-black/20',
+                    icon: ag.icon || 'fa-shield-halved',
+                    sourceLabel: 'CRO',
+                    suggestedAction: 'Review',
+                    title: ag.headline || ag.badgeText || '風控治理',
+                    detail: ag.summary || '等待風控資料載入。',
+                    ctaLabel: '看風控',
+                    tab: 'analytics'
+                });
+            }
+            const hRisk = historyIntegrityRisk.value?.reasons || [];
+            if (hRisk.length) {
+                items.push({
+                    id: 'history-integrity',
+                    tone: 'warn',
+                    badgeClass: 'border-amber-500/40 bg-amber-500/10 text-amber-300',
+                    panelClass: 'border-amber-500/20 bg-amber-500/5',
+                    icon: 'fa-database',
+                    sourceLabel: 'Data',
+                    suggestedAction: 'Check',
+                    title: '歷史資料需檢查',
+                    detail: hRisk[0],
+                    ctaLabel: '看總覽',
+                    tab: 'summary'
+                });
+            }
+            return items;
+        });
+
+        const alertCenterSections = computed(() => {
+            const items = alertCenterItems.value || [];
+            return [{
+                key: 'priority',
+                label: items.length ? '優先處理' : '目前無急迫警報',
+                items
+            }];
+        });
+
+        const txPreview = computed(() => {
+            const type = String(txForm?.value?.type || '');
+            const flow = Number(txForm?.value?.totalCashFlow || 0);
+            let finalFlow = flow;
+            if (type === 'Buy' || type === 'Expense') finalFlow = -Math.abs(flow);
+            if (type === 'Sell' || type === 'Deposit') finalFlow = Math.abs(flow);
+            if (type === 'Withdraw') finalFlow = -Math.abs(flow);
+
+            const projectedCashAfter = Number(cashBalance?.value || 0) + finalFlow;
+            const errors = [];
+            const blockers = [];
+            const warnings = [];
+            if ((type === 'Buy' || type === 'Withdraw' || type === 'Expense') && projectedCashAfter < -1) {
+                blockers.push('送出後現金會變成負數。');
+            }
+            if (!type) warnings.push('尚未選擇交易類型。');
+
+            return { finalFlow, projectedCashAfter, errors, blockers, warnings };
+        });
+
         return { 
+            filteredHoldingsGroups, holdingsVisibleStats, analyticsViewMode, holdingsActionFilter, holdingsViewOptions, holdingsActionSummary, goToTab, historyIntegrityRisk, historyIntegrityBadge, alertCenterItems, alertCenterSections, tradeBufferBasePct, tradeBufferPresets, tradeBufferProfile, applyTradeBuffer, nudgeTradeBuffer, rebalanceCockpitRows, rebalanceCockpitBuckets, tradeBufferSummary, rebalancePostTradeEstimate, txPreview,
             currentTab, showHistoryModal, isUpdating,
             transactions, groupedHoldings, filteredGroupedHoldings, categoryTotals, riskTotals, portfolioStats, 
             totalStockValueTwd, totalStockCostTwd, totalStockUnrealizedPL, totalStockReturnRate, 
             reversedTransactions, txForm, historyForm, riskParams, stats, exchangeRate, 
-            holdingsSearch, holdingsView, holdingsSort, filteredHoldingsCount, holdingsAlertCount,
+            holdingsSearch, holdingsView, holdingsSort, filteredHoldingsCount, holdingsAlertCount, holdingsVisibleStats,
             txFlowMode, txTypeOptions, ledgerDraftPreview,
             sheetUrl, addTransaction, addHistoryRecord,
             removeTransaction, removeHistoryByDate, manualUpdate, updateMeta, fetchPrices, 
@@ -3148,10 +4521,10 @@ chartCML.data.datasets = [
             isAuthenticating, handleLogin, handleLogout, checkAuth, fireProgress, 
             updateCharts, addFireTarget, macroRegime, enableBlackSwan, mcRisk, blViews, mcAvailableAssets, addBlView, enableInflation,
             generateAutoViews, runMonteCarlo, stressTestResults,
-            expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr,
+            expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr, navOverlayMode, navOverlayOptions, setNavOverlayMode, navMaConfig, riskRegimeStrip, navTrendSummary,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
-            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
+            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerConstraintRules, optimizerConstraintPolicySummaries, selectedOptimizerConstraintPolicy, selectedOptimizerConstraintRows, selectedOptimizerConstraintIssues, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, optimizerStressOutput, optimizerStressError, optimizerStressScenarios, optimizerStressRows, optimizerStressWorstRows, optimizerStressBestWorst, optimizerStressMostFragile, selectedStressScenarioKey, selectedStressScenario, selectedStressScenarioRows, setStressScenario, loadOptimizerStressOutput, selectedOptimizerExplainKey, optimizerExplainabilityCandidates, selectedOptimizerExplainability, setOptimizerExplainCandidate, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
         };
     }
 }).mount('#app');
