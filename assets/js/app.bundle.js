@@ -3562,6 +3562,46 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
             'Deposit': '入金',
             'Withdraw': '出金',
             'Expense': '支出',
+
+            'regime_watch_review_required': '市場狀態觀察｜需人工審核',
+            'regime_watch_high_turnover': '市場狀態觀察｜高換手率',
+            'watch_only_validation': '僅觀察驗證',
+            'review_required': '需要審核',
+            'REVIEW_CANDIDATE': '候選待審',
+            'REJECT_OR_REWORK': '拒絕或重做',
+            'BLOCKED': '已阻擋',
+            'blocked': '已阻擋',
+            'strict': '嚴格模式',
+            'deterministic_stress_proxy': '確定性壓力代理',
+            'rule_based': '規則式',
+            'rules_based': '規則式',
+            'enabled': '啟用',
+            'disabled': '停用',
+            'cash': '現金',
+            'CASH': '現金',
+            'crypto': '加密資產',
+            'CRYPTO': '加密資產',
+            'us_tech': '美國科技',
+            'US_TECH': '美國科技',
+            'taiwan_tech': '台股科技',
+            'TAIWAN_TECH': '台股科技',
+            'TAIWAN TECH': '台股科技',
+            'gold': '黃金',
+            'global_equity': '全球股票',
+            'us_equity': '美股',
+            'emerging_market': '新興市場',
+            'theme_etf': '主題 ETF',
+            'commodity_equity': '商品股票',
+            'other': '其他',
+            'neutral_or_no_edge_prior': '中性／無明確優勢先驗',
+            'three_year_window_unavailable': '3 年樣本視窗不可用',
+            'sample_quality_limited': '樣本品質受限',
+            'Risk-off regime raises liquidity buffer.': '避險環境提高流動性緩衝需求。',
+            'Crypto tail risk is penalized under liquidity pressure.': '加密資產尾部風險在流動性壓力下受懲罰。',
+            'High-duration tech is stress-sensitive.': '高存續期科技資產對壓力環境敏感。',
+            'Small hedge allocation; not treated as guaranteed hedge.': '小幅避險配置；不視為保證避險。',
+            'Sample quality limited: three_year_window_unavailable': '樣本品質受限：3 年樣本視窗不可用',
+            '樣本品質限制：three_year_window_unavailable': '樣本品質限制：3 年樣本視窗不可用',
             'Income': '收入'
         });
         function zhText(value) {
@@ -3573,6 +3613,34 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
             if (ZH_TEXT_MAP[raw] !== undefined) return ZH_TEXT_MAP[raw];
             const lower = raw.toLowerCase();
             if (ZH_TEXT_MAP[lower] !== undefined) return ZH_TEXT_MAP[lower];
+            const upperSpaced = raw.replace(/_/g, ' ').toUpperCase();
+            if (ZH_TEXT_MAP[upperSpaced] !== undefined) return ZH_TEXT_MAP[upperSpaced];
+
+            const draftTrimMatch = raw.match(/^v3_0_v2_3_from_v2_2_trim_(.+)_(25|50|100)pct_to_BOXX$/);
+            if (draftTrimMatch) {
+                const asset = draftTrimMatch[1].replace(/_USD$/,'-USD').replace(/_/g, '-');
+                return `v3.0｜v2.3 ${asset} 減碼 ${draftTrimMatch[2]}% 轉 BOXX`;
+            }
+            const v3CandidateMatch = raw.match(/^v3_0_v2_1_(.+)$/);
+            if (v3CandidateMatch) return `v3.0｜v2.1 ${zhText(v3CandidateMatch[1])}`;
+            const v2CandidateMatch = raw.match(/^v2_1_(.+)$/);
+            if (v2CandidateMatch) return `v2.1 ${zhText(v2CandidateMatch[1])}`;
+
+            let translated = raw;
+            const phraseMap = {
+                'three_year_window_unavailable': '3 年樣本視窗不可用',
+                'neutral_or_no_edge_prior': '中性／無明確優勢先驗',
+                'regime_watch_review_required': '市場狀態觀察｜需人工審核',
+                'regime_watch_high_turnover': '市場狀態觀察｜高換手率',
+                'watch_only_validation': '僅觀察驗證',
+                'risk_off_liquidity_pressure': '避險／流動性壓力',
+                'manual_approval_required': '需要人工確認',
+                'not_trade_order': '非交易指令'
+            };
+            Object.entries(phraseMap).forEach(([from, to]) => {
+                translated = translated.split(from).join(to);
+            });
+            if (translated !== raw) return translated;
             return raw;
         }
         function zhList(value) {

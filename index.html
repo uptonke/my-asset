@@ -3677,7 +3677,7 @@
                                             <div class="quant-value text-white">{{ blackLittermanSummary?.view_count ?? 0 }}</div>
                                         </div>
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3">
-                                            <div class="quant-label text-fuchsia-300">Posterior 草案</div>
+                                            <div class="quant-label text-fuchsia-300">後驗草案</div>
                                             <div class="quant-value text-white">{{ blackLittermanSummary?.posterior_candidate_count ?? 0 }}</div>
                                         </div>
                                     </div>
@@ -3685,24 +3685,24 @@
                                     <div class="rounded-xl border border-violet-500/20 bg-violet-500/[0.04] p-3">
                                         <div class="text-xs font-bold text-violet-200 flex items-center gap-2">
                                             <i class="fas fa-code-branch text-violet-400"></i>
-                                            Covariance / Constraint / Risk Budget 切換口徑
+                                            共變異數／約束／風險預算切換口徑
                                         </div>
                                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 text-[11px]">
                                             <div class="rounded-lg border border-white/10 bg-black/20 p-3">
-                                                <div class="text-gray-500 mb-1">Covariance policy</div>
+                                                <div class="text-gray-500 mb-1">共變異數政策</div>
                                                 <div class="text-white font-mono break-all">{{ zhText(regimeAwareCovariancePolicy?.mode) }}</div>
                                             </div>
                                             <div class="rounded-lg border border-white/10 bg-black/20 p-3">
-                                                <div class="text-gray-500 mb-1">Shrinkage proxy</div>
+                                                <div class="text-gray-500 mb-1">收縮代理</div>
                                                 <div class="text-white font-mono">{{ zhText(regimeAwareCovariancePolicy?.shrinkage_intensity_proxy) }}</div>
                                             </div>
                                             <div class="rounded-lg border border-white/10 bg-black/20 p-3">
-                                                <div class="text-gray-500 mb-1">View engine</div>
-                                                <div class="text-white font-mono">{{ blackLittermanViewEngine?.status ?? '-' }}</div>
+                                                <div class="text-gray-500 mb-1">觀點引擎</div>
+                                                <div class="text-white font-mono">{{ zhText(blackLittermanViewEngine?.status) }}</div>
                                             </div>
                                         </div>
                                         <div class="text-[11px] text-gray-400 mt-3 leading-relaxed">
-                                            {{ regimeAwareCovariancePolicy?.note ?? '尚無共變異數政策說明。' }} v3.1 禁止任意手動 觀點；目前只接受 v3.0 市場狀態政策轉出的確定性 觀點。
+                                            {{ zhText(regimeAwareCovariancePolicy?.note ?? '尚無共變異數政策說明。') }} v3.1 禁止任意手動 觀點；目前只接受 v3.0 市場狀態政策轉出的確定性 觀點。
                                         </div>
                                     </div>
 
@@ -3719,14 +3719,14 @@
                                                             <th class="text-left px-3 py-2">草案</th>
                                                             <th class="text-left px-3 py-2">狀態</th>
                                                             <th class="text-right px-3 py-2">換手率</th>
-                                                            <th class="text-right px-3 py-2">Cash</th>
-                                                            <th class="text-right px-3 py-2">Crypto</th>
-                                                            <th class="text-right px-3 py-2">Taiwan Tech</th>
+                                                            <th class="text-right px-3 py-2">現金</th>
+                                                            <th class="text-right px-3 py-2">加密資產</th>
+                                                            <th class="text-right px-3 py-2">台股科技</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
                                                         <tr v-for="draft in regimeAwareVisibleDrafts" :key="draft.draft_id" class="border-b border-white/5 hover:bg-white/[0.03]">
-                                                            <td class="px-3 py-2 font-mono text-white max-w-[220px] truncate" :title="draft.draft_id">{{ draft.draft_id }}</td>
+                                                            <td class="px-3 py-2 font-mono text-white max-w-[220px] truncate" :title="draft.draft_id">{{ zhText(draft.draft_id) }}</td>
                                                             <td class="px-3 py-2 text-gray-300 max-w-[180px] truncate" :title="draft.model_status">{{ zhText(draft.model_status) }}</td>
                                                             <td class="px-3 py-2 text-right text-gray-300">{{ draft.turnover_vs_current_pct ?? '-' }}%</td>
                                                             <td class="px-3 py-2 text-right text-emerald-300">{{ draft.exposure?.cash_pct ?? '-' }}%</td>
@@ -3867,7 +3867,7 @@
                                         <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                             <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
                                                 <div class="text-xs font-bold text-white">v3.3 滾動樣本外驗證</div>
-                                                <div class="text-[10px] text-gray-500">最佳化器 vs 目前投組</div>
+                                                <div class="text-[10px] text-gray-500">最佳化器與目前投組比較</div>
                                             </div>
                                             <div class="overflow-x-auto">
                                                 <table class="w-full text-[11px]">
@@ -3913,7 +3913,7 @@
                                                     <tbody>
                                                         <tr v-for="flag in modelGovernanceVisibleFlags" :key="flag.code" class="border-b border-white/5 hover:bg-white/[0.03]">
                                                             <td class="px-3 py-2"><span class="px-2 py-0.5 rounded border text-[10px]" :class="approvalBadgeClass(flag.severity)">{{ zhText(flag.severity) }}</span></td>
-                                                            <td class="px-3 py-2 font-mono text-white max-w-[160px] truncate" :title="flag.code">{{ flag.code }}</td>
+                                                            <td class="px-3 py-2 font-mono text-white max-w-[160px] truncate" :title="flag.code">{{ zhText(flag.code) }}</td>
                                                             <td class="px-3 py-2 text-gray-400 max-w-[260px] truncate" :title="zhText(flag.message)">{{ zhText(flag.message) }}</td>
                                                         </tr>
                                                         <tr v-if="!modelGovernanceVisibleFlags.length">
@@ -4218,10 +4218,10 @@
             <div class="stack-note">先修 drift / concentration，再談新增風險。</div>
         </div>
         <div class="stack-card stack-card-insight">
-            <div class="stack-kicker">Layer 3 · Insight</div>
+            <div class="stack-kicker">第三層 · 洞察</div>
             <div class="stack-title">AI 數據解讀</div>
             <div class="stack-copy">{{ croInsight ? '已生成解讀' : '待生成解讀' }}</div>
-            <div class="stack-note">AI 只補洞察，不覆蓋 deterministic governance。</div>
+            <div class="stack-note">AI 只補充洞察，不覆蓋確定性治理規則。</div>
         </div>
     </div>
 </div>
@@ -4253,7 +4253,7 @@
         <div class="terminal-trade-buffer-panel rounded-2xl border border-white/10 bg-black/25 p-4 md:p-5">
             <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
                 <div>
-                    <div class="text-[11px] uppercase tracking-[0.18em] text-amber-400 font-bold">交易緩衝s</div>
+                    <div class="text-[11px] uppercase tracking-[0.18em] text-amber-400 font-bold">交易緩衝</div>
                     <div class="text-sm md:text-base font-bold text-white mt-1">交易緩衝區 / 不交易區間</div>
                     <div class="text-[11px] md:text-xs text-gray-400 mt-2 leading-relaxed">
                         不是每個 drift 都要交易。先讓部位在緩衝區內自然波動，超出門檻再進入再平衡流程。
@@ -4338,22 +4338,22 @@
             <div class="cockpit-bucket-card">
                 <div class="cockpit-bucket-label">先減碼</div>
                 <div class="cockpit-bucket-value text-red-300">{{ (rebalanceCockpitBuckets?.trim || []).length }}</div>
-                <div class="cockpit-bucket-note">Trim queue</div>
+                <div class="cockpit-bucket-note">減碼佇列</div>
             </div>
             <div class="cockpit-bucket-card">
                 <div class="cockpit-bucket-label">可加碼</div>
                 <div class="cockpit-bucket-value text-emerald-300">{{ (rebalanceCockpitBuckets?.add || []).length }}</div>
-                <div class="cockpit-bucket-note">MC allocator</div>
+                <div class="cockpit-bucket-note">MC 配置器</div>
             </div>
             <div class="cockpit-bucket-card">
                 <div class="cockpit-bucket-label">候補加碼</div>
                 <div class="cockpit-bucket-value text-amber-300">{{ (rebalanceCockpitBuckets?.pending || []).length }}</div>
-                <div class="cockpit-bucket-note">CRO locked</div>
+                <div class="cockpit-bucket-note">CRO 鎖定</div>
             </div>
             <div class="cockpit-bucket-card">
                 <div class="cockpit-bucket-label">暫不動</div>
                 <div class="cockpit-bucket-value text-slate-300">{{ (rebalanceCockpitBuckets?.hold || []).length }}</div>
-                <div class="cockpit-bucket-note">Buffer hold</div>
+                <div class="cockpit-bucket-note">緩衝持有</div>
             </div>
         </div>
         <div>
@@ -5591,7 +5591,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=optimizer-zh-runtime-fix-1"></script>
+<script src="assets/js/app.bundle.js?v=optimizer-zh-deep-1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
