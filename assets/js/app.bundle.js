@@ -1712,6 +1712,153 @@ const psr_hist = computePSR({
 }
 
 
+       function optimizerPolicyBucket(ticker) {
+    const t = String(ticker || '').toUpperCase();
+    if (!t) return 'other';
+    if (t === 'BOXX' || t.includes('CASH')) return 'cash';
+    if (t === 'GLDM' || t === 'GLD' || t.includes('GOLD')) return 'gold';
+    if (t === 'BTC-USD' || t === 'ETH-USD' || t.includes('BTC') || t.includes('ETH') || t.includes('加密')) return 'crypto';
+    if (/^[0-9]{4}[A-Z]?$/.test(t) || t === '2330' || t.includes('台灣')) return 'taiwan';
+    if (['GRID', 'IFRA', 'PICK', 'SRVR', 'VNM'].includes(t)) return 'theme';
+    if (['QQQ', 'VOO', 'VTI', 'AVUV', 'USMV'].includes(t)) return 'us_equity';
+    if (['VEA'].includes(t)) return 'intl_equity';
+    return 'other';
+}
+
+       const optimizerConstraintRules = computed(() => [
+    { key: 'single_max', label: '單檔上限', limit: '≤ 20%', severity: 'VIOLATION' },
+    { key: 'taiwan_max', label: '台股總上限', limit: '≤ 40%', severity: 'VIOLATION' },
+    { key: 'crypto_max', label: '加密總上限', limit: '≤ 15%', severity: 'VIOLATION' },
+    { key: 'gold_band', label: 'GLDM 黃金區間', limit: '3%–7%', severity: 'WARNING' },
+    { key: 'cash_floor', label: 'BOXX / 類現金下限', limit: '≥ 3%', severity: 'WARNING' },
+    { key: 'theme_single_max', label: '單一主題 ETF 上限', limit: '≤ 10%', severity: 'WARNING' },
+    { key: 'high_vol_max', label: '高波動資產總上限', limit: '≤ 35%', severity: 'VIOLATION' }
+]);
+
+       function evaluateOptimizerConstraintPolicy(candidate) {
+    if (!candidate || !Array.isArray(candidate.rows)) {
+        return {
+            key: candidate?.key || '',
+            status: 'NO_DATA',
+            issues: [],
+            rows: [],
+            totals: {},
+            violation_count: 0,
+            warning_count: 0,
+            most_severe_issue: '尚無資料'
+        };
+    }
+
+    const rows = candidate.rows.map((row) => {
+        const buffered = Number(row.buffered_target_weight_pct ?? row.target_weight_pct ?? row.current_weight_pct ?? 0);
+        const rawTarget = Number(row.target_weight_pct ?? buffered);
+        const bucket = optimizerPolicyBucket(row.ticker);
+        const rowIssues = [];
+        if (buffered > 20) {
+            rowIssues.push({
+                rule: 'single_max',
+                severity: 'VIOLATION',
+                message: `單檔 ${row.ticker} buffer 後權重 ${buffered.toFixed(2)}% > 20%。`
+            });
+        }
+        if (bucket === 'theme' && buffered > 10) {
+            rowIssues.push({
+                rule: 'theme_single_max',
+                severity: 'WARNING',
+                message: `主題 ETF ${row.ticker} buffer 後權重 ${buffered.toFixed(2)}% > 10%。`
+            });
+        }
+        return {
+            ...row,
+            policy_bucket: bucket,
+            policy_weight_pct: Number(buffered.toFixed(3)),
+            raw_target_weight_pct: Number(rawTarget.toFixed(3)),
+            policy_issues: rowIssues,
+            policy_status: rowIssues.some((x) => x.severity === 'VIOLATION') ? 'VIOLATION' : rowIssues.length ? 'WARNING' : 'PASS'
+        };
+    });
+
+    const sumBy = (predicate) => rows.reduce((sum, row) => sum + (predicate(row) ? Number(row.policy_weight_pct || 0) : 0), 0);
+    const totals = {
+        taiwan_pct: Number(sumBy((r) => r.policy_bucket === 'taiwan').toFixed(2)),
+        crypto_pct: Number(sumBy((r) => r.policy_bucket === 'crypto').toFixed(2)),
+        gold_pct: Number(sumBy((r) => r.policy_bucket === 'gold').toFixed(2)),
+        cash_pct: Number(sumBy((r) => r.policy_bucket === 'cash').toFixed(2)),
+        theme_pct: Number(sumBy((r) => r.policy_bucket === 'theme').toFixed(2)),
+        high_vol_pct: Number(sumBy((r) => ['crypto', 'theme'].includes(r.policy_bucket)).toFixed(2)),
+        max_single_pct: Number(Math.max(0, ...rows.map((r) => Number(r.policy_weight_pct || 0))).toFixed(2))
+    };
+
+    const issues = [];
+    rows.forEach((row) => (row.policy_issues || []).forEach((issue) => issues.push({ ticker: row.ticker, ...issue })));
+
+    if (totals.taiwan_pct > 40) {
+        issues.push({ rule: 'taiwan_max', severity: 'VIOLATION', message: `台股總權重 ${totals.taiwan_pct}% > 40%。` });
+    }
+    if (totals.crypto_pct > 15) {
+        issues.push({ rule: 'crypto_max', severity: 'VIOLATION', message: `加密總權重 ${totals.crypto_pct}% > 15%。` });
+    }
+    if (totals.high_vol_pct > 35) {
+        issues.push({ rule: 'high_vol_max', severity: 'VIOLATION', message: `高波動資產總權重 ${totals.high_vol_pct}% > 35%。` });
+    }
+    if (totals.gold_pct > 0 && (totals.gold_pct < 3 || totals.gold_pct > 7)) {
+        issues.push({ rule: 'gold_band', severity: 'WARNING', message: `GLDM / 黃金權重 ${totals.gold_pct}% 不在 3%–7% 區間。` });
+    }
+    if (totals.cash_pct < 3) {
+        issues.push({ rule: 'cash_floor', severity: 'WARNING', message: `BOXX / 類現金權重 ${totals.cash_pct}% < 3%。` });
+    }
+
+    const violationCount = issues.filter((x) => x.severity === 'VIOLATION').length;
+    const warningCount = issues.filter((x) => x.severity === 'WARNING').length;
+    const status = violationCount ? 'VIOLATION' : warningCount ? 'WARNING' : 'PASS';
+
+    return {
+        key: candidate.key,
+        label: candidate.label,
+        source: candidate.source,
+        status,
+        rows,
+        totals,
+        issues,
+        violation_count: violationCount,
+        warning_count: warningCount,
+        most_severe_issue: issues[0]?.message || '全部通過目前政策規則'
+    };
+}
+
+       const optimizerConstraintPolicySummaries = computed(() => {
+    return (optimizerBufferCandidateSummaries.value || []).map((candidate) => {
+        const policy = evaluateOptimizerConstraintPolicy(candidate);
+        return {
+            key: candidate.key,
+            label: candidate.label,
+            source: candidate.source,
+            buffer_turnover_pct: candidate.buffer_turnover_pct,
+            active_count: candidate.active_count,
+            policy_status: policy.status,
+            violation_count: policy.violation_count,
+            warning_count: policy.warning_count,
+            most_severe_issue: policy.most_severe_issue,
+            totals: policy.totals
+        };
+    });
+});
+
+       const selectedOptimizerConstraintPolicy = computed(() => {
+    const candidate = selectedOptimizerBufferCandidate.value;
+    return evaluateOptimizerConstraintPolicy(candidate);
+});
+
+       const selectedOptimizerConstraintRows = computed(() => {
+    return selectedOptimizerConstraintPolicy.value?.rows || [];
+});
+
+       const selectedOptimizerConstraintIssues = computed(() => {
+    return selectedOptimizerConstraintPolicy.value?.issues || [];
+});
+
+
+
        const optimizerRobustnessOutput = ref(null);
        const optimizerRobustnessError = ref('');
 
@@ -1755,6 +1902,84 @@ const psr_hist = computePSR({
        const optimizerUnstableMethods = computed(() => {
     return optimizerRobustnessMethods.value.filter((x) => x.verdict === '不穩定');
 });
+
+
+       const optimizerStressOutput = ref(null);
+       const optimizerStressError = ref('');
+
+       async function loadOptimizerStressOutput() {
+    try {
+        optimizerStressError.value = '';
+        const response = await fetch(`data/optimizer/optimizer_stress_latest.json?v=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) {
+            optimizerStressOutput.value = null;
+            optimizerStressError.value = `尚未讀到 optimizer stress output (${response.status})`;
+            return;
+        }
+        const data = await response.json();
+        optimizerStressOutput.value = data && typeof data === 'object' ? data : null;
+    } catch (err) {
+        optimizerStressOutput.value = null;
+        optimizerStressError.value = err?.message || String(err);
+    }
+}
+
+       const optimizerStressScenarios = computed(() => {
+    return Array.isArray(optimizerStressOutput.value?.scenarios) ? optimizerStressOutput.value.scenarios : [];
+});
+
+       const optimizerStressRows = computed(() => {
+    const rows = optimizerStressOutput.value?.comparison_rows;
+    return Array.isArray(rows) ? rows : [];
+});
+
+       const optimizerStressWorstRows = computed(() => {
+    return optimizerStressRows.value
+        .slice()
+        .sort((a, b) => Number(a.worst_scenario_return_pct ?? 0) - Number(b.worst_scenario_return_pct ?? 0));
+});
+
+       const optimizerStressBestWorst = computed(() => {
+    return optimizerStressWorstRows.value.length ? optimizerStressWorstRows.value[optimizerStressWorstRows.value.length - 1] : null;
+});
+
+       const optimizerStressMostFragile = computed(() => {
+    return optimizerStressWorstRows.value.length ? optimizerStressWorstRows.value[0] : null;
+});
+
+       const selectedStressScenarioKey = ref('');
+
+       const selectedStressScenario = computed(() => {
+    const scenarios = optimizerStressScenarios.value || [];
+    if (!scenarios.length) return null;
+    if (selectedStressScenarioKey.value) {
+        const found = scenarios.find((x) => x.key === selectedStressScenarioKey.value);
+        if (found) return found;
+    }
+    return scenarios[0];
+});
+
+       const selectedStressScenarioRows = computed(() => {
+    const key = selectedStressScenario.value?.key;
+    if (!key) return [];
+    return optimizerStressRows.value
+        .map((row) => {
+            const scenario = row.scenario_returns?.[key] || {};
+            return {
+                label: row.label,
+                source: row.source,
+                status: row.status,
+                scenario_return_pct: scenario.return_pct ?? null,
+                top_contributors: scenario.top_contributors || []
+            };
+        })
+        .sort((a, b) => Number(a.scenario_return_pct ?? 0) - Number(b.scenario_return_pct ?? 0));
+});
+
+       function setStressScenario(key) {
+    selectedStressScenarioKey.value = key;
+}
+
 
        const tailStatsLite = ref({
     conditionalCorr: '-',
@@ -3589,6 +3814,7 @@ chartCML.data.datasets = [
     loadOptimizerSandboxOutput();
     loadRiskfolioSandboxOutput();
     loadOptimizerRobustnessOutput();
+    loadOptimizerStressOutput();
 
     window.addEventListener('resize', () => {
         resizeAllCharts();
@@ -4110,7 +4336,7 @@ chartCML.data.datasets = [
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr, navOverlayMode, navOverlayOptions, setNavOverlayMode, navMaConfig, riskRegimeStrip, navTrendSummary,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
-            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
+            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerConstraintRules, optimizerConstraintPolicySummaries, selectedOptimizerConstraintPolicy, selectedOptimizerConstraintRows, selectedOptimizerConstraintIssues, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, optimizerStressOutput, optimizerStressError, optimizerStressScenarios, optimizerStressRows, optimizerStressWorstRows, optimizerStressBestWorst, optimizerStressMostFragile, selectedStressScenarioKey, selectedStressScenario, selectedStressScenarioRows, setStressScenario, loadOptimizerStressOutput, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
         };
     }
 }).mount('#app');

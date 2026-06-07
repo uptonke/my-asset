@@ -2988,6 +2988,318 @@
                             </div>
 
 
+
+                            <!-- v1.6.1 Constraint Policy Layer -->
+                            <div class="rounded-2xl border border-lime-500/20 bg-lime-500/[0.035] overflow-hidden">
+                                <div class="px-4 py-3 border-b border-white/10 bg-lime-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-shield-check text-lime-400"></i>
+                                            v1.6.1 Constraint Policy Layer
+                                        </div>
+                                        <div class="text-[10px] text-gray-500 mt-1">
+                                            在 v1.6 的 Trade Buffer 後權重上檢查投組政策限制：單檔上限、台股上限、加密上限、黃金區間、BOXX 下限、主題 ETF 與高波動資產集中度。
+                                        </div>
+                                    </div>
+                                    <div class="text-[11px] text-gray-400">
+                                        選定候選：{{ selectedOptimizerBufferCandidate?.label ?? '-' }}，
+                                        狀態：{{ selectedOptimizerConstraintPolicy?.status ?? '-' }}
+                                    </div>
+                                </div>
+
+                                <div class="p-4 space-y-4">
+                                    <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
+                                        <div class="quant-card border-lime-500/20 bg-lime-500/10">
+                                            <div class="quant-label text-lime-300">Policy 狀態</div>
+                                            <div class="quant-value text-white text-lg">{{ selectedOptimizerConstraintPolicy?.status ?? '-' }}</div>
+                                        </div>
+                                        <div class="quant-card border-red-500/20 bg-red-500/10">
+                                            <div class="quant-label text-red-300">違規</div>
+                                            <div class="quant-value text-white">{{ selectedOptimizerConstraintPolicy?.violation_count ?? 0 }}</div>
+                                        </div>
+                                        <div class="quant-card border-amber-500/20 bg-amber-500/10">
+                                            <div class="quant-label text-amber-300">警示</div>
+                                            <div class="quant-value text-white">{{ selectedOptimizerConstraintPolicy?.warning_count ?? 0 }}</div>
+                                        </div>
+                                        <div class="quant-card border-slate-500/20 bg-slate-500/10">
+                                            <div class="quant-label text-slate-300">單檔最大</div>
+                                            <div class="quant-value text-white">{{ selectedOptimizerConstraintPolicy?.totals?.max_single_pct ?? '-' }}%</div>
+                                        </div>
+                                        <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                            <div class="quant-label text-cyan-300">台股</div>
+                                            <div class="quant-value text-white">{{ selectedOptimizerConstraintPolicy?.totals?.taiwan_pct ?? '-' }}%</div>
+                                        </div>
+                                        <div class="quant-card border-purple-500/20 bg-purple-500/10">
+                                            <div class="quant-label text-purple-300">加密</div>
+                                            <div class="quant-value text-white">{{ selectedOptimizerConstraintPolicy?.totals?.crypto_pct ?? '-' }}%</div>
+                                        </div>
+                                        <div class="quant-card border-yellow-500/20 bg-yellow-500/10">
+                                            <div class="quant-label text-yellow-300">黃金</div>
+                                            <div class="quant-value text-white">{{ selectedOptimizerConstraintPolicy?.totals?.gold_pct ?? '-' }}%</div>
+                                        </div>
+                                        <div class="quant-card border-blue-500/20 bg-blue-500/10">
+                                            <div class="quant-label text-blue-300">BOXX / 現金</div>
+                                            <div class="quant-value text-white">{{ selectedOptimizerConstraintPolicy?.totals?.cash_pct ?? '-' }}%</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
+                                                <i class="fas fa-list-ul text-lime-400"></i>
+                                                Constraint Rules
+                                            </div>
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full text-[11px]">
+                                                    <thead class="text-gray-500 border-b border-white/10">
+                                                        <tr>
+                                                            <th class="text-left px-3 py-2">規則</th>
+                                                            <th class="text-left px-3 py-2">限制</th>
+                                                            <th class="text-left px-3 py-2">層級</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="rule in optimizerConstraintRules" :key="rule.key" class="border-b border-white/5">
+                                                            <td class="px-3 py-2 text-white">{{ rule.label }}</td>
+                                                            <td class="px-3 py-2 font-mono text-gray-300">{{ rule.limit }}</td>
+                                                            <td class="px-3 py-2">
+                                                                <span class="px-1.5 py-0.5 rounded border text-[10px]"
+                                                                      :class="rule.severity === 'VIOLATION' ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-amber-500/30 bg-amber-500/10 text-amber-300'">
+                                                                    {{ rule.severity }}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <div class="xl:col-span-2 rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
+                                                <i class="fas fa-gavel text-lime-400"></i>
+                                                Candidate Policy Summary
+                                            </div>
+                                            <div class="overflow-x-auto max-h-[420px]">
+                                                <table class="w-full text-[11px]">
+                                                    <thead class="text-gray-500 border-b border-white/10 sticky top-0 bg-slate-950/90 backdrop-blur">
+                                                        <tr>
+                                                            <th class="text-left px-3 py-2">候選</th>
+                                                            <th class="text-left px-3 py-2">狀態</th>
+                                                            <th class="text-right px-3 py-2">違規</th>
+                                                            <th class="text-right px-3 py-2">警示</th>
+                                                            <th class="text-right px-3 py-2">Buffer TO</th>
+                                                            <th class="text-left px-3 py-2">最嚴重問題</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="row in optimizerConstraintPolicySummaries" :key="row.key"
+                                                            @click="setOptimizerBufferCandidate(row.key)"
+                                                            class="border-b border-white/5 hover:bg-white/[0.05] cursor-pointer"
+                                                            :class="selectedOptimizerBufferCandidate?.key === row.key ? 'bg-lime-500/[0.08]' : ''">
+                                                            <td class="px-3 py-2 font-mono text-white">{{ row.label }}</td>
+                                                            <td class="px-3 py-2">
+                                                                <span class="px-1.5 py-0.5 rounded border text-[10px]"
+                                                                      :class="row.policy_status === 'PASS' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : row.policy_status === 'VIOLATION' ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-amber-500/30 bg-amber-500/10 text-amber-300'">
+                                                                    {{ row.policy_status }}
+                                                                </span>
+                                                            </td>
+                                                            <td class="px-3 py-2 text-right text-red-300">{{ row.violation_count }}</td>
+                                                            <td class="px-3 py-2 text-right text-amber-300">{{ row.warning_count }}</td>
+                                                            <td class="px-3 py-2 text-right text-cyan-300">{{ row.buffer_turnover_pct ?? '-' }}%</td>
+                                                            <td class="px-3 py-2 text-gray-400 min-w-[260px]">{{ row.most_severe_issue }}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <div class="xl:col-span-3 rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
+                                                <i class="fas fa-triangle-exclamation text-amber-400"></i>
+                                                選定候選的違規 / 警示
+                                            </div>
+                                            <div class="p-3 text-[11px] text-gray-300 space-y-1">
+                                                <div v-if="!selectedOptimizerConstraintIssues.length" class="text-emerald-300">
+                                                    目前選定候選通過 v1.6.1 政策規則。
+                                                </div>
+                                                <div v-for="issue in selectedOptimizerConstraintIssues" :key="issue.rule + ':' + issue.message" class="flex gap-2">
+                                                    <span class="mt-0.5 px-1.5 py-0.5 rounded border text-[10px]"
+                                                          :class="issue.severity === 'VIOLATION' ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-amber-500/30 bg-amber-500/10 text-amber-300'">
+                                                        {{ issue.severity }}
+                                                    </span>
+                                                    <span>{{ issue.message }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+
+
+                            <!-- v1.7 Optimizer Stress Test -->
+                            <div class="rounded-2xl border border-rose-500/20 bg-rose-500/[0.035] overflow-hidden">
+                                <div class="px-4 py-3 border-b border-white/10 bg-rose-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-bolt text-rose-400"></i>
+                                            v1.7 Stress Test Optimizer Weights
+                                        </div>
+                                        <div class="text-[10px] text-gray-500 mt-1">
+                                            對 skfolio / Riskfolio / baseline 候選權重套用 deterministic scenario shocks。這是壓力診斷，不是預測。
+                                        </div>
+                                    </div>
+                                    <div class="text-[11px] text-gray-400">
+                                        狀態：{{ optimizerStressOutput?.status ?? '尚未讀取' }}，
+                                        情境數：{{ optimizerStressScenarios?.length ?? 0 }}
+                                    </div>
+                                </div>
+
+                                <div class="p-4 space-y-4">
+                                    <div v-if="!optimizerStressOutput" class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-100 leading-relaxed">
+                                        <i class="fas fa-hourglass-half mr-2"></i>
+                                        尚未讀到 optimizer stress output。請先跑 GitHub Actions 的 <span class="font-mono">Optimizer Stress Tests</span>。
+                                        <div class="text-[11px] text-amber-200/80 mt-1" v-if="optimizerStressError">{{ optimizerStressError }}</div>
+                                        <button @click="loadOptimizerStressOutput" class="mt-2 px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-100 text-xs hover:bg-amber-500/30">
+                                            重新讀取
+                                        </button>
+                                    </div>
+
+                                    <template v-else>
+                                        <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
+                                            <div class="quant-card border-rose-500/20 bg-rose-500/10">
+                                                <div class="quant-label text-rose-300">候選數</div>
+                                                <div class="quant-value text-white">{{ optimizerStressRows.length }}</div>
+                                            </div>
+                                            <div class="quant-card border-red-500/20 bg-red-500/10">
+                                                <div class="quant-label text-red-300">最脆弱</div>
+                                                <div class="quant-value text-white text-lg">{{ optimizerStressMostFragile?.label ?? '-' }}</div>
+                                            </div>
+                                            <div class="quant-card border-red-500/20 bg-red-500/10">
+                                                <div class="quant-label text-red-300">Worst</div>
+                                                <div class="quant-value text-white">{{ optimizerStressMostFragile?.worst_scenario_return_pct ?? '-' }}%</div>
+                                            </div>
+                                            <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
+                                                <div class="quant-label text-emerald-300">最佳 Worst</div>
+                                                <div class="quant-value text-white text-lg">{{ optimizerStressBestWorst?.label ?? '-' }}</div>
+                                            </div>
+                                            <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
+                                                <div class="quant-label text-emerald-300">Worst</div>
+                                                <div class="quant-value text-white">{{ optimizerStressBestWorst?.worst_scenario_return_pct ?? '-' }}%</div>
+                                            </div>
+                                            <div class="quant-card border-slate-500/20 bg-slate-500/10">
+                                                <div class="quant-label text-slate-300">情境數</div>
+                                                <div class="quant-value text-white">{{ optimizerStressScenarios.length }}</div>
+                                            </div>
+                                            <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                                <div class="quant-label text-cyan-300">選定情境</div>
+                                                <div class="quant-value text-white text-lg">{{ selectedStressScenario?.label ?? '-' }}</div>
+                                            </div>
+                                            <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                                <div class="quant-label text-cyan-300">模式</div>
+                                                <div class="quant-value text-white text-lg">{{ optimizerStressOutput?.mode ?? '-' }}</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="rounded-xl border border-white/10 bg-black/20 p-3">
+                                            <div class="text-sm font-bold text-white flex items-center gap-2 mb-2">
+                                                <i class="fas fa-sliders text-rose-400"></i>
+                                                Stress Scenario
+                                            </div>
+                                            <div class="flex flex-wrap gap-2">
+                                                <button v-for="scenario in optimizerStressScenarios" :key="scenario.key"
+                                                        @click="setStressScenario(scenario.key)"
+                                                        class="px-2.5 py-1 rounded-lg border text-[11px]"
+                                                        :class="selectedStressScenario?.key === scenario.key ? 'border-rose-400 bg-rose-500/20 text-rose-100' : 'border-white/10 bg-white/[0.03] text-gray-300 hover:bg-white/[0.06]'">
+                                                    {{ scenario.label }}
+                                                </button>
+                                            </div>
+                                            <div class="text-[11px] text-gray-400 mt-2">
+                                                {{ selectedStressScenario?.description ?? '' }}
+                                            </div>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                            <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                                <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
+                                                    <i class="fas fa-table text-rose-400"></i>
+                                                    Worst Scenario Ranking
+                                                </div>
+                                                <div class="overflow-x-auto max-h-[460px]">
+                                                    <table class="w-full text-[11px]">
+                                                        <thead class="text-gray-500 border-b border-white/10 sticky top-0 bg-slate-950/90 backdrop-blur">
+                                                            <tr>
+                                                                <th class="text-left px-3 py-2">候選</th>
+                                                                <th class="text-left px-3 py-2">來源</th>
+                                                                <th class="text-right px-3 py-2">Worst</th>
+                                                                <th class="text-right px-3 py-2">Average</th>
+                                                                <th class="text-right px-3 py-2">Best</th>
+                                                                <th class="text-right px-3 py-2">Turnover</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr v-for="row in optimizerStressWorstRows" :key="row.source + ':' + row.key" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                                <td class="px-3 py-2 font-mono text-white">{{ row.label }}</td>
+                                                                <td class="px-3 py-2 text-gray-400">{{ row.source }}</td>
+                                                                <td class="px-3 py-2 text-right text-red-300">{{ row.worst_scenario_return_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right text-orange-300">{{ row.avg_scenario_return_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right text-emerald-300">{{ row.best_scenario_return_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right text-cyan-300">{{ row.turnover_vs_current_pct ?? '-' }}%</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+
+                                            <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                                <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
+                                                    <i class="fas fa-burst text-rose-400"></i>
+                                                    選定情境下的候選排序
+                                                </div>
+                                                <div class="overflow-x-auto max-h-[460px]">
+                                                    <table class="w-full text-[11px]">
+                                                        <thead class="text-gray-500 border-b border-white/10 sticky top-0 bg-slate-950/90 backdrop-blur">
+                                                            <tr>
+                                                                <th class="text-left px-3 py-2">候選</th>
+                                                                <th class="text-left px-3 py-2">來源</th>
+                                                                <th class="text-right px-3 py-2">情境報酬</th>
+                                                                <th class="text-left px-3 py-2">最大負貢獻</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr v-for="row in selectedStressScenarioRows" :key="row.source + ':' + row.label" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                                <td class="px-3 py-2 font-mono text-white">{{ row.label }}</td>
+                                                                <td class="px-3 py-2 text-gray-400">{{ row.source }}</td>
+                                                                <td class="px-3 py-2 text-right text-red-300">{{ row.scenario_return_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-gray-400">
+                                                                    <span v-for="c in (row.top_contributors || []).slice(0, 3)" :key="row.label + c.ticker" class="mr-2">
+                                                                        {{ c.ticker }} {{ c.contribution_pct }}%
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3">
+                                            <div class="text-sm font-bold text-white flex items-center gap-2 mb-2">
+                                                <i class="fas fa-triangle-exclamation text-amber-400"></i>
+                                                v1.7 使用限制
+                                            </div>
+                                            <ul class="space-y-1 text-[11px] text-gray-400 leading-relaxed">
+                                                <li v-for="item in (optimizerStressOutput?.warnings || [])" :key="item" class="flex gap-2">
+                                                    <i class="fas fa-check text-amber-400 mt-0.5"></i>
+                                                    <span>{{ item }}</span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+
                             <!-- Risk contribution + model assumptions -->
                             <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
                                 <div class="xl:col-span-2 rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
@@ -4643,7 +4955,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=11.31-v16-trade-buffer-integration"></script>
+<script src="assets/js/app.bundle.js?v=11.32-v161-policy-v17-stress"></script>
 <script src="assets/js/quant-main-display.js?v=no-chip-terminal"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
