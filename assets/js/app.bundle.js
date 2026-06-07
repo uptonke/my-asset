@@ -1981,6 +1981,182 @@ const psr_hist = computePSR({
 }
 
 
+       const selectedOptimizerExplainKey = ref('');
+
+       function getCandidateByKey(key) {
+    const rows = unifiedOptimizerComparison.value || [];
+    return rows.find((x) => x.key === key) || null;
+}
+
+       function getBufferSummaryByKey(key) {
+    return (optimizerBufferCandidateSummaries.value || []).find((x) => x.key === key) || null;
+}
+
+       function getPolicySummaryByKey(key) {
+    return (optimizerConstraintPolicySummaries.value || []).find((x) => x.key === key) || null;
+}
+
+       function getStressSummaryByKey(key) {
+    return (optimizerStressRows.value || []).find((x) => x.key === key) || null;
+}
+
+       function getRobustnessSummaryByKey(key) {
+    return (optimizerRobustnessMethods.value || []).find((x) => x.key === key) || null;
+}
+
+       function buildOptimizerExplainability(candidate) {
+    if (!candidate) {
+        return {
+            status: 'NO_DATA',
+            reasons: [],
+            watchpoints: [],
+            asset_reasons: []
+        };
+    }
+
+    const key = candidate.key;
+    const buffer = getBufferSummaryByKey(key) || {};
+    const policy = getPolicySummaryByKey(key) || {};
+    const stress = getStressSummaryByKey(key) || {};
+    const robust = getRobustnessSummaryByKey(key) || {};
+    const rows = (selectedOptimizerBufferCandidate?.value?.key === key ? selectedOptimizerBufferRows.value : (buffer.rows || [])) || [];
+
+    const reasons = [];
+    const watchpoints = [];
+
+    const esDelta = Number(candidate.es_delta_vs_current_pct);
+    const volDelta = Number(candidate.vol_delta_vs_current_pct);
+    const mddDelta = Number(candidate.mdd_delta_vs_current_pct);
+    const turnover = Number(candidate.turnover_vs_current_pct ?? buffer.raw_turnover_pct);
+    const bufferTurnover = Number(buffer.buffer_turnover_pct);
+    const worstStress = Number(stress.worst_scenario_return_pct);
+    const avgStress = Number(stress.avg_scenario_return_pct);
+
+    if (Number.isFinite(esDelta)) {
+        if (esDelta < 0) reasons.push(`ES95 較目前權重下降 ${Math.abs(esDelta).toFixed(2)} 個百分點，尾部風險較低。`);
+        if (esDelta > 0) watchpoints.push(`ES95 較目前權重上升 ${esDelta.toFixed(2)} 個百分點，尾部風險變差。`);
+    }
+    if (Number.isFinite(volDelta)) {
+        if (volDelta < 0) reasons.push(`年化波動較目前權重下降 ${Math.abs(volDelta).toFixed(2)} 個百分點。`);
+        if (volDelta > 0) watchpoints.push(`年化波動較目前權重上升 ${volDelta.toFixed(2)} 個百分點。`);
+    }
+    if (Number.isFinite(mddDelta)) {
+        if (mddDelta > 0) reasons.push(`歷史最大回撤較目前權重改善 ${mddDelta.toFixed(2)} 個百分點。`);
+        if (mddDelta < 0) watchpoints.push(`歷史最大回撤較目前權重惡化 ${Math.abs(mddDelta).toFixed(2)} 個百分點。`);
+    }
+    if (Number.isFinite(turnover)) {
+        if (turnover >= 80) watchpoints.push(`原始換手率約 ${turnover.toFixed(1)}%，實務摩擦成本可能很高。`);
+        else if (turnover >= 40) watchpoints.push(`原始換手率約 ${turnover.toFixed(1)}%，需要先過 Trade Buffer 與人工審核。`);
+        else reasons.push(`原始換手率約 ${turnover.toFixed(1)}%，相對可觀察。`);
+    }
+    if (Number.isFinite(bufferTurnover)) {
+        reasons.push(`套用目前 ±${tradeBufferBasePct.value}% No-Trade Zone 後，主動換手約 ${bufferTurnover.toFixed(1)}%。`);
+    }
+    if (policy.policy_status === 'PASS') {
+        reasons.push('通過 v1.6.1 Constraint Policy，目前沒有政策違規。');
+    } else if (policy.policy_status === 'WARNING') {
+        watchpoints.push(`政策層級為 WARNING：${policy.most_severe_issue || '存在警示項目。'}`);
+    } else if (policy.policy_status === 'VIOLATION') {
+        watchpoints.push(`政策層級為 VIOLATION：${policy.most_severe_issue || '存在違規項目。'}`);
+    }
+    if (robust.verdict) {
+        if (robust.verdict === '穩定') reasons.push(`v1.4 樣本穩健性判讀為「穩定」。`);
+        if (robust.verdict === '可觀察') watchpoints.push(`v1.4 樣本穩健性判讀為「可觀察」，仍需注意回看期敏感度。`);
+        if (robust.verdict === '不穩定') watchpoints.push(`v1.4 樣本穩健性判讀為「不穩定」，不適合作為主要候選。`);
+    }
+    if (Number.isFinite(worstStress)) {
+        if (worstStress <= -35) watchpoints.push(`壓力測試最差情境約 ${worstStress.toFixed(1)}%，極端情境損失較深。`);
+        else reasons.push(`壓力測試最差情境約 ${worstStress.toFixed(1)}%，相對可追蹤。`);
+    }
+    if (Number.isFinite(avgStress)) {
+        reasons.push(`六個壓力情境平均約 ${avgStress.toFixed(1)}%。`);
+    }
+
+    const assetRows = (selectedOptimizerBufferCandidate?.value?.key === key ? selectedOptimizerBufferRows.value : [])
+        .filter((row) => row && ['ADD', 'TRIM', 'PENDING_ADD'].includes(row.action))
+        .slice()
+        .sort((a, b) => Math.abs(Number(b.drift_pct || 0)) - Math.abs(Number(a.drift_pct || 0)))
+        .slice(0, 12)
+        .map((row) => {
+            const policyRow = (selectedOptimizerConstraintRows.value || []).find((x) => x.ticker === row.ticker) || {};
+            let why = '';
+            if (row.action === 'TRIM') why = `模型目標低於目前 ${Math.abs(Number(row.drift_pct || 0)).toFixed(2)}%，超過 Trim buffer。`;
+            else if (row.action === 'ADD') why = `模型目標高於目前 ${Math.abs(Number(row.drift_pct || 0)).toFixed(2)}%，超過 Add buffer。`;
+            else why = `超過 Add buffer，但 CRO_VETO 或風險控管使其列為候補。`;
+            if (policyRow.policy_status === 'VIOLATION') why += ' 但此標的或組合有政策違規，不能直接執行。';
+            if (policyRow.policy_status === 'WARNING') why += ' 需注意政策警示。';
+            return {
+                ticker: row.ticker,
+                action: row.action,
+                action_zh: row.action_zh,
+                drift_pct: row.drift_pct,
+                current_weight_pct: row.current_weight_pct,
+                target_weight_pct: row.target_weight_pct,
+                buffered_target_weight_pct: row.buffered_target_weight_pct,
+                policy_status: policyRow.policy_status || 'PASS',
+                why
+            };
+        });
+
+    let decision = 'WATCH';
+    if (policy.policy_status === 'VIOLATION' || robust.verdict === '不穩定' || (Number.isFinite(worstStress) && worstStress <= -40)) {
+        decision = 'REJECT_OR_REWORK';
+    } else if ((Number.isFinite(esDelta) && esDelta < 0) && policy.policy_status !== 'VIOLATION' && robust.verdict !== '不穩定' && (!Number.isFinite(bufferTurnover) || bufferTurnover <= 35)) {
+        decision = 'REVIEW_CANDIDATE';
+    }
+
+    if (!reasons.length) reasons.push('此候選沒有明確風險改善訊號，暫時只適合觀察。');
+    if (!watchpoints.length) watchpoints.push('尚無重大警示，但仍需人工審核與成本估算。');
+
+    return {
+        key,
+        label: candidate.label,
+        source: candidate.source,
+        status: 'OK',
+        decision,
+        reasons,
+        watchpoints,
+        asset_reasons: assetRows,
+        metrics: {
+            es_delta_vs_current_pct: candidate.es_delta_vs_current_pct,
+            vol_delta_vs_current_pct: candidate.vol_delta_vs_current_pct,
+            mdd_delta_vs_current_pct: candidate.mdd_delta_vs_current_pct,
+            turnover_vs_current_pct: candidate.turnover_vs_current_pct,
+            buffer_turnover_pct: buffer.buffer_turnover_pct ?? null,
+            policy_status: policy.policy_status ?? 'N/A',
+            robustness_verdict: robust.verdict ?? 'N/A',
+            worst_stress_pct: stress.worst_scenario_return_pct ?? null,
+            avg_stress_pct: stress.avg_scenario_return_pct ?? null
+        }
+    };
+}
+
+       const optimizerExplainabilityCandidates = computed(() => {
+    return (unifiedOptimizerComparison.value || [])
+        .filter((x) => x && x.status === 'OK')
+        .filter((x) => !['current_weight'].includes(x.key))
+        .filter((x) => x.key !== 'hrp_lite_v06' || Array.isArray(x.weights))
+        .map((candidate) => buildOptimizerExplainability(candidate));
+});
+
+       const selectedOptimizerExplainability = computed(() => {
+    const list = optimizerExplainabilityCandidates.value || [];
+    if (!list.length) return null;
+    if (selectedOptimizerExplainKey.value) {
+        const found = list.find((x) => x.key === selectedOptimizerExplainKey.value);
+        if (found) return found;
+    }
+    const review = list.find((x) => x.decision === 'REVIEW_CANDIDATE');
+    return review || list[0];
+});
+
+       function setOptimizerExplainCandidate(key) {
+    selectedOptimizerExplainKey.value = key;
+    setOptimizerBufferCandidate(key);
+}
+
+
+
        const tailStatsLite = ref({
     conditionalCorr: '-',
     crisisCorr: '-',
@@ -4336,7 +4512,7 @@ chartCML.data.datasets = [
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr, navOverlayMode, navOverlayOptions, setNavOverlayMode, navMaConfig, riskRegimeStrip, navTrendSummary,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
-            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerConstraintRules, optimizerConstraintPolicySummaries, selectedOptimizerConstraintPolicy, selectedOptimizerConstraintRows, selectedOptimizerConstraintIssues, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, optimizerStressOutput, optimizerStressError, optimizerStressScenarios, optimizerStressRows, optimizerStressWorstRows, optimizerStressBestWorst, optimizerStressMostFragile, selectedStressScenarioKey, selectedStressScenario, selectedStressScenarioRows, setStressScenario, loadOptimizerStressOutput, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
+            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerConstraintRules, optimizerConstraintPolicySummaries, selectedOptimizerConstraintPolicy, selectedOptimizerConstraintRows, selectedOptimizerConstraintIssues, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, optimizerStressOutput, optimizerStressError, optimizerStressScenarios, optimizerStressRows, optimizerStressWorstRows, optimizerStressBestWorst, optimizerStressMostFragile, selectedStressScenarioKey, selectedStressScenario, selectedStressScenarioRows, setStressScenario, loadOptimizerStressOutput, selectedOptimizerExplainKey, optimizerExplainabilityCandidates, selectedOptimizerExplainability, setOptimizerExplainCandidate, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
         };
     }
 }).mount('#app');

@@ -3300,6 +3300,189 @@
                             </div>
 
 
+
+                            <!-- v1.8 Optimizer Explainability Panel -->
+                            <div class="rounded-2xl border border-sky-500/20 bg-sky-500/[0.035] overflow-hidden">
+                                <div class="px-4 py-3 border-b border-white/10 bg-sky-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-magnifying-glass-chart text-sky-400"></i>
+                                            v1.8 Optimizer Explainability Panel
+                                        </div>
+                                        <div class="text-[10px] text-gray-500 mt-1">
+                                            將 v1.3、v1.4、v1.6、v1.6.1、v1.7 的資訊合併，解釋每個 optimizer 候選為什麼值得觀察、為什麼需要排除或重做。
+                                        </div>
+                                    </div>
+                                    <div class="text-[11px] text-gray-400">
+                                        候選數：{{ optimizerExplainabilityCandidates?.length ?? 0 }}，
+                                        選定：{{ selectedOptimizerExplainability?.label ?? '-' }}
+                                    </div>
+                                </div>
+
+                                <div class="p-4 space-y-4">
+                                    <div v-if="!optimizerExplainabilityCandidates.length" class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-100 leading-relaxed">
+                                        <i class="fas fa-hourglass-half mr-2"></i>
+                                        尚未取得完整 explainability 資料。請確認 skfolio、Riskfolio、robustness、stress output 已部署，且 v1.3～v1.7 面板可讀取。
+                                    </div>
+
+                                    <template v-else>
+                                        <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
+                                            <div class="quant-card border-sky-500/20 bg-sky-500/10">
+                                                <div class="quant-label text-sky-300">Decision</div>
+                                                <div class="quant-value text-white text-lg">{{ selectedOptimizerExplainability?.decision ?? '-' }}</div>
+                                            </div>
+                                            <div class="quant-card border-red-500/20 bg-red-500/10">
+                                                <div class="quant-label text-red-300">ES 差異</div>
+                                                <div class="quant-value text-white">{{ selectedOptimizerExplainability?.metrics?.es_delta_vs_current_pct ?? '-' }}%</div>
+                                            </div>
+                                            <div class="quant-card border-purple-500/20 bg-purple-500/10">
+                                                <div class="quant-label text-purple-300">Vol 差異</div>
+                                                <div class="quant-value text-white">{{ selectedOptimizerExplainability?.metrics?.vol_delta_vs_current_pct ?? '-' }}%</div>
+                                            </div>
+                                            <div class="quant-card border-orange-500/20 bg-orange-500/10">
+                                                <div class="quant-label text-orange-300">MDD 差異</div>
+                                                <div class="quant-value text-white">{{ selectedOptimizerExplainability?.metrics?.mdd_delta_vs_current_pct ?? '-' }}%</div>
+                                            </div>
+                                            <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                                <div class="quant-label text-cyan-300">Buffer TO</div>
+                                                <div class="quant-value text-white">{{ selectedOptimizerExplainability?.metrics?.buffer_turnover_pct ?? '-' }}%</div>
+                                            </div>
+                                            <div class="quant-card border-lime-500/20 bg-lime-500/10">
+                                                <div class="quant-label text-lime-300">Policy</div>
+                                                <div class="quant-value text-white text-lg">{{ selectedOptimizerExplainability?.metrics?.policy_status ?? '-' }}</div>
+                                            </div>
+                                            <div class="quant-card border-teal-500/20 bg-teal-500/10">
+                                                <div class="quant-label text-teal-300">Robustness</div>
+                                                <div class="quant-value text-white text-lg">{{ selectedOptimizerExplainability?.metrics?.robustness_verdict ?? '-' }}</div>
+                                            </div>
+                                            <div class="quant-card border-rose-500/20 bg-rose-500/10">
+                                                <div class="quant-label text-rose-300">Worst Stress</div>
+                                                <div class="quant-value text-white">{{ selectedOptimizerExplainability?.metrics?.worst_stress_pct ?? '-' }}%</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                                            <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                                <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
+                                                    <i class="fas fa-list-check text-sky-400"></i>
+                                                    Explainability Candidates
+                                                </div>
+                                                <div class="overflow-x-auto max-h-[460px]">
+                                                    <table class="w-full text-[11px]">
+                                                        <thead class="text-gray-500 border-b border-white/10 sticky top-0 bg-slate-950/90 backdrop-blur">
+                                                            <tr>
+                                                                <th class="text-left px-3 py-2">候選</th>
+                                                                <th class="text-left px-3 py-2">來源</th>
+                                                                <th class="text-left px-3 py-2">Decision</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr v-for="row in optimizerExplainabilityCandidates" :key="row.key"
+                                                                @click="setOptimizerExplainCandidate(row.key)"
+                                                                class="border-b border-white/5 hover:bg-white/[0.05] cursor-pointer"
+                                                                :class="selectedOptimizerExplainability?.key === row.key ? 'bg-sky-500/[0.08]' : ''">
+                                                                <td class="px-3 py-2 font-mono text-white">{{ row.label }}</td>
+                                                                <td class="px-3 py-2 text-gray-400">{{ row.source }}</td>
+                                                                <td class="px-3 py-2">
+                                                                    <span class="px-1.5 py-0.5 rounded border text-[10px]"
+                                                                          :class="row.decision === 'REVIEW_CANDIDATE' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : row.decision === 'REJECT_OR_REWORK' ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-amber-500/30 bg-amber-500/10 text-amber-300'">
+                                                                        {{ row.decision }}
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+
+                                            <div class="xl:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                                <div class="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-3">
+                                                    <div class="text-sm font-bold text-white flex items-center gap-2 mb-2">
+                                                        <i class="fas fa-circle-check text-emerald-400"></i>
+                                                        為什麼值得觀察
+                                                    </div>
+                                                    <ul class="space-y-1 text-[11px] text-gray-300 leading-relaxed">
+                                                        <li v-for="item in (selectedOptimizerExplainability?.reasons || [])" :key="'reason-' + item" class="flex gap-2">
+                                                            <i class="fas fa-check text-emerald-400 mt-0.5"></i>
+                                                            <span>{{ item }}</span>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+
+                                                <div class="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3">
+                                                    <div class="text-sm font-bold text-white flex items-center gap-2 mb-2">
+                                                        <i class="fas fa-triangle-exclamation text-amber-400"></i>
+                                                        為什麼不能直接執行
+                                                    </div>
+                                                    <ul class="space-y-1 text-[11px] text-gray-300 leading-relaxed">
+                                                        <li v-for="item in (selectedOptimizerExplainability?.watchpoints || [])" :key="'watch-' + item" class="flex gap-2">
+                                                            <i class="fas fa-circle-exclamation text-amber-400 mt-0.5"></i>
+                                                            <span>{{ item }}</span>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+
+                                            <div class="xl:col-span-3 rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                                <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
+                                                    <i class="fas fa-arrow-up-right-dots text-sky-400"></i>
+                                                    標的層級解釋：ADD / TRIM / PENDING 的原因
+                                                </div>
+                                                <div class="overflow-x-auto max-h-[520px]">
+                                                    <table class="w-full text-[11px]">
+                                                        <thead class="text-gray-500 border-b border-white/10 sticky top-0 bg-slate-950/90 backdrop-blur">
+                                                            <tr>
+                                                                <th class="text-left px-3 py-2">標的</th>
+                                                                <th class="text-left px-3 py-2">動作</th>
+                                                                <th class="text-right px-3 py-2">目前</th>
+                                                                <th class="text-right px-3 py-2">目標</th>
+                                                                <th class="text-right px-3 py-2">Buffer 後</th>
+                                                                <th class="text-right px-3 py-2">差距</th>
+                                                                <th class="text-left px-3 py-2">Policy</th>
+                                                                <th class="text-left px-3 py-2">原因</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr v-for="row in (selectedOptimizerExplainability?.asset_reasons || [])" :key="row.ticker" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                                <td class="px-3 py-2 font-mono text-white">{{ row.ticker }}</td>
+                                                                <td class="px-3 py-2">
+                                                                    <span class="px-1.5 py-0.5 rounded border text-[10px]"
+                                                                          :class="row.action === 'ADD' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : row.action === 'TRIM' ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-amber-500/30 bg-amber-500/10 text-amber-300'">
+                                                                        {{ row.action_zh }}
+                                                                    </span>
+                                                                </td>
+                                                                <td class="px-3 py-2 text-right text-gray-300">{{ row.current_weight_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right text-indigo-300">{{ row.target_weight_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right text-sky-300">{{ row.buffered_target_weight_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2 text-right" :class="(row.drift_pct || 0) > 0 ? 'text-emerald-300' : 'text-red-300'">{{ row.drift_pct ?? '-' }}%</td>
+                                                                <td class="px-3 py-2">
+                                                                    <span class="px-1.5 py-0.5 rounded border text-[10px]"
+                                                                          :class="row.policy_status === 'PASS' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : row.policy_status === 'VIOLATION' ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-amber-500/30 bg-amber-500/10 text-amber-300'">
+                                                                        {{ row.policy_status }}
+                                                                    </span>
+                                                                </td>
+                                                                <td class="px-3 py-2 text-gray-400 min-w-[260px]">{{ row.why }}</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3">
+                                            <div class="text-sm font-bold text-white flex items-center gap-2 mb-2">
+                                                <i class="fas fa-triangle-exclamation text-amber-400"></i>
+                                                v1.8 使用限制
+                                            </div>
+                                            <div class="text-[11px] text-gray-400 leading-relaxed">
+                                                Explainability 只解釋模型候選的風險、政策、壓力測試與 buffer 狀態；它不是正式再平衡建議，也沒有納入完整交易稅費、滑價、換匯成本與人工審核紀錄。
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+
                             <!-- Risk contribution + model assumptions -->
                             <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
                                 <div class="xl:col-span-2 rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
@@ -4955,7 +5138,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=11.32-v161-policy-v17-stress"></script>
+<script src="assets/js/app.bundle.js?v=11.33-v18-optimizer-explainability"></script>
 <script src="assets/js/quant-main-display.js?v=no-chip-terminal"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
