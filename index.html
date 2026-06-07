@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="觀點port" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>投資組合儀表板 v11.7（穩定版）</title>
     
     <link rel="stylesheet" href="assets/css/tailwind-built.css">
@@ -525,7 +525,7 @@
             <div>
                 <div class="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border border-cyan-500/20 bg-cyan-500/10 text-cyan-300">
                     <i class="fas fa-biohazard"></i>
-                    Chaos Risk Overview
+                    Chaos Risk Over觀點
                 </div>
                 <h3 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
                     <i class="fas fa-shield-halved text-cyan-400"></i>
@@ -924,7 +924,7 @@
             </section>
 
             <!-- ===== Holdings Tab / 庫存 ===== -->
-            <section v-show="currentTab === 'holdings'" class="flex flex-col space-y-4 animate-fade-in holdings-terminal-view">
+            <section v-show="currentTab === 'holdings'" class="flex flex-col space-y-4 animate-fade-in holdings-terminal-觀點">
                 <div class="glass rounded-xl overflow-hidden flex flex-col flex-1 holdings-terminal-shell">
                     <div class="p-4 md:p-5 bg-white/[0.03] border-b border-white/10 flex flex-col md:flex-row md:justify-between md:items-center gap-3 holdings-terminal-toolbar">
     <div>
@@ -1533,7 +1533,7 @@
                         <div>
                              <h3 class="font-bold text-white text-lg flex items-center gap-2 mb-2 md:mb-0">
                                 <i class="fas" :class="analyticsViewMode === 'optimizer' ? 'fa-diagram-project text-blue-400' : 'fa-shield-halved text-yellow-500'"></i>
-                                {{ analyticsViewMode === 'optimizer' ? 'Optimizer Lab｜模型候選與壓力測試' : '風控｜量化風險核心' }}
+                                {{ analyticsViewMode === 'optimizer' ? '最佳化實驗室｜模型候選與壓力測試' : '風控｜量化風險核心' }}
                              </h3>
                              <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold border"
                                   :class="allocationGovernance?.badgeClass || 'border-slate-500/40 bg-slate-500/10 text-slate-300'">
@@ -1924,7 +1924,7 @@
                                                 </thead>
                                                 <tbody>
                                                     <tr v-for="row in (syntheticRiskMeta?.ewma_regime?.correlation_pairs || [])" :key="row.code" class="border-b border-white/5 hover:bg-white/[0.03]">
-                                                        <td class="px-3 py-2 text-white">{{ row.label }}</td>
+                                                        <td class="px-3 py-2 text-white">{{ zhText(row.label) }}</td>
                                                         <td class="px-3 py-2 text-right font-mono text-gray-300">{{ row.corr_63d ?? '-' }}</td>
                                                         <td class="px-3 py-2 text-right font-mono text-gray-300">{{ row.corr_126d ?? '-' }}</td>
                                                         <td class="px-3 py-2 text-right font-mono text-cyan-300">{{ row.ewma_corr ?? '-' }}</td>
@@ -2104,7 +2104,7 @@
                                         <ul class="space-y-1 text-[11px] text-gray-400 leading-relaxed">
                                             <li v-for="item in ((syntheticRiskMeta?.component_tail_risk?.var_es_95?.notes || []).concat(syntheticRiskMeta?.risk_budgeting?.notes || []))" :key="item" class="flex gap-2">
                                                 <i class="fas fa-check text-amber-400 mt-0.5"></i>
-                                                <span>{{ item }}</span>
+                                                <span>{{ zhText(item) }}</span>
                                             </li>
                                         </ul>
                                     </div>
@@ -2127,26 +2127,26 @@
                                         </div>
                                     </div>
                                     <div class="text-[11px] text-gray-400">
-                                        Readiness：{{ optimizerDependencyStatus?.readiness ?? '尚未產生' }}
+                                        就緒度：{{ zhText(optimizerDependencyStatus?.readiness || '尚未產生') }}
                                     </div>
                                 </div>
 
                                 <div class="p-4 grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3">
                                     <div class="quant-card border-blue-500/20 bg-blue-500/10">
                                         <div class="quant-label text-blue-300">Probe 狀態</div>
-                                        <div class="quant-value text-white text-lg">{{ optimizerDependencyStatus?.status ?? '-' }}</div>
+                                        <div class="quant-value text-white text-lg">{{ zhText(optimizerDependencyStatus?.status) }}</div>
                                     </div>
                                     <div class="quant-card border-blue-500/20 bg-blue-500/10">
                                         <div class="quant-label text-blue-300">skfolio</div>
-                                        <div class="quant-value text-white text-lg">{{ optimizerDependencyStatus?.summary?.skfolio_available ? 'OK' : '缺少' }}</div>
+                                        <div class="quant-value text-white text-lg">{{ optimizerDependencyStatus?.summary?.skfolio_available ? '正常' : '缺少' }}</div>
                                     </div>
                                     <div class="quant-card border-purple-500/20 bg-purple-500/10">
                                         <div class="quant-label text-purple-300">Riskfolio-Lib</div>
-                                        <div class="quant-value text-white text-lg">{{ optimizerDependencyStatus?.summary?.riskfolio_available ? 'OK' : '缺少' }}</div>
+                                        <div class="quant-value text-white text-lg">{{ optimizerDependencyStatus?.summary?.riskfolio_available ? '正常' : '缺少' }}</div>
                                     </div>
                                     <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
                                         <div class="quant-label text-emerald-300">cvxpy</div>
-                                        <div class="quant-value text-white text-lg">{{ optimizerDependencyStatus?.summary?.cvxpy_available ? 'OK' : '缺少' }}</div>
+                                        <div class="quant-value text-white text-lg">{{ optimizerDependencyStatus?.summary?.cvxpy_available ? '正常' : '缺少' }}</div>
                                     </div>
                                     <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
                                         <div class="quant-label text-cyan-300">Solver 數</div>
@@ -2154,7 +2154,7 @@
                                     </div>
                                     <div class="quant-card border-slate-500/20 bg-slate-500/10">
                                         <div class="quant-label text-slate-300">安全模式</div>
-                                        <div class="quant-value text-white text-lg">{{ optimizerDependencyStatus?.safe_mode ? 'ON' : '-' }}</div>
+                                        <div class="quant-value text-white text-lg">{{ optimizerDependencyStatus?.safe_mode ? '開啟' : '-' }}</div>
                                     </div>
                                 </div>
 
@@ -2198,7 +2198,7 @@
                                                 v1.0 接入判讀
                                             </div>
                                             <p class="text-[11px] text-gray-400 mt-2 leading-relaxed">
-                                                {{ optimizerDependencyStatus?.next_step ?? '尚未產生 dependency probe。請先跑 Update Stock Quant Meta。' }}
+                                                {{ zhText(optimizerDependencyStatus?.next_step || '尚未產生依賴檢查。請先跑 Update Stock Quant Meta。') }}
                                             </p>
                                         </div>
                                         <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-[11px] text-gray-300">
@@ -2210,7 +2210,7 @@
                                             <div class="font-mono break-all">{{ (optimizerDependencyStatus?.missing_for_v1_0_skfolio || []).join(', ') || '無' }}</div>
                                         </div>
                                         <div class="text-[10px] text-gray-500 leading-relaxed">
-                                            {{ optimizerDependencyStatus?.safe_mode_note ?? 'v0.7 只做 dependency probe。' }}
+                                            {{ zhText(optimizerDependencyStatus?.safe_mode_note || 'v0.7 只做依賴檢查。') }}
                                         </div>
                                     </div>
                                 </div>
@@ -2231,7 +2231,7 @@
                                         </div>
                                     </div>
                                     <div class="text-[11px] text-gray-400">
-                                        狀態：{{ optimizerSandboxOutput?.status ?? '尚未讀取' }}，
+                                        狀態：{{ zhText(optimizerSandboxOutput?.status || '尚未讀取') }}，
                                         樣本：{{ optimizerSandboxOutput?.sample?.strict_sample ?? '-' }} 日
                                     </div>
                                 </div>
@@ -2239,7 +2239,7 @@
                                 <div class="p-4 space-y-4">
                                     <div v-if="!optimizerSandboxOutput" class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-100 leading-relaxed">
                                         <i class="fas fa-hourglass-half mr-2"></i>
-                                        尚未讀到 skfolio sandbox output。請先跑 GitHub Actions 的 <span class="font-mono">skfolio Optimizer Sandbox</span>。
+                                        尚未讀到 skfolio 沙盒輸出。請先跑 GitHub Actions 的 <span class="font-mono">skfolio 最佳化沙盒</span>。
                                         <div class="text-[11px] text-amber-200/80 mt-1" v-if="optimizerSandboxError">{{ optimizerSandboxError }}</div>
                                         <button @click="loadOptimizerSandboxOutput" class="mt-2 px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-100 text-xs hover:bg-amber-500/30">
                                             重新讀取
@@ -2249,11 +2249,11 @@
                                     <template v-else>
                                         <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
                                             <div class="quant-card border-indigo-500/20 bg-indigo-500/10">
-                                                <div class="quant-label text-indigo-300">Sandbox</div>
-                                                <div class="quant-value text-white text-lg">{{ optimizerSandboxOutput?.status ?? '-' }}</div>
+                                                <div class="quant-label text-indigo-300">沙盒</div>
+                                                <div class="quant-value text-white text-lg">{{ zhText(optimizerSandboxOutput?.status) }}</div>
                                             </div>
                                             <div class="quant-card border-slate-500/20 bg-slate-500/10">
-                                                <div class="quant-label text-slate-300">Strict 樣本</div>
+                                                <div class="quant-label text-slate-300">嚴格樣本</div>
                                                 <div class="quant-value text-white">{{ optimizerSandboxOutput?.sample?.strict_sample ?? '-' }}</div>
                                             </div>
                                             <div class="quant-card border-slate-500/20 bg-slate-500/10">
@@ -2262,7 +2262,7 @@
                                             </div>
                                             <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
                                                 <div class="quant-label text-emerald-300">最佳 ES95</div>
-                                                <div class="quant-value text-white">{{ optimizerSandboxBestByES?.label ?? '-' }}</div>
+                                                <div class="quant-value text-white">{{ zhText(optimizerSandboxBestByES?.label) }}</div>
                                             </div>
                                             <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
                                                 <div class="quant-label text-emerald-300">ES95</div>
@@ -2303,11 +2303,11 @@
                                                         </thead>
                                                         <tbody>
                                                             <tr v-for="row in optimizerSandboxPortfolios" :key="row.key" class="border-b border-white/5 hover:bg-white/[0.03]">
-                                                                <td class="px-3 py-2 font-mono text-white">{{ row.label }}</td>
+                                                                <td class="px-3 py-2 font-mono text-white">{{ zhText(row.label) }}</td>
                                                                 <td class="px-3 py-2">
                                                                     <span class="px-1.5 py-0.5 rounded border text-[10px]"
                                                                           :class="row.status === 'OK' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-red-500/30 bg-red-500/10 text-red-300'">
-                                                                        {{ row.status }}
+                                                                        {{ zhText(row.status) }}
                                                                     </span>
                                                                 </td>
                                                                 <td class="px-3 py-2 text-right text-gray-300">{{ row.annual_vol_pct ?? '-' }}%</td>
@@ -2339,7 +2339,7 @@
                                                         </thead>
                                                         <tbody>
                                                             <tr v-for="row in optimizerIntegratedComparison" :key="row.key" class="border-b border-white/5 hover:bg-white/[0.03]">
-                                                                <td class="px-3 py-2 font-mono text-white">{{ row.label }}</td>
+                                                                <td class="px-3 py-2 font-mono text-white">{{ zhText(row.label) }}</td>
                                                                 <td class="px-3 py-2 text-right" :class="(row.vol_delta_vs_current_pct || 0) <= 0 ? 'text-emerald-300' : 'text-red-300'">
                                                                     {{ row.vol_delta_vs_current_pct ?? '-' }}%
                                                                 </td>
@@ -2426,7 +2426,7 @@
                                                 <ul class="space-y-1 text-[11px] text-gray-400 leading-relaxed">
                                                     <li v-for="item in (optimizerSandboxOutput?.warnings || [])" :key="item" class="flex gap-2">
                                                         <i class="fas fa-check text-amber-400 mt-0.5"></i>
-                                                        <span>{{ item }}</span>
+                                                        <span>{{ zhText(item) }}</span>
                                                     </li>
                                                     <li class="flex gap-2">
                                                         <i class="fas fa-check text-amber-400 mt-0.5"></i>
@@ -2454,8 +2454,8 @@
                                         </div>
                                     </div>
                                     <div class="text-[11px] text-gray-400">
-                                        skfolio：{{ optimizerSandboxOutput?.status ?? 'N/A' }}，
-                                        Riskfolio：{{ riskfolioSandboxOutput?.status ?? 'N/A' }}
+                                        skfolio：{{ zhText(optimizerSandboxOutput?.status || 'N/A') }}，
+                                        Riskfolio：{{ zhText(riskfolioSandboxOutput?.status || 'N/A') }}
                                     </div>
                                 </div>
 
@@ -2487,7 +2487,7 @@
                                             </div>
                                             <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
                                                 <div class="quant-label text-emerald-300">最低 ES95</div>
-                                                <div class="quant-value text-white text-lg">{{ unifiedOptimizerBestByES?.label ?? '-' }}</div>
+                                                <div class="quant-value text-white text-lg">{{ zhText(unifiedOptimizerBestByES?.label) }}</div>
                                             </div>
                                             <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
                                                 <div class="quant-label text-emerald-300">ES95</div>
@@ -2518,7 +2518,7 @@
                                         <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                             <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
                                                 <i class="fas fa-table-cells-large text-fuchsia-400"></i>
-                                                Unified Optimizer Comparison
+                                                統一最佳化模型比較
                                             </div>
                                             <div class="overflow-x-auto">
                                                 <table class="w-full text-[11px]">
@@ -2537,8 +2537,8 @@
                                                     </thead>
                                                     <tbody>
                                                         <tr v-for="row in unifiedOptimizerComparison" :key="row.source + ':' + row.key" class="border-b border-white/5 hover:bg-white/[0.03]">
-                                                            <td class="px-3 py-2 font-mono text-white">{{ row.label }}</td>
-                                                            <td class="px-3 py-2 text-gray-300">{{ row.source }}</td>
+                                                            <td class="px-3 py-2 font-mono text-white">{{ zhText(row.label) }}</td>
+                                                            <td class="px-3 py-2 text-gray-300">{{ zhText(row.source) }}</td>
                                                             <td class="px-3 py-2">
                                                                 <span class="px-1.5 py-0.5 rounded border text-[10px]"
                                                                       :class="row.verdict === '風險降低' || row.verdict === '尾部改善' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : row.verdict === '高換手' || row.verdict === '尾部變差' ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-slate-500/30 bg-slate-500/10 text-slate-300'">
@@ -2662,15 +2662,15 @@
                                         </div>
                                     </div>
                                     <div class="text-[11px] text-gray-400">
-                                        狀態：{{ optimizerRobustnessOutput?.status ?? '尚未讀取' }}，
-                                        Strict：{{ optimizerRobustnessOutput?.sample?.strict_sample ?? '-' }} 日
+                                        狀態：{{ zhText(optimizerRobustnessOutput?.status) }}，
+                                        嚴格樣本：{{ optimizerRobustnessOutput?.sample?.strict_sample ?? '-' }} 日
                                     </div>
                                 </div>
 
                                 <div class="p-4 space-y-4">
                                     <div v-if="!optimizerRobustnessOutput" class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-100 leading-relaxed">
                                         <i class="fas fa-hourglass-half mr-2"></i>
-                                        尚未讀到 optimizer robustness output。請先跑 GitHub Actions 的 <span class="font-mono">最佳化器穩健性沙盒</span>。
+                                        尚未讀到 optimizer 穩健性 output。請先跑 GitHub Actions 的 <span class="font-mono">最佳化器穩健性沙盒</span>。
                                         <div class="text-[11px] text-amber-200/80 mt-1" v-if="optimizerRobustnessError">{{ optimizerRobustnessError }}</div>
                                         <button @click="loadOptimizerRobustnessOutput" class="mt-2 px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-100 text-xs hover:bg-amber-500/30">
                                             重新讀取
@@ -2684,12 +2684,12 @@
                                                 <div class="quant-value text-white">{{ optimizerRobustnessWindows.filter(w => w.status === 'OK').length }}</div>
                                             </div>
                                             <div class="quant-card border-slate-500/20 bg-slate-500/10">
-                                                <div class="quant-label text-slate-300">Strict 樣本</div>
+                                                <div class="quant-label text-slate-300">嚴格樣本</div>
                                                 <div class="quant-value text-white">{{ optimizerRobustnessOutput?.sample?.strict_sample ?? '-' }}</div>
                                             </div>
                                             <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
                                                 <div class="quant-label text-emerald-300">最穩定方法</div>
-                                                <div class="quant-value text-white text-lg">{{ optimizerMostStableMethod?.key ?? '-' }}</div>
+                                                <div class="quant-value text-white text-lg">{{ zhText(optimizerMostStableMethod?.key) }}</div>
                                             </div>
                                             <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
                                                 <div class="quant-label text-emerald-300">平均換手</div>
@@ -2701,16 +2701,16 @@
                                             </div>
                                             <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
                                                 <div class="quant-label text-cyan-300">6M</div>
-                                                <div class="quant-value text-white text-lg">{{ optimizerRobustnessWindows.find(w => w.label === '6M')?.status ?? '-' }}</div>
+                                                <div class="quant-value text-white text-lg">{{ zhText(optimizerRobustnessWindows.find(w => w.label === '6M')?.status) }}</div>
                                             </div>
                                             <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
                                                 <div class="quant-label text-cyan-300">1Y</div>
-                                                <div class="quant-value text-white text-lg">{{ optimizerRobustnessWindows.find(w => w.label === '1Y')?.status ?? '-' }}</div>
+                                                <div class="quant-value text-white text-lg">{{ zhText(optimizerRobustnessWindows.find(w => w.label === '1Y')?.status) }}</div>
                                             </div>
                                             <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
                                                 <div class="quant-label text-cyan-300">2Y / 3Y</div>
                                                 <div class="quant-value text-white text-lg">
-                                                    {{ optimizerRobustnessWindows.find(w => w.label === '2Y')?.status ?? '-' }} / {{ optimizerRobustnessWindows.find(w => w.label === '3Y')?.status ?? '-' }}
+                                                    {{ zhText(optimizerRobustnessWindows.find(w => w.label === '2Y')?.status) }} / {{ zhText(optimizerRobustnessWindows.find(w => w.label === '3Y')?.status) }}
                                                 </div>
                                             </div>
                                         </div>
@@ -2733,11 +2733,11 @@
                                                         </thead>
                                                         <tbody>
                                                             <tr v-for="row in optimizerRobustnessWindows" :key="row.label" class="border-b border-white/5 hover:bg-white/[0.03]">
-                                                                <td class="px-3 py-2 font-mono text-white">{{ row.label }}</td>
+                                                                <td class="px-3 py-2 font-mono text-white">{{ zhText(row.label) }}</td>
                                                                 <td class="px-3 py-2">
                                                                     <span class="px-1.5 py-0.5 rounded border text-[10px]"
                                                                           :class="row.status === 'OK' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-red-500/30 bg-red-500/10 text-red-300'">
-                                                                        {{ row.status }}
+                                                                        {{ zhText(row.status) }}
                                                                     </span>
                                                                 </td>
                                                                 <td class="px-3 py-2 text-right text-gray-300">{{ row.sample_count ?? '-' }}</td>
@@ -2769,7 +2769,7 @@
                                                         </thead>
                                                         <tbody>
                                                             <tr v-for="row in optimizerRobustnessMethods" :key="row.key" class="border-b border-white/5 hover:bg-white/[0.03]">
-                                                                <td class="px-3 py-2 font-mono text-white">{{ row.key }}</td>
+                                                                <td class="px-3 py-2 font-mono text-white">{{ zhText(row.key) }}</td>
                                                                 <td class="px-3 py-2">
                                                                     <span class="px-1.5 py-0.5 rounded border text-[10px]"
                                                                           :class="row.verdict === '穩定' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : row.verdict === '不穩定' ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-amber-500/30 bg-amber-500/10 text-amber-300'">
@@ -2797,7 +2797,7 @@
                                             <ul class="space-y-1 text-[11px] text-gray-400 leading-relaxed">
                                                 <li v-for="item in (optimizerRobustnessOutput?.warnings || [])" :key="item" class="flex gap-2">
                                                     <i class="fas fa-check text-amber-400 mt-0.5"></i>
-                                                    <span>{{ item }}</span>
+                                                    <span>{{ zhText(item) }}</span>
                                                 </li>
                                             </ul>
                                         </div>
@@ -2816,25 +2816,25 @@
                                             v1.6 約束 + 既有交易緩衝沙盒
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
-                                            直接沿用現有 Trade Buffer / No-Trade Zone，將 optimizer 目標權重轉成 HOLD / ADD / TRIM / PENDING。這不是正式交易建議。
+                                            直接沿用現有 交易緩衝 / 不交易區間，將 optimizer 目標權重轉成 HOLD / 加碼 / 減碼 / 待處理。這不是正式交易建議。
                                         </div>
                                     </div>
                                     <div class="text-[11px] text-gray-400">
-                                        Base Buffer：±{{ tradeBufferSummary?.basePct ?? tradeBufferBasePct }}%，
-                                        Mode：{{ tradeBufferProfile?.mode ?? '-' }}
+                                        基礎緩衝：±{{ tradeBufferSummary?.basePct ?? tradeBufferBasePct }}%，
+                                        模式：{{ tradeBufferProfile?.mode ?? '-' }}
                                     </div>
                                 </div>
 
                                 <div class="p-4 space-y-4">
                                     <div v-if="!optimizerBufferCandidateSummaries.length" class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-100 leading-relaxed">
                                         <i class="fas fa-hourglass-half mr-2"></i>
-                                        尚未取得 optimizer 權重資料。請確認 skfolio / Riskfolio sandbox output 已部署，並且 v1.3 統一比較已能讀取。
+                                        尚未取得 optimizer 權重資料。請確認 skfolio / Riskfolio 沙盒輸出 已部署，並且 v1.3 統一比較已能讀取。
                                     </div>
 
                                     <template v-else>
                                         <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
                                             <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
-                                                <div class="quant-label text-emerald-300">Base Buffer</div>
+                                                <div class="quant-label text-emerald-300">基礎緩衝</div>
                                                 <div class="quant-value text-white">±{{ tradeBufferSummary?.basePct ?? tradeBufferBasePct }}%</div>
                                             </div>
                                             <div class="quant-card border-red-500/20 bg-red-500/10">
@@ -2872,10 +2872,10 @@
                                                 <div>
                                                     <div class="text-sm font-bold text-white flex items-center gap-2">
                                                         <i class="fas fa-sliders text-emerald-400"></i>
-                                                        使用既有 Trade Buffer 設定
+                                                        使用既有 交易緩衝 設定
                                                     </div>
                                                     <div class="text-[11px] text-gray-500 mt-1">
-                                                        調整上方 Trade Buffer 後，本區 ADD / TRIM / HOLD 會即時重算。
+                                                        調整上方 Trade 緩衝後，本區 ADD / TRIM / HOLD 會即時重算。
                                                     </div>
                                                 </div>
                                                 <div class="flex flex-wrap gap-2">
@@ -2896,7 +2896,7 @@
                                             <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                                 <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
                                                     <i class="fas fa-list-check text-emerald-400"></i>
-                                                    Candidate Buffer Summary
+                                                    候選緩衝摘要
                                                 </div>
                                                 <div class="overflow-x-auto max-h-[420px]">
                                                     <table class="w-full text-[11px]">
@@ -2904,9 +2904,9 @@
                                                             <tr>
                                                                 <th class="text-left px-3 py-2">候選</th>
                                                                 <th class="text-left px-3 py-2">來源</th>
-                                                                <th class="text-right px-3 py-2">Raw TO</th>
-                                                                <th class="text-right px-3 py-2">Buffer TO</th>
-                                                                <th class="text-right px-3 py-2">Active</th>
+                                                                <th class="text-right px-3 py-2">原始換手率</th>
+                                                                <th class="text-right px-3 py-2">緩衝後換手率</th>
+                                                                <th class="text-right px-3 py-2">啟用標的</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
@@ -2914,8 +2914,8 @@
                                                                 @click="setOptimizerBufferCandidate(row.key)"
                                                                 class="border-b border-white/5 hover:bg-white/[0.05] cursor-pointer"
                                                                 :class="selectedOptimizerBufferCandidate?.key === row.key ? 'bg-emerald-500/[0.08]' : ''">
-                                                                <td class="px-3 py-2 font-mono text-white">{{ row.label }}</td>
-                                                                <td class="px-3 py-2 text-gray-400">{{ row.source }}</td>
+                                                                <td class="px-3 py-2 font-mono text-white">{{ zhText(row.label) }}</td>
+                                                                <td class="px-3 py-2 text-gray-400">{{ zhText(row.source) }}</td>
                                                                 <td class="px-3 py-2 text-right text-gray-300">{{ row.raw_turnover_pct ?? '-' }}%</td>
                                                                 <td class="px-3 py-2 text-right text-emerald-300">{{ row.buffer_turnover_pct ?? '-' }}%</td>
                                                                 <td class="px-3 py-2 text-right text-cyan-300">{{ row.active_count ?? '-' }}</td>
@@ -2929,11 +2929,11 @@
                                                 <div class="px-3 py-2 border-b border-white/10 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                                     <div class="text-sm font-bold text-white flex items-center gap-2">
                                                         <i class="fas fa-arrow-right-arrow-left text-emerald-400"></i>
-                                                        選定候選：{{ selectedOptimizerBufferCandidate?.label ?? '-' }}
+                                                        選定候選：{{ zhText(selectedOptimizerBufferCandidate?.label) }}
                                                     </div>
                                                     <div class="text-[11px] text-gray-400">
-                                                        Raw TO：{{ selectedOptimizerBufferCandidate?.raw_turnover_pct ?? '-' }}% →
-                                                        Buffer TO：{{ selectedOptimizerBufferCandidate?.buffer_turnover_pct ?? '-' }}%
+                                                        原始換手率：{{ selectedOptimizerBufferCandidate?.raw_turnover_pct ?? '-' }}% →
+                                                        緩衝後換手率：{{ selectedOptimizerBufferCandidate?.buffer_turnover_pct ?? '-' }}%
                                                         （減少 {{ selectedOptimizerBufferCandidate?.turnover_reduction_pct ?? '-' }}%）
                                                     </div>
                                                 </div>
@@ -2944,7 +2944,7 @@
                                                                 <th class="text-left px-3 py-2">標的</th>
                                                                 <th class="text-right px-3 py-2">目前</th>
                                                                 <th class="text-right px-3 py-2">最佳化器</th>
-                                                                <th class="text-right px-3 py-2">Buffer 後</th>
+                                                                <th class="text-right px-3 py-2">緩衝後</th>
                                                                 <th class="text-right px-3 py-2">差距</th>
                                                                 <th class="text-left px-3 py-2">動作</th>
                                                                 <th class="text-right px-3 py-2">估計金額</th>
@@ -2966,7 +2966,7 @@
                                                                     </span>
                                                                 </td>
                                                                 <td class="px-3 py-2 text-right font-mono text-gray-300">{{ formatNumber(row.action_value_twd || 0) }}</td>
-                                                                <td class="px-3 py-2 text-gray-400 min-w-[220px]">{{ row.reason }}</td>
+                                                                <td class="px-3 py-2 text-gray-400 min-w-[220px]">{{ zhText(row.reason) }}</td>
                                                             </tr>
                                                         </tbody>
                                                     </table>
@@ -2982,11 +2982,11 @@
                                             <ul class="space-y-1 text-[11px] text-gray-400 leading-relaxed">
                                                 <li class="flex gap-2">
                                                     <i class="fas fa-check text-amber-400 mt-0.5"></i>
-                                                    <span>本版沿用現有 Trade Buffer；沒有另建一套後端 buffer，因此前端調整會即時反映。</span>
+                                                    <span>本版沿用現有 交易緩衝；沒有另建一套後端 buffer，因此前端調整會即時反映。</span>
                                                 </li>
                                                 <li class="flex gap-2">
                                                     <i class="fas fa-check text-amber-400 mt-0.5"></i>
-                                                    <span>No-Trade Zone 只能降低噪音交易，不等於完整手續費、稅、滑價、換匯成本模型。</span>
+                                                    <span>不交易區間 只能降低噪音交易，不等於完整手續費、稅、滑價、換匯成本模型。</span>
                                                 </li>
                                                 <li class="flex gap-2">
                                                     <i class="fas fa-check text-amber-400 mt-0.5"></i>
@@ -3009,20 +3009,20 @@
                                             v1.6.1 約束政策層
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
-                                            在 v1.6 的 Trade Buffer 後權重上檢查投組政策限制：單檔上限、台股上限、加密上限、黃金區間、BOXX 下限、主題 ETF 與高波動資產集中度。
+                                            在 v1.6 的 Trade 緩衝後權重上檢查投組政策限制：單檔上限、台股上限、加密上限、黃金區間、BOXX 下限、主題 ETF 與高波動資產集中度。
                                         </div>
                                     </div>
                                     <div class="text-[11px] text-gray-400">
-                                        選定候選：{{ selectedOptimizerBufferCandidate?.label ?? '-' }}，
-                                        狀態：{{ selectedOptimizerConstraintPolicy?.status ?? '-' }}
+                                        選定候選：{{ zhText(selectedOptimizerBufferCandidate?.label) }}，
+                                        狀態：{{ zhText(selectedOptimizerConstraintPolicy?.status) }}
                                     </div>
                                 </div>
 
                                 <div class="p-4 space-y-4">
                                     <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
                                         <div class="quant-card border-lime-500/20 bg-lime-500/10">
-                                            <div class="quant-label text-lime-300">Policy 狀態</div>
-                                            <div class="quant-value text-white text-lg">{{ selectedOptimizerConstraintPolicy?.status ?? '-' }}</div>
+                                            <div class="quant-label text-lime-300">政策狀態</div>
+                                            <div class="quant-value text-white text-lg">{{ zhText(selectedOptimizerConstraintPolicy?.status) }}</div>
                                         </div>
                                         <div class="quant-card border-red-500/20 bg-red-500/10">
                                             <div class="quant-label text-red-300">違規</div>
@@ -3088,7 +3088,7 @@
                                         <div class="xl:col-span-2 rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                             <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
                                                 <i class="fas fa-gavel text-lime-400"></i>
-                                                Candidate Policy Summary
+                                                候選政策摘要
                                             </div>
                                             <div class="overflow-x-auto max-h-[420px]">
                                                 <table class="w-full text-[11px]">
@@ -3098,7 +3098,7 @@
                                                             <th class="text-left px-3 py-2">狀態</th>
                                                             <th class="text-right px-3 py-2">違規</th>
                                                             <th class="text-right px-3 py-2">警示</th>
-                                                            <th class="text-right px-3 py-2">Buffer TO</th>
+                                                            <th class="text-right px-3 py-2">緩衝後換手率</th>
                                                             <th class="text-left px-3 py-2">最嚴重問題</th>
                                                         </tr>
                                                     </thead>
@@ -3107,17 +3107,17 @@
                                                             @click="setOptimizerBufferCandidate(row.key)"
                                                             class="border-b border-white/5 hover:bg-white/[0.05] cursor-pointer"
                                                             :class="selectedOptimizerBufferCandidate?.key === row.key ? 'bg-lime-500/[0.08]' : ''">
-                                                            <td class="px-3 py-2 font-mono text-white">{{ row.label }}</td>
+                                                            <td class="px-3 py-2 font-mono text-white">{{ zhText(row.label) }}</td>
                                                             <td class="px-3 py-2">
                                                                 <span class="px-1.5 py-0.5 rounded border text-[10px]"
                                                                       :class="row.policy_status === 'PASS' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : row.policy_status === 'VIOLATION' ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-amber-500/30 bg-amber-500/10 text-amber-300'">
-                                                                    {{ row.policy_status }}
+                                                                    {{ zhText(row.policy_status) }}
                                                                 </span>
                                                             </td>
                                                             <td class="px-3 py-2 text-right text-red-300">{{ row.violation_count }}</td>
                                                             <td class="px-3 py-2 text-right text-amber-300">{{ row.warning_count }}</td>
                                                             <td class="px-3 py-2 text-right text-cyan-300">{{ row.buffer_turnover_pct ?? '-' }}%</td>
-                                                            <td class="px-3 py-2 text-gray-400 min-w-[260px]">{{ row.most_severe_issue }}</td>
+                                                            <td class="px-3 py-2 text-gray-400 min-w-[260px]">{{ zhText(row.most_severe_issue) }}</td>
                                                         </tr>
                                                     </tbody>
                                                 </table>
@@ -3138,7 +3138,7 @@
                                                           :class="issue.severity === 'VIOLATION' ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-amber-500/30 bg-amber-500/10 text-amber-300'">
                                                         {{ issue.severity }}
                                                     </span>
-                                                    <span>{{ issue.message }}</span>
+                                                    <span>{{ zhText(issue.message) }}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -3161,7 +3161,7 @@
                                         </div>
                                     </div>
                                     <div class="text-[11px] text-gray-400">
-                                        狀態：{{ optimizerStressOutput?.status ?? '尚未讀取' }}，
+                                        狀態：{{ zhText(optimizerStressOutput?.status) }}，
                                         情境數：{{ optimizerStressScenarios?.length ?? 0 }}
                                     </div>
                                 </div>
@@ -3169,7 +3169,7 @@
                                 <div class="p-4 space-y-4">
                                     <div v-if="!optimizerStressOutput" class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-100 leading-relaxed">
                                         <i class="fas fa-hourglass-half mr-2"></i>
-                                        尚未讀到 optimizer stress output。請先跑 GitHub Actions 的 <span class="font-mono">最佳化器壓力測試</span>。
+                                        尚未讀到 optimizer 壓力測試輸出。請先跑 GitHub Actions 的 <span class="font-mono">最佳化器壓力測試</span>。
                                         <div class="text-[11px] text-amber-200/80 mt-1" v-if="optimizerStressError">{{ optimizerStressError }}</div>
                                         <button @click="loadOptimizerStressOutput" class="mt-2 px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-100 text-xs hover:bg-amber-500/30">
                                             重新讀取
@@ -3184,18 +3184,18 @@
                                             </div>
                                             <div class="quant-card border-red-500/20 bg-red-500/10">
                                                 <div class="quant-label text-red-300">最脆弱</div>
-                                                <div class="quant-value text-white text-lg">{{ optimizerStressMostFragile?.label ?? '-' }}</div>
+                                                <div class="quant-value text-white text-lg">{{ zhText(optimizerStressMostFragile?.label) }}</div>
                                             </div>
                                             <div class="quant-card border-red-500/20 bg-red-500/10">
-                                                <div class="quant-label text-red-300">Worst</div>
+                                                <div class="quant-label text-red-300">最差</div>
                                                 <div class="quant-value text-white">{{ optimizerStressMostFragile?.worst_scenario_return_pct ?? '-' }}%</div>
                                             </div>
                                             <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
-                                                <div class="quant-label text-emerald-300">最佳 Worst</div>
-                                                <div class="quant-value text-white text-lg">{{ optimizerStressBestWorst?.label ?? '-' }}</div>
+                                                <div class="quant-label text-emerald-300">最佳最差情境</div>
+                                                <div class="quant-value text-white text-lg">{{ zhText(optimizerStressBestWorst?.label) }}</div>
                                             </div>
                                             <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
-                                                <div class="quant-label text-emerald-300">Worst</div>
+                                                <div class="quant-label text-emerald-300">最差</div>
                                                 <div class="quant-value text-white">{{ optimizerStressBestWorst?.worst_scenario_return_pct ?? '-' }}%</div>
                                             </div>
                                             <div class="quant-card border-slate-500/20 bg-slate-500/10">
@@ -3204,29 +3204,29 @@
                                             </div>
                                             <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
                                                 <div class="quant-label text-cyan-300">選定情境</div>
-                                                <div class="quant-value text-white text-lg">{{ selectedStressScenario?.label ?? '-' }}</div>
+                                                <div class="quant-value text-white text-lg">{{ zhText(selectedStressScenario?.label) }}</div>
                                             </div>
                                             <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
                                                 <div class="quant-label text-cyan-300">模式</div>
-                                                <div class="quant-value text-white text-lg">{{ optimizerStressOutput?.mode ?? '-' }}</div>
+                                                <div class="quant-value text-white text-lg">{{ zhText(optimizerStressOutput?.mode) }}</div>
                                             </div>
                                         </div>
 
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3">
                                             <div class="text-sm font-bold text-white flex items-center gap-2 mb-2">
                                                 <i class="fas fa-sliders text-rose-400"></i>
-                                                Stress Scenario
+                                                壓力情境
                                             </div>
                                             <div class="flex flex-wrap gap-2">
                                                 <button v-for="scenario in optimizerStressScenarios" :key="scenario.key"
                                                         @click="setStressScenario(scenario.key)"
                                                         class="px-2.5 py-1 rounded-lg border text-[11px]"
                                                         :class="selectedStressScenario?.key === scenario.key ? 'border-rose-400 bg-rose-500/20 text-rose-100' : 'border-white/10 bg-white/[0.03] text-gray-300 hover:bg-white/[0.06]'">
-                                                    {{ scenario.label }}
+                                                    {{ zhText(scenario.label) }}
                                                 </button>
                                             </div>
                                             <div class="text-[11px] text-gray-400 mt-2">
-                                                {{ selectedStressScenario?.description ?? '' }}
+                                                {{ zhText(selectedStressScenario?.description) }}
                                             </div>
                                         </div>
 
@@ -3234,7 +3234,7 @@
                                             <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                                 <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
                                                     <i class="fas fa-table text-rose-400"></i>
-                                                    Worst Scenario Ranking
+                                                    最差情境排名
                                                 </div>
                                                 <div class="overflow-x-auto max-h-[460px]">
                                                     <table class="w-full text-[11px]">
@@ -3242,16 +3242,16 @@
                                                             <tr>
                                                                 <th class="text-left px-3 py-2">候選</th>
                                                                 <th class="text-left px-3 py-2">來源</th>
-                                                                <th class="text-right px-3 py-2">Worst</th>
-                                                                <th class="text-right px-3 py-2">Average</th>
-                                                                <th class="text-right px-3 py-2">Best</th>
+                                                                <th class="text-right px-3 py-2">最差</th>
+                                                                <th class="text-right px-3 py-2">平均</th>
+                                                                <th class="text-right px-3 py-2">最佳</th>
                                                                 <th class="text-right px-3 py-2">換手率</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
                                                             <tr v-for="row in optimizerStressWorstRows" :key="row.source + ':' + row.key" class="border-b border-white/5 hover:bg-white/[0.03]">
-                                                                <td class="px-3 py-2 font-mono text-white">{{ row.label }}</td>
-                                                                <td class="px-3 py-2 text-gray-400">{{ row.source }}</td>
+                                                                <td class="px-3 py-2 font-mono text-white">{{ zhText(row.label) }}</td>
+                                                                <td class="px-3 py-2 text-gray-400">{{ zhText(row.source) }}</td>
                                                                 <td class="px-3 py-2 text-right text-red-300">{{ row.worst_scenario_return_pct ?? '-' }}%</td>
                                                                 <td class="px-3 py-2 text-right text-orange-300">{{ row.avg_scenario_return_pct ?? '-' }}%</td>
                                                                 <td class="px-3 py-2 text-right text-emerald-300">{{ row.best_scenario_return_pct ?? '-' }}%</td>
@@ -3279,8 +3279,8 @@
                                                         </thead>
                                                         <tbody>
                                                             <tr v-for="row in selectedStressScenarioRows" :key="row.source + ':' + row.label" class="border-b border-white/5 hover:bg-white/[0.03]">
-                                                                <td class="px-3 py-2 font-mono text-white">{{ row.label }}</td>
-                                                                <td class="px-3 py-2 text-gray-400">{{ row.source }}</td>
+                                                                <td class="px-3 py-2 font-mono text-white">{{ zhText(row.label) }}</td>
+                                                                <td class="px-3 py-2 text-gray-400">{{ zhText(row.source) }}</td>
                                                                 <td class="px-3 py-2 text-right text-red-300">{{ row.scenario_return_pct ?? '-' }}%</td>
                                                                 <td class="px-3 py-2 text-gray-400">
                                                                     <span v-for="c in (row.top_contributors || []).slice(0, 3)" :key="row.label + c.ticker" class="mr-2">
@@ -3302,7 +3302,7 @@
                                             <ul class="space-y-1 text-[11px] text-gray-400 leading-relaxed">
                                                 <li v-for="item in (optimizerStressOutput?.warnings || [])" :key="item" class="flex gap-2">
                                                     <i class="fas fa-check text-amber-400 mt-0.5"></i>
-                                                    <span>{{ item }}</span>
+                                                    <span>{{ zhText(item) }}</span>
                                                 </li>
                                             </ul>
                                         </div>
@@ -3312,35 +3312,35 @@
 
 
 
-                            <!-- v1.8 Optimizer Explainability Panel -->
+                            <!-- v1.8 最佳化解釋面板 -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-sky-500/20 bg-sky-500/[0.035] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-sky-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-magnifying-glass-chart text-sky-400"></i>
-                                            v1.8 Optimizer Explainability Panel
+                                            v1.8 最佳化解釋面板
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
-                                            將 v1.3、v1.4、v1.6、v1.6.1、v1.7 的資訊合併，解釋每個 optimizer 候選為什麼值得觀察、為什麼需要排除或重做。
+                                            將 v1.3、v1.4、v1.6、v1.6.1、v1.7 的資訊合併，解釋每個 最佳化候選為什麼值得觀察、為什麼需要排除或重做。
                                         </div>
                                     </div>
                                     <div class="text-[11px] text-gray-400">
                                         候選數：{{ optimizerExplainabilityCandidates?.length ?? 0 }}，
-                                        選定：{{ selectedOptimizerExplainability?.label ?? '-' }}
+                                        選定：{{ zhText(selectedOptimizerExplainability?.label) }}
                                     </div>
                                 </div>
 
                                 <div class="p-4 space-y-4">
                                     <div v-if="!optimizerExplainabilityCandidates.length" class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-100 leading-relaxed">
                                         <i class="fas fa-hourglass-half mr-2"></i>
-                                        尚未取得完整 explainability 資料。請確認 skfolio、Riskfolio、robustness、stress output 已部署，且 v1.3～v1.7 面板可讀取。
+                                        尚未取得完整 解釋資料。請確認 skfolio、Riskfolio、穩健性、壓力測試輸出 已部署，且 v1.3～v1.7 面板可讀取。
                                     </div>
 
                                     <template v-else>
                                         <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
                                             <div class="quant-card border-sky-500/20 bg-sky-500/10">
                                                 <div class="quant-label text-sky-300">裁定</div>
-                                                <div class="quant-value text-white text-lg">{{ selectedOptimizerExplainability?.decision ?? '-' }}</div>
+                                                <div class="quant-value text-white text-lg">{{ zhText(selectedOptimizerExplainability?.decision) }}</div>
                                             </div>
                                             <div class="quant-card border-red-500/20 bg-red-500/10">
                                                 <div class="quant-label text-red-300">ES 差異</div>
@@ -3355,19 +3355,19 @@
                                                 <div class="quant-value text-white">{{ selectedOptimizerExplainability?.metrics?.mdd_delta_vs_current_pct ?? '-' }}%</div>
                                             </div>
                                             <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
-                                                <div class="quant-label text-cyan-300">Buffer TO</div>
+                                                <div class="quant-label text-cyan-300">緩衝後換手率</div>
                                                 <div class="quant-value text-white">{{ selectedOptimizerExplainability?.metrics?.buffer_turnover_pct ?? '-' }}%</div>
                                             </div>
                                             <div class="quant-card border-lime-500/20 bg-lime-500/10">
-                                                <div class="quant-label text-lime-300">Policy</div>
-                                                <div class="quant-value text-white text-lg">{{ selectedOptimizerExplainability?.metrics?.policy_status ?? '-' }}</div>
+                                                <div class="quant-label text-lime-300">政策</div>
+                                                <div class="quant-value text-white text-lg">{{ zhText(selectedOptimizerExplainability?.metrics?.policy_status) }}</div>
                                             </div>
                                             <div class="quant-card border-teal-500/20 bg-teal-500/10">
-                                                <div class="quant-label text-teal-300">Robustness</div>
-                                                <div class="quant-value text-white text-lg">{{ selectedOptimizerExplainability?.metrics?.robustness_verdict ?? '-' }}</div>
+                                                <div class="quant-label text-teal-300">穩健性</div>
+                                                <div class="quant-value text-white text-lg">{{ zhText(selectedOptimizerExplainability?.metrics?.robustness_verdict) }}</div>
                                             </div>
                                             <div class="quant-card border-rose-500/20 bg-rose-500/10">
-                                                <div class="quant-label text-rose-300">Worst Stress</div>
+                                                <div class="quant-label text-rose-300">最差壓力情境</div>
                                                 <div class="quant-value text-white">{{ selectedOptimizerExplainability?.metrics?.worst_stress_pct ?? '-' }}%</div>
                                             </div>
                                         </div>
@@ -3376,7 +3376,7 @@
                                             <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                                 <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
                                                     <i class="fas fa-list-check text-sky-400"></i>
-                                                    Explainability Candidates
+                                                    解釋候選
                                                 </div>
                                                 <div class="overflow-x-auto max-h-[460px]">
                                                     <table class="w-full text-[11px]">
@@ -3392,12 +3392,12 @@
                                                                 @click="setOptimizerExplainCandidate(row.key)"
                                                                 class="border-b border-white/5 hover:bg-white/[0.05] cursor-pointer"
                                                                 :class="selectedOptimizerExplainability?.key === row.key ? 'bg-sky-500/[0.08]' : ''">
-                                                                <td class="px-3 py-2 font-mono text-white">{{ row.label }}</td>
-                                                                <td class="px-3 py-2 text-gray-400">{{ row.source }}</td>
+                                                                <td class="px-3 py-2 font-mono text-white">{{ zhText(row.label) }}</td>
+                                                                <td class="px-3 py-2 text-gray-400">{{ zhText(row.source) }}</td>
                                                                 <td class="px-3 py-2">
                                                                     <span class="px-1.5 py-0.5 rounded border text-[10px]"
                                                                           :class="row.decision === 'REVIEW_CANDIDATE' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : row.decision === 'REJECT_OR_REWORK' ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-amber-500/30 bg-amber-500/10 text-amber-300'">
-                                                                        {{ row.decision }}
+                                                                        {{ zhText(row.decision) }}
                                                                     </span>
                                                                 </td>
                                                             </tr>
@@ -3415,7 +3415,7 @@
                                                     <ul class="space-y-1 text-[11px] text-gray-300 leading-relaxed">
                                                         <li v-for="item in (selectedOptimizerExplainability?.reasons || [])" :key="'reason-' + item" class="flex gap-2">
                                                             <i class="fas fa-check text-emerald-400 mt-0.5"></i>
-                                                            <span>{{ item }}</span>
+                                                            <span>{{ zhText(item) }}</span>
                                                         </li>
                                                     </ul>
                                                 </div>
@@ -3428,7 +3428,7 @@
                                                     <ul class="space-y-1 text-[11px] text-gray-300 leading-relaxed">
                                                         <li v-for="item in (selectedOptimizerExplainability?.watchpoints || [])" :key="'watch-' + item" class="flex gap-2">
                                                             <i class="fas fa-circle-exclamation text-amber-400 mt-0.5"></i>
-                                                            <span>{{ item }}</span>
+                                                            <span>{{ zhText(item) }}</span>
                                                         </li>
                                                     </ul>
                                                 </div>
@@ -3437,7 +3437,7 @@
                                             <div class="xl:col-span-3 rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                                 <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
                                                     <i class="fas fa-arrow-up-right-dots text-sky-400"></i>
-                                                    標的層級解釋：ADD / TRIM / PENDING 的原因
+                                                    標的層級解釋：加碼 / 減碼 / 待處理 的原因
                                                 </div>
                                                 <div class="overflow-x-auto max-h-[520px]">
                                                     <table class="w-full text-[11px]">
@@ -3447,9 +3447,9 @@
                                                                 <th class="text-left px-3 py-2">動作</th>
                                                                 <th class="text-right px-3 py-2">目前</th>
                                                                 <th class="text-right px-3 py-2">目標</th>
-                                                                <th class="text-right px-3 py-2">Buffer 後</th>
+                                                                <th class="text-right px-3 py-2">緩衝後</th>
                                                                 <th class="text-right px-3 py-2">差距</th>
-                                                                <th class="text-left px-3 py-2">Policy</th>
+                                                                <th class="text-left px-3 py-2">政策</th>
                                                                 <th class="text-left px-3 py-2">原因</th>
                                                             </tr>
                                                         </thead>
@@ -3469,10 +3469,10 @@
                                                                 <td class="px-3 py-2">
                                                                     <span class="px-1.5 py-0.5 rounded border text-[10px]"
                                                                           :class="row.policy_status === 'PASS' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : row.policy_status === 'VIOLATION' ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-amber-500/30 bg-amber-500/10 text-amber-300'">
-                                                                        {{ row.policy_status }}
+                                                                        {{ zhText(row.policy_status) }}
                                                                     </span>
                                                                 </td>
-                                                                <td class="px-3 py-2 text-gray-400 min-w-[260px]">{{ row.why }}</td>
+                                                                <td class="px-3 py-2 text-gray-400 min-w-[260px]">{{ zhText(row.why) }}</td>
                                                             </tr>
                                                         </tbody>
                                                     </table>
@@ -3486,7 +3486,7 @@
                                                 v1.8 使用限制
                                             </div>
                                             <div class="text-[11px] text-gray-400 leading-relaxed">
-                                                Explainability 只解釋模型候選的風險、政策、壓力測試與 buffer 狀態；它不是正式再平衡建議，也沒有納入完整交易稅費、滑價、換匯成本與人工審核紀錄。
+                                                解釋面板只解釋模型候選的風險、政策、壓力測試與 buffer 狀態；它不是正式再平衡建議，也沒有納入完整交易稅費、滑價、換匯成本與人工審核紀錄。
                                             </div>
                                         </div>
                                     </template>
@@ -3527,11 +3527,11 @@
                                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3">
                                             <div class="quant-label text-amber-300">待人工確認</div>
-                                            <div class="quant-value text-white">{{ humanApprovalSummary?.pending_review ?? 0 }}</div>
+                                            <div class="quant-value text-white">{{ humanApprovalSummary?.pending_re觀點 ?? 0 }}</div>
                                         </div>
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3">
                                             <div class="quant-label text-emerald-300">約束通過待審</div>
-                                            <div class="quant-value text-white">{{ humanApprovalSummary?.constraint_pass_review_required ?? 0 }}</div>
+                                            <div class="quant-value text-white">{{ humanApprovalSummary?.constraint_pass_re觀點_required ?? 0 }}</div>
                                         </div>
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3">
                                             <div class="quant-label text-red-300">允許自動執行</div>
@@ -3549,7 +3549,7 @@
                                             安全邊界
                                         </div>
                                         <div class="text-[11px] text-gray-400 mt-1 leading-relaxed">
-                                            本頁所有草案都必須人工確認；execution_permission 應維持 false。任何採納、拒絕、觀察，都應另外留下人工理由。這不是 BUY / SELL 指令，不會自動交易。
+                                            本頁所有草案都必須人工確認；自動執行權限應維持 false。任何採納、拒絕、觀察，都應另外留下人工理由。這不是 買賣指令，不會自動交易。
                                         </div>
                                     </div>
 
@@ -3557,13 +3557,13 @@
                                         <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                             <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
                                                 <div class="text-xs font-bold text-white">v2.4 審核票據</div>
-                                                <div class="text-[10px] text-gray-500">latest 12</div>
+                                                <div class="text-[10px] text-gray-500">最近 12 筆</div>
                                             </div>
                                             <div class="overflow-x-auto">
                                                 <table class="w-full text-[11px]">
                                                     <thead class="text-gray-500 border-b border-white/10">
                                                         <tr>
-                                                            <th class="text-left px-3 py-2">Ticket</th>
+                                                            <th class="text-left px-3 py-2">票據</th>
                                                             <th class="text-left px-3 py-2">來源</th>
                                                             <th class="text-left px-3 py-2">人工狀態</th>
                                                             <th class="text-right px-3 py-2">換手率</th>
@@ -3573,10 +3573,10 @@
                                                     <tbody>
                                                         <tr v-for="ticket in humanApprovalVisibleTickets" :key="ticket.approval_ticket_id" class="border-b border-white/5 hover:bg-white/[0.03]">
                                                             <td class="px-3 py-2 font-mono text-white max-w-[180px] truncate" :title="ticket.approval_ticket_id">{{ ticket.approval_ticket_id }}</td>
-                                                            <td class="px-3 py-2 text-gray-300 max-w-[180px] truncate" :title="ticket.source_draft_id">{{ ticket.source_type }}</td>
+                                                            <td class="px-3 py-2 text-gray-300 max-w-[180px] truncate" :title="ticket.source_draft_id">{{ zhText(ticket.source_type) }}</td>
                                                             <td class="px-3 py-2">
                                                                 <span class="px-1.5 py-0.5 rounded border text-[10px]" :class="approvalBadgeClass(ticket.human_approval?.status)">
-                                                                    {{ ticket.human_approval?.status ?? 'pending_review' }}
+                                                                    {{ zhText(ticket.human_approval?.status || 'pending_re觀點') }}
                                                                 </span>
                                                             </td>
                                                             <td class="px-3 py-2 text-right text-gray-300">{{ ticket.turnover_vs_current_pct ?? '-' }}%</td>
@@ -3596,7 +3596,7 @@
                                         <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                             <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
                                                 <div class="text-xs font-bold text-white">v2.5 審計紀錄</div>
-                                                <div class="text-[10px] text-gray-500">latest 12</div>
+                                                <div class="text-[10px] text-gray-500">最近 12 筆</div>
                                             </div>
                                             <div class="overflow-x-auto">
                                                 <table class="w-full text-[11px]">
@@ -3611,16 +3611,16 @@
                                                     </thead>
                                                     <tbody>
                                                         <tr v-for="event in actionAuditEvents" :key="event.event_id" class="border-b border-white/5 hover:bg-white/[0.03]">
-                                                            <td class="px-3 py-2 font-mono text-white max-w-[160px] truncate" :title="event.event_id">{{ event.event_type }}</td>
+                                                            <td class="px-3 py-2 font-mono text-white max-w-[160px] truncate" :title="event.event_id">{{ zhText(event.event_type) }}</td>
                                                             <td class="px-3 py-2 text-gray-300 max-w-[180px] truncate" :title="event.candidate_id">{{ event.candidate_id }}</td>
-                                                            <td class="px-3 py-2 text-gray-300">{{ event.model_status ?? '-' }}</td>
+                                                            <td class="px-3 py-2 text-gray-300">{{ zhText(event.model_status) }}</td>
                                                             <td class="px-3 py-2">
                                                                 <span class="px-1.5 py-0.5 rounded border text-[10px]" :class="approvalBadgeClass(event.human_status)">
-                                                                    {{ event.human_status ?? '-' }}
+                                                                    {{ zhText(event.human_status) }}
                                                                 </span>
                                                             </td>
-                                                            <td class="px-3 py-2 text-gray-400 max-w-[260px] truncate" :title="(event.reason_codes || []).join(', ')">
-                                                                {{ (event.reason_codes || []).slice(0, 3).join(', ') }}
+                                                            <td class="px-3 py-2 text-gray-400 max-w-[260px] truncate" :title="zhList(event.reason_codes, 99)">
+                                                                {{ zhList(event.reason_codes, 3) }}
                                                             </td>
                                                         </tr>
                                                         <tr v-if="!actionAuditEvents.length">
@@ -3640,10 +3640,10 @@
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-chess-board text-violet-400"></i>
-                                            v3.0 市場狀態感知最佳化器 ＋ v3.1 Bayesian / Black-Litterman 沙盒
+                                            v3.0 市場狀態感知最佳化器 ＋ v3.1 貝氏 / Black-Litterman 沙盒
                                         </div>
                                         <div class="text-[11px] text-gray-400 mt-1">
-                                            根據市場狀態切換共變異數政策、約束與風險預算；Black-Litterman 只使用規則化 view engine，避免主觀 views。
+                                            根據市場狀態切換共變異數政策、約束與風險預算；Black-Litterman 只使用規則化觀點引擎，避免主觀觀點。
                                         </div>
                                     </div>
                                     <div class="flex gap-2">
@@ -3664,17 +3664,17 @@
 
                                     <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3 md:col-span-2">
-                                            <div class="quant-label text-violet-300">目前 Regime</div>
-                                            <div class="quant-value text-white text-base">{{ regimeAwareRegime?.selected_regime ?? '-' }}</div>
-                                            <div class="text-[10px] text-gray-500 mt-1">{{ regimeAwareRegime?.selected_regime_label ?? '' }}</div>
+                                            <div class="quant-label text-violet-300">目前市場狀態</div>
+                                            <div class="quant-value text-white text-base">{{ zhText(regimeAwareRegime?.selected_regime) }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">{{ zhText(regimeAwareRegime?.selected_regime_label) }}</div>
                                         </div>
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3">
                                             <div class="quant-label text-violet-300">信心</div>
                                             <div class="quant-value text-white">{{ regimeAwareRegime?.confidence ?? '-' }}</div>
                                         </div>
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3">
-                                            <div class="quant-label text-fuchsia-300">BL Views</div>
-                                            <div class="quant-value text-white">{{ blackLittermanSummary?.view_count ?? 0 }}</div>
+                                            <div class="quant-label text-fuchsia-300">BL 觀點</div>
+                                            <div class="quant-value text-white">{{ blackLittermanSummary?.觀點_count ?? 0 }}</div>
                                         </div>
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3">
                                             <div class="quant-label text-fuchsia-300">Posterior 草案</div>
@@ -3690,11 +3690,11 @@
                                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 text-[11px]">
                                             <div class="rounded-lg border border-white/10 bg-black/20 p-3">
                                                 <div class="text-gray-500 mb-1">Covariance policy</div>
-                                                <div class="text-white font-mono break-all">{{ regimeAwareCovariancePolicy?.mode ?? '-' }}</div>
+                                                <div class="text-white font-mono break-all">{{ zhText(regimeAwareCovariancePolicy?.mode) }}</div>
                                             </div>
                                             <div class="rounded-lg border border-white/10 bg-black/20 p-3">
                                                 <div class="text-gray-500 mb-1">Shrinkage proxy</div>
-                                                <div class="text-white font-mono">{{ regimeAwareCovariancePolicy?.shrinkage_intensity_proxy ?? '-' }}</div>
+                                                <div class="text-white font-mono">{{ zhText(regimeAwareCovariancePolicy?.shrinkage_intensity_proxy) }}</div>
                                             </div>
                                             <div class="rounded-lg border border-white/10 bg-black/20 p-3">
                                                 <div class="text-gray-500 mb-1">View engine</div>
@@ -3702,7 +3702,7 @@
                                             </div>
                                         </div>
                                         <div class="text-[11px] text-gray-400 mt-3 leading-relaxed">
-                                            {{ regimeAwareCovariancePolicy?.note ?? '尚無共變異數政策說明。' }} v3.1 禁止任意手動 views；目前只接受 v3.0 市場狀態政策轉出的確定性 views。
+                                            {{ regimeAwareCovariancePolicy?.note ?? '尚無共變異數政策說明。' }} v3.1 禁止任意手動 觀點；目前只接受 v3.0 市場狀態政策轉出的確定性 觀點。
                                         </div>
                                     </div>
 
@@ -3710,7 +3710,7 @@
                                         <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                             <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
                                                 <div class="text-xs font-bold text-white">v3.0 市場狀態感知草案</div>
-                                                <div class="text-[10px] text-gray-500">latest 10</div>
+                                                <div class="text-[10px] text-gray-500">最近 10 筆</div>
                                             </div>
                                             <div class="overflow-x-auto">
                                                 <table class="w-full text-[11px]">
@@ -3727,7 +3727,7 @@
                                                     <tbody>
                                                         <tr v-for="draft in regimeAwareVisibleDrafts" :key="draft.draft_id" class="border-b border-white/5 hover:bg-white/[0.03]">
                                                             <td class="px-3 py-2 font-mono text-white max-w-[220px] truncate" :title="draft.draft_id">{{ draft.draft_id }}</td>
-                                                            <td class="px-3 py-2 text-gray-300 max-w-[180px] truncate" :title="draft.model_status">{{ draft.model_status }}</td>
+                                                            <td class="px-3 py-2 text-gray-300 max-w-[180px] truncate" :title="draft.model_status">{{ zhText(draft.model_status) }}</td>
                                                             <td class="px-3 py-2 text-right text-gray-300">{{ draft.turnover_vs_current_pct ?? '-' }}%</td>
                                                             <td class="px-3 py-2 text-right text-emerald-300">{{ draft.exposure?.cash_pct ?? '-' }}%</td>
                                                             <td class="px-3 py-2 text-right text-orange-300">{{ draft.exposure?.crypto_pct ?? '-' }}%</td>
@@ -3743,8 +3743,8 @@
 
                                         <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                             <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
-                                                <div class="text-xs font-bold text-white">v3.1 Black-Litterman Views（觀點）</div>
-                                                <div class="text-[10px] text-gray-500">rules-based only</div>
+                                                <div class="text-xs font-bold text-white">v3.1 Black-Litterman 觀點</div>
+                                                <div class="text-[10px] text-gray-500">僅規則引擎</div>
                                             </div>
                                             <div class="overflow-x-auto">
                                                 <table class="w-full text-[11px]">
@@ -3752,21 +3752,21 @@
                                                         <tr>
                                                             <th class="text-left px-3 py-2">資產桶</th>
                                                             <th class="text-left px-3 py-2">方向</th>
-                                                            <th class="text-right px-3 py-2">Magnitude</th>
-                                                            <th class="text-right px-3 py-2">Confidence</th>
+                                                            <th class="text-right px-3 py-2">幅度</th>
+                                                            <th class="text-right px-3 py-2">信心</th>
                                                             <th class="text-left px-3 py-2">理由</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        <tr v-for="view in blackLittermanViews" :key="view.view_id" class="border-b border-white/5 hover:bg-white/[0.03]">
-                                                            <td class="px-3 py-2 font-mono text-white">{{ view.bucket }}</td>
-                                                            <td class="px-3 py-2 text-fuchsia-200">{{ view.direction }}</td>
-                                                            <td class="px-3 py-2 text-right text-gray-300">{{ view.magnitude_pct ?? '-' }}pp</td>
-                                                            <td class="px-3 py-2 text-right text-gray-300">{{ view.confidence ?? '-' }}</td>
-                                                            <td class="px-3 py-2 text-gray-400 max-w-[300px] truncate" :title="view.rationale">{{ view.rationale }}</td>
+                                                        <tr v-for="觀點 in blackLittermanViews" :key="觀點.觀點_id" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                            <td class="px-3 py-2 font-mono text-white">{{ zhText(觀點.bucket) }}</td>
+                                                            <td class="px-3 py-2 text-fuchsia-200">{{ zhText(觀點.direction) }}</td>
+                                                            <td class="px-3 py-2 text-right text-gray-300">{{ 觀點.magnitude_pct ?? '-' }}pp</td>
+                                                            <td class="px-3 py-2 text-right text-gray-300">{{ 觀點.confidence ?? '-' }}</td>
+                                                            <td class="px-3 py-2 text-gray-400 max-w-[300px] truncate" :title="觀點.rationale">{{ zhText(觀點.rationale) }}</td>
                                                         </tr>
                                                         <tr v-if="!blackLittermanViews.length">
-                                                            <td colspan="5" class="px-3 py-4 text-center text-gray-500">尚未讀到 v3.1 views（觀點）。</td>
+                                                            <td colspan="5" class="px-3 py-4 text-center text-gray-500">尚未讀到 v3.1 觀點。</td>
                                                         </tr>
                                                     </tbody>
                                                 </table>
@@ -3776,23 +3776,23 @@
 
                                     <div class="rounded-xl border border-red-500/20 bg-red-500/[0.04] p-3 text-[11px] text-gray-400 leading-relaxed">
                                         <span class="font-bold text-red-200">安全邊界：</span>
-                                        v3.0 / v3.1 全部輸出仍是僅觀察沙盒。Black-Litterman 沒有啟用預期報酬 alpha 模型，也沒有任意手動 views；任何草案都需要人工確認，不是交易指令。
+                                        v3.0 / v3.1 全部輸出仍是僅觀察沙盒。Black-Litterman 沒有啟用預期報酬 alpha 模型，也沒有任意手動觀點；任何草案都需要人工確認，不是交易指令。
                                     </div>
                                 </div>
                             </div>
 
 
 
-                            <!-- v3.2 + v3.3 + v3.4 Validation / Governance Layer -->
+                            <!-- v3.2 + v3.3 + v3.4 驗證 / 治理層 -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.035] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-cyan-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-scale-balanced text-cyan-400"></i>
-                                            v3.2 預期報酬模型 ＋ v3.3 Walk-forward 回測 ＋ v3.4 模型治理
+                                            v3.2 預期報酬模型 ＋ v3.3 滾動樣本外回測 ＋ v3.4 模型治理
                                         </div>
                                         <div class="text-[11px] text-gray-400 mt-1">
-                                            預期報酬僅為相對 prior，不啟用最大夏普；Walk-forward 驗證最佳化器是否真的優於目前投組；模型治理追蹤模型版本、樣本品質與失效條件。
+                                            預期報酬僅為相對先驗，不啟用最大夏普；滾動樣本外回測驗證最佳化器是否真的優於目前投組；模型治理追蹤模型版本、樣本品質與失效條件。
                                         </div>
                                     </div>
                                     <div class="flex flex-wrap gap-2">
@@ -3812,23 +3812,23 @@
                                     <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3 md:col-span-2">
                                             <div class="quant-label text-cyan-300">v3.2 模型口徑</div>
-                                            <div class="quant-value text-white text-base">{{ expectedReturnSummary?.verdict ?? '-' }}</div>
-                                            <div class="text-[10px] text-gray-500 mt-1">Max Sharpe: {{ expectedReturnPolicy?.maximum_sharpe_optimization_enabled === false ? 'disabled' : 'review' }}</div>
+                                            <div class="quant-value text-white text-base">{{ zhText(expectedReturnSummary?.verdict) }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">最大夏普： {{ expectedReturnPolicy?.maximum_sharpe_optimization_enabled === false ? '停用' : '需審閱' }}</div>
                                         </div>
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3">
-                                            <div class="quant-label text-cyan-300">Asset Priors</div>
+                                            <div class="quant-label text-cyan-300">資產先驗</div>
                                             <div class="quant-value text-white">{{ expectedReturnSummary?.asset_count ?? 0 }}</div>
                                         </div>
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3">
-                                            <div class="quant-label text-blue-300">WF Status</div>
-                                            <div class="quant-value text-white">{{ walkForwardBacktest?.status ?? '-' }}</div>
+                                            <div class="quant-label text-blue-300">回測狀態</div>
+                                            <div class="quant-value text-white">{{ zhText(walkForwardBacktest?.status) }}</div>
                                         </div>
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3">
-                                            <div class="quant-label text-blue-300">WF Folds</div>
+                                            <div class="quant-label text-blue-300">回測折數</div>
                                             <div class="quant-value text-white">{{ walkForwardSummary?.fold_count ?? 0 }}</div>
                                         </div>
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3">
-                                            <div class="quant-label text-emerald-300">Governance</div>
+                                            <div class="quant-label text-emerald-300">治理分數</div>
                                             <div class="quant-value text-white">{{ modelGovernanceSummary?.governance_score ?? '-' }}</div>
                                         </div>
                                     </div>
@@ -3836,7 +3836,7 @@
                                     <div class="grid grid-cols-1 2xl:grid-cols-3 gap-4">
                                         <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                             <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
-                                                <div class="text-xs font-bold text-white">v3.2 資產桶 Priors</div>
+                                                <div class="text-xs font-bold text-white">v3.2 資產桶先驗</div>
                                                 <div class="text-[10px] text-gray-500">僅相對值</div>
                                             </div>
                                             <div class="overflow-x-auto">
@@ -3851,13 +3851,13 @@
                                                     </thead>
                                                     <tbody>
                                                         <tr v-for="row in expectedReturnVisibleBuckets" :key="row.bucket" class="border-b border-white/5 hover:bg-white/[0.03]">
-                                                            <td class="px-3 py-2 font-mono text-white">{{ row.bucket }}</td>
+                                                            <td class="px-3 py-2 font-mono text-white">{{ zhText(row.bucket) }}</td>
                                                             <td class="px-3 py-2 text-right text-cyan-200">{{ row.relative_score }}</td>
-                                                            <td class="px-3 py-2 text-gray-300 max-w-[170px] truncate" :title="row.prior_band">{{ row.prior_band }}</td>
-                                                            <td class="px-3 py-2 text-right text-gray-400">{{ row.confidence }}</td>
+                                                            <td class="px-3 py-2 text-gray-300 max-w-[170px] truncate" :title="row.先驗_band">{{ zhText(row.先驗_band) }}</td>
+                                                            <td class="px-3 py-2 text-right text-gray-400">{{ zhText(row.confidence) }}</td>
                                                         </tr>
                                                         <tr v-if="!expectedReturnVisibleBuckets.length">
-                                                            <td colspan="4" class="px-3 py-4 text-center text-gray-500">尚未讀到 v3.2 資產桶 priors。</td>
+                                                            <td colspan="4" class="px-3 py-4 text-center text-gray-500">尚未讀到 v3.2 資產桶先驗。</td>
                                                         </tr>
                                                     </tbody>
                                                 </table>
@@ -3866,7 +3866,7 @@
 
                                         <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                             <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
-                                                <div class="text-xs font-bold text-white">v3.3 Walk-forward 驗證</div>
+                                                <div class="text-xs font-bold text-white">v3.3 滾動樣本外驗證</div>
                                                 <div class="text-[10px] text-gray-500">最佳化器 vs 目前投組</div>
                                             </div>
                                             <div class="overflow-x-auto">
@@ -3882,14 +3882,14 @@
                                                     </thead>
                                                     <tbody>
                                                         <tr v-for="row in walkForwardVisibleRows" :key="row.method" class="border-b border-white/5 hover:bg-white/[0.03]">
-                                                            <td class="px-3 py-2 font-mono text-white max-w-[180px] truncate" :title="row.method">{{ row.method }}</td>
+                                                            <td class="px-3 py-2 font-mono text-white max-w-[180px] truncate" :title="row.method">{{ zhText(row.method) }}</td>
                                                             <td class="px-3 py-2 text-right text-gray-300">{{ row.fold_count }}</td>
                                                             <td class="px-3 py-2 text-right text-blue-200">{{ row.avg_es95_pct ?? '-' }}</td>
                                                             <td class="px-3 py-2 text-right text-gray-300">{{ row.avg_turnover_vs_current_pct ?? '-' }}%</td>
-                                                            <td class="px-3 py-2 text-gray-400 max-w-[180px] truncate" :title="row.decision">{{ row.decision }}</td>
+                                                            <td class="px-3 py-2 text-gray-400 max-w-[180px] truncate" :title="zhText(row.decision)">{{ zhText(row.decision) }}</td>
                                                         </tr>
                                                         <tr v-if="!walkForwardVisibleRows.length">
-                                                            <td colspan="5" class="px-3 py-4 text-center text-gray-500">尚未讀到 v3.3 walk-forward 列。</td>
+                                                            <td colspan="5" class="px-3 py-4 text-center text-gray-500">尚未讀到 v3.3 滾動樣本外列。</td>
                                                         </tr>
                                                     </tbody>
                                                 </table>
@@ -3912,9 +3912,9 @@
                                                     </thead>
                                                     <tbody>
                                                         <tr v-for="flag in modelGovernanceVisibleFlags" :key="flag.code" class="border-b border-white/5 hover:bg-white/[0.03]">
-                                                            <td class="px-3 py-2"><span class="px-2 py-0.5 rounded border text-[10px]" :class="approvalBadgeClass(flag.severity)">{{ flag.severity }}</span></td>
+                                                            <td class="px-3 py-2"><span class="px-2 py-0.5 rounded border text-[10px]" :class="approvalBadgeClass(flag.severity)">{{ zhText(flag.severity) }}</span></td>
                                                             <td class="px-3 py-2 font-mono text-white max-w-[160px] truncate" :title="flag.code">{{ flag.code }}</td>
-                                                            <td class="px-3 py-2 text-gray-400 max-w-[260px] truncate" :title="flag.message">{{ flag.message }}</td>
+                                                            <td class="px-3 py-2 text-gray-400 max-w-[260px] truncate" :title="zhText(flag.message)">{{ zhText(flag.message) }}</td>
                                                         </tr>
                                                         <tr v-if="!modelGovernanceVisibleFlags.length">
                                                             <td colspan="3" class="px-3 py-4 text-center text-gray-500">目前沒有治理旗標。</td>
@@ -3995,7 +3995,7 @@
                                         <ul class="space-y-1 text-[11px] text-gray-400 leading-relaxed">
                                             <li v-for="item in (syntheticRiskMeta?.assumptions || [])" :key="item" class="flex gap-2">
                                                 <i class="fas fa-check text-emerald-400 mt-0.5"></i>
-                                                <span>{{ item }}</span>
+                                                <span>{{ zhText(item) }}</span>
                                             </li>
                                         </ul>
                                     </div>
@@ -4005,7 +4005,7 @@
                                         <ul class="space-y-1 text-[11px] text-gray-400 leading-relaxed">
                                             <li v-for="item in (syntheticRiskMeta?.confidence_detail?.notes || [])" :key="item" class="flex gap-2">
                                                 <i class="fas fa-exclamation-circle text-amber-400 mt-0.5"></i>
-                                                <span>{{ item }}</span>
+                                                <span>{{ zhText(item) }}</span>
                                             </li>
                                         </ul>
                                     </div>
@@ -4202,7 +4202,7 @@
             <div class="text-[11px] uppercase tracking-[0.18em] text-gray-500 font-bold">Institutional Stack</div>
             <div class="text-sm font-bold text-white mt-1">先分層，再判斷，再執行。</div>
         </div>
-        <div class="text-[11px] text-gray-500 font-mono">Governance → Execution → Insight</div>
+        <div class="text-[11px] text-gray-500 font-mono">治理 → 執行 → 洞察</div>
     </div>
     <div class="p-4 md:p-5 grid grid-cols-1 md:grid-cols-3 gap-3 institutional-stack-grid">
         <div class="stack-card stack-card-governance">
@@ -4212,7 +4212,7 @@
             <div class="stack-note">{{ allocationGovernance?.summary || '等待風控資料載入。' }}</div>
         </div>
         <div class="stack-card stack-card-execution">
-            <div class="stack-kicker">Layer 2 · Execution</div>
+            <div class="stack-kicker">第二層 · 執行</div>
             <div class="stack-title">再平衡駕駛艙</div>
             <div class="stack-copy">{{ (rebalanceCockpitRows || []).length }} 檔待判讀</div>
             <div class="stack-note">先修 drift / concentration，再談新增風險。</div>
@@ -4243,7 +4243,7 @@
                 </p>
             </div>
             <div class="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 terminal-exec-rule-box">
-                <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-1">Execution Rule</div>
+                <div class="text-[11px] uppercase tracking-wider text-gray-500 mb-1">執行規則</div>
                 <div class="text-sm font-bold text-white">{{ allocationGovernance?.badgeText || '等待風控資料' }}</div>
                 <div class="text-[11px] text-gray-400 mt-2">{{ allocationGovernance?.summary || '等待風控資料載入。' }}</div>
             </div>
@@ -4253,15 +4253,15 @@
         <div class="terminal-trade-buffer-panel rounded-2xl border border-white/10 bg-black/25 p-4 md:p-5">
             <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
                 <div>
-                    <div class="text-[11px] uppercase tracking-[0.18em] text-amber-400 font-bold">Trade Buffers</div>
-                    <div class="text-sm md:text-base font-bold text-white mt-1">交易緩衝區 / No-Trade Zone</div>
+                    <div class="text-[11px] uppercase tracking-[0.18em] text-amber-400 font-bold">交易緩衝s</div>
+                    <div class="text-sm md:text-base font-bold text-white mt-1">交易緩衝區 / 不交易區間</div>
                     <div class="text-[11px] md:text-xs text-gray-400 mt-2 leading-relaxed">
                         不是每個 drift 都要交易。先讓部位在緩衝區內自然波動，超出門檻再進入再平衡流程。
                     </div>
                 </div>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-2 min-w-0 xl:min-w-[420px]">
                     <div class="terminal-mini-stat">
-                        <div class="terminal-mini-label">Base Buffer</div>
+                        <div class="terminal-mini-label">基礎緩衝</div>
                         <div class="terminal-mini-value">±{{ (tradeBufferSummary?.basePct ?? 0).toFixed(1) }}%</div>
                     </div>
                     <div class="terminal-mini-stat">
@@ -4396,7 +4396,7 @@
             </table>
         </div>
         <div v-else class="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-300">
-            目前所有 drift 仍落在 Trade Buffer 內，或沒有過重部位；再平衡駕駛艙暫時不出手。
+            目前所有 drift 仍落在 交易緩衝 內，或沒有過重部位；再平衡駕駛艙暫時不出手。
         </div>
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-4">
             <div class="cockpit-estimate-card">
@@ -5133,35 +5133,35 @@
        <div class="rounded-2xl border border-white/10 bg-black/20 p-4 space-y-3">
            <div class="flex items-center justify-between text-xs">
                <span class="text-gray-400">現金流影響</span>
-               <span class="font-mono font-bold" :class="txPreview?.finalFlow >= 0 ? 'text-green-300' : 'text-red-300'">
-                   {{ txPreview?.finalFlow > 0 ? '+' : '' }}{{ formatNumber(txPreview?.finalFlow || 0) }}
+               <span class="font-mono font-bold" :class="txPre觀點?.finalFlow >= 0 ? 'text-green-300' : 'text-red-300'">
+                   {{ txPre觀點?.finalFlow > 0 ? '+' : '' }}{{ formatNumber(txPre觀點?.finalFlow || 0) }}
                </span>
            </div>
            <div class="flex items-center justify-between text-xs">
                <span class="text-gray-400">送出後現金</span>
-               <span class="font-mono font-bold" :class="txPreview?.projectedCashAfter >= 0 ? 'text-cyan-300' : 'text-red-300'">
-                   NT$ {{ formatNumber(txPreview?.projectedCashAfter ?? cashBalance) }}
+               <span class="font-mono font-bold" :class="txPre觀點?.projectedCashAfter >= 0 ? 'text-cyan-300' : 'text-red-300'">
+                   NT$ {{ formatNumber(txPre觀點?.projectedCashAfter ?? cashBalance) }}
                </span>
            </div>
-           <div v-if="(txPreview?.errors || []).length || (txPreview?.blockers || []).length" class="rounded-xl border border-red-500/20 bg-red-500/10 p-3">
+           <div v-if="(txPre觀點?.errors || []).length || (txPre觀點?.blockers || []).length" class="rounded-xl border border-red-500/20 bg-red-500/10 p-3">
                <div class="text-[11px] font-bold text-red-300 mb-2">已攔下</div>
                <ul class="space-y-1 text-[11px] text-gray-200 leading-relaxed">
-                   <li v-for="msg in [...(txPreview?.errors || []), ...(txPreview?.blockers || [])]" :key="msg">• {{ msg }}</li>
+                   <li v-for="msg in [...(txPre觀點?.errors || []), ...(txPre觀點?.blockers || [])]" :key="msg">• {{ msg }}</li>
                </ul>
            </div>
-           <div v-else-if="(txPreview?.warnings || []).length" class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3">
+           <div v-else-if="(txPre觀點?.warnings || []).length" class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3">
                <div class="text-[11px] font-bold text-amber-300 mb-2">提醒</div>
                <ul class="space-y-1 text-[11px] text-gray-200 leading-relaxed">
-                   <li v-for="msg in (txPreview?.warnings || [])" :key="msg">• {{ msg }}</li>
+                   <li v-for="msg in (txPre觀點?.warnings || [])" :key="msg">• {{ msg }}</li>
                </ul>
            </div>
            <div v-else class="text-[11px] text-emerald-300">表單檢查通過，可以送出。</div>
        </div>
 
        <button @click="addTransaction"
-               :disabled="(txPreview?.errors || []).length || (txPreview?.blockers || []).length"
+               :disabled="(txPre觀點?.errors || []).length || (txPre觀點?.blockers || []).length"
                class="w-full rounded-lg font-bold text-sm py-3 shadow-lg mt-2 transition"
-               :class="((txPreview?.errors || []).length || (txPreview?.blockers || []).length) ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'btn-purple text-white hover:scale-[1.01]'">
+               :class="((txPre觀點?.errors || []).length || (txPre觀點?.blockers || []).length) ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'btn-purple text-white hover:scale-[1.01]'">
            確認送出
        </button>
    </div>
