@@ -1,0 +1,211 @@
+{
+  "version": "v4.7",
+  "generated_at": "2026-06-07T13:39:25.608442+00:00",
+  "status": "OK",
+  "mode": "dry_run",
+  "safe_mode": true,
+  "auto_delete_enabled": false,
+  "manual_workflow_execution_required": true,
+  "summary": {
+    "target_count": 14,
+    "deleted_count": 0,
+    "dry_run_count": 14,
+    "missing_count": 0,
+    "error_count": 0
+  },
+  "guardrails": {
+    "protected_paths": [
+      {
+        "path": "index.html",
+        "exists": true
+      },
+      {
+        "path": "assets/js/app.bundle.js",
+        "exists": true
+      },
+      {
+        "path": "assets/js/src/app.bundle.source.js",
+        "exists": true
+      },
+      {
+        "path": "assets/js/quant-main-display.js",
+        "exists": true
+      },
+      {
+        "path": "assets/css/tailwind-built.css",
+        "exists": true
+      },
+      {
+        "path": "backup.py",
+        "exists": true
+      },
+      {
+        "path": "main.py",
+        "exists": true
+      },
+      {
+        "path": "update_stock_meta.py",
+        "exists": true
+      },
+      {
+        "path": ".github/workflows/optimizer-lab.yml.yml",
+        "exists": true
+      },
+      {
+        "path": ".github/workflows/validation-gate.yml.yml",
+        "exists": true
+      },
+      {
+        "path": ".github/workflows/repo-architecture-audit.yml.yml",
+        "exists": true
+      }
+    ],
+    "missing_protected_paths": [],
+    "root_duplicate_reference_errors": [],
+    "backup_py_retained_because_weekly_backup_uses_it": true,
+    "explicitly_retained": [
+      "backup.py",
+      "UPLOAD_TO_GITHUB_PAGES.txt",
+      "README.md"
+    ]
+  },
+  "deleted_paths": [],
+  "results": [
+    {
+      "path": "README_FRONTEND_MIGRATION.md",
+      "category": "safe_delete",
+      "exists_before": true,
+      "bytes_before": 1154,
+      "action": "would_delete",
+      "status": "dry_run",
+      "error": null
+    },
+    {
+      "path": "README_TERMINAL_DESIGN_SYSTEM.md",
+      "category": "safe_delete",
+      "exists_before": true,
+      "bytes_before": 1486,
+      "action": "would_delete",
+      "status": "dry_run",
+      "error": null
+    },
+    {
+      "path": "README_V05_V06_OVERLAY.md",
+      "category": "safe_delete",
+      "exists_before": true,
+      "bytes_before": 1873,
+      "action": "would_delete",
+      "status": "dry_run",
+      "error": null
+    },
+    {
+      "path": "daily_update.yml",
+      "category": "safe_delete",
+      "exists_before": true,
+      "bytes_before": 1578,
+      "action": "would_delete",
+      "status": "dry_run",
+      "error": null
+    },
+    {
+      "path": "weekly_macro_update.yml",
+      "category": "safe_delete",
+      "exists_before": true,
+      "bytes_before": 1750,
+      "action": "would_delete",
+      "status": "dry_run",
+      "error": null
+    },
+    {
+      "path": "frontend_tailwind_migration.yml",
+      "category": "safe_delete",
+      "exists_before": true,
+      "bytes_before": 1458,
+      "action": "would_delete",
+      "status": "dry_run",
+      "error": null
+    },
+    {
+      "path": "00-bootstrap-and-cro.js",
+      "category": "confirmed_duplicate_root_file",
+      "exists_before": true,
+      "bytes_before": 6866,
+      "action": "would_delete",
+      "status": "dry_run",
+      "error": null
+    },
+    {
+      "path": "00-tailwind-config.js",
+      "category": "confirmed_duplicate_root_file",
+      "exists_before": true,
+      "bytes_before": 4228,
+      "action": "would_delete",
+      "status": "dry_run",
+      "error": null
+    },
+    {
+      "path": "10-state-auth-cloud.js",
+      "category": "confirmed_duplicate_root_file",
+      "exists_before": true,
+      "bytes_before": 8696,
+      "action": "would_delete",
+      "status": "dry_run",
+      "error": null
+    },
+    {
+      "path": "30-risk-xray-tail.js",
+      "category": "confirmed_duplicate_root_file",
+      "exists_before": true,
+      "bytes_before": 18992,
+      "action": "would_delete",
+      "status": "dry_run",
+      "error": null
+    },
+    {
+      "path": "40-actions-history-buffer.js",
+      "category": "confirmed_duplicate_root_file",
+      "exists_before": true,
+      "bytes_before": 178922,
+      "action": "would_delete",
+      "status": "dry_run",
+      "error": null
+    },
+    {
+      "path": "60-ui-and-charts.js",
+      "category": "confirmed_duplicate_root_file",
+      "exists_before": true,
+      "bytes_before": 132805,
+      "action": "would_delete",
+      "status": "dry_run",
+      "error": null
+    },
+    {
+      "path": "app.bundle.js",
+      "category": "confirmed_duplicate_root_file",
+      "exists_before": true,
+      "bytes_before": 132805,
+      "action": "would_delete",
+      "status": "dry_run",
+      "error": null
+    },
+    {
+      "path": "quant-main-display.js",
+      "category": "confirmed_duplicate_root_file",
+      "exists_before": true,
+      "bytes_before": 16260,
+      "action": "would_delete",
+      "status": "dry_run",
+      "error": null
+    }
+  ],
+  "retained_paths": [
+    "backup.py",
+    "UPLOAD_TO_GITHUB_PAGES.txt",
+    "README.md"
+  ],
+  "safety_boundary": [
+    "This cleanup removes only non-runtime root-level duplicates and stale migration notes.",
+    "It does not remove runtime assets, schemas, optimizer outputs, workflows, or backup.py.",
+    "It does not change portfolio data, does not write Supabase, and does not enable execution."
+  ]
+}
