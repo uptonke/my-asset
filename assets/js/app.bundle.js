@@ -3983,6 +3983,76 @@ chartCML.data.datasets = [
     });
 }
 
+
+       const humanApprovalLayer = ref(null);
+       const humanApprovalLayerError = ref('');
+
+       async function loadHumanApprovalLayer() {
+    try {
+        humanApprovalLayerError.value = '';
+        const response = await fetch(`data/optimizer/human_approval_layer_latest.json?v=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) {
+            humanApprovalLayer.value = null;
+            humanApprovalLayerError.value = `尚未讀到 v2.4 Human Approval Layer (${response.status})`;
+            return;
+        }
+        const data = await response.json();
+        humanApprovalLayer.value = data && typeof data === 'object' ? data : null;
+    } catch (err) {
+        humanApprovalLayer.value = null;
+        humanApprovalLayerError.value = err?.message || String(err);
+    }
+}
+
+       const humanApprovalTickets = computed(() => {
+    return Array.isArray(humanApprovalLayer.value?.approval_tickets) ? humanApprovalLayer.value.approval_tickets : [];
+});
+
+       const humanApprovalSummary = computed(() => {
+    return humanApprovalLayer.value?.summary || {};
+});
+
+       const humanApprovalVisibleTickets = computed(() => {
+    return humanApprovalTickets.value.slice(0, 12);
+});
+
+       const actionAuditTrail = ref(null);
+       const actionAuditTrailError = ref('');
+
+       async function loadActionAuditTrail() {
+    try {
+        actionAuditTrailError.value = '';
+        const response = await fetch(`data/optimizer/action_audit_trail_latest.json?v=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) {
+            actionAuditTrail.value = null;
+            actionAuditTrailError.value = `尚未讀到 v2.5 Action Audit Trail (${response.status})`;
+            return;
+        }
+        const data = await response.json();
+        actionAuditTrail.value = data && typeof data === 'object' ? data : null;
+    } catch (err) {
+        actionAuditTrail.value = null;
+        actionAuditTrailError.value = err?.message || String(err);
+    }
+}
+
+       const actionAuditSummary = computed(() => {
+    return actionAuditTrail.value?.summary || {};
+});
+
+       const actionAuditEvents = computed(() => {
+    const rows = actionAuditTrail.value?.audit_events || actionAuditTrail.value?.events || [];
+    return Array.isArray(rows) ? rows.slice(0, 12) : [];
+});
+
+       function approvalBadgeClass(status) {
+    const s = String(status || '').toLowerCase();
+    if (s.includes('approved')) return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300';
+    if (s.includes('reject') || s.includes('blocked')) return 'border-red-500/30 bg-red-500/10 text-red-300';
+    if (s.includes('watch')) return 'border-sky-500/30 bg-sky-500/10 text-sky-300';
+    return 'border-amber-500/30 bg-amber-500/10 text-amber-300';
+}
+
         onMounted(() => {
             updateStickyHeaderOffsets();
 
@@ -3992,6 +4062,8 @@ chartCML.data.datasets = [
     loadRiskfolioSandboxOutput();
     loadOptimizerRobustnessOutput();
     loadOptimizerStressOutput();
+    loadHumanApprovalLayer();
+    loadActionAuditTrail();
 
     window.addEventListener('resize', () => {
         resizeAllCharts();
@@ -4524,7 +4596,7 @@ chartCML.data.datasets = [
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr, navOverlayMode, navOverlayOptions, setNavOverlayMode, navMaConfig, riskRegimeStrip, navTrendSummary,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
-            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerConstraintRules, optimizerConstraintPolicySummaries, selectedOptimizerConstraintPolicy, selectedOptimizerConstraintRows, selectedOptimizerConstraintIssues, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, optimizerStressOutput, optimizerStressError, optimizerStressScenarios, optimizerStressRows, optimizerStressWorstRows, optimizerStressBestWorst, optimizerStressMostFragile, selectedStressScenarioKey, selectedStressScenario, selectedStressScenarioRows, setStressScenario, loadOptimizerStressOutput, selectedOptimizerExplainKey, optimizerExplainabilityCandidates, selectedOptimizerExplainability, setOptimizerExplainCandidate, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
+            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerConstraintRules, optimizerConstraintPolicySummaries, selectedOptimizerConstraintPolicy, selectedOptimizerConstraintRows, selectedOptimizerConstraintIssues, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, optimizerStressOutput, optimizerStressError, optimizerStressScenarios, optimizerStressRows, optimizerStressWorstRows, optimizerStressBestWorst, optimizerStressMostFragile, selectedStressScenarioKey, selectedStressScenario, selectedStressScenarioRows, setStressScenario, loadOptimizerStressOutput, humanApprovalLayer, humanApprovalLayerError, humanApprovalTickets, humanApprovalSummary, humanApprovalVisibleTickets, loadHumanApprovalLayer, actionAuditTrail, actionAuditTrailError, actionAuditSummary, actionAuditEvents, loadActionAuditTrail, approvalBadgeClass, selectedOptimizerExplainKey, optimizerExplainabilityCandidates, selectedOptimizerExplainability, setOptimizerExplainCandidate, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
         };
     }
 }).mount('#app');

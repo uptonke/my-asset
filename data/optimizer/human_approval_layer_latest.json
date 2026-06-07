@@ -1,0 +1,1464 @@
+{
+  "version": "v2.4",
+  "status": "OK",
+  "generated_at": "2026-06-07T06:54:31+00:00",
+  "mode": "human_approval_layer",
+  "safe_mode": true,
+  "safe_mode_note": "v2.4 Human Approval Layer 將 v2.3 約束感知草案轉成需要人工確認的審核票據；所有輸出都只是決策支援，不是交易指令，不自動下單，不寫入 Supabase，不修改正式持倉或正式權重。",
+  "source_files": {
+    "constraint_aware_rebalance": "data/optimizer/constraint_aware_rebalance_latest.json"
+  },
+  "approval_policy": {
+    "default_status": "pending_review",
+    "allowed_statuses": [
+      "pending_review",
+      "approved_for_manual_execution",
+      "rejected",
+      "watch_only"
+    ],
+    "execution_permission_default": false,
+    "not_trade_order": true,
+    "requires_manual_approval": true
+  },
+  "summary": {
+    "total_tickets": 11,
+    "pending_review": 11,
+    "constraint_pass_review_required": 7,
+    "high_turnover_review_required": 0,
+    "blocked_review_required": 0,
+    "execution_permission_true": 0,
+    "execution_permission_false": 11
+  },
+  "approval_tickets": [
+    {
+      "approval_ticket_id": "v2_4_v2_3_v2_1_inverse_vol_baseline_ddf40047",
+      "source_version": "v2.4",
+      "source_type": "constraint_aware_rebalance",
+      "source_draft_id": "v2_3_v2_1_inverse_vol_baseline",
+      "source_model_id": "inverse_vol_baseline",
+      "gate": "watch_review_only",
+      "model_status": "constraint_pass_review_required",
+      "constraint_status": "constraint_pass_watch_only",
+      "turnover_vs_current_pct": 5.909,
+      "execution_permission": false,
+      "not_trade_order": true,
+      "requires_manual_approval": true,
+      "human_approval": {
+        "required": true,
+        "status": "pending_review",
+        "allowed_statuses": [
+          "pending_review",
+          "approved_for_manual_execution",
+          "rejected",
+          "watch_only"
+        ],
+        "approval_note": null,
+        "approved_by": null,
+        "approved_at": null,
+        "rejected_reason": null
+      },
+      "ui_badges": [
+        "需要人工確認",
+        "僅供決策支援",
+        "不是交易指令"
+      ],
+      "reason_codes": [
+        "manual_approval_required",
+        "not_trade_order",
+        "decision_support_only",
+        "watch_only_source",
+        "constraint_pass"
+      ],
+      "constraint_flags": [],
+      "raw_exposure": {
+        "cash_pct": 12.475,
+        "gold_pct": 1.697,
+        "crypto_pct": 9.93,
+        "taiwan_pct": 10.103,
+        "other_pct": 65.795,
+        "max_single_weight_pct": 12.475,
+        "max_single_ticker": "BOXX"
+      },
+      "constraint_aware_exposure": {
+        "cash_pct": 12.475,
+        "gold_pct": 2.697,
+        "crypto_pct": 9.93,
+        "taiwan_pct": 10.103,
+        "other_pct": 64.795,
+        "max_single_weight_pct": 12.475,
+        "max_single_ticker": "BOXX"
+      },
+      "top_adjustments": [
+        {
+          "ticker": "GLDM",
+          "current_weight_pct": 0.852,
+          "constraint_aware_weight_pct": 2.697,
+          "delta_pct": 1.845,
+          "direction": "UP"
+        },
+        {
+          "ticker": "00981A",
+          "current_weight_pct": 9.45,
+          "constraint_aware_weight_pct": 8.008,
+          "delta_pct": -1.442,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "BTC-USD",
+          "current_weight_pct": 8.042,
+          "constraint_aware_weight_pct": 6.704,
+          "delta_pct": -1.338,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "VOO",
+          "current_weight_pct": 10.146,
+          "constraint_aware_weight_pct": 9.146,
+          "delta_pct": -1.0,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "QQQ",
+          "current_weight_pct": 10.551,
+          "constraint_aware_weight_pct": 9.627,
+          "delta_pct": -0.924,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "SRVR",
+          "current_weight_pct": 2.867,
+          "constraint_aware_weight_pct": 3.762,
+          "delta_pct": 0.895,
+          "direction": "UP"
+        },
+        {
+          "ticker": "USMV",
+          "current_weight_pct": 6.679,
+          "constraint_aware_weight_pct": 7.571,
+          "delta_pct": 0.892,
+          "direction": "UP"
+        },
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 11.668,
+          "constraint_aware_weight_pct": 12.475,
+          "delta_pct": 0.807,
+          "direction": "UP"
+        }
+      ],
+      "constraint_actions": [
+        {
+          "action": "trim",
+          "ticker": "VOO",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct_source_funding"
+        },
+        {
+          "action": "add",
+          "ticker": "BOXX",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct_source_funding"
+        },
+        {
+          "action": "add",
+          "ticker": "GLDM",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct"
+        },
+        {
+          "action": "fund",
+          "ticker": "BOXX",
+          "amount_pct": -1.0,
+          "reason": "soft_gold_target_pct"
+        }
+      ],
+      "manual_review_checklist": [
+        "確認資料日期、資產價格與持倉快照是否正確。",
+        "確認換手率、稅費、滑價、匯差與最小交易單位。",
+        "確認是否違反單一資產、加密、台股、現金與黃金約束。",
+        "確認壓力測試改善是否足以抵消交易摩擦。",
+        "若採納，仍需人工在正式交易系統另行操作；本檔案不會自動交易。"
+      ]
+    },
+    {
+      "approval_ticket_id": "v2_4_v2_3_v2_1_riskfolio_risk_parity_mv_447e8777",
+      "source_version": "v2.4",
+      "source_type": "constraint_aware_rebalance",
+      "source_draft_id": "v2_3_v2_1_riskfolio_risk_parity_mv",
+      "source_model_id": "riskfolio_risk_parity_mv",
+      "gate": "watch_review_only",
+      "model_status": "constraint_pass_review_required",
+      "constraint_status": "constraint_pass_watch_only",
+      "turnover_vs_current_pct": 7.605,
+      "execution_permission": false,
+      "not_trade_order": true,
+      "requires_manual_approval": true,
+      "human_approval": {
+        "required": true,
+        "status": "pending_review",
+        "allowed_statuses": [
+          "pending_review",
+          "approved_for_manual_execution",
+          "rejected",
+          "watch_only"
+        ],
+        "approval_note": null,
+        "approved_by": null,
+        "approved_at": null,
+        "rejected_reason": null
+      },
+      "ui_badges": [
+        "需要人工確認",
+        "僅供決策支援",
+        "不是交易指令"
+      ],
+      "reason_codes": [
+        "manual_approval_required",
+        "not_trade_order",
+        "decision_support_only",
+        "watch_only_source",
+        "constraint_pass"
+      ],
+      "constraint_flags": [],
+      "raw_exposure": {
+        "cash_pct": 14.577,
+        "gold_pct": 1.787,
+        "crypto_pct": 9.954,
+        "taiwan_pct": 11.903,
+        "other_pct": 61.779,
+        "max_single_weight_pct": 14.577,
+        "max_single_ticker": "BOXX"
+      },
+      "constraint_aware_exposure": {
+        "cash_pct": 14.577,
+        "gold_pct": 2.787,
+        "crypto_pct": 9.954,
+        "taiwan_pct": 11.903,
+        "other_pct": 60.779,
+        "max_single_weight_pct": 14.577,
+        "max_single_ticker": "BOXX"
+      },
+      "top_adjustments": [
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 11.668,
+          "constraint_aware_weight_pct": 14.577,
+          "delta_pct": 2.909,
+          "direction": "UP"
+        },
+        {
+          "ticker": "QQQ",
+          "current_weight_pct": 10.551,
+          "constraint_aware_weight_pct": 8.162,
+          "delta_pct": -2.389,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "GLDM",
+          "current_weight_pct": 0.852,
+          "constraint_aware_weight_pct": 2.787,
+          "delta_pct": 1.935,
+          "direction": "UP"
+        },
+        {
+          "ticker": "2330",
+          "current_weight_pct": 1.494,
+          "constraint_aware_weight_pct": 2.953,
+          "delta_pct": 1.459,
+          "direction": "UP"
+        },
+        {
+          "ticker": "BTC-USD",
+          "current_weight_pct": 8.042,
+          "constraint_aware_weight_pct": 6.725,
+          "delta_pct": -1.317,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "VOO",
+          "current_weight_pct": 10.146,
+          "constraint_aware_weight_pct": 9.102,
+          "delta_pct": -1.044,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "AVUV",
+          "current_weight_pct": 8.956,
+          "constraint_aware_weight_pct": 7.983,
+          "delta_pct": -0.973,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "VEA",
+          "current_weight_pct": 8.281,
+          "constraint_aware_weight_pct": 7.41,
+          "delta_pct": -0.871,
+          "direction": "DOWN"
+        }
+      ],
+      "constraint_actions": [
+        {
+          "action": "trim",
+          "ticker": "QQQ",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct_source_funding"
+        },
+        {
+          "action": "add",
+          "ticker": "BOXX",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct_source_funding"
+        },
+        {
+          "action": "add",
+          "ticker": "GLDM",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct"
+        },
+        {
+          "action": "fund",
+          "ticker": "BOXX",
+          "amount_pct": -1.0,
+          "reason": "soft_gold_target_pct"
+        }
+      ],
+      "manual_review_checklist": [
+        "確認資料日期、資產價格與持倉快照是否正確。",
+        "確認換手率、稅費、滑價、匯差與最小交易單位。",
+        "確認是否違反單一資產、加密、台股、現金與黃金約束。",
+        "確認壓力測試改善是否足以抵消交易摩擦。",
+        "若採納，仍需人工在正式交易系統另行操作；本檔案不會自動交易。"
+      ]
+    },
+    {
+      "approval_ticket_id": "v2_4_v2_3_v2_1_riskfolio_hrp_mv_0d2a8f2b",
+      "source_version": "v2.4",
+      "source_type": "constraint_aware_rebalance",
+      "source_draft_id": "v2_3_v2_1_riskfolio_hrp_mv",
+      "source_model_id": "riskfolio_hrp_mv",
+      "gate": "watch_review_only",
+      "model_status": "pending_review",
+      "constraint_status": "turnover_too_high_review_only",
+      "turnover_vs_current_pct": 10.098,
+      "execution_permission": false,
+      "not_trade_order": true,
+      "requires_manual_approval": true,
+      "human_approval": {
+        "required": true,
+        "status": "pending_review",
+        "allowed_statuses": [
+          "pending_review",
+          "approved_for_manual_execution",
+          "rejected",
+          "watch_only"
+        ],
+        "approval_note": null,
+        "approved_by": null,
+        "approved_at": null,
+        "rejected_reason": null
+      },
+      "ui_badges": [
+        "需要人工確認",
+        "僅供決策支援",
+        "不是交易指令"
+      ],
+      "reason_codes": [
+        "manual_approval_required",
+        "not_trade_order",
+        "decision_support_only",
+        "watch_only_source",
+        "turnover_watch_threshold"
+      ],
+      "constraint_flags": [],
+      "raw_exposure": {
+        "cash_pct": 18.772,
+        "gold_pct": 1.255,
+        "crypto_pct": 9.366,
+        "taiwan_pct": 9.825,
+        "other_pct": 60.782,
+        "max_single_weight_pct": 18.772,
+        "max_single_ticker": "BOXX"
+      },
+      "constraint_aware_exposure": {
+        "cash_pct": 18.772,
+        "gold_pct": 2.255,
+        "crypto_pct": 9.366,
+        "taiwan_pct": 9.825,
+        "other_pct": 59.782,
+        "max_single_weight_pct": 18.772,
+        "max_single_ticker": "BOXX"
+      },
+      "top_adjustments": [
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 11.668,
+          "constraint_aware_weight_pct": 18.772,
+          "delta_pct": 7.104,
+          "direction": "UP"
+        },
+        {
+          "ticker": "VOO",
+          "current_weight_pct": 10.146,
+          "constraint_aware_weight_pct": 8.254,
+          "delta_pct": -1.892,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "QQQ",
+          "current_weight_pct": 10.551,
+          "constraint_aware_weight_pct": 8.874,
+          "delta_pct": -1.677,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "BTC-USD",
+          "current_weight_pct": 8.042,
+          "constraint_aware_weight_pct": 6.412,
+          "delta_pct": -1.63,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "00981A",
+          "current_weight_pct": 9.45,
+          "constraint_aware_weight_pct": 7.85,
+          "delta_pct": -1.6,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "AVUV",
+          "current_weight_pct": 8.956,
+          "constraint_aware_weight_pct": 7.548,
+          "delta_pct": -1.408,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "GLDM",
+          "current_weight_pct": 0.852,
+          "constraint_aware_weight_pct": 2.255,
+          "delta_pct": 1.403,
+          "direction": "UP"
+        },
+        {
+          "ticker": "USMV",
+          "current_weight_pct": 6.679,
+          "constraint_aware_weight_pct": 7.789,
+          "delta_pct": 1.11,
+          "direction": "UP"
+        }
+      ],
+      "constraint_actions": [
+        {
+          "action": "trim",
+          "ticker": "VOO",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct_source_funding"
+        },
+        {
+          "action": "add",
+          "ticker": "BOXX",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct_source_funding"
+        },
+        {
+          "action": "add",
+          "ticker": "GLDM",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct"
+        },
+        {
+          "action": "fund",
+          "ticker": "BOXX",
+          "amount_pct": -1.0,
+          "reason": "soft_gold_target_pct"
+        }
+      ],
+      "manual_review_checklist": [
+        "確認資料日期、資產價格與持倉快照是否正確。",
+        "確認換手率、稅費、滑價、匯差與最小交易單位。",
+        "確認是否違反單一資產、加密、台股、現金與黃金約束。",
+        "確認壓力測試改善是否足以抵消交易摩擦。",
+        "若採納，仍需人工在正式交易系統另行操作；本檔案不會自動交易。"
+      ]
+    },
+    {
+      "approval_ticket_id": "v2_4_v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX_dd437855",
+      "source_version": "v2.4",
+      "source_type": "constraint_aware_risk_reduction",
+      "source_draft_id": "v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX",
+      "source_model_id": "v2_2_trim_BTC_USD_100pct_to_BOXX",
+      "gate": null,
+      "model_status": "pending_review",
+      "constraint_status": "turnover_too_high_review_only",
+      "turnover_vs_current_pct": 9.042,
+      "execution_permission": false,
+      "not_trade_order": true,
+      "requires_manual_approval": true,
+      "human_approval": {
+        "required": true,
+        "status": "pending_review",
+        "allowed_statuses": [
+          "pending_review",
+          "approved_for_manual_execution",
+          "rejected",
+          "watch_only"
+        ],
+        "approval_note": null,
+        "approved_by": null,
+        "approved_at": null,
+        "rejected_reason": null
+      },
+      "ui_badges": [
+        "需要人工確認",
+        "僅供決策支援",
+        "不是交易指令"
+      ],
+      "reason_codes": [
+        "manual_approval_required",
+        "not_trade_order",
+        "decision_support_only",
+        "risk_reduction_simulation",
+        "constraint_flags_present",
+        "turnover_watch_threshold"
+      ],
+      "constraint_flags": [
+        {
+          "level": "warning",
+          "constraint": "soft_gold_min_pct",
+          "value_pct": 1.852,
+          "limit_pct": 2.0
+        }
+      ],
+      "raw_exposure": null,
+      "constraint_aware_exposure": {
+        "cash_pct": 19.71,
+        "gold_pct": 1.852,
+        "crypto_pct": 3.739,
+        "taiwan_pct": 10.944,
+        "other_pct": 63.755,
+        "max_single_weight_pct": 19.71,
+        "max_single_ticker": "BOXX"
+      },
+      "top_adjustments": [
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 11.668,
+          "constraint_aware_weight_pct": 19.71,
+          "delta_pct": 8.042,
+          "direction": "UP"
+        },
+        {
+          "ticker": "BTC-USD",
+          "current_weight_pct": 8.042,
+          "constraint_aware_weight_pct": 0.0,
+          "delta_pct": -8.042,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "GLDM",
+          "current_weight_pct": 0.852,
+          "constraint_aware_weight_pct": 1.852,
+          "delta_pct": 1.0,
+          "direction": "UP"
+        },
+        {
+          "ticker": "QQQ",
+          "current_weight_pct": 10.551,
+          "constraint_aware_weight_pct": 9.551,
+          "delta_pct": -1.0,
+          "direction": "DOWN"
+        }
+      ],
+      "constraint_actions": [
+        {
+          "action": "trim",
+          "ticker": "QQQ",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct_source_funding"
+        },
+        {
+          "action": "add",
+          "ticker": "BOXX",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct_source_funding"
+        },
+        {
+          "action": "add",
+          "ticker": "GLDM",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct"
+        },
+        {
+          "action": "fund",
+          "ticker": "BOXX",
+          "amount_pct": -1.0,
+          "reason": "soft_gold_target_pct"
+        }
+      ],
+      "manual_review_checklist": [
+        "確認資料日期、資產價格與持倉快照是否正確。",
+        "確認換手率、稅費、滑價、匯差與最小交易單位。",
+        "確認是否違反單一資產、加密、台股、現金與黃金約束。",
+        "確認壓力測試改善是否足以抵消交易摩擦。",
+        "若採納，仍需人工在正式交易系統另行操作；本檔案不會自動交易。"
+      ]
+    },
+    {
+      "approval_ticket_id": "v2_4_v2_3_from_v2_2_trim_QQQ_100pct_to_BOXX_66db7437",
+      "source_version": "v2.4",
+      "source_type": "constraint_aware_risk_reduction",
+      "source_draft_id": "v2_3_from_v2_2_trim_QQQ_100pct_to_BOXX",
+      "source_model_id": "v2_2_trim_QQQ_100pct_to_BOXX",
+      "gate": null,
+      "model_status": "pending_review",
+      "constraint_status": "turnover_too_high_review_only",
+      "turnover_vs_current_pct": 11.551,
+      "execution_permission": false,
+      "not_trade_order": true,
+      "requires_manual_approval": true,
+      "human_approval": {
+        "required": true,
+        "status": "pending_review",
+        "allowed_statuses": [
+          "pending_review",
+          "approved_for_manual_execution",
+          "rejected",
+          "watch_only"
+        ],
+        "approval_note": null,
+        "approved_by": null,
+        "approved_at": null,
+        "rejected_reason": null
+      },
+      "ui_badges": [
+        "需要人工確認",
+        "僅供決策支援",
+        "不是交易指令"
+      ],
+      "reason_codes": [
+        "manual_approval_required",
+        "not_trade_order",
+        "decision_support_only",
+        "risk_reduction_simulation",
+        "constraint_flags_present",
+        "turnover_watch_threshold"
+      ],
+      "constraint_flags": [
+        {
+          "level": "warning",
+          "constraint": "soft_gold_min_pct",
+          "value_pct": 1.852,
+          "limit_pct": 2.0
+        }
+      ],
+      "raw_exposure": null,
+      "constraint_aware_exposure": {
+        "cash_pct": 22.219,
+        "gold_pct": 1.852,
+        "crypto_pct": 11.781,
+        "taiwan_pct": 10.944,
+        "other_pct": 53.204,
+        "max_single_weight_pct": 22.219,
+        "max_single_ticker": "BOXX"
+      },
+      "top_adjustments": [
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 11.668,
+          "constraint_aware_weight_pct": 22.219,
+          "delta_pct": 10.551,
+          "direction": "UP"
+        },
+        {
+          "ticker": "QQQ",
+          "current_weight_pct": 10.551,
+          "constraint_aware_weight_pct": 0.0,
+          "delta_pct": -10.551,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "GLDM",
+          "current_weight_pct": 0.852,
+          "constraint_aware_weight_pct": 1.852,
+          "delta_pct": 1.0,
+          "direction": "UP"
+        },
+        {
+          "ticker": "VOO",
+          "current_weight_pct": 10.146,
+          "constraint_aware_weight_pct": 9.146,
+          "delta_pct": -1.0,
+          "direction": "DOWN"
+        }
+      ],
+      "constraint_actions": [
+        {
+          "action": "trim",
+          "ticker": "VOO",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct_source_funding"
+        },
+        {
+          "action": "add",
+          "ticker": "BOXX",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct_source_funding"
+        },
+        {
+          "action": "add",
+          "ticker": "GLDM",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct"
+        },
+        {
+          "action": "fund",
+          "ticker": "BOXX",
+          "amount_pct": -1.0,
+          "reason": "soft_gold_target_pct"
+        }
+      ],
+      "manual_review_checklist": [
+        "確認資料日期、資產價格與持倉快照是否正確。",
+        "確認換手率、稅費、滑價、匯差與最小交易單位。",
+        "確認是否違反單一資產、加密、台股、現金與黃金約束。",
+        "確認壓力測試改善是否足以抵消交易摩擦。",
+        "若採納，仍需人工在正式交易系統另行操作；本檔案不會自動交易。"
+      ]
+    },
+    {
+      "approval_ticket_id": "v2_4_v2_3_from_v2_2_trim_00981A_100pct_to_BOXX_75b87eb8",
+      "source_version": "v2.4",
+      "source_type": "constraint_aware_risk_reduction",
+      "source_draft_id": "v2_3_from_v2_2_trim_00981A_100pct_to_BOXX",
+      "source_model_id": "v2_2_trim_00981A_100pct_to_BOXX",
+      "gate": null,
+      "model_status": "pending_review",
+      "constraint_status": "turnover_too_high_review_only",
+      "turnover_vs_current_pct": 10.45,
+      "execution_permission": false,
+      "not_trade_order": true,
+      "requires_manual_approval": true,
+      "human_approval": {
+        "required": true,
+        "status": "pending_review",
+        "allowed_statuses": [
+          "pending_review",
+          "approved_for_manual_execution",
+          "rejected",
+          "watch_only"
+        ],
+        "approval_note": null,
+        "approved_by": null,
+        "approved_at": null,
+        "rejected_reason": null
+      },
+      "ui_badges": [
+        "需要人工確認",
+        "僅供決策支援",
+        "不是交易指令"
+      ],
+      "reason_codes": [
+        "manual_approval_required",
+        "not_trade_order",
+        "decision_support_only",
+        "risk_reduction_simulation",
+        "constraint_flags_present",
+        "turnover_watch_threshold"
+      ],
+      "constraint_flags": [
+        {
+          "level": "warning",
+          "constraint": "soft_gold_min_pct",
+          "value_pct": 1.852,
+          "limit_pct": 2.0
+        }
+      ],
+      "raw_exposure": null,
+      "constraint_aware_exposure": {
+        "cash_pct": 21.118,
+        "gold_pct": 1.852,
+        "crypto_pct": 11.781,
+        "taiwan_pct": 1.494,
+        "other_pct": 63.755,
+        "max_single_weight_pct": 21.118,
+        "max_single_ticker": "BOXX"
+      },
+      "top_adjustments": [
+        {
+          "ticker": "00981A",
+          "current_weight_pct": 9.45,
+          "constraint_aware_weight_pct": 0.0,
+          "delta_pct": -9.45,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 11.668,
+          "constraint_aware_weight_pct": 21.118,
+          "delta_pct": 9.45,
+          "direction": "UP"
+        },
+        {
+          "ticker": "GLDM",
+          "current_weight_pct": 0.852,
+          "constraint_aware_weight_pct": 1.852,
+          "delta_pct": 1.0,
+          "direction": "UP"
+        },
+        {
+          "ticker": "QQQ",
+          "current_weight_pct": 10.551,
+          "constraint_aware_weight_pct": 9.551,
+          "delta_pct": -1.0,
+          "direction": "DOWN"
+        }
+      ],
+      "constraint_actions": [
+        {
+          "action": "trim",
+          "ticker": "QQQ",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct_source_funding"
+        },
+        {
+          "action": "add",
+          "ticker": "BOXX",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct_source_funding"
+        },
+        {
+          "action": "add",
+          "ticker": "GLDM",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct"
+        },
+        {
+          "action": "fund",
+          "ticker": "BOXX",
+          "amount_pct": -1.0,
+          "reason": "soft_gold_target_pct"
+        }
+      ],
+      "manual_review_checklist": [
+        "確認資料日期、資產價格與持倉快照是否正確。",
+        "確認換手率、稅費、滑價、匯差與最小交易單位。",
+        "確認是否違反單一資產、加密、台股、現金與黃金約束。",
+        "確認壓力測試改善是否足以抵消交易摩擦。",
+        "若採納，仍需人工在正式交易系統另行操作；本檔案不會自動交易。"
+      ]
+    },
+    {
+      "approval_ticket_id": "v2_4_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX_3825801e",
+      "source_version": "v2.4",
+      "source_type": "constraint_aware_risk_reduction",
+      "source_draft_id": "v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX",
+      "source_model_id": "v2_2_trim_BTC_USD_50pct_to_BOXX",
+      "gate": null,
+      "model_status": "constraint_pass_review_required",
+      "constraint_status": "constraint_pass_watch_only",
+      "turnover_vs_current_pct": 5.021,
+      "execution_permission": false,
+      "not_trade_order": true,
+      "requires_manual_approval": true,
+      "human_approval": {
+        "required": true,
+        "status": "pending_review",
+        "allowed_statuses": [
+          "pending_review",
+          "approved_for_manual_execution",
+          "rejected",
+          "watch_only"
+        ],
+        "approval_note": null,
+        "approved_by": null,
+        "approved_at": null,
+        "rejected_reason": null
+      },
+      "ui_badges": [
+        "需要人工確認",
+        "僅供決策支援",
+        "不是交易指令"
+      ],
+      "reason_codes": [
+        "manual_approval_required",
+        "not_trade_order",
+        "decision_support_only",
+        "risk_reduction_simulation",
+        "constraint_pass",
+        "constraint_flags_present"
+      ],
+      "constraint_flags": [
+        {
+          "level": "warning",
+          "constraint": "soft_gold_min_pct",
+          "value_pct": 1.852,
+          "limit_pct": 2.0
+        }
+      ],
+      "raw_exposure": null,
+      "constraint_aware_exposure": {
+        "cash_pct": 15.689,
+        "gold_pct": 1.852,
+        "crypto_pct": 7.76,
+        "taiwan_pct": 10.944,
+        "other_pct": 63.755,
+        "max_single_weight_pct": 15.689,
+        "max_single_ticker": "BOXX"
+      },
+      "top_adjustments": [
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 11.668,
+          "constraint_aware_weight_pct": 15.689,
+          "delta_pct": 4.021,
+          "direction": "UP"
+        },
+        {
+          "ticker": "BTC-USD",
+          "current_weight_pct": 8.042,
+          "constraint_aware_weight_pct": 4.021,
+          "delta_pct": -4.021,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "GLDM",
+          "current_weight_pct": 0.852,
+          "constraint_aware_weight_pct": 1.852,
+          "delta_pct": 1.0,
+          "direction": "UP"
+        },
+        {
+          "ticker": "QQQ",
+          "current_weight_pct": 10.551,
+          "constraint_aware_weight_pct": 9.551,
+          "delta_pct": -1.0,
+          "direction": "DOWN"
+        }
+      ],
+      "constraint_actions": [
+        {
+          "action": "trim",
+          "ticker": "QQQ",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct_source_funding"
+        },
+        {
+          "action": "add",
+          "ticker": "BOXX",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct_source_funding"
+        },
+        {
+          "action": "add",
+          "ticker": "GLDM",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct"
+        },
+        {
+          "action": "fund",
+          "ticker": "BOXX",
+          "amount_pct": -1.0,
+          "reason": "soft_gold_target_pct"
+        }
+      ],
+      "manual_review_checklist": [
+        "確認資料日期、資產價格與持倉快照是否正確。",
+        "確認換手率、稅費、滑價、匯差與最小交易單位。",
+        "確認是否違反單一資產、加密、台股、現金與黃金約束。",
+        "確認壓力測試改善是否足以抵消交易摩擦。",
+        "若採納，仍需人工在正式交易系統另行操作；本檔案不會自動交易。"
+      ]
+    },
+    {
+      "approval_ticket_id": "v2_4_v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX_95796fde",
+      "source_version": "v2.4",
+      "source_type": "constraint_aware_risk_reduction",
+      "source_draft_id": "v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX",
+      "source_model_id": "v2_2_trim_ETH_USD_100pct_to_BOXX",
+      "gate": null,
+      "model_status": "constraint_pass_review_required",
+      "constraint_status": "constraint_pass_watch_only",
+      "turnover_vs_current_pct": 4.739,
+      "execution_permission": false,
+      "not_trade_order": true,
+      "requires_manual_approval": true,
+      "human_approval": {
+        "required": true,
+        "status": "pending_review",
+        "allowed_statuses": [
+          "pending_review",
+          "approved_for_manual_execution",
+          "rejected",
+          "watch_only"
+        ],
+        "approval_note": null,
+        "approved_by": null,
+        "approved_at": null,
+        "rejected_reason": null
+      },
+      "ui_badges": [
+        "需要人工確認",
+        "僅供決策支援",
+        "不是交易指令"
+      ],
+      "reason_codes": [
+        "manual_approval_required",
+        "not_trade_order",
+        "decision_support_only",
+        "risk_reduction_simulation",
+        "constraint_pass",
+        "constraint_flags_present"
+      ],
+      "constraint_flags": [
+        {
+          "level": "warning",
+          "constraint": "soft_gold_min_pct",
+          "value_pct": 1.852,
+          "limit_pct": 2.0
+        }
+      ],
+      "raw_exposure": null,
+      "constraint_aware_exposure": {
+        "cash_pct": 15.407,
+        "gold_pct": 1.852,
+        "crypto_pct": 8.042,
+        "taiwan_pct": 10.944,
+        "other_pct": 63.755,
+        "max_single_weight_pct": 15.407,
+        "max_single_ticker": "BOXX"
+      },
+      "top_adjustments": [
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 11.668,
+          "constraint_aware_weight_pct": 15.407,
+          "delta_pct": 3.739,
+          "direction": "UP"
+        },
+        {
+          "ticker": "ETH-USD",
+          "current_weight_pct": 3.739,
+          "constraint_aware_weight_pct": 0.0,
+          "delta_pct": -3.739,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "GLDM",
+          "current_weight_pct": 0.852,
+          "constraint_aware_weight_pct": 1.852,
+          "delta_pct": 1.0,
+          "direction": "UP"
+        },
+        {
+          "ticker": "QQQ",
+          "current_weight_pct": 10.551,
+          "constraint_aware_weight_pct": 9.551,
+          "delta_pct": -1.0,
+          "direction": "DOWN"
+        }
+      ],
+      "constraint_actions": [
+        {
+          "action": "trim",
+          "ticker": "QQQ",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct_source_funding"
+        },
+        {
+          "action": "add",
+          "ticker": "BOXX",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct_source_funding"
+        },
+        {
+          "action": "add",
+          "ticker": "GLDM",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct"
+        },
+        {
+          "action": "fund",
+          "ticker": "BOXX",
+          "amount_pct": -1.0,
+          "reason": "soft_gold_target_pct"
+        }
+      ],
+      "manual_review_checklist": [
+        "確認資料日期、資產價格與持倉快照是否正確。",
+        "確認換手率、稅費、滑價、匯差與最小交易單位。",
+        "確認是否違反單一資產、加密、台股、現金與黃金約束。",
+        "確認壓力測試改善是否足以抵消交易摩擦。",
+        "若採納，仍需人工在正式交易系統另行操作；本檔案不會自動交易。"
+      ]
+    },
+    {
+      "approval_ticket_id": "v2_4_v2_3_from_v2_2_trim_QQQ_50pct_to_BOXX_e48818bd",
+      "source_version": "v2.4",
+      "source_type": "constraint_aware_risk_reduction",
+      "source_draft_id": "v2_3_from_v2_2_trim_QQQ_50pct_to_BOXX",
+      "source_model_id": "v2_2_trim_QQQ_50pct_to_BOXX",
+      "gate": null,
+      "model_status": "constraint_pass_review_required",
+      "constraint_status": "constraint_pass_watch_only",
+      "turnover_vs_current_pct": 6.276,
+      "execution_permission": false,
+      "not_trade_order": true,
+      "requires_manual_approval": true,
+      "human_approval": {
+        "required": true,
+        "status": "pending_review",
+        "allowed_statuses": [
+          "pending_review",
+          "approved_for_manual_execution",
+          "rejected",
+          "watch_only"
+        ],
+        "approval_note": null,
+        "approved_by": null,
+        "approved_at": null,
+        "rejected_reason": null
+      },
+      "ui_badges": [
+        "需要人工確認",
+        "僅供決策支援",
+        "不是交易指令"
+      ],
+      "reason_codes": [
+        "manual_approval_required",
+        "not_trade_order",
+        "decision_support_only",
+        "risk_reduction_simulation",
+        "constraint_pass",
+        "constraint_flags_present"
+      ],
+      "constraint_flags": [
+        {
+          "level": "warning",
+          "constraint": "soft_gold_min_pct",
+          "value_pct": 1.852,
+          "limit_pct": 2.0
+        }
+      ],
+      "raw_exposure": null,
+      "constraint_aware_exposure": {
+        "cash_pct": 16.944,
+        "gold_pct": 1.852,
+        "crypto_pct": 11.781,
+        "taiwan_pct": 10.944,
+        "other_pct": 58.479,
+        "max_single_weight_pct": 16.944,
+        "max_single_ticker": "BOXX"
+      },
+      "top_adjustments": [
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 11.668,
+          "constraint_aware_weight_pct": 16.944,
+          "delta_pct": 5.276,
+          "direction": "UP"
+        },
+        {
+          "ticker": "QQQ",
+          "current_weight_pct": 10.551,
+          "constraint_aware_weight_pct": 5.275,
+          "delta_pct": -5.276,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "GLDM",
+          "current_weight_pct": 0.852,
+          "constraint_aware_weight_pct": 1.852,
+          "delta_pct": 1.0,
+          "direction": "UP"
+        },
+        {
+          "ticker": "VOO",
+          "current_weight_pct": 10.146,
+          "constraint_aware_weight_pct": 9.146,
+          "delta_pct": -1.0,
+          "direction": "DOWN"
+        }
+      ],
+      "constraint_actions": [
+        {
+          "action": "trim",
+          "ticker": "VOO",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct_source_funding"
+        },
+        {
+          "action": "add",
+          "ticker": "BOXX",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct_source_funding"
+        },
+        {
+          "action": "add",
+          "ticker": "GLDM",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct"
+        },
+        {
+          "action": "fund",
+          "ticker": "BOXX",
+          "amount_pct": -1.0,
+          "reason": "soft_gold_target_pct"
+        }
+      ],
+      "manual_review_checklist": [
+        "確認資料日期、資產價格與持倉快照是否正確。",
+        "確認換手率、稅費、滑價、匯差與最小交易單位。",
+        "確認是否違反單一資產、加密、台股、現金與黃金約束。",
+        "確認壓力測試改善是否足以抵消交易摩擦。",
+        "若採納，仍需人工在正式交易系統另行操作；本檔案不會自動交易。"
+      ]
+    },
+    {
+      "approval_ticket_id": "v2_4_v2_3_from_v2_2_trim_00981A_50pct_to_BOXX_7b4facad",
+      "source_version": "v2.4",
+      "source_type": "constraint_aware_risk_reduction",
+      "source_draft_id": "v2_3_from_v2_2_trim_00981A_50pct_to_BOXX",
+      "source_model_id": "v2_2_trim_00981A_50pct_to_BOXX",
+      "gate": null,
+      "model_status": "constraint_pass_review_required",
+      "constraint_status": "constraint_pass_watch_only",
+      "turnover_vs_current_pct": 5.725,
+      "execution_permission": false,
+      "not_trade_order": true,
+      "requires_manual_approval": true,
+      "human_approval": {
+        "required": true,
+        "status": "pending_review",
+        "allowed_statuses": [
+          "pending_review",
+          "approved_for_manual_execution",
+          "rejected",
+          "watch_only"
+        ],
+        "approval_note": null,
+        "approved_by": null,
+        "approved_at": null,
+        "rejected_reason": null
+      },
+      "ui_badges": [
+        "需要人工確認",
+        "僅供決策支援",
+        "不是交易指令"
+      ],
+      "reason_codes": [
+        "manual_approval_required",
+        "not_trade_order",
+        "decision_support_only",
+        "risk_reduction_simulation",
+        "constraint_pass",
+        "constraint_flags_present"
+      ],
+      "constraint_flags": [
+        {
+          "level": "warning",
+          "constraint": "soft_gold_min_pct",
+          "value_pct": 1.852,
+          "limit_pct": 2.0
+        }
+      ],
+      "raw_exposure": null,
+      "constraint_aware_exposure": {
+        "cash_pct": 16.393,
+        "gold_pct": 1.852,
+        "crypto_pct": 11.781,
+        "taiwan_pct": 6.219,
+        "other_pct": 63.755,
+        "max_single_weight_pct": 16.393,
+        "max_single_ticker": "BOXX"
+      },
+      "top_adjustments": [
+        {
+          "ticker": "00981A",
+          "current_weight_pct": 9.45,
+          "constraint_aware_weight_pct": 4.725,
+          "delta_pct": -4.725,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 11.668,
+          "constraint_aware_weight_pct": 16.393,
+          "delta_pct": 4.725,
+          "direction": "UP"
+        },
+        {
+          "ticker": "GLDM",
+          "current_weight_pct": 0.852,
+          "constraint_aware_weight_pct": 1.852,
+          "delta_pct": 1.0,
+          "direction": "UP"
+        },
+        {
+          "ticker": "QQQ",
+          "current_weight_pct": 10.551,
+          "constraint_aware_weight_pct": 9.551,
+          "delta_pct": -1.0,
+          "direction": "DOWN"
+        }
+      ],
+      "constraint_actions": [
+        {
+          "action": "trim",
+          "ticker": "QQQ",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct_source_funding"
+        },
+        {
+          "action": "add",
+          "ticker": "BOXX",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct_source_funding"
+        },
+        {
+          "action": "add",
+          "ticker": "GLDM",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct"
+        },
+        {
+          "action": "fund",
+          "ticker": "BOXX",
+          "amount_pct": -1.0,
+          "reason": "soft_gold_target_pct"
+        }
+      ],
+      "manual_review_checklist": [
+        "確認資料日期、資產價格與持倉快照是否正確。",
+        "確認換手率、稅費、滑價、匯差與最小交易單位。",
+        "確認是否違反單一資產、加密、台股、現金與黃金約束。",
+        "確認壓力測試改善是否足以抵消交易摩擦。",
+        "若採納，仍需人工在正式交易系統另行操作；本檔案不會自動交易。"
+      ]
+    },
+    {
+      "approval_ticket_id": "v2_4_v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX_8de0f4a1",
+      "source_version": "v2.4",
+      "source_type": "constraint_aware_risk_reduction",
+      "source_draft_id": "v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX",
+      "source_model_id": "v2_2_trim_BTC_USD_25pct_to_BOXX",
+      "gate": null,
+      "model_status": "constraint_pass_review_required",
+      "constraint_status": "constraint_pass_watch_only",
+      "turnover_vs_current_pct": 3.011,
+      "execution_permission": false,
+      "not_trade_order": true,
+      "requires_manual_approval": true,
+      "human_approval": {
+        "required": true,
+        "status": "pending_review",
+        "allowed_statuses": [
+          "pending_review",
+          "approved_for_manual_execution",
+          "rejected",
+          "watch_only"
+        ],
+        "approval_note": null,
+        "approved_by": null,
+        "approved_at": null,
+        "rejected_reason": null
+      },
+      "ui_badges": [
+        "需要人工確認",
+        "僅供決策支援",
+        "不是交易指令"
+      ],
+      "reason_codes": [
+        "manual_approval_required",
+        "not_trade_order",
+        "decision_support_only",
+        "risk_reduction_simulation",
+        "constraint_pass",
+        "constraint_flags_present"
+      ],
+      "constraint_flags": [
+        {
+          "level": "warning",
+          "constraint": "soft_gold_min_pct",
+          "value_pct": 1.852,
+          "limit_pct": 2.0
+        }
+      ],
+      "raw_exposure": null,
+      "constraint_aware_exposure": {
+        "cash_pct": 13.679,
+        "gold_pct": 1.852,
+        "crypto_pct": 9.77,
+        "taiwan_pct": 10.944,
+        "other_pct": 63.755,
+        "max_single_weight_pct": 13.679,
+        "max_single_ticker": "BOXX"
+      },
+      "top_adjustments": [
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 11.668,
+          "constraint_aware_weight_pct": 13.679,
+          "delta_pct": 2.011,
+          "direction": "UP"
+        },
+        {
+          "ticker": "BTC-USD",
+          "current_weight_pct": 8.042,
+          "constraint_aware_weight_pct": 6.031,
+          "delta_pct": -2.011,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "GLDM",
+          "current_weight_pct": 0.852,
+          "constraint_aware_weight_pct": 1.852,
+          "delta_pct": 1.0,
+          "direction": "UP"
+        },
+        {
+          "ticker": "QQQ",
+          "current_weight_pct": 10.551,
+          "constraint_aware_weight_pct": 9.551,
+          "delta_pct": -1.0,
+          "direction": "DOWN"
+        }
+      ],
+      "constraint_actions": [
+        {
+          "action": "trim",
+          "ticker": "QQQ",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct_source_funding"
+        },
+        {
+          "action": "add",
+          "ticker": "BOXX",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct_source_funding"
+        },
+        {
+          "action": "add",
+          "ticker": "GLDM",
+          "amount_pct": 1.0,
+          "reason": "soft_gold_target_pct"
+        },
+        {
+          "action": "fund",
+          "ticker": "BOXX",
+          "amount_pct": -1.0,
+          "reason": "soft_gold_target_pct"
+        }
+      ],
+      "manual_review_checklist": [
+        "確認資料日期、資產價格與持倉快照是否正確。",
+        "確認換手率、稅費、滑價、匯差與最小交易單位。",
+        "確認是否違反單一資產、加密、台股、現金與黃金約束。",
+        "確認壓力測試改善是否足以抵消交易摩擦。",
+        "若採納，仍需人工在正式交易系統另行操作；本檔案不會自動交易。"
+      ]
+    }
+  ],
+  "warnings": [
+    "v2.4 不提供前端直接批准按鈕；任何採納/拒絕都應由人工另行記錄。",
+    "本層只標示審核狀態，不會產生 BUY / SELL，不會寫正式投組。"
+  ]
+}
