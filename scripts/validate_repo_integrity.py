@@ -376,6 +376,16 @@ def main() -> int:
     print(f"Status: {result['status']}")
     print(f"Errors: {len(errors)}")
     print(f"Warnings: {len(warnings)}")
+    if errors:
+        print("VALIDATION_ERRORS_BEGIN")
+        for idx, e in enumerate(errors[:50], start=1):
+            print(f"{idx}. [{e.get('category')}] {e.get('path')}: {e.get('message')}")
+        print("VALIDATION_ERRORS_END")
+    if warnings:
+        print("VALIDATION_WARNINGS_BEGIN")
+        for idx, w in enumerate(warnings[:50], start=1):
+            print(f"{idx}. [{w.get('category')}] {w.get('path')}: {w.get('message')}")
+        print("VALIDATION_WARNINGS_END")
     return 0 if not errors else 1
 
 
