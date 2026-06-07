@@ -3507,11 +3507,6 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
             'execution_permission_false': '未開放自動執行',
             'model_candidate_generated': '模型候選已產生',
             'watch_only_with_governance_warnings': '僅觀察｜治理警示',
-            'decision_support_only': '僅供決策支援',
-            'watch_only_source': '僅供觀察來源',
-            'turnover_watch_threshold': '換手率警示門檻',
-            'constraint_flags_present': '存在約束提醒',
-            'risk_reduction_simulation': '風險降低模擬',
             'current_weight': '目前投組權重',
             'current': '目前投組',
             'inverse_vol_baseline': '逆波動基準',
@@ -3567,6 +3562,46 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
             'Deposit': '入金',
             'Withdraw': '出金',
             'Expense': '支出',
+
+            'regime_watch_review_required': '市場狀態觀察｜需人工審核',
+            'regime_watch_high_turnover': '市場狀態觀察｜高換手率',
+            'watch_only_validation': '僅觀察驗證',
+            'review_required': '需要審核',
+            'REVIEW_CANDIDATE': '候選待審',
+            'REJECT_OR_REWORK': '拒絕或重做',
+            'BLOCKED': '已阻擋',
+            'blocked': '已阻擋',
+            'strict': '嚴格模式',
+            'deterministic_stress_proxy': '確定性壓力代理',
+            'rule_based': '規則式',
+            'rules_based': '規則式',
+            'enabled': '啟用',
+            'disabled': '停用',
+            'cash': '現金',
+            'CASH': '現金',
+            'crypto': '加密資產',
+            'CRYPTO': '加密資產',
+            'us_tech': '美國科技',
+            'US_TECH': '美國科技',
+            'taiwan_tech': '台股科技',
+            'TAIWAN_TECH': '台股科技',
+            'TAIWAN TECH': '台股科技',
+            'gold': '黃金',
+            'global_equity': '全球股票',
+            'us_equity': '美股',
+            'emerging_market': '新興市場',
+            'theme_etf': '主題 ETF',
+            'commodity_equity': '商品股票',
+            'other': '其他',
+            'neutral_or_no_edge_prior': '中性／無明確優勢先驗',
+            'three_year_window_unavailable': '3 年樣本視窗不可用',
+            'sample_quality_limited': '樣本品質受限',
+            'Risk-off regime raises liquidity buffer.': '避險環境提高流動性緩衝需求。',
+            'Crypto tail risk is penalized under liquidity pressure.': '加密資產尾部風險在流動性壓力下受懲罰。',
+            'High-duration tech is stress-sensitive.': '高存續期科技資產對壓力環境敏感。',
+            'Small hedge allocation; not treated as guaranteed hedge.': '小幅避險配置；不視為保證避險。',
+            'Sample quality limited: three_year_window_unavailable': '樣本品質受限：3 年樣本視窗不可用',
+            '樣本品質限制：three_year_window_unavailable': '樣本品質限制：3 年樣本視窗不可用',
             'Income': '收入'
         });
         function zhText(value) {
@@ -3578,6 +3613,34 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
             if (ZH_TEXT_MAP[raw] !== undefined) return ZH_TEXT_MAP[raw];
             const lower = raw.toLowerCase();
             if (ZH_TEXT_MAP[lower] !== undefined) return ZH_TEXT_MAP[lower];
+            const upperSpaced = raw.replace(/_/g, ' ').toUpperCase();
+            if (ZH_TEXT_MAP[upperSpaced] !== undefined) return ZH_TEXT_MAP[upperSpaced];
+
+            const draftTrimMatch = raw.match(/^v3_0_v2_3_from_v2_2_trim_(.+)_(25|50|100)pct_to_BOXX$/);
+            if (draftTrimMatch) {
+                const asset = draftTrimMatch[1].replace(/_USD$/,'-USD').replace(/_/g, '-');
+                return `v3.0｜v2.3 ${asset} 減碼 ${draftTrimMatch[2]}% 轉 BOXX`;
+            }
+            const v3CandidateMatch = raw.match(/^v3_0_v2_1_(.+)$/);
+            if (v3CandidateMatch) return `v3.0｜v2.1 ${zhText(v3CandidateMatch[1])}`;
+            const v2CandidateMatch = raw.match(/^v2_1_(.+)$/);
+            if (v2CandidateMatch) return `v2.1 ${zhText(v2CandidateMatch[1])}`;
+
+            let translated = raw;
+            const phraseMap = {
+                'three_year_window_unavailable': '3 年樣本視窗不可用',
+                'neutral_or_no_edge_prior': '中性／無明確優勢先驗',
+                'regime_watch_review_required': '市場狀態觀察｜需人工審核',
+                'regime_watch_high_turnover': '市場狀態觀察｜高換手率',
+                'watch_only_validation': '僅觀察驗證',
+                'risk_off_liquidity_pressure': '避險／流動性壓力',
+                'manual_approval_required': '需要人工確認',
+                'not_trade_order': '非交易指令'
+            };
+            Object.entries(phraseMap).forEach(([from, to]) => {
+                translated = translated.split(from).join(to);
+            });
+            if (translated !== raw) return translated;
             return raw;
         }
         function zhList(value) {
@@ -4304,88 +4367,6 @@ chartCML.data.datasets = [
        const modelGovernanceVisibleRegistry = computed(() => modelGovernanceRegistry.value.slice(0, 16));
        const modelGovernanceVisibleFlags = computed(() => modelGovernanceFlags.value.slice(0, 10));
 
-
-       function machineReviewStatus(ticket) {
-    const codes = Array.isArray(ticket?.reason_codes) ? ticket.reason_codes.map(x => String(x || '').toLowerCase()) : [];
-    const flags = Array.isArray(ticket?.constraint_flags) ? ticket.constraint_flags : [];
-    const hardFlags = flags.filter(f => String(f?.level || '').toLowerCase().includes('hard') || String(f?.level || '').toLowerCase().includes('error'));
-    const softFlags = flags.filter(f => String(f?.level || '').toLowerCase().includes('warning') || String(f?.level || '').toLowerCase().includes('soft'));
-    const modelStatus = String(ticket?.model_status || '').toLowerCase();
-    const constraintStatus = String(ticket?.constraint_status || '').toLowerCase();
-    const gate = String(ticket?.gate || '').toLowerCase();
-    const turnover = Number(ticket?.turnover_vs_current_pct ?? NaN);
-    const hasCode = (needle) => codes.some(c => c.includes(needle));
-
-    if (ticket?.execution_permission === true || ticket?.not_trade_order === false) return 'governance_blocked';
-    if (modelStatus.includes('reject') || gate.includes('reject')) return 'excluded';
-    if (hardFlags.length || constraintStatus.includes('violation') || constraintStatus.includes('hard_fail')) return 'constraint_blocked';
-    if (modelStatus.includes('sample') || hasCode('sample') || hasCode('proxy_only')) return 'sample_limited';
-    if (modelStatus.includes('high_turnover') || constraintStatus.includes('turnover_too_high') || hasCode('turnover_watch_threshold') || (Number.isFinite(turnover) && turnover >= 30)) return 'high_turnover_warning';
-    if (hasCode('risk_reduction_simulation') && modelStatus.includes('constraint_pass')) return softFlags.length ? 'risk_reduction_soft_warning' : 'risk_reduction_candidate';
-    if (modelStatus.includes('constraint_pass')) return softFlags.length ? 'further_research_soft_warning' : 'further_research';
-    if (hasCode('watch_only_source') || gate.includes('watch')) return 'watch_only';
-    return 'watch_only';
-}
-
-       function machineReviewLabel(ticket) {
-    const status = machineReviewStatus(ticket);
-    const map = {
-        governance_blocked: '治理阻擋',
-        excluded: '排除',
-        constraint_blocked: '違反約束',
-        sample_limited: '樣本不足',
-        high_turnover_warning: '高換手率警示',
-        risk_reduction_soft_warning: '風險降低候選｜軟性約束提醒',
-        risk_reduction_candidate: '風險降低候選',
-        further_research_soft_warning: '進一步研究｜軟性約束提醒',
-        further_research: '進一步研究',
-        watch_only: '僅供觀察'
-    };
-    return map[status] || '僅供觀察';
-}
-
-       function machineReviewReason(ticket) {
-    const status = machineReviewStatus(ticket);
-    const turnover = Number(ticket?.turnover_vs_current_pct ?? NaN);
-    const flags = Array.isArray(ticket?.constraint_flags) ? ticket.constraint_flags : [];
-    const softFlags = flags.filter(f => String(f?.level || '').toLowerCase().includes('warning') || String(f?.level || '').toLowerCase().includes('soft'));
-    const base = {
-        governance_blocked: '安全旗標異常：不得自動執行，且必須維持非交易指令。',
-        excluded: '模型或決策門檻已排除，不值得進一步投入時間。',
-        constraint_blocked: '違反硬性約束，不能進入研究清單。',
-        sample_limited: '樣本品質不足或仍是代理驗證，不能視為可靠訊號。',
-        high_turnover_warning: '換手率偏高，風險改善可能被交易成本、稅費、滑價或匯差吃掉。',
-        risk_reduction_candidate: '風險降低模擬有訊號，但仍不是買入、看多或正式調倉。',
-        further_research: '通過基本硬規則，值得檢查風險改善、換手率、約束與經濟邏輯；不是交易建議。',
-        watch_only: '有參考價值，但目前不足以進入正式調倉判斷。'
-    };
-    let text = base[status] || base.watch_only;
-    if (Number.isFinite(turnover)) text += ` 換手率約 ${turnover.toFixed(1)}%。`;
-    if (softFlags.length) text += ` 另有 ${softFlags.length} 個軟性約束提醒。`;
-    return text;
-}
-
-       function machineReviewBadgeClass(ticket) {
-    const status = machineReviewStatus(ticket);
-    if (status === 'governance_blocked' || status === 'excluded' || status === 'constraint_blocked') return 'border-red-500/30 bg-red-500/10 text-red-300';
-    if (status === 'high_turnover_warning' || status === 'sample_limited') return 'border-amber-500/30 bg-amber-500/10 text-amber-300';
-    if (status === 'risk_reduction_candidate' || status === 'risk_reduction_soft_warning') return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300';
-    if (status === 'further_research' || status === 'further_research_soft_warning') return 'border-sky-500/30 bg-sky-500/10 text-sky-300';
-    return 'border-white/20 bg-white/10 text-gray-300';
-}
-
-       const machineReviewSummary = computed(() => {
-    const result = { research: 0, risk_reduction: 0, watch_only: 0, alert_or_reject: 0 };
-    humanApprovalTickets.value.forEach(ticket => {
-        const status = machineReviewStatus(ticket);
-        if (status === 'further_research' || status === 'further_research_soft_warning') result.research += 1;
-        else if (status === 'risk_reduction_candidate' || status === 'risk_reduction_soft_warning') result.risk_reduction += 1;
-        else if (status === 'watch_only') result.watch_only += 1;
-        else result.alert_or_reject += 1;
-    });
-    return result;
-});
-
        function approvalBadgeClass(status) {
     const s = String(status || '').toLowerCase();
     if (s.includes('approved')) return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300';
@@ -4393,6 +4374,46 @@ chartCML.data.datasets = [
     if (s.includes('watch')) return 'border-sky-500/30 bg-sky-500/10 text-sky-300';
     return 'border-amber-500/30 bg-amber-500/10 text-amber-300';
 }
+
+        function machineReviewLabel(item) {
+            const data = item || {};
+            const reasons = Array.isArray(data.reason_codes) ? data.reason_codes.map(x => String(x).toLowerCase()) : [];
+            const flags = Array.isArray(data.constraint_flags) ? data.constraint_flags.map(x => String(x).toLowerCase()) : [];
+            const modelStatus = String(data.model_status || '').toLowerCase();
+            const constraintStatus = String(data.constraint_status || '').toLowerCase();
+            const gate = String(data.gate || '').toLowerCase();
+            const turnover = Number(data.turnover_vs_current_pct ?? data.turnover_pct ?? 0);
+
+            if (data.execution_permission === true) return '治理阻擋';
+            if (flags.length || constraintStatus.includes('violation') || modelStatus.includes('violation')) return '違反約束';
+            if (turnover >= 30 || modelStatus.includes('high_turnover') || gate.includes('high_turnover')) return '高換手率警示';
+            if (reasons.some(r => r.includes('sample') || r.includes('missing_data') || r.includes('three_year') || r.includes('proxy_only'))) return '樣本不足';
+            if (modelStatus.includes('reject') || gate.includes('reject') || constraintStatus.includes('reject')) return '排除';
+            if (constraintStatus.includes('pass') || modelStatus.includes('constraint_pass')) return '進一步研究';
+            if (gate.includes('watch') || modelStatus.includes('watch')) return '僅供觀察';
+            return '僅供觀察';
+        }
+
+        function machineReviewReason(item) {
+            const data = item || {};
+            const label = machineReviewLabel(data);
+            const turnover = Number(data.turnover_vs_current_pct ?? data.turnover_pct ?? 0);
+            if (label === '進一步研究') return `通過基本約束與換手率預審；僅代表研究候選，不代表買入或看多。`;
+            if (label === '高換手率警示') return `換手率約 ${Number.isFinite(turnover) ? turnover.toFixed(1) : '—'}%，可能被交易成本、稅費或滑價抵消。`;
+            if (label === '違反約束') return '觸及約束或風控旗標，暫不列入研究候選。';
+            if (label === '樣本不足') return '資料品質或樣本外驗證不足，只能作為觀察。';
+            if (label === '治理阻擋') return '治理旗標阻擋：不得自動執行，需先修正安全狀態。';
+            if (label === '排除') return '模型狀態已被排除，不建議投入檢視時間。';
+            return '有參考價值，但未達進一步研究門檻。';
+        }
+
+        function machineReviewBadgeClass(item) {
+            const label = machineReviewLabel(item);
+            if (label === '進一步研究') return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300';
+            if (label === '僅供觀察') return 'border-sky-500/30 bg-sky-500/10 text-sky-300';
+            if (label === '高換手率警示' || label === '樣本不足') return 'border-amber-500/30 bg-amber-500/10 text-amber-300';
+            return 'border-red-500/30 bg-red-500/10 text-red-300';
+        }
 
         onMounted(() => {
             updateStickyHeaderOffsets();
@@ -4942,7 +4963,7 @@ chartCML.data.datasets = [
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr, navOverlayMode, navOverlayOptions, setNavOverlayMode, navMaConfig, riskRegimeStrip, navTrendSummary,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
-            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerConstraintRules, optimizerConstraintPolicySummaries, selectedOptimizerConstraintPolicy, selectedOptimizerConstraintRows, selectedOptimizerConstraintIssues, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, optimizerStressOutput, optimizerStressError, optimizerStressScenarios, optimizerStressRows, optimizerStressWorstRows, optimizerStressBestWorst, optimizerStressMostFragile, selectedStressScenarioKey, selectedStressScenario, selectedStressScenarioRows, setStressScenario, loadOptimizerStressOutput, humanApprovalLayer, humanApprovalLayerError, humanApprovalTickets, humanApprovalSummary, humanApprovalVisibleTickets, loadHumanApprovalLayer, actionAuditTrail, actionAuditTrailError, actionAuditSummary, actionAuditEvents, loadActionAuditTrail, regimeAwareOptimizer, regimeAwareError, regimeAwareSummary, regimeAwareRegime, regimeAwareActivePolicy, regimeAwareCovariancePolicy, regimeAwareDrafts, regimeAwareVisibleDrafts, loadRegimeAwareOptimizer, blackLittermanSandbox, blackLittermanError, blackLittermanSummary, blackLittermanViewEngine, blackLittermanViews, blackLittermanPosteriorCandidates, loadBlackLittermanSandbox, expectedReturnModel, expectedReturnError, expectedReturnSummary, expectedReturnPolicy, expectedReturnBucketPriors, expectedReturnAssetPriors, expectedReturnVisibleBuckets, expectedReturnVisibleAssets, loadExpectedReturnModel, walkForwardBacktest, walkForwardError, walkForwardSummary, walkForwardAggregate, walkForwardVisibleRows, loadWalkForwardBacktest, modelGovernanceDashboard, modelGovernanceError, modelGovernanceSummary, modelGovernanceRegistry, modelGovernanceFlags, modelGovernanceVisibleRegistry, modelGovernanceVisibleFlags, loadModelGovernanceDashboard, machineReviewSummary, machineReviewStatus, machineReviewLabel, machineReviewReason, machineReviewBadgeClass, approvalBadgeClass, zhText, zhList, zhBool, selectedOptimizerExplainKey, optimizerExplainabilityCandidates, selectedOptimizerExplainability, setOptimizerExplainCandidate, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
+            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerConstraintRules, optimizerConstraintPolicySummaries, selectedOptimizerConstraintPolicy, selectedOptimizerConstraintRows, selectedOptimizerConstraintIssues, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, optimizerStressOutput, optimizerStressError, optimizerStressScenarios, optimizerStressRows, optimizerStressWorstRows, optimizerStressBestWorst, optimizerStressMostFragile, selectedStressScenarioKey, selectedStressScenario, selectedStressScenarioRows, setStressScenario, loadOptimizerStressOutput, humanApprovalLayer, humanApprovalLayerError, humanApprovalTickets, humanApprovalSummary, humanApprovalVisibleTickets, loadHumanApprovalLayer, actionAuditTrail, actionAuditTrailError, actionAuditSummary, actionAuditEvents, loadActionAuditTrail, regimeAwareOptimizer, regimeAwareError, regimeAwareSummary, regimeAwareRegime, regimeAwareActivePolicy, regimeAwareCovariancePolicy, regimeAwareDrafts, regimeAwareVisibleDrafts, loadRegimeAwareOptimizer, blackLittermanSandbox, blackLittermanError, blackLittermanSummary, blackLittermanViewEngine, blackLittermanViews, blackLittermanPosteriorCandidates, loadBlackLittermanSandbox, expectedReturnModel, expectedReturnError, expectedReturnSummary, expectedReturnPolicy, expectedReturnBucketPriors, expectedReturnAssetPriors, expectedReturnVisibleBuckets, expectedReturnVisibleAssets, loadExpectedReturnModel, walkForwardBacktest, walkForwardError, walkForwardSummary, walkForwardAggregate, walkForwardVisibleRows, loadWalkForwardBacktest, modelGovernanceDashboard, modelGovernanceError, modelGovernanceSummary, modelGovernanceRegistry, modelGovernanceFlags, modelGovernanceVisibleRegistry, modelGovernanceVisibleFlags, loadModelGovernanceDashboard, approvalBadgeClass, machineReviewLabel, machineReviewReason, machineReviewBadgeClass, zhText, zhList, zhBool, selectedOptimizerExplainKey, optimizerExplainabilityCandidates, selectedOptimizerExplainability, setOptimizerExplainCandidate, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
         };
     }
 }).mount('#app');
