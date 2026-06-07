@@ -1,6 +1,6 @@
 # Model Governance Dashboard v3.4
 
-Generated: `2026-06-07T08:05:12+00:00`
+Generated: `2026-06-07T08:13:16+00:00`
 
 ## Safety boundary
 
@@ -9,10 +9,10 @@ Generated: `2026-06-07T08:05:12+00:00`
 
 ## Summary
 
-- Governance score: `76`
+- Governance score: `92`
 - Verdict: `watch_only_with_governance_warnings`
 - Critical flags: `0`
-- Warning flags: `3`
+- Warning flags: `1`
 - Missing models: `0`
 
 ## Model registry
@@ -33,13 +33,11 @@ Generated: `2026-06-07T08:05:12+00:00`
 | `v3.0` | Regime-Aware Optimizer | True | `OK` | True | `ok` |
 | `v3.1` | Bayesian / Black-Litterman Sandbox | True | `OK` | True | `ok` |
 | `v3.2` | Expected Return Model | True | `OK` | True | `ok` |
-| `v3.3` | Walk-forward Backtest | True | `PROXY_ONLY` | True | `ok` |
+| `v3.3` | Walk-forward Backtest | True | `OK` | True | `ok` |
 
 ## Governance flags
 
 - `warning` / `three_year_window_unavailable` — 樣本品質限制：three_year_window_unavailable
-- `warning` / `walk_forward_proxy_only` — Walk-forward backtest is proxy-only; do not promote optimizer based on it.
-- `warning` / `walk_forward_low_fold_count` — Walk-forward fold count too low: 4.
 
 ## Failure conditions
 

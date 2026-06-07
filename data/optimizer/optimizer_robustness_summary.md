@@ -19,7 +19,7 @@
 
 | Method | Verdict | Available windows | Avg pairwise turnover | Max weight range | ES95 range | Ann vol range |
 |---|---:|---:|---:|---:|---:|---:|
-| current_weight | 穩定 | 4 | 0.0% | 0.0% | 0.352% | 2.19% |
+| current_weight | 穩定 | 4 | 0.0% | 0.0% | 0.352% | 2.18% |
 | inverse_vol_baseline | 穩定 | 4 | 5.03% | 6.35% | 0.12% | 0.75% |
 | riskfolio_cvar_minimize | 可觀察 | 4 | 13.78% | 20.38% | 0.233% | 1.62% |
 | riskfolio_hrp_mv | 可觀察 | 4 | 14.76% | 17.94% | 0.277% | 1.48% |
