@@ -208,6 +208,18 @@ jobs:
           set -euo pipefail
           python scripts/build_action_audit_trail.py
 
+      - name: Build Regime-Aware Optimizer v3.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build_regime_aware_optimizer.py
+
+      - name: Build Bayesian Black-Litterman Sandbox v3.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build_black_litterman_sandbox.py
+
       - name: Upload Optimizer Lab artifacts
         uses: actions/upload-artifact@v4
         with:
