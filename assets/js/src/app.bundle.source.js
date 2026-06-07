@@ -3485,6 +3485,106 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
         function getCategoryColorCode(cat) { return '#3b82f6'; }
         function formatNumber(n) { return new Intl.NumberFormat('zh-TW', {maximumFractionDigits:0}).format(n||0); }
         function formatPercent(n) { return ((n||0)*100).toFixed(1) + '%'; }
+        const ZH_TEXT_MAP = Object.freeze({
+            'OK': '正常',
+            'FAIL': '失敗',
+            'WARN': '警示',
+            'N/A': '不適用',
+            'true': '是',
+            'false': '否',
+            'baseline': '基準',
+            'candidate': '候選',
+            'watch': '觀察',
+            'watch_only': '僅觀察',
+            'reject': '拒絕',
+            'rejected': '已拒絕',
+            'pending_review': '待人工確認',
+            'approved_for_manual_execution': '已核准手動執行',
+            'constraint_pass_review_required': '約束通過，仍需審核',
+            'manual_approval_required': '需要人工確認',
+            'requires_manual_approval': '需要人工確認',
+            'not_trade_order': '非交易指令',
+            'execution_permission_false': '未開放自動執行',
+            'model_candidate_generated': '模型候選已產生',
+            'watch_only_with_governance_warnings': '僅觀察｜治理警示',
+            'current_weight': '目前投組權重',
+            'current': '目前投組',
+            'inverse_vol_baseline': '逆波動基準',
+            'scipy_min_variance_fallback': 'SciPy 最小變異數備援',
+            'skfolio_min_variance': 'skfolio 最小變異數',
+            'skfolio_cvar_minimize': 'skfolio 最小化 CVaR',
+            'riskfolio_min_variance': 'Riskfolio 最小變異數',
+            'riskfolio_cvar_minimize': 'Riskfolio 最小化 CVaR',
+            'riskfolio_risk_parity_mv': 'Riskfolio 風險平價',
+            'riskfolio_hrp_mv': 'Riskfolio HRP',
+            'risk_off_liquidity_pressure': '避險／流動性壓力',
+            'risk_on': '風險偏好',
+            'neutral': '中性',
+            'overweight': '加碼',
+            'underweight': '減碼',
+            'equal_weight': '等權重',
+            'relative_overweight_prior': '相對加碼先驗',
+            'relative_underweight_prior': '相對減碼先驗',
+            'high': '高',
+            'medium': '中',
+            'low': '低',
+            'critical': '嚴重',
+            'warning': '警示',
+            'info': '資訊',
+            'soft_pass': '軟性通過',
+            'hard_fail': '硬性失敗',
+            'pass': '通過',
+            'constraint_pass': '約束通過',
+            'constraint_violation': '違反約束',
+            'high_turnover_review': '高換手率待審',
+            'turnover_too_high': '換手率過高',
+            'risk_reduction_detected': '偵測到風險降低',
+            'missing_data': '資料不足',
+            'insufficient_data': '資料不足',
+            'sample_too_short': '樣本過短',
+            'proxy_only': '僅代理估計',
+            'PROXY_ONLY': '僅代理估計',
+            'true_walk_forward_from_price_returns': '價格報酬真實滾動樣本外',
+            'proxy_from_robustness_windows_not_true_walk_forward': '由穩健性視窗代理，不是真實樣本外',
+            'absolute_expected_return_forecast_enabled': '已啟用絕對預期報酬預測',
+            'absolute_expected_return_forecast_disabled': '未啟用絕對預期報酬預測',
+            'alpha_model_enabled': '已啟用 alpha 模型',
+            'alpha_model_disabled': '未啟用 alpha 模型',
+            'maximum_sharpe_optimization_enabled': '已啟用最大夏普最佳化',
+            'maximum_sharpe_optimization_disabled': '未啟用最大夏普最佳化',
+            'rules_based_view_engine': '規則化觀點引擎',
+            'no_manual_views': '不接受任意手動觀點',
+            'safe_mode': '安全模式',
+            'BUY': '買入',
+            'SELL': '賣出',
+            'Buy': '買入',
+            'Sell': '賣出',
+            'Deposit': '入金',
+            'Withdraw': '出金',
+            'Expense': '支出',
+            'Income': '收入'
+        });
+        function zhText(value) {
+            if (value === null || value === undefined || value === '') return '—';
+            if (Array.isArray(value)) return zhList(value);
+            if (typeof value === 'boolean') return value ? '是' : '否';
+            if (typeof value === 'number') return Number.isFinite(value) ? String(value) : '—';
+            const raw = String(value);
+            if (ZH_TEXT_MAP[raw] !== undefined) return ZH_TEXT_MAP[raw];
+            const lower = raw.toLowerCase();
+            if (ZH_TEXT_MAP[lower] !== undefined) return ZH_TEXT_MAP[lower];
+            return raw;
+        }
+        function zhList(value) {
+            if (!Array.isArray(value)) return zhText(value);
+            if (!value.length) return '—';
+            return value.map(item => zhText(item)).join('、');
+        }
+        function zhBool(value) {
+            if (value === true || value === 'true' || value === 1) return '是';
+            if (value === false || value === 'false' || value === 0) return '否';
+            return zhText(value);
+        }
         function updateStickyHeaderOffsets() {
             const headerEl = document.querySelector('header');
             const root = document.documentElement;

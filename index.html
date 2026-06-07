@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="觀點port" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>投資組合儀表板 v11.7（穩定版）</title>
     
     <link rel="stylesheet" href="assets/css/tailwind-built.css">
@@ -525,7 +525,7 @@
             <div>
                 <div class="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border border-cyan-500/20 bg-cyan-500/10 text-cyan-300">
                     <i class="fas fa-biohazard"></i>
-                    Chaos Risk Over觀點
+                    混沌風險總覽
                 </div>
                 <h3 class="text-lg md:text-xl font-bold text-white flex items-center gap-2">
                     <i class="fas fa-shield-halved text-cyan-400"></i>
@@ -924,7 +924,7 @@
             </section>
 
             <!-- ===== Holdings Tab / 庫存 ===== -->
-            <section v-show="currentTab === 'holdings'" class="flex flex-col space-y-4 animate-fade-in holdings-terminal-觀點">
+            <section v-show="currentTab === 'holdings'" class="flex flex-col space-y-4 animate-fade-in holdings-terminal-view">
                 <div class="glass rounded-xl overflow-hidden flex flex-col flex-1 holdings-terminal-shell">
                     <div class="p-4 md:p-5 bg-white/[0.03] border-b border-white/10 flex flex-col md:flex-row md:justify-between md:items-center gap-3 holdings-terminal-toolbar">
     <div>
@@ -3527,11 +3527,11 @@
                                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3">
                                             <div class="quant-label text-amber-300">待人工確認</div>
-                                            <div class="quant-value text-white">{{ humanApprovalSummary?.pending_re觀點 ?? 0 }}</div>
+                                            <div class="quant-value text-white">{{ humanApprovalSummary?.pending_review ?? 0 }}</div>
                                         </div>
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3">
                                             <div class="quant-label text-emerald-300">約束通過待審</div>
-                                            <div class="quant-value text-white">{{ humanApprovalSummary?.constraint_pass_re觀點_required ?? 0 }}</div>
+                                            <div class="quant-value text-white">{{ humanApprovalSummary?.constraint_pass_review_required ?? 0 }}</div>
                                         </div>
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3">
                                             <div class="quant-label text-red-300">允許自動執行</div>
@@ -3576,7 +3576,7 @@
                                                             <td class="px-3 py-2 text-gray-300 max-w-[180px] truncate" :title="ticket.source_draft_id">{{ zhText(ticket.source_type) }}</td>
                                                             <td class="px-3 py-2">
                                                                 <span class="px-1.5 py-0.5 rounded border text-[10px]" :class="approvalBadgeClass(ticket.human_approval?.status)">
-                                                                    {{ zhText(ticket.human_approval?.status || 'pending_re觀點') }}
+                                                                    {{ zhText(ticket.human_approval?.status || 'pending_review') }}
                                                                 </span>
                                                             </td>
                                                             <td class="px-3 py-2 text-right text-gray-300">{{ ticket.turnover_vs_current_pct ?? '-' }}%</td>
@@ -3674,7 +3674,7 @@
                                         </div>
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3">
                                             <div class="quant-label text-fuchsia-300">BL 觀點</div>
-                                            <div class="quant-value text-white">{{ blackLittermanSummary?.觀點_count ?? 0 }}</div>
+                                            <div class="quant-value text-white">{{ blackLittermanSummary?.view_count ?? 0 }}</div>
                                         </div>
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3">
                                             <div class="quant-label text-fuchsia-300">Posterior 草案</div>
@@ -3758,12 +3758,12 @@
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        <tr v-for="觀點 in blackLittermanViews" :key="觀點.觀點_id" class="border-b border-white/5 hover:bg-white/[0.03]">
-                                                            <td class="px-3 py-2 font-mono text-white">{{ zhText(觀點.bucket) }}</td>
-                                                            <td class="px-3 py-2 text-fuchsia-200">{{ zhText(觀點.direction) }}</td>
-                                                            <td class="px-3 py-2 text-right text-gray-300">{{ 觀點.magnitude_pct ?? '-' }}pp</td>
-                                                            <td class="px-3 py-2 text-right text-gray-300">{{ 觀點.confidence ?? '-' }}</td>
-                                                            <td class="px-3 py-2 text-gray-400 max-w-[300px] truncate" :title="觀點.rationale">{{ zhText(觀點.rationale) }}</td>
+                                                        <tr v-for="view in blackLittermanViews" :key="view.view_id" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                            <td class="px-3 py-2 font-mono text-white">{{ zhText(view.bucket) }}</td>
+                                                            <td class="px-3 py-2 text-fuchsia-200">{{ zhText(view.direction) }}</td>
+                                                            <td class="px-3 py-2 text-right text-gray-300">{{ view.magnitude_pct ?? '-' }}pp</td>
+                                                            <td class="px-3 py-2 text-right text-gray-300">{{ view.confidence ?? '-' }}</td>
+                                                            <td class="px-3 py-2 text-gray-400 max-w-[300px] truncate" :title="view.rationale">{{ zhText(view.rationale) }}</td>
                                                         </tr>
                                                         <tr v-if="!blackLittermanViews.length">
                                                             <td colspan="5" class="px-3 py-4 text-center text-gray-500">尚未讀到 v3.1 觀點。</td>
@@ -3853,7 +3853,7 @@
                                                         <tr v-for="row in expectedReturnVisibleBuckets" :key="row.bucket" class="border-b border-white/5 hover:bg-white/[0.03]">
                                                             <td class="px-3 py-2 font-mono text-white">{{ zhText(row.bucket) }}</td>
                                                             <td class="px-3 py-2 text-right text-cyan-200">{{ row.relative_score }}</td>
-                                                            <td class="px-3 py-2 text-gray-300 max-w-[170px] truncate" :title="row.先驗_band">{{ zhText(row.先驗_band) }}</td>
+                                                            <td class="px-3 py-2 text-gray-300 max-w-[170px] truncate" :title="row.prior_band">{{ zhText(row.prior_band) }}</td>
                                                             <td class="px-3 py-2 text-right text-gray-400">{{ zhText(row.confidence) }}</td>
                                                         </tr>
                                                         <tr v-if="!expectedReturnVisibleBuckets.length">
@@ -5133,35 +5133,35 @@
        <div class="rounded-2xl border border-white/10 bg-black/20 p-4 space-y-3">
            <div class="flex items-center justify-between text-xs">
                <span class="text-gray-400">現金流影響</span>
-               <span class="font-mono font-bold" :class="txPre觀點?.finalFlow >= 0 ? 'text-green-300' : 'text-red-300'">
-                   {{ txPre觀點?.finalFlow > 0 ? '+' : '' }}{{ formatNumber(txPre觀點?.finalFlow || 0) }}
+               <span class="font-mono font-bold" :class="txPreview?.finalFlow >= 0 ? 'text-green-300' : 'text-red-300'">
+                   {{ txPreview?.finalFlow > 0 ? '+' : '' }}{{ formatNumber(txPreview?.finalFlow || 0) }}
                </span>
            </div>
            <div class="flex items-center justify-between text-xs">
                <span class="text-gray-400">送出後現金</span>
-               <span class="font-mono font-bold" :class="txPre觀點?.projectedCashAfter >= 0 ? 'text-cyan-300' : 'text-red-300'">
-                   NT$ {{ formatNumber(txPre觀點?.projectedCashAfter ?? cashBalance) }}
+               <span class="font-mono font-bold" :class="txPreview?.projectedCashAfter >= 0 ? 'text-cyan-300' : 'text-red-300'">
+                   NT$ {{ formatNumber(txPreview?.projectedCashAfter ?? cashBalance) }}
                </span>
            </div>
-           <div v-if="(txPre觀點?.errors || []).length || (txPre觀點?.blockers || []).length" class="rounded-xl border border-red-500/20 bg-red-500/10 p-3">
+           <div v-if="(txPreview?.errors || []).length || (txPreview?.blockers || []).length" class="rounded-xl border border-red-500/20 bg-red-500/10 p-3">
                <div class="text-[11px] font-bold text-red-300 mb-2">已攔下</div>
                <ul class="space-y-1 text-[11px] text-gray-200 leading-relaxed">
-                   <li v-for="msg in [...(txPre觀點?.errors || []), ...(txPre觀點?.blockers || [])]" :key="msg">• {{ msg }}</li>
+                   <li v-for="msg in [...(txPreview?.errors || []), ...(txPreview?.blockers || [])]" :key="msg">• {{ msg }}</li>
                </ul>
            </div>
-           <div v-else-if="(txPre觀點?.warnings || []).length" class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3">
+           <div v-else-if="(txPreview?.warnings || []).length" class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3">
                <div class="text-[11px] font-bold text-amber-300 mb-2">提醒</div>
                <ul class="space-y-1 text-[11px] text-gray-200 leading-relaxed">
-                   <li v-for="msg in (txPre觀點?.warnings || [])" :key="msg">• {{ msg }}</li>
+                   <li v-for="msg in (txPreview?.warnings || [])" :key="msg">• {{ msg }}</li>
                </ul>
            </div>
            <div v-else class="text-[11px] text-emerald-300">表單檢查通過，可以送出。</div>
        </div>
 
        <button @click="addTransaction"
-               :disabled="(txPre觀點?.errors || []).length || (txPre觀點?.blockers || []).length"
+               :disabled="(txPreview?.errors || []).length || (txPreview?.blockers || []).length"
                class="w-full rounded-lg font-bold text-sm py-3 shadow-lg mt-2 transition"
-               :class="((txPre觀點?.errors || []).length || (txPre觀點?.blockers || []).length) ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'btn-purple text-white hover:scale-[1.01]'">
+               :class="((txPreview?.errors || []).length || (txPreview?.blockers || []).length) ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'btn-purple text-white hover:scale-[1.01]'">
            確認送出
        </button>
    </div>
@@ -5591,8 +5591,8 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=frontend-zh-1"></script>
-<script src="assets/js/quant-main-display.js?v=frontend-zh-1"></script>
+<script src="assets/js/app.bundle.js?v=optimizer-zh-runtime-fix-1"></script>
+<script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
 </body>
