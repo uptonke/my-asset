@@ -1,8 +1,8 @@
 # v4.0 Repo Architecture Audit
 
-- Generated: `2026-06-07T08:25:04.829178+00:00`
-- Total files scanned: `141`
-- GitHub workflow files: `6`
+- Generated: `2026-06-07T09:00:50.724946+00:00`
+- Total files scanned: `194`
+- GitHub workflow files: `7`
 - Optimizer output files: `31`
 
 ## v4.1 Frontend Source of Truth
