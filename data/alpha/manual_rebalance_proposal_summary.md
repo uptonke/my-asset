@@ -1,6 +1,6 @@
 # v7.0 Manual Rebalance Proposal
 
-- Generated: `2026-06-08T05:15:46+00:00`
+- Generated: `2026-06-08T05:38:35+00:00`
 - Validation status: `watch_only_validation`
 - Proposal count: `11`
 - Manual research proposals: `0`

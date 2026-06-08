@@ -1,6 +1,6 @@
 # Regime-Aware Optimizer v3.0
 
-Generated: `2026-06-08T05:19:05+00:00`
+Generated: `2026-06-08T05:38:21+00:00`
 
 ## Safety boundary
 
@@ -32,86 +32,86 @@ Generated: `2026-06-08T05:19:05+00:00`
 
 - Source: `v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX`
 - Status: `regime_watch_review_required`
-- Turnover vs current: `6.257`%
-- Cash / Crypto / Taiwan tech: `15.858` / `8.0` / `10.909`%
+- Turnover vs current: `6.228`%
+- Cash / Crypto / Taiwan tech: `15.833` / `8.0` / `10.913`%
 - Reason codes: `regime_policy_applied, risk_off_liquidity_pressure, manual_approval_required, not_trade_order, regime_budget_adjusted`
 
 ### v3_0_v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX
 
 - Source: `v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX`
 - Status: `regime_watch_review_required`
-- Turnover vs current: `6.257`%
-- Cash / Crypto / Taiwan tech: `15.858` / `8.0` / `10.909`%
+- Turnover vs current: `6.228`%
+- Cash / Crypto / Taiwan tech: `15.833` / `8.0` / `10.913`%
 - Reason codes: `regime_policy_applied, risk_off_liquidity_pressure, manual_approval_required, not_trade_order, regime_budget_adjusted`
 
 ### v3_0_v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX
 
 - Source: `v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX`
 - Status: `regime_watch_review_required`
-- Turnover vs current: `6.257`%
-- Cash / Crypto / Taiwan tech: `15.858` / `8.0` / `10.909`%
+- Turnover vs current: `6.228`%
+- Cash / Crypto / Taiwan tech: `15.833` / `8.0` / `10.913`%
 - Reason codes: `regime_policy_applied, risk_off_liquidity_pressure, manual_approval_required, not_trade_order, regime_budget_adjusted`
 
 ### v3_0_v2_3_v2_1_inverse_vol_baseline
 
 - Source: `v2_3_v2_1_inverse_vol_baseline`
 - Status: `regime_watch_review_required`
-- Turnover vs current: `9.378`%
-- Cash / Crypto / Taiwan tech: `15.166` / `8.0` / `10.081`%
+- Turnover vs current: `9.351`%
+- Cash / Crypto / Taiwan tech: `15.147` / `8.0` / `10.084`%
 - Reason codes: `regime_policy_applied, risk_off_liquidity_pressure, manual_approval_required, not_trade_order, regime_budget_adjusted`
 
 ### v3_0_v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX
 
 - Source: `v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX`
 - Status: `regime_watch_review_required`
-- Turnover vs current: `10.292`%
-- Cash / Crypto / Taiwan tech: `19.893` / `3.965` / `10.909`%
+- Turnover vs current: `10.275`%
+- Cash / Crypto / Taiwan tech: `19.88` / `3.953` / `10.913`%
 - Reason codes: `regime_policy_applied, risk_off_liquidity_pressure, manual_approval_required, not_trade_order, regime_budget_adjusted`
 
 ### v3_0_v2_3_v2_1_riskfolio_risk_parity_mv
 
 - Source: `v2_3_v2_1_riskfolio_risk_parity_mv`
 - Status: `regime_watch_review_required`
-- Turnover vs current: `10.962`%
-- Cash / Crypto / Taiwan tech: `16.839` / `8.0` / `11.889`%
+- Turnover vs current: `10.935`%
+- Cash / Crypto / Taiwan tech: `16.82` / `8.0` / `11.892`%
 - Reason codes: `regime_policy_applied, risk_off_liquidity_pressure, manual_approval_required, not_trade_order, regime_budget_adjusted`
 
 ### v3_0_v2_3_from_v2_2_trim_00981A_50pct_to_BOXX
 
 - Source: `v2_3_from_v2_2_trim_00981A_50pct_to_BOXX`
 - Status: `regime_watch_review_required`
-- Turnover vs current: `10.967`%
-- Cash / Crypto / Taiwan tech: `20.568` / `8.0` / `6.199`%
+- Turnover vs current: `10.939`%
+- Cash / Crypto / Taiwan tech: `20.544` / `8.0` / `6.202`%
 - Reason codes: `regime_policy_applied, risk_off_liquidity_pressure, manual_approval_required, not_trade_order, regime_budget_adjusted`
 
 ### v3_0_v2_3_from_v2_2_trim_QQQ_50pct_to_BOXX
 
 - Source: `v2_3_from_v2_2_trim_QQQ_50pct_to_BOXX`
 - Status: `regime_watch_review_required`
-- Turnover vs current: `11.502`%
-- Cash / Crypto / Taiwan tech: `21.103` / `8.0` / `9.909`%
+- Turnover vs current: `11.475`%
+- Cash / Crypto / Taiwan tech: `21.08` / `8.0` / `9.913`%
 - Reason codes: `regime_policy_applied, risk_off_liquidity_pressure, manual_approval_required, not_trade_order, regime_budget_adjusted`
 
 ### v3_0_v2_3_v2_1_riskfolio_hrp_mv
 
 - Source: `v2_3_v2_1_riskfolio_hrp_mv`
 - Status: `regime_watch_high_turnover`
-- Turnover vs current: `12.885`%
-- Cash / Crypto / Taiwan tech: `20.483` / `8.0` / `9.808`%
+- Turnover vs current: `12.859`%
+- Cash / Crypto / Taiwan tech: `20.464` / `8.0` / `9.811`%
 - Reason codes: `regime_policy_applied, risk_off_liquidity_pressure, manual_approval_required, not_trade_order, regime_budget_adjusted, high_turnover_review_required`
 
 ### v3_0_v2_3_from_v2_2_trim_00981A_100pct_to_BOXX
 
 - Source: `v2_3_from_v2_2_trim_00981A_100pct_to_BOXX`
 - Status: `regime_watch_high_turnover`
-- Turnover vs current: `15.677`%
-- Cash / Crypto / Taiwan tech: `25.278` / `8.0` / `1.489`%
+- Turnover vs current: `15.651`%
+- Cash / Crypto / Taiwan tech: `25.256` / `8.0` / `1.49`%
 - Reason codes: `regime_policy_applied, risk_off_liquidity_pressure, manual_approval_required, not_trade_order, regime_budget_adjusted, high_turnover_review_required`
 
 ### v3_0_v2_3_from_v2_2_trim_QQQ_100pct_to_BOXX
 
 - Source: `v2_3_from_v2_2_trim_QQQ_100pct_to_BOXX`
 - Status: `regime_watch_high_turnover`
-- Turnover vs current: `16.748`%
-- Cash / Crypto / Taiwan tech: `26.349` / `8.0` / `9.909`%
+- Turnover vs current: `16.722`%
+- Cash / Crypto / Taiwan tech: `26.327` / `8.0` / `9.913`%
 - Reason codes: `regime_policy_applied, risk_off_liquidity_pressure, manual_approval_required, not_trade_order, regime_budget_adjusted, high_turnover_review_required`

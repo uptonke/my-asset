@@ -1,6 +1,6 @@
 # Action Audit Trail v2.5
 
-Generated: `2026-06-08T05:19:05+00:00`
+Generated: `2026-06-08T05:38:20+00:00`
 
 ## Safety boundary
 
@@ -10,15 +10,125 @@ Generated: `2026-06-08T05:19:05+00:00`
 
 ## Summary
 
-- Stored events: 66
+- Stored events: 77
 - New events added this run: 11
 - Existing events seen again: 0
-- Pending review: 66
+- Pending review: 77
 - Approved for manual execution: 0
 - Rejected: 0
 - Watch only: 0
 
 ## Recent events
+
+### v2_5_model_candidate_generated_3d6f0148bf954b85af8f
+
+- Candidate: `v2_3_v2_1_inverse_vol_baseline`
+- Approval ticket: `v2_4_v2_3_v2_1_inverse_vol_baseline_ddf40047`
+- Model status: `constraint_pass_review_required`
+- Human status: `pending_review`
+- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, watch_only_source, constraint_pass`
+- First seen: `2026-06-08T05:38:20+00:00`
+- Last seen: `2026-06-08T05:38:20+00:00`
+
+### v2_5_model_candidate_generated_3f1695a14a8e20cede6e
+
+- Candidate: `v2_3_v2_1_riskfolio_risk_parity_mv`
+- Approval ticket: `v2_4_v2_3_v2_1_riskfolio_risk_parity_mv_447e8777`
+- Model status: `constraint_pass_review_required`
+- Human status: `pending_review`
+- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, watch_only_source, constraint_pass`
+- First seen: `2026-06-08T05:38:20+00:00`
+- Last seen: `2026-06-08T05:38:20+00:00`
+
+### v2_5_model_candidate_generated_b3d05739fedcc90f6e73
+
+- Candidate: `v2_3_v2_1_riskfolio_hrp_mv`
+- Approval ticket: `v2_4_v2_3_v2_1_riskfolio_hrp_mv_0d2a8f2b`
+- Model status: `pending_review`
+- Human status: `pending_review`
+- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, watch_only_source, turnover_watch_threshold`
+- First seen: `2026-06-08T05:38:20+00:00`
+- Last seen: `2026-06-08T05:38:20+00:00`
+
+### v2_5_model_candidate_generated_96f8f99d9d5cf259efdf
+
+- Candidate: `v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX`
+- Approval ticket: `v2_4_v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX_dd437855`
+- Model status: `pending_review`
+- Human status: `pending_review`
+- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, constraint_flags_present, turnover_watch_threshold`
+- First seen: `2026-06-08T05:38:20+00:00`
+- Last seen: `2026-06-08T05:38:20+00:00`
+
+### v2_5_model_candidate_generated_0918a952631c5f752feb
+
+- Candidate: `v2_3_from_v2_2_trim_QQQ_100pct_to_BOXX`
+- Approval ticket: `v2_4_v2_3_from_v2_2_trim_QQQ_100pct_to_BOXX_66db7437`
+- Model status: `pending_review`
+- Human status: `pending_review`
+- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, constraint_flags_present, turnover_watch_threshold`
+- First seen: `2026-06-08T05:38:20+00:00`
+- Last seen: `2026-06-08T05:38:20+00:00`
+
+### v2_5_model_candidate_generated_6201ac8d4b8b0552f3da
+
+- Candidate: `v2_3_from_v2_2_trim_00981A_100pct_to_BOXX`
+- Approval ticket: `v2_4_v2_3_from_v2_2_trim_00981A_100pct_to_BOXX_75b87eb8`
+- Model status: `pending_review`
+- Human status: `pending_review`
+- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, constraint_flags_present, turnover_watch_threshold`
+- First seen: `2026-06-08T05:38:20+00:00`
+- Last seen: `2026-06-08T05:38:20+00:00`
+
+### v2_5_model_candidate_generated_2d09baee6cce887868e9
+
+- Candidate: `v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX`
+- Approval ticket: `v2_4_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX_3825801e`
+- Model status: `constraint_pass_review_required`
+- Human status: `pending_review`
+- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, constraint_pass, constraint_flags_present`
+- First seen: `2026-06-08T05:38:20+00:00`
+- Last seen: `2026-06-08T05:38:20+00:00`
+
+### v2_5_model_candidate_generated_f94136d59b105b4b48af
+
+- Candidate: `v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX`
+- Approval ticket: `v2_4_v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX_95796fde`
+- Model status: `constraint_pass_review_required`
+- Human status: `pending_review`
+- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, constraint_pass, constraint_flags_present`
+- First seen: `2026-06-08T05:38:20+00:00`
+- Last seen: `2026-06-08T05:38:20+00:00`
+
+### v2_5_model_candidate_generated_64b82f2b8b3720017262
+
+- Candidate: `v2_3_from_v2_2_trim_QQQ_50pct_to_BOXX`
+- Approval ticket: `v2_4_v2_3_from_v2_2_trim_QQQ_50pct_to_BOXX_e48818bd`
+- Model status: `constraint_pass_review_required`
+- Human status: `pending_review`
+- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, constraint_pass, constraint_flags_present`
+- First seen: `2026-06-08T05:38:20+00:00`
+- Last seen: `2026-06-08T05:38:20+00:00`
+
+### v2_5_model_candidate_generated_82a876e3fcd5e9fdccee
+
+- Candidate: `v2_3_from_v2_2_trim_00981A_50pct_to_BOXX`
+- Approval ticket: `v2_4_v2_3_from_v2_2_trim_00981A_50pct_to_BOXX_7b4facad`
+- Model status: `constraint_pass_review_required`
+- Human status: `pending_review`
+- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, constraint_pass, constraint_flags_present`
+- First seen: `2026-06-08T05:38:20+00:00`
+- Last seen: `2026-06-08T05:38:20+00:00`
+
+### v2_5_model_candidate_generated_5f7ffe342156e647c811
+
+- Candidate: `v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX`
+- Approval ticket: `v2_4_v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX_8de0f4a1`
+- Model status: `constraint_pass_review_required`
+- Human status: `pending_review`
+- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, constraint_pass, constraint_flags_present`
+- First seen: `2026-06-08T05:38:20+00:00`
+- Last seen: `2026-06-08T05:38:20+00:00`
 
 ### v2_5_model_candidate_generated_933b94e10c6d93d2040b
 
@@ -109,113 +219,3 @@ Generated: `2026-06-08T05:19:05+00:00`
 - Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, constraint_pass, constraint_flags_present`
 - First seen: `2026-06-08T05:19:05+00:00`
 - Last seen: `2026-06-08T05:19:05+00:00`
-
-### v2_5_model_candidate_generated_41927597524cda223033
-
-- Candidate: `v2_3_from_v2_2_trim_00981A_50pct_to_BOXX`
-- Approval ticket: `v2_4_v2_3_from_v2_2_trim_00981A_50pct_to_BOXX_7b4facad`
-- Model status: `constraint_pass_review_required`
-- Human status: `pending_review`
-- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, constraint_pass, constraint_flags_present`
-- First seen: `2026-06-08T05:19:05+00:00`
-- Last seen: `2026-06-08T05:19:05+00:00`
-
-### v2_5_model_candidate_generated_99b404860876de1cc9a4
-
-- Candidate: `v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX`
-- Approval ticket: `v2_4_v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX_8de0f4a1`
-- Model status: `constraint_pass_review_required`
-- Human status: `pending_review`
-- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, constraint_pass, constraint_flags_present`
-- First seen: `2026-06-08T05:19:05+00:00`
-- Last seen: `2026-06-08T05:19:05+00:00`
-
-### v2_5_model_candidate_generated_c2ae87d3bbbae9257662
-
-- Candidate: `v2_3_v2_1_inverse_vol_baseline`
-- Approval ticket: `v2_4_v2_3_v2_1_inverse_vol_baseline_ddf40047`
-- Model status: `constraint_pass_review_required`
-- Human status: `pending_review`
-- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, watch_only_source, constraint_pass`
-- First seen: `2026-06-08T04:57:19+00:00`
-- Last seen: `2026-06-08T04:57:19+00:00`
-
-### v2_5_model_candidate_generated_c8495b21655ab794222b
-
-- Candidate: `v2_3_v2_1_riskfolio_risk_parity_mv`
-- Approval ticket: `v2_4_v2_3_v2_1_riskfolio_risk_parity_mv_447e8777`
-- Model status: `constraint_pass_review_required`
-- Human status: `pending_review`
-- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, watch_only_source, constraint_pass`
-- First seen: `2026-06-08T04:57:19+00:00`
-- Last seen: `2026-06-08T04:57:19+00:00`
-
-### v2_5_model_candidate_generated_63c071e8502ff2b10de7
-
-- Candidate: `v2_3_v2_1_riskfolio_hrp_mv`
-- Approval ticket: `v2_4_v2_3_v2_1_riskfolio_hrp_mv_0d2a8f2b`
-- Model status: `pending_review`
-- Human status: `pending_review`
-- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, watch_only_source, turnover_watch_threshold`
-- First seen: `2026-06-08T04:57:19+00:00`
-- Last seen: `2026-06-08T04:57:19+00:00`
-
-### v2_5_model_candidate_generated_1e4d264c1bdc7042569c
-
-- Candidate: `v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX`
-- Approval ticket: `v2_4_v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX_dd437855`
-- Model status: `pending_review`
-- Human status: `pending_review`
-- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, constraint_flags_present, turnover_watch_threshold`
-- First seen: `2026-06-08T04:57:19+00:00`
-- Last seen: `2026-06-08T04:57:19+00:00`
-
-### v2_5_model_candidate_generated_3ec6de122a14ca4c03ee
-
-- Candidate: `v2_3_from_v2_2_trim_QQQ_100pct_to_BOXX`
-- Approval ticket: `v2_4_v2_3_from_v2_2_trim_QQQ_100pct_to_BOXX_66db7437`
-- Model status: `pending_review`
-- Human status: `pending_review`
-- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, constraint_flags_present, turnover_watch_threshold`
-- First seen: `2026-06-08T04:57:19+00:00`
-- Last seen: `2026-06-08T04:57:19+00:00`
-
-### v2_5_model_candidate_generated_285f7db842595c42df4a
-
-- Candidate: `v2_3_from_v2_2_trim_00981A_100pct_to_BOXX`
-- Approval ticket: `v2_4_v2_3_from_v2_2_trim_00981A_100pct_to_BOXX_75b87eb8`
-- Model status: `pending_review`
-- Human status: `pending_review`
-- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, constraint_flags_present, turnover_watch_threshold`
-- First seen: `2026-06-08T04:57:19+00:00`
-- Last seen: `2026-06-08T04:57:19+00:00`
-
-### v2_5_model_candidate_generated_ddf3ed9bce621f8968ee
-
-- Candidate: `v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX`
-- Approval ticket: `v2_4_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX_3825801e`
-- Model status: `constraint_pass_review_required`
-- Human status: `pending_review`
-- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, constraint_pass, constraint_flags_present`
-- First seen: `2026-06-08T04:57:19+00:00`
-- Last seen: `2026-06-08T04:57:19+00:00`
-
-### v2_5_model_candidate_generated_fbdbcee04790eb50eb97
-
-- Candidate: `v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX`
-- Approval ticket: `v2_4_v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX_95796fde`
-- Model status: `constraint_pass_review_required`
-- Human status: `pending_review`
-- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, constraint_pass, constraint_flags_present`
-- First seen: `2026-06-08T04:57:19+00:00`
-- Last seen: `2026-06-08T04:57:19+00:00`
-
-### v2_5_model_candidate_generated_2f86ad6077dab671bbca
-
-- Candidate: `v2_3_from_v2_2_trim_QQQ_50pct_to_BOXX`
-- Approval ticket: `v2_4_v2_3_from_v2_2_trim_QQQ_50pct_to_BOXX_e48818bd`
-- Model status: `constraint_pass_review_required`
-- Human status: `pending_review`
-- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, constraint_pass, constraint_flags_present`
-- First seen: `2026-06-08T04:57:19+00:00`
-- Last seen: `2026-06-08T04:57:19+00:00`
