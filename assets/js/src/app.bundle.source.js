@@ -3484,6 +3484,18 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
         function getTypeColor(type) { return (type==='Buy' || type==='Expense') ? 'text-red-400' : 'text-green-400'; }
         function getCategoryColorCode(cat) { return '#3b82f6'; }
         function formatNumber(n) { return new Intl.NumberFormat('zh-TW', {maximumFractionDigits:0}).format(n||0); }
+        function formatCurrency(n, currency='TWD') {
+            const value = Number(n || 0);
+            if (!Number.isFinite(value)) return '—';
+            const ccy = String(currency || 'TWD').toUpperCase();
+            if (ccy === 'TWD' || ccy === 'NTD' || ccy === 'NT$') {
+                return 'NT$ ' + new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 0 }).format(value);
+            }
+            if (ccy === 'USD' || ccy === '$') {
+                return 'US$ ' + new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(value);
+            }
+            return `${ccy} ` + new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 2 }).format(value);
+        }
         function formatPercent(n) { return ((n||0)*100).toFixed(1) + '%'; }
         const ZH_TEXT_MAP = Object.freeze({
             'OK': '正常',
@@ -5366,7 +5378,7 @@ chartCML.data.datasets = [
             txFlowMode, txTypeOptions, ledgerDraftPreview,
             sheetUrl, addTransaction, addHistoryRecord,
             removeTransaction, removeHistoryByDate, manualUpdate, updateMeta, fetchPrices, 
-            exportAll, importData, getTypeColor, getCategoryColorCode, formatNumber, formatPercent, 
+            exportAll, importData, getTypeColor, getCategoryColorCode, formatNumber, formatCurrency, formatPercent, 
             lastUpdate, displayHistory, enrichedHistory, quantStartDate, dataFrequency, 
             snapshotToHistory, snapshotDate, isDbSyncing, 
             isAppReady, showMCModal, mcOptimal, openMonteCarlo, aiInsights, isAiExpanded, quantDays,
