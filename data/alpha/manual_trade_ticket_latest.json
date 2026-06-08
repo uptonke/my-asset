@@ -1,7 +1,7 @@
 {
   "version": "v9.0",
   "status": "OK",
-  "generated_at": "2026-06-08T06:35:16+00:00",
+  "generated_at": "2026-06-08T06:16:56+00:00",
   "mode": "manual_trade_ticket_generator",
   "safe_mode": true,
   "research_only": true,
@@ -18,7 +18,8 @@
   "not_sell_signal": true,
   "maximum_sharpe_optimization_enabled": false,
   "source_files": {
-    "formal_rebalance_draft_gate": "data/alpha/formal_rebalance_draft_gate_latest.json"
+    "formal_rebalance_draft_gate": "data/alpha/formal_rebalance_draft_gate_latest.json",
+    "trading_constraints_snapshot": "data/alpha/trading_constraints_snapshot_latest.json"
   },
   "ticket_policy": {
     "purpose": "Convert formal rebalance review drafts into manual-review ticket shells only when explicit target weights or order lines exist.",
@@ -26,25 +27,32 @@
     "manual_entry_required": true,
     "requires_final_human_confirmation": true,
     "do_not_fabricate_order_lines": true,
-    "ticket_is_not_broker_order": true
+    "ticket_is_not_broker_order": true,
+    "requires_real_world_sizing_constraints": true
   },
   "summary": {
     "ticket_status": "blocked_by_formal_rebalance_draft_gate",
-    "formal_gate_status": "blocked_by_alpha_validation_gate",
+    "formal_gate_status": "blocked_by_formal_pass_conditions",
     "source_formal_draft_count": 0,
     "manual_ticket_count": 0,
+    "cash_balance_available": false,
+    "all_prices_real_world": false,
     "trade_signal_enabled": false,
     "execution_permission": false,
     "broker_submission_enabled": false,
     "blocked_reason_codes": [
       "formal_rebalance_draft_gate_not_available",
-      "no_formal_rebalance_draft_rows"
+      "no_formal_rebalance_draft_rows",
+      "cash_balance_missing",
+      "incomplete_real_world_price_fetch"
     ]
   },
   "ticket_rows": [],
   "blocked_reason_codes": [
     "formal_rebalance_draft_gate_not_available",
-    "no_formal_rebalance_draft_rows"
+    "no_formal_rebalance_draft_rows",
+    "cash_balance_missing",
+    "incomplete_real_world_price_fetch"
   ],
   "safety_boundary": [
     "v9.0 creates manual-review ticket shells only; it does not submit orders.",

@@ -13,10 +13,8 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 LATEST_JSON = OUT_DIR / "formal_rebalance_draft_gate_latest.json"
 SUMMARY_MD = OUT_DIR / "formal_rebalance_draft_gate_summary.md"
 
-
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
-
 
 def read_json(rel: str, default: Any = None) -> Any:
     try:
@@ -24,18 +22,14 @@ def read_json(rel: str, default: Any = None) -> Any:
     except Exception:
         return default
 
-
 def num(value: Any, default: float = 0.0) -> float:
     try:
-        if value is None:
-            return default
+        if value is None: return default
         x = float(value)
-        if math.isnan(x) or math.isinf(x):
-            return default
+        if math.isnan(x) or math.isinf(x): return default
         return x
     except Exception:
         return default
-
 
 def unique_reasons(*lists: Any) -> List[str]:
     out: List[str] = []
@@ -48,69 +42,62 @@ def unique_reasons(*lists: Any) -> List[str]:
                 out.append(s)
     return out
 
-
 def main() -> None:
-    validation = read_json("data/alpha/alpha_validation_gate_latest.json", {}) or {}
+    pass_conditions = read_json("data/alpha/formal_draft_pass_conditions_latest.json", {}) or {}
+    manual_input = read_json("data/alpha/manual_approval_input_latest.json", {}) or {}
+    sizing = read_json("data/alpha/trading_constraints_snapshot_latest.json", {}) or {}
     manual = read_json("data/alpha/manual_rebalance_proposal_latest.json", {}) or {}
     execution = read_json("data/alpha/execution_ready_draft_latest.json", {}) or {}
     ranking = read_json("data/alpha/rebalance_candidate_ranking_latest.json", {}) or {}
     governance = read_json("data/optimizer/model_governance_dashboard_latest.json", {}) or {}
 
-    validation_summary = validation.get("summary") or {}
-    manual_summary = manual.get("summary") or {}
-    execution_summary = execution.get("summary") or {}
-    ranking_summary = ranking.get("summary") or {}
-    governance_summary = governance.get("summary") or {}
-
-    validation_status = str(validation_summary.get("validation_status") or "missing_validation")
-    governance_verdict = str(governance_summary.get("verdict") or governance.get("verdict") or "UNKNOWN")
-    governance_score = num(governance_summary.get("governance_score") or governance.get("governance_score"), 0)
+    pass_status = str(pass_conditions.get("pass_status") or "missing_pass_conditions")
+    machine_allowed = bool(pass_conditions.get("formal_draft_allowed_by_machine_gate"))
+    approved_ids = set(str(x) for x in (manual_input.get("approved_candidate_ids") or []))
+    rejected_ids = set(str(x) for x in (manual_input.get("rejected_candidate_ids") or []))
+    manual_override_enabled = bool(manual_input.get("manual_override_enabled"))
+    sizing_summary = sizing.get("summary") or {}
+    cash_available = bool(sizing_summary.get("cash_balance_available"))
+    real_world_prices_ok = bool(sizing_summary.get("all_prices_real_world"))
 
     manual_rows = manual.get("proposal_rows") or []
     execution_rows = execution.get("draft_rows") or []
     ranking_rows = ranking.get("ranking_rows") or []
+    governance_summary = governance.get("summary") or {}
+    governance_score = num(governance_summary.get("governance_score") or governance.get("governance_score"), 0)
+    governance_verdict = str(governance_summary.get("verdict") or governance.get("verdict") or "UNKNOWN")
 
     proposal_by_id: Dict[str, Dict[str, Any]] = {}
     for p in manual_rows if isinstance(manual_rows, list) else []:
-        pid = str(p.get("proposal_id") or "")
-        srid = str(p.get("source_ranking_id") or "")
-        if pid:
-            proposal_by_id[pid] = p
-        if srid:
-            proposal_by_id[srid] = p
-
+        for key in [p.get("proposal_id"), p.get("source_ranking_id"), p.get("candidate_id")]:
+            if key:
+                proposal_by_id[str(key)] = p
     ranking_by_id: Dict[str, Dict[str, Any]] = {}
     for r in ranking_rows if isinstance(ranking_rows, list) else []:
-        rid = str(r.get("ranking_id") or r.get("candidate_id") or r.get("id") or "")
-        if rid:
-            ranking_by_id[rid] = r
+        for key in [r.get("ranking_id"), r.get("candidate_id"), r.get("id")]:
+            if key:
+                ranking_by_id[str(key)] = r
 
     formal_rows: List[Dict[str, Any]] = []
-    block_reasons: List[str] = []
-
-    validation_pass = validation_status in {"research_validation_pass", "conditional_research_validation_pass", "conditional_pass"}
-    if not validation_pass:
-        block_reasons.append("alpha_validation_gate_not_passed")
-    if governance_score < 95 or "pass" not in governance_verdict.lower():
-        block_reasons.append("governance_not_full_pass")
-    if int(num(ranking_summary.get("further_research_count"), 0)) <= 0:
-        block_reasons.append("no_rebalance_candidate_cleared_research_threshold")
-    if int(num(manual_summary.get("manual_research_proposal_count"), 0)) <= 0:
-        block_reasons.append("no_manual_research_proposal")
-    if int(num(execution_summary.get("draft_count"), 0)) <= 0:
-        block_reasons.append("no_pre_execution_draft")
+    global_block_reasons: List[str] = []
+    if not machine_allowed:
+        global_block_reasons.append("formal_pass_conditions_not_met")
+    if not cash_available:
+        global_block_reasons.append("cash_balance_missing_for_sizing")
+    if not real_world_prices_ok:
+        global_block_reasons.append("not_all_prices_real_world_fetched")
 
     for d in execution_rows if isinstance(execution_rows, list) else []:
         source_proposal_id = str(d.get("source_proposal_id") or "")
         source_ranking_id = str(d.get("source_ranking_id") or "")
         p = proposal_by_id.get(source_proposal_id) or proposal_by_id.get(source_ranking_id) or {}
         r = ranking_by_id.get(source_ranking_id) or {}
-        local_reasons = list(block_reasons)
+        ids = {source_proposal_id, source_ranking_id, str(p.get("proposal_id") or ""), str(r.get("ranking_id") or "")}
+        local_reasons = list(global_block_reasons)
         draft_status = str(d.get("draft_status") or "")
         proposal_status = str(p.get("proposal_status") or "")
         turnover = num(p.get("turnover_vs_current_pct") or r.get("turnover_vs_current_pct"), 0)
         ranking_score = num(p.get("ranking_score") or r.get("ranking_score"), 0)
-
         if draft_status != "draftable_for_manual_entry_review":
             local_reasons.append("pre_execution_draft_not_draftable")
         if proposal_status != "manual_research_proposal":
@@ -119,7 +106,11 @@ def main() -> None:
             local_reasons.append("turnover_above_formal_draft_threshold")
         if ranking_score < 70:
             local_reasons.append("ranking_score_below_formal_draft_threshold")
-
+        if rejected_ids.intersection(ids):
+            local_reasons.append("manually_rejected")
+        if manual_override_enabled and approved_ids.intersection(ids):
+            # Manual approval can remove ranking/proposal promotion blocks, but not safety/data blocks.
+            local_reasons = [x for x in local_reasons if x not in {"manual_proposal_not_promoted", "ranking_score_below_formal_draft_threshold"}]
         status = "formal_review_draft" if not local_reasons else "blocked_formal_draft"
         if status == "formal_review_draft":
             formal_rows.append({
@@ -131,9 +122,11 @@ def main() -> None:
                 "research_priority_rank": d.get("research_priority_rank") or p.get("research_priority_rank") or r.get("rank"),
                 "ranking_score": ranking_score,
                 "turnover_vs_current_pct": turnover,
-                "alpha_validation_status": validation_status,
+                "pass_status": pass_status,
                 "governance_verdict": governance_verdict,
                 "governance_score": governance_score,
+                "cash_balance_available": cash_available,
+                "all_prices_real_world": real_world_prices_ok,
                 "required_human_decision": True,
                 "formal_draft_is_not_trade_order": True,
                 "not_trade_order": True,
@@ -147,14 +140,12 @@ def main() -> None:
 
     if formal_rows:
         gate_status = "formal_rebalance_review_draft_available"
-    elif validation_status == "missing_validation":
-        gate_status = "blocked_missing_alpha_validation"
-    elif not validation_pass:
-        gate_status = "blocked_by_alpha_validation_gate"
-    elif "no_manual_research_proposal" in block_reasons:
-        gate_status = "blocked_no_manual_research_proposal"
-    elif "no_pre_execution_draft" in block_reasons:
-        gate_status = "blocked_no_pre_execution_draft"
+    elif not machine_allowed:
+        gate_status = "blocked_by_formal_pass_conditions"
+    elif not cash_available:
+        gate_status = "blocked_missing_cash_balance"
+    elif not real_world_prices_ok:
+        gate_status = "blocked_incomplete_real_world_price_fetch"
     else:
         gate_status = "blocked_no_formal_draft"
 
@@ -177,25 +168,28 @@ def main() -> None:
         "maximum_sharpe_optimization_enabled": False,
         "supabase_write_enabled": False,
         "source_files": {
-            "alpha_validation_gate": "data/alpha/alpha_validation_gate_latest.json",
+            "formal_draft_pass_conditions": "data/alpha/formal_draft_pass_conditions_latest.json",
+            "manual_approval_input": "data/alpha/manual_approval_input_latest.json",
+            "trading_constraints_snapshot": "data/alpha/trading_constraints_snapshot_latest.json",
             "manual_rebalance_proposal": "data/alpha/manual_rebalance_proposal_latest.json",
             "execution_ready_draft": "data/alpha/execution_ready_draft_latest.json",
             "rebalance_candidate_ranking": "data/alpha/rebalance_candidate_ranking_latest.json",
-            "model_governance_dashboard": "data/optimizer/model_governance_dashboard_latest.json",
         },
         "formal_draft_policy": {
             "purpose": "Promote only machine-vetted, governance-supported, manual-review proposals into formal rebalance review drafts.",
             "formal_draft_is_not_trade_order": True,
             "requires_manual_decision": True,
-            "minimum_validation_status": "research_validation_pass_or_conditional_pass",
-            "minimum_governance_score": 95,
+            "requires_pass_conditions": True,
+            "requires_cash_balance": True,
+            "requires_real_world_price_fetch": True,
             "maximum_turnover_pct": 30,
             "ranking_score_floor": 70,
-            "must_have_pre_execution_draft": True,
         },
         "summary": {
             "formal_draft_gate_status": gate_status,
-            "alpha_validation_status": validation_status,
+            "pass_status": pass_status,
+            "cash_balance_available": cash_available,
+            "all_prices_real_world": real_world_prices_ok,
             "governance_score": governance_score,
             "governance_verdict": governance_verdict,
             "source_execution_draft_count": len(execution_rows) if isinstance(execution_rows, list) else 0,
@@ -204,38 +198,36 @@ def main() -> None:
             "trade_signal_enabled": False,
             "execution_permission": False,
             "broker_submission_enabled": False,
-            "block_reasons": block_reasons,
+            "block_reasons": global_block_reasons,
         },
         "formal_draft_rows": formal_rows,
-        "blocked_reason_codes": block_reasons,
+        "blocked_reason_codes": global_block_reasons,
         "safety_boundary": [
-            "v8.1 may create formal rebalance review drafts only after validation/governance gates pass.",
+            "v8.1 may create formal rebalance review drafts only after validation, sizing, and real-world data gates pass.",
             "A formal draft is still not a trade order, not buy/sell advice, and not an approved rebalance.",
             "execution_permission, trade_signal_enabled, official_rebalance_enabled, and broker_submission_enabled remain false.",
         ],
     }
     LATEST_JSON.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
-    lines = [
+    SUMMARY_MD.write_text("\n".join([
         "# v8.1 Formal Rebalance Draft Gate",
         "",
         f"- Generated: `{output['generated_at']}`",
         f"- Gate status: **{gate_status}**",
         f"- Formal draft count: `{len(formal_rows)}`",
-        f"- Alpha validation: `{validation_status}`",
-        f"- Governance: `{governance_score}` / `{governance_verdict}`",
-        f"- Block reasons: `{', '.join(block_reasons) if block_reasons else 'None'}`",
+        f"- Pass status: `{pass_status}`",
+        f"- Cash available: `{cash_available}`",
+        f"- All prices real-world: `{real_world_prices_ok}`",
         "",
         "## Safety boundary",
         "- Formal draft does not mean buy, sell, bullish, or best allocation.",
         "- No broker submission, no automatic execution, and no official rebalance is enabled.",
-    ]
-    SUMMARY_MD.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    ]) + "\n", encoding="utf-8")
     print(f"Wrote {LATEST_JSON}")
     print(f"Wrote {SUMMARY_MD}")
     print(f"Formal draft gate status: {gate_status}")
     print(f"Formal draft count: {len(formal_rows)}")
     print("Execution permission: False")
-
 
 if __name__ == "__main__":
     main()

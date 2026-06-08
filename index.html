@@ -3731,7 +3731,7 @@
                                         <div v-if="blackLittermanError">{{ blackLittermanError }}</div>
                                     </div>
 
-                                    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                    <div class="grid grid-cols-2 md:grid-cols-7 gap-3">
                                         <div class="rounded-xl border border-white/10 bg-black/20 p-3 md:col-span-2">
                                             <div class="quant-label text-violet-300">目前市場狀態</div>
                                             <div class="quant-value text-white text-base">{{ zhText(regimeAwareRegime?.selected_regime) }}</div>
@@ -4348,8 +4348,11 @@
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-2 flex-wrap">
+                                        <button @click="loadFormalDraftPassConditions" class="px-3 py-1.5 rounded-lg bg-orange-500/20 border border-orange-500/30 text-orange-100 text-xs hover:bg-orange-500/30">通過條件</button>
+                                        <button @click="loadTradingConstraintsSnapshot" class="px-3 py-1.5 rounded-lg bg-orange-500/20 border border-orange-500/30 text-orange-100 text-xs hover:bg-orange-500/30">交易約束</button>
                                         <button @click="loadFormalRebalanceDraftGate" class="px-3 py-1.5 rounded-lg bg-orange-500/20 border border-orange-500/30 text-orange-100 text-xs hover:bg-orange-500/30">重新讀取 v8.1</button>
                                         <button @click="loadManualTradeTicket" class="px-3 py-1.5 rounded-lg bg-orange-500/20 border border-orange-500/30 text-orange-100 text-xs hover:bg-orange-500/30">重新讀取 v9</button>
+                                        <button @click="loadPaperTradeTracker" class="px-3 py-1.5 rounded-lg bg-orange-500/20 border border-orange-500/30 text-orange-100 text-xs hover:bg-orange-500/30">紙上追蹤</button>
                                     </div>
                                 </div>
                                 <div class="p-4 space-y-4">
@@ -4362,6 +4365,16 @@
                                             <div class="quant-label text-orange-300">v8.1 草案閘門</div>
                                             <div class="quant-value text-white text-sm">{{ zhText(formalDraftGateSummary?.formal_draft_gate_status) }}</div>
                                             <div class="text-[10px] text-gray-500 mt-1">正式草案：{{ formalDraftGateSummary?.formal_draft_count ?? 0 }}</div>
+                                        </div>
+                                        <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                            <div class="quant-label text-orange-300">通過條件</div>
+                                            <div class="quant-value text-white text-sm">{{ zhText(formalDraftPassSummary?.pass_status) }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">硬性失敗：{{ formalDraftPassSummary?.hard_fail_count ?? 0 }}</div>
+                                        </div>
+                                        <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                            <div class="quant-label text-orange-300">交易約束</div>
+                                            <div class="quant-value text-white text-sm">{{ tradingConstraintsSummary?.asset_count ?? 0 }} 檔</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">現金：{{ zhBool(tradingConstraintsSummary?.cash_balance_available) }}</div>
                                         </div>
                                         <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
                                             <div class="quant-label text-orange-300">v9 票據狀態</div>
@@ -4432,6 +4445,41 @@
                                                         <tr v-if="!manualTradeTicketVisibleRows.length">
                                                             <td colspan="3" class="px-3 py-4 text-center text-gray-500">目前沒有人工交易票據。若缺正式草案或缺明確目標權重，系統不得自行產生交易列。</td>
                                                         </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] text-xs font-bold text-white">交易 sizing 約束｜real-world data</div>
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full text-[11px]">
+                                                    <thead class="text-gray-500 border-b border-white/10"><tr><th class="text-left px-3 py-2">標的</th><th class="text-right px-3 py-2">市值 TWD</th><th class="text-left px-3 py-2">交易單位</th><th class="text-left px-3 py-2">價格來源</th></tr></thead>
+                                                    <tbody>
+                                                        <tr v-for="row in tradingConstraintsVisibleRows" :key="row.ticker" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                            <td class="px-3 py-2 font-mono text-white">{{ row.ticker }}</td>
+                                                            <td class="px-3 py-2 text-right text-orange-200">{{ formatCurrency(row.market_value_twd || 0) }}</td>
+                                                            <td class="px-3 py-2 text-gray-400">{{ row.minimum_trade_unit }} {{ row.unit_name }}｜零股/小數：{{ zhBool(row.odd_lot_or_fractional_allowed) }}</td>
+                                                            <td class="px-3 py-2 text-gray-400">{{ row.real_world_price_fetched ? 'Python 即時抓取' : '非即時備援' }}</td>
+                                                        </tr>
+                                                        <tr v-if="!tradingConstraintsVisibleRows.length"><td colspan="4" class="px-3 py-4 text-center text-gray-500">尚未讀到交易 sizing 約束。</td></tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] text-xs font-bold text-white">正式紙上追蹤</div>
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full text-[11px]">
+                                                    <thead class="text-gray-500 border-b border-white/10"><tr><th class="text-left px-3 py-2">紙上紀錄</th><th class="text-left px-3 py-2">狀態</th><th class="text-left px-3 py-2">檢查點</th></tr></thead>
+                                                    <tbody>
+                                                        <tr v-for="row in paperTradeVisibleRows" :key="row.paper_id" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                            <td class="px-3 py-2 font-mono text-white max-w-[220px] truncate" :title="row.paper_id">{{ row.paper_id }}</td>
+                                                            <td class="px-3 py-2 text-gray-400">{{ zhText(row.status) }}</td>
+                                                            <td class="px-3 py-2 text-gray-400">{{ (row.checkpoints || []).map(c => c.horizon + ':' + zhText(c.status)).join(' / ') }}</td>
+                                                        </tr>
+                                                        <tr v-if="!paperTradeVisibleRows.length"><td colspan="3" class="px-3 py-4 text-center text-gray-500">尚未建立紙上追蹤；若 v8/v9 沒有草案，這是正常阻擋。</td></tr>
                                                     </tbody>
                                                 </table>
                                             </div>

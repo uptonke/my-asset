@@ -1,12 +1,12 @@
 {
   "version": "v8.1",
   "status": "OK",
-  "generated_at": "2026-06-08T06:35:16+00:00",
+  "generated_at": "2026-06-08T06:16:54+00:00",
   "mode": "formal_rebalance_draft_gate",
   "safe_mode": true,
   "research_only": true,
   "formal_rebalance_draft_enabled": true,
-  "formal_draft_gate_status": "blocked_by_alpha_validation_gate",
+  "formal_draft_gate_status": "blocked_by_formal_pass_conditions",
   "trade_signal_enabled": false,
   "execution_permission": false,
   "official_rebalance_enabled": false,
@@ -17,25 +17,28 @@
   "maximum_sharpe_optimization_enabled": false,
   "supabase_write_enabled": false,
   "source_files": {
-    "alpha_validation_gate": "data/alpha/alpha_validation_gate_latest.json",
+    "formal_draft_pass_conditions": "data/alpha/formal_draft_pass_conditions_latest.json",
+    "manual_approval_input": "data/alpha/manual_approval_input_latest.json",
+    "trading_constraints_snapshot": "data/alpha/trading_constraints_snapshot_latest.json",
     "manual_rebalance_proposal": "data/alpha/manual_rebalance_proposal_latest.json",
     "execution_ready_draft": "data/alpha/execution_ready_draft_latest.json",
-    "rebalance_candidate_ranking": "data/alpha/rebalance_candidate_ranking_latest.json",
-    "model_governance_dashboard": "data/optimizer/model_governance_dashboard_latest.json"
+    "rebalance_candidate_ranking": "data/alpha/rebalance_candidate_ranking_latest.json"
   },
   "formal_draft_policy": {
     "purpose": "Promote only machine-vetted, governance-supported, manual-review proposals into formal rebalance review drafts.",
     "formal_draft_is_not_trade_order": true,
     "requires_manual_decision": true,
-    "minimum_validation_status": "research_validation_pass_or_conditional_pass",
-    "minimum_governance_score": 95,
+    "requires_pass_conditions": true,
+    "requires_cash_balance": true,
+    "requires_real_world_price_fetch": true,
     "maximum_turnover_pct": 30,
-    "ranking_score_floor": 70,
-    "must_have_pre_execution_draft": true
+    "ranking_score_floor": 70
   },
   "summary": {
-    "formal_draft_gate_status": "blocked_by_alpha_validation_gate",
-    "alpha_validation_status": "watch_only_validation",
+    "formal_draft_gate_status": "blocked_by_formal_pass_conditions",
+    "pass_status": "blocked",
+    "cash_balance_available": false,
+    "all_prices_real_world": false,
     "governance_score": 92.0,
     "governance_verdict": "watch_only_with_governance_warnings",
     "source_execution_draft_count": 0,
@@ -45,23 +48,19 @@
     "execution_permission": false,
     "broker_submission_enabled": false,
     "block_reasons": [
-      "alpha_validation_gate_not_passed",
-      "governance_not_full_pass",
-      "no_rebalance_candidate_cleared_research_threshold",
-      "no_manual_research_proposal",
-      "no_pre_execution_draft"
+      "formal_pass_conditions_not_met",
+      "cash_balance_missing_for_sizing",
+      "not_all_prices_real_world_fetched"
     ]
   },
   "formal_draft_rows": [],
   "blocked_reason_codes": [
-    "alpha_validation_gate_not_passed",
-    "governance_not_full_pass",
-    "no_rebalance_candidate_cleared_research_threshold",
-    "no_manual_research_proposal",
-    "no_pre_execution_draft"
+    "formal_pass_conditions_not_met",
+    "cash_balance_missing_for_sizing",
+    "not_all_prices_real_world_fetched"
   ],
   "safety_boundary": [
-    "v8.1 may create formal rebalance review drafts only after validation/governance gates pass.",
+    "v8.1 may create formal rebalance review drafts only after validation, sizing, and real-world data gates pass.",
     "A formal draft is still not a trade order, not buy/sell advice, and not an approved rebalance.",
     "execution_permission, trade_signal_enabled, official_rebalance_enabled, and broker_submission_enabled remain false."
   ]

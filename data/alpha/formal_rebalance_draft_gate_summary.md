@@ -1,11 +1,11 @@
 # v8.1 Formal Rebalance Draft Gate
 
-- Generated: `2026-06-08T06:35:16+00:00`
-- Gate status: **blocked_by_alpha_validation_gate**
+- Generated: `2026-06-08T06:16:54+00:00`
+- Gate status: **blocked_by_formal_pass_conditions**
 - Formal draft count: `0`
-- Alpha validation: `watch_only_validation`
-- Governance: `92.0` / `watch_only_with_governance_warnings`
-- Block reasons: `alpha_validation_gate_not_passed, governance_not_full_pass, no_rebalance_candidate_cleared_research_threshold, no_manual_research_proposal, no_pre_execution_draft`
+- Pass status: `blocked`
+- Cash available: `False`
+- All prices real-world: `False`
 
 ## Safety boundary
 - Formal draft does not mean buy, sell, bullish, or best allocation.

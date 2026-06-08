@@ -1,0 +1,108 @@
+{
+  "version": "v8.1-pass-conditions",
+  "status": "OK",
+  "generated_at": "2026-06-08T06:16:14+00:00",
+  "mode": "formal_draft_pass_conditions",
+  "safe_mode": true,
+  "research_only": true,
+  "pass_status": "blocked",
+  "trade_signal_enabled": false,
+  "execution_permission": false,
+  "broker_submission_enabled": false,
+  "official_rebalance_enabled": false,
+  "not_trade_order": true,
+  "formal_draft_allowed_by_machine_gate": false,
+  "manual_override": {
+    "manual_override_enabled": false,
+    "allow_formal_draft_when_validation_watch_only": false,
+    "approved_candidate_ids": [],
+    "rejected_candidate_ids": [],
+    "approval_mode": "research_only"
+  },
+  "summary": {
+    "pass_status": "blocked",
+    "hard_fail_count": 4,
+    "watch_fail_count": 0,
+    "alpha_validation_status": "watch_only_validation",
+    "governance_score": 92.0,
+    "governance_verdict": "watch_only_with_governance_warnings",
+    "further_research_count": 0,
+    "manual_research_proposal_count": 0,
+    "execution_draft_count": 0,
+    "walk_forward_status": "OK",
+    "walk_forward_fold_count": 11
+  },
+  "gates": [
+    {
+      "name": "alpha_validation",
+      "passed": false,
+      "severity": "hard",
+      "actual": "watch_only_validation",
+      "required": "pass_or_conditional_pass",
+      "reason_code": "alpha_validation_gate_not_passed"
+    },
+    {
+      "name": "governance_score",
+      "passed": true,
+      "severity": "hard",
+      "actual": 92.0,
+      "required": ">=90",
+      "reason_code": "governance_score_below_threshold"
+    },
+    {
+      "name": "governance_verdict",
+      "passed": true,
+      "severity": "hard",
+      "actual": "watch_only_with_governance_warnings",
+      "required": "not_fail",
+      "reason_code": "governance_verdict_failed"
+    },
+    {
+      "name": "rebalance_ranking",
+      "passed": false,
+      "severity": "hard",
+      "actual": 0,
+      "required": ">=1 further research candidate",
+      "reason_code": "no_rebalance_candidate_cleared_research_threshold"
+    },
+    {
+      "name": "manual_research_proposal",
+      "passed": false,
+      "severity": "hard",
+      "actual": 0,
+      "required": ">=1 manual research proposal",
+      "reason_code": "no_manual_research_proposal"
+    },
+    {
+      "name": "pre_execution_draft",
+      "passed": false,
+      "severity": "hard",
+      "actual": 0,
+      "required": ">=1 execution-ready draft shell",
+      "reason_code": "no_pre_execution_draft"
+    },
+    {
+      "name": "walk_forward",
+      "passed": true,
+      "severity": "watch",
+      "actual": {
+        "status": "OK",
+        "folds": 11
+      },
+      "required": "OK and >=6 folds",
+      "reason_code": "walk_forward_evidence_not_enough"
+    }
+  ],
+  "block_reasons": [
+    "alpha_validation_gate_not_passed",
+    "no_rebalance_candidate_cleared_research_threshold",
+    "no_manual_research_proposal",
+    "no_pre_execution_draft"
+  ],
+  "watch_reasons": [],
+  "safety_boundary": [
+    "Pass conditions decide whether a formal review draft may be generated.",
+    "They do not approve buy/sell actions and never enable execution or broker submission.",
+    "Manual override can only promote review-only drafts, not trade orders."
+  ]
+}

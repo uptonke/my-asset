@@ -12,10 +12,8 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 LATEST_JSON = OUT_DIR / "manual_trade_ticket_latest.json"
 SUMMARY_MD = OUT_DIR / "manual_trade_ticket_summary.md"
 
-
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
-
 
 def read_json(rel: str, default: Any = None) -> Any:
     try:
@@ -23,53 +21,63 @@ def read_json(rel: str, default: Any = None) -> Any:
     except Exception:
         return default
 
-
 def has_weight_instructions(row: Dict[str, Any]) -> bool:
     for key in ("proposed_weight_changes", "trade_lines", "target_weights", "estimated_orders"):
         value = row.get(key)
-        if isinstance(value, list) and value:
-            return True
-        if isinstance(value, dict) and value:
-            return True
+        if isinstance(value, list) and value: return True
+        if isinstance(value, dict) and value: return True
     return False
-
 
 def main() -> None:
     formal = read_json("data/alpha/formal_rebalance_draft_gate_latest.json", {}) or {}
+    sizing = read_json("data/alpha/trading_constraints_snapshot_latest.json", {}) or {}
     formal_summary = formal.get("summary") or {}
     formal_rows = formal.get("formal_draft_rows") or []
     formal_gate_status = str(formal_summary.get("formal_draft_gate_status") or formal.get("formal_draft_gate_status") or "missing_formal_gate")
+    sizing_summary = sizing.get("summary") or {}
+    cash_available = bool(sizing_summary.get("cash_balance_available"))
+    all_prices_real_world = bool(sizing_summary.get("all_prices_real_world"))
+    constraints_by_ticker = {str(r.get("ticker")): r for r in (sizing.get("asset_rows") or []) if isinstance(r, dict)}
 
     ticket_rows: List[Dict[str, Any]] = []
     blocked_reasons: List[str] = []
-
     if formal_gate_status != "formal_rebalance_review_draft_available":
         blocked_reasons.append("formal_rebalance_draft_gate_not_available")
     if not formal_rows:
         blocked_reasons.append("no_formal_rebalance_draft_rows")
+    if not cash_available:
+        blocked_reasons.append("cash_balance_missing")
+    if not all_prices_real_world:
+        blocked_reasons.append("incomplete_real_world_price_fetch")
 
     for row in formal_rows if isinstance(formal_rows, list) else []:
         if row.get("formal_draft_status") != "formal_review_draft":
             continue
         if not has_weight_instructions(row):
-            # Current upstream layers typically do not yet provide target weights/order lines.
-            # Do not fabricate executable trade lines.
             continue
+        raw_orders = row.get("estimated_orders") or row.get("trade_lines") or []
+        checked_orders = []
+        for order in raw_orders if isinstance(raw_orders, list) else []:
+            ticker = str(order.get("ticker") or "")
+            constraints = constraints_by_ticker.get(ticker, {})
+            checked_orders.append({**order, "trading_constraints": constraints})
         ticket_rows.append({
             "ticket_id": f"v9_manual_ticket_{row.get('formal_draft_id')}",
             "source_formal_draft_id": row.get("formal_draft_id"),
             "ticket_status": "manual_ticket_draft_requires_human_entry",
             "ticket_type": "manual_trade_ticket_review_draft",
-            "estimated_orders": row.get("estimated_orders") or row.get("trade_lines") or [],
+            "estimated_orders": checked_orders,
             "proposed_weight_changes": row.get("proposed_weight_changes") or [],
             "target_weights": row.get("target_weights") or {},
             "risk_impact_summary": row.get("risk_impact_summary") or {},
             "turnover_vs_current_pct": row.get("turnover_vs_current_pct"),
+            "cash_balance_twd": (sizing.get("cash_balance") or {}).get("cash_balance_twd"),
+            "real_world_sizing_constraints_used": True,
             "pre_trade_checklist": [
-                {"item": "確認實際持倉、現金、未交割款與最新市價", "required": True, "done": False},
-                {"item": "確認交易單位、手續費、稅費、匯率與流動性", "required": True, "done": False},
+                {"item": "確認目前每檔市值與最新市價來自 Python real-world fetch", "required": True, "done": False},
+                {"item": "確認可交易金額不得超過現金餘額或可賣出市值", "required": True, "done": False},
+                {"item": "確認美股不使用 fractional shares、台股可零股、加密不允許小數交易", "required": True, "done": False},
                 {"item": "確認此票據需人工重新輸入，不可自動送單", "required": True, "done": False},
-                {"item": "確認沒有 broker_submission_enabled=true 或 execution_permission=true", "required": True, "done": False},
             ],
             "manual_entry_required": True,
             "requires_final_human_confirmation": True,
@@ -111,6 +119,7 @@ def main() -> None:
         "maximum_sharpe_optimization_enabled": False,
         "source_files": {
             "formal_rebalance_draft_gate": "data/alpha/formal_rebalance_draft_gate_latest.json",
+            "trading_constraints_snapshot": "data/alpha/trading_constraints_snapshot_latest.json",
         },
         "ticket_policy": {
             "purpose": "Convert formal rebalance review drafts into manual-review ticket shells only when explicit target weights or order lines exist.",
@@ -119,12 +128,15 @@ def main() -> None:
             "requires_final_human_confirmation": True,
             "do_not_fabricate_order_lines": True,
             "ticket_is_not_broker_order": True,
+            "requires_real_world_sizing_constraints": True,
         },
         "summary": {
             "ticket_status": ticket_status,
             "formal_gate_status": formal_gate_status,
             "source_formal_draft_count": len(formal_rows) if isinstance(formal_rows, list) else 0,
             "manual_ticket_count": len(ticket_rows),
+            "cash_balance_available": cash_available,
+            "all_prices_real_world": all_prices_real_world,
             "trade_signal_enabled": False,
             "execution_permission": False,
             "broker_submission_enabled": False,
@@ -139,7 +151,7 @@ def main() -> None:
         ],
     }
     LATEST_JSON.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
-    lines = [
+    SUMMARY_MD.write_text("\n".join([
         "# v9.0 Manual Trade Ticket Generator",
         "",
         f"- Generated: `{output['generated_at']}`",
@@ -152,14 +164,12 @@ def main() -> None:
         "## Safety boundary",
         "- A manual ticket is not a broker order and is not automatically executable.",
         "- Do not fabricate order lines when target weights are missing.",
-    ]
-    SUMMARY_MD.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    ]) + "\n", encoding="utf-8")
     print(f"Wrote {LATEST_JSON}")
     print(f"Wrote {SUMMARY_MD}")
     print(f"Ticket status: {ticket_status}")
     print(f"Manual ticket count: {len(ticket_rows)}")
     print("Execution permission: False")
-
 
 if __name__ == "__main__":
     main()
