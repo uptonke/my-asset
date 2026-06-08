@@ -1,14 +1,14 @@
 {
   "version": "v4.6",
   "status": "OK",
-  "generated_at": "2026-06-08T05:38:36.334523+00:00",
+  "generated_at": "2026-06-08T06:09:53.984747+00:00",
   "mode": "validation_gate",
   "safe_mode": true,
   "summary": {
     "error_count": 0,
     "warning_count": 0,
-    "schema_validated_count": 28,
-    "python_compiled_count": 48
+    "schema_validated_count": 30,
+    "python_compiled_count": 50
   },
   "checks": {
     "required_files": {
@@ -32,6 +32,8 @@
         "scripts/build_alpha_validation_gate.py",
         "scripts/build_manual_rebalance_proposal.py",
         "scripts/build_execution_ready_draft.py",
+        "scripts/build_formal_rebalance_draft_gate.py",
+        "scripts/build_manual_trade_ticket_generator.py",
         "docs/FRONTEND_SOURCE_OF_TRUTH.md",
         "docs/SCHEMA_REGISTRY.md",
         "docs/UI_COMPONENT_SPLIT.md",
@@ -41,6 +43,8 @@
         "docs/ALPHA_RESEARCH_SANDBOX.md",
         "docs/REBALANCE_CANDIDATE_RANKING.md",
         "docs/EXECUTION_READY_DRAFT_BOUNDARY.md",
+        "docs/FORMAL_REBALANCE_DRAFT_GATE.md",
+        "docs/MANUAL_TRADE_TICKET_GENERATOR.md",
         ".github/workflows/optimizer-lab.yml.yml",
         ".github/workflows/repo-architecture-audit.yml.yml",
         ".github/workflows/validation-gate.yml.yml"
@@ -58,13 +62,13 @@
       ]
     },
     "json_parse": {
-      "parsed_count": 73,
+      "parsed_count": 77,
       "failed": []
     },
     "schema_registry": {
       "status": "OK",
-      "registry_version": "v8.0",
-      "validated_count": 28,
+      "registry_version": "v9.0",
+      "validated_count": 30,
       "validated": [
         {
           "path": "data/optimizer/skfolio_sandbox_latest.json",
@@ -205,13 +209,23 @@
           "path": "data/alpha/execution_ready_draft_latest.json",
           "schema": "schemas/alpha/execution_ready_draft.schema.json",
           "required": true
+        },
+        {
+          "path": "data/alpha/formal_rebalance_draft_gate_latest.json",
+          "schema": "schemas/alpha/formal_rebalance_draft_gate.schema.json",
+          "required": true
+        },
+        {
+          "path": "data/alpha/manual_trade_ticket_latest.json",
+          "schema": "schemas/alpha/manual_trade_ticket.schema.json",
+          "required": true
         }
       ],
       "skipped": [],
       "errors": []
     },
     "python_compile": {
-      "compiled_count": 48,
+      "compiled_count": 50,
       "failed": []
     },
     "frontend_source_runtime": {
