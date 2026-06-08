@@ -1,21 +1,24 @@
 # v5.0 Forecast Feature Store
 
 - Status: **OK**
-- Generated at: `2026-06-08T05:19:18+00:00`
+- Generated at: `2026-06-08T04:10:55+00:00`
 - Asset count: `16`
-- Feature-ready count: `16`
-- Fallback count: `0`
-- Return feature source: `live_strict_returns_from_update_stock_meta`
+- Feature-ready count: `0`
+- Fallback count: `16`
+- Return feature source: `fallback_from_existing_optimizer_outputs`
 
 ## Top feature assets
 - `00981A`
 - `2330`
-- `QQQ`
 - `AVUV`
-- `VOO`
+- `BOXX`
+- `BTC-USD`
 
 ## Safety boundary
 - Research-only feature layer.
 - Not a BUY / SELL signal.
 - Not an official alpha model.
 - No auto-trading and no Supabase write.
+
+## Warnings
+- Return series unavailable in this environment; generated fallback metadata-only feature rows from existing optimizer outputs.

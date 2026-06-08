@@ -1,0 +1,300 @@
+{
+  "version": "v6.0",
+  "status": "OK",
+  "generated_at": "2026-06-08T05:15:44+00:00",
+  "mode": "alpha_validation_gate",
+  "safe_mode": true,
+  "research_only": true,
+  "trade_signal_enabled": false,
+  "execution_permission": false,
+  "not_trade_order": true,
+  "not_buy_signal": true,
+  "not_sell_signal": true,
+  "official_alpha_enabled": false,
+  "alpha_model_enabled": false,
+  "maximum_sharpe_optimization_enabled": false,
+  "official_rebalance_enabled": false,
+  "source_files": {
+    "feature_store": "data/alpha/feature_store_latest.json",
+    "alpha_research_sandbox": "data/alpha/alpha_research_sandbox_latest.json",
+    "rebalance_candidate_ranking": "data/alpha/rebalance_candidate_ranking_latest.json",
+    "walk_forward_backtest": "data/optimizer/walk_forward_backtest_latest.json",
+    "model_governance_dashboard": "data/optimizer/model_governance_dashboard_latest.json"
+  },
+  "validation_policy": {
+    "purpose": "Validate whether v5 research outputs are mature enough to create manual review proposals.",
+    "pass_is_not_trade_signal": true,
+    "pass_is_not_buy_signal": true,
+    "pass_is_not_bullish_signal": true,
+    "manual_review_required_after_pass": true,
+    "required_before_v7_manual_proposal": "research_validation_pass or watch_only_validation with explicit blocked/watch-only labels"
+  },
+  "summary": {
+    "validation_status": "watch_only_validation",
+    "gate_count": 7,
+    "pass_count": 5,
+    "watch_count": 2,
+    "fail_count": 0,
+    "asset_alpha_rows": 16,
+    "ranking_rows": 11,
+    "further_research_assets": 0,
+    "further_research_rankings": 0,
+    "walk_forward_fold_count": 11,
+    "governance_score": 92.0,
+    "governance_verdict": "watch_only_with_governance_warnings"
+  },
+  "gates": [
+    {
+      "gate_id": "g1_feature_coverage",
+      "name": "Feature coverage",
+      "status": "pass",
+      "severity": "medium",
+      "evidence": {
+        "asset_count": 16,
+        "feature_ready_count": 16
+      },
+      "reason_codes": []
+    },
+    {
+      "gate_id": "g2_alpha_research_exists",
+      "name": "Alpha research rows exist",
+      "status": "pass",
+      "severity": "critical",
+      "evidence": {
+        "asset_alpha_rows": 16,
+        "further_research_assets": 0
+      },
+      "reason_codes": []
+    },
+    {
+      "gate_id": "g3_rebalance_ranking_exists",
+      "name": "Rebalance ranking exists",
+      "status": "pass",
+      "severity": "critical",
+      "evidence": {
+        "ranking_rows": 11,
+        "further_research_rankings": 0
+      },
+      "reason_codes": []
+    },
+    {
+      "gate_id": "g4_walk_forward_sample",
+      "name": "Walk-forward validation depth",
+      "status": "pass",
+      "severity": "medium",
+      "evidence": {
+        "walk_forward_status": "OK",
+        "fold_count": 11
+      },
+      "reason_codes": []
+    },
+    {
+      "gate_id": "g5_model_governance",
+      "name": "Model governance verdict",
+      "status": "watch",
+      "severity": "high",
+      "evidence": {
+        "governance_score": 92.0,
+        "governance_verdict": "watch_only_with_governance_warnings"
+      },
+      "reason_codes": [
+        "governance_not_full_pass"
+      ]
+    },
+    {
+      "gate_id": "g6_safety_flags",
+      "name": "Safety flags remain disabled",
+      "status": "pass",
+      "severity": "critical",
+      "evidence": {
+        "alpha_trade_signal_disabled": true,
+        "ranking_trade_signal_disabled": true,
+        "ranking_execution_disabled": true,
+        "ranking_not_trade_order": true,
+        "ranking_official_rebalance_disabled": true,
+        "ranking_max_sharpe_disabled": true
+      },
+      "reason_codes": []
+    },
+    {
+      "gate_id": "g7_candidate_availability",
+      "name": "Research candidate availability",
+      "status": "watch",
+      "severity": "low",
+      "evidence": {
+        "further_research_rankings": 0,
+        "summary_further_research": 0
+      },
+      "reason_codes": [
+        "no_rebalance_candidate_cleared_research_threshold"
+      ]
+    }
+  ],
+  "asset_validations": [
+    {
+      "ticker": "BOXX",
+      "alpha_research_score": 0.305,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "validation_label": "僅供觀察",
+      "not_buy_signal": true,
+      "not_bullish_signal": true
+    },
+    {
+      "ticker": "GLDM",
+      "alpha_research_score": 0.097,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "validation_label": "僅供觀察",
+      "not_buy_signal": true,
+      "not_bullish_signal": true
+    },
+    {
+      "ticker": "AVUV",
+      "alpha_research_score": 0.0,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "validation_label": "僅供觀察",
+      "not_buy_signal": true,
+      "not_bullish_signal": true
+    },
+    {
+      "ticker": "USMV",
+      "alpha_research_score": 0.0,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "validation_label": "僅供觀察",
+      "not_buy_signal": true,
+      "not_bullish_signal": true
+    },
+    {
+      "ticker": "VEA",
+      "alpha_research_score": 0.0,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "validation_label": "僅供觀察",
+      "not_buy_signal": true,
+      "not_bullish_signal": true
+    },
+    {
+      "ticker": "VNM",
+      "alpha_research_score": 0.0,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "validation_label": "僅供觀察",
+      "not_buy_signal": true,
+      "not_bullish_signal": true
+    },
+    {
+      "ticker": "VOO",
+      "alpha_research_score": 0.0,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "validation_label": "僅供觀察",
+      "not_buy_signal": true,
+      "not_bullish_signal": true
+    },
+    {
+      "ticker": "GRID",
+      "alpha_research_score": -0.065,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "validation_label": "僅供觀察",
+      "not_buy_signal": true,
+      "not_bullish_signal": true
+    },
+    {
+      "ticker": "IFRA",
+      "alpha_research_score": -0.065,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "validation_label": "僅供觀察",
+      "not_buy_signal": true,
+      "not_bullish_signal": true
+    },
+    {
+      "ticker": "PICK",
+      "alpha_research_score": -0.065,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "validation_label": "僅供觀察",
+      "not_buy_signal": true,
+      "not_bullish_signal": true
+    },
+    {
+      "ticker": "SRVR",
+      "alpha_research_score": -0.065,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "validation_label": "僅供觀察",
+      "not_buy_signal": true,
+      "not_bullish_signal": true
+    },
+    {
+      "ticker": "00981A",
+      "alpha_research_score": -0.09,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "validation_label": "僅供觀察",
+      "not_buy_signal": true,
+      "not_bullish_signal": true
+    },
+    {
+      "ticker": "2330",
+      "alpha_research_score": -0.09,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "validation_label": "僅供觀察",
+      "not_buy_signal": true,
+      "not_bullish_signal": true
+    },
+    {
+      "ticker": "QQQ",
+      "alpha_research_score": -0.119,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "validation_label": "僅供觀察",
+      "not_buy_signal": true,
+      "not_bullish_signal": true
+    },
+    {
+      "ticker": "BTC-USD",
+      "alpha_research_score": -0.288,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "validation_label": "僅供觀察",
+      "not_buy_signal": true,
+      "not_bullish_signal": true
+    },
+    {
+      "ticker": "ETH-USD",
+      "alpha_research_score": -0.288,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "validation_label": "僅供觀察",
+      "not_buy_signal": true,
+      "not_bullish_signal": true
+    }
+  ],
+  "safety_boundary": [
+    "v6 validates alpha research evidence only; it does not approve trades.",
+    "Passing v6 does not mean buy, sell, bullish, or best allocation.",
+    "execution_permission remains false and not_trade_order remains true."
+  ]
+}

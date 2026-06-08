@@ -1,0 +1,26 @@
+{
+  "type": "object",
+  "required": ["version", "status", "generated_at", "mode", "safe_mode", "research_only", "trade_signal_enabled", "execution_permission", "not_trade_order", "summary", "proposal_rows"],
+  "properties": {
+    "version": {"type": "string"},
+    "status": {"type": "string"},
+    "generated_at": {"type": "string"},
+    "mode": {"type": "string"},
+    "safe_mode": {"type": "boolean"},
+    "research_only": {"type": "boolean"},
+    "trade_signal_enabled": {"type": "boolean"},
+    "execution_permission": {"type": "boolean"},
+    "not_trade_order": {"type": "boolean"},
+    "summary": {
+      "type": "object",
+      "required": ["validation_status", "proposal_count", "manual_research_proposal_count", "blocked_count"],
+      "properties": {
+        "validation_status": {"type": "string"},
+        "proposal_count": {"type": "integer"},
+        "manual_research_proposal_count": {"type": "integer"},
+        "blocked_count": {"type": "integer"}
+      }
+    },
+    "proposal_rows": {"type": "array"}
+  }
+}

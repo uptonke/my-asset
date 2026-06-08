@@ -1,174 +1,196 @@
 {
-  "version": "v5.2",
-  "generated_by": "Schema Registry + Rebalance Candidate Ranking v5.2",
-  "policy": {
-    "mode": "permissive_structural_validation",
-    "strictness": "top_level_contract_plus_safety_flags",
-    "purpose": "Catch missing files, JSON breakage, unsafe execution flags, and major schema drift without overfitting to every model-specific field.",
-    "safety_invariants": [
-      "Optimizer outputs must not enable execution_permission.",
-      "Outputs containing not_trade_order must keep it true.",
-      "Expected-return and Black-Litterman sandbox must not enable official alpha or max Sharpe execution.",
-      "Schema validation is a pre-commit gate for workflow-generated outputs.",
-      "v5 forecast/alpha research outputs must remain research_only.",
-      "v5 outputs must not enable trade_signal_enabled, official_alpha_enabled, alpha_model_enabled, execution_permission, maximum_sharpe_optimization_enabled, auto_trade_enabled, or supabase_write_enabled.",
-      "v5 further_research means research queue only; it is not a buy signal, not bullish, and not rebalance advice.",
-      "v5.2 rebalance candidate ranking must remain research_only.",
-      "v5.2 ranking must not enable official_rebalance_enabled, trade_signal_enabled, execution_permission, maximum_sharpe_optimization_enabled, or supabase_write_enabled.",
-      "v5.2 further_research is a research queue label only; it is not a buy/sell signal, not bullish, and not a best-allocation recommendation."
-    ],
-    "v4_8_release_boundary": "Component/backend split is registry-first; dead-file cleanup is plan-only; no auto-delete and no trading execution."
-  },
-  "files": [
-    {
-      "path": "data/optimizer/skfolio_sandbox_latest.json",
-      "schema": "schemas/optimizer/sandbox_optimizer.schema.json",
-      "required": true,
-      "domain": "optimizer"
+    "version": "v8.0",
+    "generated_by": "Schema Registry + v6-v8 Manual Execution Draft Research Gate",
+    "policy": {
+        "mode": "permissive_structural_validation",
+        "strictness": "top_level_contract_plus_safety_flags",
+        "purpose": "Catch missing files, JSON breakage, unsafe execution flags, and major schema drift without overfitting to every model-specific field.",
+        "safety_invariants": [
+            "Optimizer outputs must not enable execution_permission.",
+            "Outputs containing not_trade_order must keep it true.",
+            "Expected-return and Black-Litterman sandbox must not enable official alpha or max Sharpe execution.",
+            "Schema validation is a pre-commit gate for workflow-generated outputs.",
+            "v5 forecast/alpha research outputs must remain research_only.",
+            "v5 outputs must not enable trade_signal_enabled, official_alpha_enabled, alpha_model_enabled, execution_permission, maximum_sharpe_optimization_enabled, auto_trade_enabled, or supabase_write_enabled.",
+            "v5 further_research means research queue only; it is not a buy signal, not bullish, and not rebalance advice.",
+            "v5.2 rebalance candidate ranking must remain research_only.",
+            "v5.2 ranking must not enable official_rebalance_enabled, trade_signal_enabled, execution_permission, maximum_sharpe_optimization_enabled, or supabase_write_enabled.",
+            "v5.2 further_research is a research queue label only; it is not a buy/sell signal, not bullish, and not a best-allocation recommendation.",
+            "v6 alpha validation gate must remain research_only and must not enable trade signals or execution.",
+            "v7 manual rebalance proposal is a research-review queue only; it must not enable official rebalance or execution.",
+            "v8 execution-ready draft is a pre-execution checklist only; broker_submission_enabled and execution_permission must remain false.",
+            "Execution-ready draft does not mean buy, sell, bullish, best allocation, or approved trade."
+        ],
+        "v4_8_release_boundary": "Component/backend split is registry-first; dead-file cleanup is plan-only; no auto-delete and no trading execution."
     },
-    {
-      "path": "data/optimizer/riskfolio_sandbox_latest.json",
-      "schema": "schemas/optimizer/sandbox_optimizer.schema.json",
-      "required": true,
-      "domain": "optimizer"
-    },
-    {
-      "path": "data/optimizer/optimizer_robustness_latest.json",
-      "schema": "schemas/optimizer/risk_diagnostics.schema.json",
-      "required": true,
-      "domain": "optimizer"
-    },
-    {
-      "path": "data/optimizer/optimizer_stress_latest.json",
-      "schema": "schemas/optimizer/risk_diagnostics.schema.json",
-      "required": true,
-      "domain": "optimizer"
-    },
-    {
-      "path": "data/optimizer/decision_center_latest.json",
-      "schema": "schemas/optimizer/decision_center.schema.json",
-      "required": true,
-      "domain": "optimizer"
-    },
-    {
-      "path": "data/optimizer/rebalance_candidates_latest.json",
-      "schema": "schemas/optimizer/rebalance_candidates.schema.json",
-      "required": true,
-      "domain": "optimizer"
-    },
-    {
-      "path": "data/optimizer/risk_reduction_simulator_latest.json",
-      "schema": "schemas/optimizer/risk_reduction_simulator.schema.json",
-      "required": true,
-      "domain": "optimizer"
-    },
-    {
-      "path": "data/optimizer/constraint_aware_rebalance_latest.json",
-      "schema": "schemas/optimizer/constraint_aware_rebalance.schema.json",
-      "required": true,
-      "domain": "optimizer"
-    },
-    {
-      "path": "data/optimizer/human_approval_layer_latest.json",
-      "schema": "schemas/optimizer/human_approval_layer.schema.json",
-      "required": true,
-      "domain": "optimizer"
-    },
-    {
-      "path": "data/optimizer/action_audit_trail_latest.json",
-      "schema": "schemas/optimizer/action_audit_trail.schema.json",
-      "required": true,
-      "domain": "optimizer"
-    },
-    {
-      "path": "data/optimizer/regime_aware_optimizer_latest.json",
-      "schema": "schemas/optimizer/regime_aware_optimizer.schema.json",
-      "required": true,
-      "domain": "optimizer"
-    },
-    {
-      "path": "data/optimizer/black_litterman_sandbox_latest.json",
-      "schema": "schemas/optimizer/black_litterman_sandbox.schema.json",
-      "required": true,
-      "domain": "optimizer"
-    },
-    {
-      "path": "data/optimizer/expected_return_model_latest.json",
-      "schema": "schemas/optimizer/expected_return_model.schema.json",
-      "required": true,
-      "domain": "optimizer"
-    },
-    {
-      "path": "data/optimizer/walk_forward_backtest_latest.json",
-      "schema": "schemas/optimizer/walk_forward_backtest.schema.json",
-      "required": true,
-      "domain": "optimizer"
-    },
-    {
-      "path": "data/optimizer/model_governance_dashboard_latest.json",
-      "schema": "schemas/optimizer/model_governance_dashboard.schema.json",
-      "required": true,
-      "domain": "optimizer"
-    },
-    {
-      "path": "data/repo_architecture/repo_architecture_audit_latest.json",
-      "schema": "schemas/repo_architecture/repo_architecture_audit.schema.json",
-      "required": false,
-      "domain": "repo_architecture"
-    },
-    {
-      "path": "data/repo_architecture/frontend_source_of_truth_latest.json",
-      "schema": "schemas/repo_architecture/frontend_source_of_truth.schema.json",
-      "required": false,
-      "domain": "repo_architecture"
-    },
-    {
-      "path": "data/repo_architecture/frontend_build_status_latest.json",
-      "schema": "schemas/repo_architecture/frontend_build_status.schema.json",
-      "required": false,
-      "domain": "repo_architecture"
-    },
-    {
-      "path": "data/repo_architecture/ui_component_registry_latest.json",
-      "schema": "schemas/repo_architecture/ui_component_registry.schema.json",
-      "required": false,
-      "domain": "repo_architecture"
-    },
-    {
-      "path": "data/repo_architecture/backend_module_registry_latest.json",
-      "schema": "schemas/repo_architecture/backend_module_registry.schema.json",
-      "required": false,
-      "domain": "repo_architecture"
-    },
-    {
-      "path": "data/repo_architecture/dead_file_cleanup_plan_latest.json",
-      "schema": "schemas/repo_architecture/dead_file_cleanup_plan.schema.json",
-      "required": false,
-      "domain": "repo_architecture"
-    },
-    {
-      "path": "data/repo_architecture/consolidated_release_manifest_latest.json",
-      "schema": "schemas/repo_architecture/consolidated_release_manifest.schema.json",
-      "required": false,
-      "domain": "repo_architecture"
-    },
-    {
-      "path": "data/alpha/feature_store_latest.json",
-      "schema": "schemas/alpha/feature_store.schema.json",
-      "required": true,
-      "domain": "alpha_research"
-    },
-    {
-      "path": "data/alpha/alpha_research_sandbox_latest.json",
-      "schema": "schemas/alpha/alpha_research_sandbox.schema.json",
-      "required": true,
-      "domain": "alpha_research"
-    },
-    {
-      "path": "data/alpha/rebalance_candidate_ranking_latest.json",
-      "schema": "schemas/alpha/rebalance_candidate_ranking.schema.json",
-      "required": true,
-      "domain": "alpha_research"
-    }
-  ]
+    "files": [
+        {
+            "path": "data/optimizer/skfolio_sandbox_latest.json",
+            "schema": "schemas/optimizer/sandbox_optimizer.schema.json",
+            "required": true,
+            "domain": "optimizer"
+        },
+        {
+            "path": "data/optimizer/riskfolio_sandbox_latest.json",
+            "schema": "schemas/optimizer/sandbox_optimizer.schema.json",
+            "required": true,
+            "domain": "optimizer"
+        },
+        {
+            "path": "data/optimizer/optimizer_robustness_latest.json",
+            "schema": "schemas/optimizer/risk_diagnostics.schema.json",
+            "required": true,
+            "domain": "optimizer"
+        },
+        {
+            "path": "data/optimizer/optimizer_stress_latest.json",
+            "schema": "schemas/optimizer/risk_diagnostics.schema.json",
+            "required": true,
+            "domain": "optimizer"
+        },
+        {
+            "path": "data/optimizer/decision_center_latest.json",
+            "schema": "schemas/optimizer/decision_center.schema.json",
+            "required": true,
+            "domain": "optimizer"
+        },
+        {
+            "path": "data/optimizer/rebalance_candidates_latest.json",
+            "schema": "schemas/optimizer/rebalance_candidates.schema.json",
+            "required": true,
+            "domain": "optimizer"
+        },
+        {
+            "path": "data/optimizer/risk_reduction_simulator_latest.json",
+            "schema": "schemas/optimizer/risk_reduction_simulator.schema.json",
+            "required": true,
+            "domain": "optimizer"
+        },
+        {
+            "path": "data/optimizer/constraint_aware_rebalance_latest.json",
+            "schema": "schemas/optimizer/constraint_aware_rebalance.schema.json",
+            "required": true,
+            "domain": "optimizer"
+        },
+        {
+            "path": "data/optimizer/human_approval_layer_latest.json",
+            "schema": "schemas/optimizer/human_approval_layer.schema.json",
+            "required": true,
+            "domain": "optimizer"
+        },
+        {
+            "path": "data/optimizer/action_audit_trail_latest.json",
+            "schema": "schemas/optimizer/action_audit_trail.schema.json",
+            "required": true,
+            "domain": "optimizer"
+        },
+        {
+            "path": "data/optimizer/regime_aware_optimizer_latest.json",
+            "schema": "schemas/optimizer/regime_aware_optimizer.schema.json",
+            "required": true,
+            "domain": "optimizer"
+        },
+        {
+            "path": "data/optimizer/black_litterman_sandbox_latest.json",
+            "schema": "schemas/optimizer/black_litterman_sandbox.schema.json",
+            "required": true,
+            "domain": "optimizer"
+        },
+        {
+            "path": "data/optimizer/expected_return_model_latest.json",
+            "schema": "schemas/optimizer/expected_return_model.schema.json",
+            "required": true,
+            "domain": "optimizer"
+        },
+        {
+            "path": "data/optimizer/walk_forward_backtest_latest.json",
+            "schema": "schemas/optimizer/walk_forward_backtest.schema.json",
+            "required": true,
+            "domain": "optimizer"
+        },
+        {
+            "path": "data/optimizer/model_governance_dashboard_latest.json",
+            "schema": "schemas/optimizer/model_governance_dashboard.schema.json",
+            "required": true,
+            "domain": "optimizer"
+        },
+        {
+            "path": "data/repo_architecture/repo_architecture_audit_latest.json",
+            "schema": "schemas/repo_architecture/repo_architecture_audit.schema.json",
+            "required": false,
+            "domain": "repo_architecture"
+        },
+        {
+            "path": "data/repo_architecture/frontend_source_of_truth_latest.json",
+            "schema": "schemas/repo_architecture/frontend_source_of_truth.schema.json",
+            "required": false,
+            "domain": "repo_architecture"
+        },
+        {
+            "path": "data/repo_architecture/frontend_build_status_latest.json",
+            "schema": "schemas/repo_architecture/frontend_build_status.schema.json",
+            "required": false,
+            "domain": "repo_architecture"
+        },
+        {
+            "path": "data/repo_architecture/ui_component_registry_latest.json",
+            "schema": "schemas/repo_architecture/ui_component_registry.schema.json",
+            "required": false,
+            "domain": "repo_architecture"
+        },
+        {
+            "path": "data/repo_architecture/backend_module_registry_latest.json",
+            "schema": "schemas/repo_architecture/backend_module_registry.schema.json",
+            "required": false,
+            "domain": "repo_architecture"
+        },
+        {
+            "path": "data/repo_architecture/dead_file_cleanup_plan_latest.json",
+            "schema": "schemas/repo_architecture/dead_file_cleanup_plan.schema.json",
+            "required": false,
+            "domain": "repo_architecture"
+        },
+        {
+            "path": "data/repo_architecture/consolidated_release_manifest_latest.json",
+            "schema": "schemas/repo_architecture/consolidated_release_manifest.schema.json",
+            "required": false,
+            "domain": "repo_architecture"
+        },
+        {
+            "path": "data/alpha/feature_store_latest.json",
+            "schema": "schemas/alpha/feature_store.schema.json",
+            "required": true,
+            "domain": "alpha_research"
+        },
+        {
+            "path": "data/alpha/alpha_research_sandbox_latest.json",
+            "schema": "schemas/alpha/alpha_research_sandbox.schema.json",
+            "required": true,
+            "domain": "alpha_research"
+        },
+        {
+            "path": "data/alpha/rebalance_candidate_ranking_latest.json",
+            "schema": "schemas/alpha/rebalance_candidate_ranking.schema.json",
+            "required": true,
+            "domain": "alpha_research"
+        },
+        {
+            "path": "data/alpha/alpha_validation_gate_latest.json",
+            "schema": "schemas/alpha/alpha_validation_gate.schema.json",
+            "required": true,
+            "domain": "alpha_research"
+        },
+        {
+            "path": "data/alpha/manual_rebalance_proposal_latest.json",
+            "schema": "schemas/alpha/manual_rebalance_proposal.schema.json",
+            "required": true,
+            "domain": "alpha_research"
+        },
+        {
+            "path": "data/alpha/execution_ready_draft_latest.json",
+            "schema": "schemas/alpha/execution_ready_draft.schema.json",
+            "required": true,
+            "domain": "alpha_research"
+        }
+    ]
 }

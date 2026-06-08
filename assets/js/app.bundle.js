@@ -3549,6 +3549,26 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
             'constraint_violation': '違反約束',
             'high_turnover_review': '高換手率待審',
             'turnover_too_high': '換手率過高',
+                'research_validation_pass': '研究驗證通過',
+                'watch_only_validation': '僅觀察驗證',
+                'research_validation_failed': '研究驗證失敗',
+                'blocked_by_validation_gate': '驗證閘門阻擋',
+                'manual_research_proposal': '人工研究提案',
+                'watch_only_proposal': '僅觀察提案',
+                'blocked_by_alpha_validation_gate': 'Alpha 驗證閘門阻擋',
+                'blocked_constraint': '約束阻擋',
+                'watch_high_turnover': '高換手率觀察',
+                'blocked_by_ranking': '排序層阻擋',
+                'pre_execution_draft_available_for_manual_review': '預執行草案可供人工檢視',
+                'no_manual_research_proposal': '無人工研究提案',
+                'draftable_for_manual_entry_review': '可形成手動輸入前檢查草案',
+                'g1_feature_coverage': '特徵覆蓋',
+                'g2_alpha_research_exists': 'Alpha 研究資料存在',
+                'g3_rebalance_ranking_exists': '調倉排序資料存在',
+                'g4_walk_forward_sample': '滾動樣本外深度',
+                'g5_model_governance': '模型治理',
+                'g6_safety_flags': '安全旗標',
+                'g7_candidate_availability': '研究候選可用性',
             'risk_reduction_detected': '偵測到風險降低',
             'missing_data': '資料不足',
             'insufficient_data': '資料不足',
@@ -3709,7 +3729,27 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
                 'turnover_low': '低換手率',
                 'turnover_moderate': '中等換手率',
                 'turnover_high_review': '高換手率警示',
-                'turnover_too_high': '換手率過高'
+                'turnover_too_high': '換手率過高',
+                'research_validation_pass': '研究驗證通過',
+                'watch_only_validation': '僅觀察驗證',
+                'research_validation_failed': '研究驗證失敗',
+                'blocked_by_validation_gate': '驗證閘門阻擋',
+                'manual_research_proposal': '人工研究提案',
+                'watch_only_proposal': '僅觀察提案',
+                'blocked_by_alpha_validation_gate': 'Alpha 驗證閘門阻擋',
+                'blocked_constraint': '約束阻擋',
+                'watch_high_turnover': '高換手率觀察',
+                'blocked_by_ranking': '排序層阻擋',
+                'pre_execution_draft_available_for_manual_review': '預執行草案可供人工檢視',
+                'no_manual_research_proposal': '無人工研究提案',
+                'draftable_for_manual_entry_review': '可形成手動輸入前檢查草案',
+                'g1_feature_coverage': '特徵覆蓋',
+                'g2_alpha_research_exists': 'Alpha 研究資料存在',
+                'g3_rebalance_ranking_exists': '調倉排序資料存在',
+                'g4_walk_forward_sample': '滾動樣本外深度',
+                'g5_model_governance': '模型治理',
+                'g6_safety_flags': '安全旗標',
+                'g7_candidate_availability': '研究候選可用性'
             };
             Object.entries(phraseMap).forEach(([from, to]) => {
                 translated = translated.split(from).join(to);
@@ -4467,6 +4507,87 @@ chartCML.data.datasets = [
 });
        const rebalanceRankingVisibleRows = computed(() => rebalanceRankingRows.value.slice(0, 10));
 
+       const alphaValidationGate = ref(null);
+       const alphaValidationError = ref('');
+
+       async function loadAlphaValidationGate() {
+    try {
+        alphaValidationError.value = '';
+        const response = await fetch(`data/alpha/alpha_validation_gate_latest.json?v=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) {
+            alphaValidationGate.value = null;
+            alphaValidationError.value = `尚未讀到 v6.0 Alpha Validation Gate (${response.status})`;
+            return;
+        }
+        const data = await response.json();
+        alphaValidationGate.value = data && typeof data === 'object' ? data : null;
+    } catch (err) {
+        alphaValidationGate.value = null;
+        alphaValidationError.value = err?.message || String(err);
+    }
+}
+
+       const alphaValidationSummary = computed(() => alphaValidationGate.value?.summary || {});
+       const alphaValidationGates = computed(() => {
+    const rows = alphaValidationGate.value?.gates || [];
+    return Array.isArray(rows) ? rows : [];
+});
+       const alphaValidationVisibleGates = computed(() => alphaValidationGates.value.slice(0, 8));
+
+       const manualRebalanceProposal = ref(null);
+       const manualProposalError = ref('');
+
+       async function loadManualRebalanceProposal() {
+    try {
+        manualProposalError.value = '';
+        const response = await fetch(`data/alpha/manual_rebalance_proposal_latest.json?v=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) {
+            manualRebalanceProposal.value = null;
+            manualProposalError.value = `尚未讀到 v7.0 Manual Rebalance Proposal (${response.status})`;
+            return;
+        }
+        const data = await response.json();
+        manualRebalanceProposal.value = data && typeof data === 'object' ? data : null;
+    } catch (err) {
+        manualRebalanceProposal.value = null;
+        manualProposalError.value = err?.message || String(err);
+    }
+}
+
+       const manualProposalSummary = computed(() => manualRebalanceProposal.value?.summary || {});
+       const manualProposalRows = computed(() => {
+    const rows = manualRebalanceProposal.value?.proposal_rows || [];
+    return Array.isArray(rows) ? rows : [];
+});
+       const manualProposalVisibleRows = computed(() => manualProposalRows.value.slice(0, 8));
+
+       const executionReadyDraft = ref(null);
+       const executionDraftError = ref('');
+
+       async function loadExecutionReadyDraft() {
+    try {
+        executionDraftError.value = '';
+        const response = await fetch(`data/alpha/execution_ready_draft_latest.json?v=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) {
+            executionReadyDraft.value = null;
+            executionDraftError.value = `尚未讀到 v8.0 Execution-Ready Draft (${response.status})`;
+            return;
+        }
+        const data = await response.json();
+        executionReadyDraft.value = data && typeof data === 'object' ? data : null;
+    } catch (err) {
+        executionReadyDraft.value = null;
+        executionDraftError.value = err?.message || String(err);
+    }
+}
+
+       const executionDraftSummary = computed(() => executionReadyDraft.value?.summary || {});
+       const executionDraftRows = computed(() => {
+    const rows = executionReadyDraft.value?.draft_rows || [];
+    return Array.isArray(rows) ? rows : [];
+});
+       const executionDraftVisibleRows = computed(() => executionDraftRows.value.slice(0, 5));
+
        const walkForwardBacktest = ref(null);
        const walkForwardError = ref('');
 
@@ -4593,6 +4714,9 @@ chartCML.data.datasets = [
     loadForecastFeatureStore();
     loadAlphaResearchSandbox();
     loadRebalanceCandidateRanking();
+    loadAlphaValidationGate();
+    loadManualRebalanceProposal();
+    loadExecutionReadyDraft();
 
     window.addEventListener('resize', () => {
         resizeAllCharts();
@@ -5125,7 +5249,7 @@ chartCML.data.datasets = [
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr, navOverlayMode, navOverlayOptions, setNavOverlayMode, navMaConfig, riskRegimeStrip, navTrendSummary,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
-            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerConstraintRules, optimizerConstraintPolicySummaries, selectedOptimizerConstraintPolicy, selectedOptimizerConstraintRows, selectedOptimizerConstraintIssues, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, optimizerStressOutput, optimizerStressError, optimizerStressScenarios, optimizerStressRows, optimizerStressWorstRows, optimizerStressBestWorst, optimizerStressMostFragile, selectedStressScenarioKey, selectedStressScenario, selectedStressScenarioRows, setStressScenario, loadOptimizerStressOutput, humanApprovalLayer, humanApprovalLayerError, humanApprovalTickets, humanApprovalSummary, humanApprovalVisibleTickets, loadHumanApprovalLayer, actionAuditTrail, actionAuditTrailError, actionAuditSummary, actionAuditEvents, loadActionAuditTrail, regimeAwareOptimizer, regimeAwareError, regimeAwareSummary, regimeAwareRegime, regimeAwareActivePolicy, regimeAwareCovariancePolicy, regimeAwareDrafts, regimeAwareVisibleDrafts, loadRegimeAwareOptimizer, blackLittermanSandbox, blackLittermanError, blackLittermanSummary, blackLittermanViewEngine, blackLittermanViews, blackLittermanPosteriorCandidates, loadBlackLittermanSandbox, expectedReturnModel, expectedReturnError, expectedReturnSummary, expectedReturnPolicy, expectedReturnBucketPriors, expectedReturnAssetPriors, expectedReturnVisibleBuckets, expectedReturnVisibleAssets, loadExpectedReturnModel, walkForwardBacktest, walkForwardError, walkForwardSummary, walkForwardAggregate, walkForwardVisibleRows, loadWalkForwardBacktest, modelGovernanceDashboard, modelGovernanceError, modelGovernanceSummary, modelGovernanceRegistry, modelGovernanceFlags, modelGovernanceVisibleRegistry, modelGovernanceVisibleFlags, loadModelGovernanceDashboard, forecastFeatureStore, forecastFeatureError, forecastFeatureSummary, forecastFeatureSample, forecastFeatureRows, forecastFeatureVisibleRows, loadForecastFeatureStore, alphaResearchSandbox, alphaResearchError, alphaResearchSummary, alphaResearchPolicy, alphaResearchRows, alphaResearchVisibleRows, loadAlphaResearchSandbox, rebalanceCandidateRanking, rebalanceRankingError, rebalanceRankingSummary, rebalanceRankingPolicy, rebalanceRankingRows, rebalanceRankingVisibleRows, loadRebalanceCandidateRanking, approvalBadgeClass, machineReviewLabel, machineReviewReason, machineReviewBadgeClass, zhText, zhList, zhBool, selectedOptimizerExplainKey, optimizerExplainabilityCandidates, selectedOptimizerExplainability, setOptimizerExplainCandidate, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
+            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerConstraintRules, optimizerConstraintPolicySummaries, selectedOptimizerConstraintPolicy, selectedOptimizerConstraintRows, selectedOptimizerConstraintIssues, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, optimizerStressOutput, optimizerStressError, optimizerStressScenarios, optimizerStressRows, optimizerStressWorstRows, optimizerStressBestWorst, optimizerStressMostFragile, selectedStressScenarioKey, selectedStressScenario, selectedStressScenarioRows, setStressScenario, loadOptimizerStressOutput, humanApprovalLayer, humanApprovalLayerError, humanApprovalTickets, humanApprovalSummary, humanApprovalVisibleTickets, loadHumanApprovalLayer, actionAuditTrail, actionAuditTrailError, actionAuditSummary, actionAuditEvents, loadActionAuditTrail, regimeAwareOptimizer, regimeAwareError, regimeAwareSummary, regimeAwareRegime, regimeAwareActivePolicy, regimeAwareCovariancePolicy, regimeAwareDrafts, regimeAwareVisibleDrafts, loadRegimeAwareOptimizer, blackLittermanSandbox, blackLittermanError, blackLittermanSummary, blackLittermanViewEngine, blackLittermanViews, blackLittermanPosteriorCandidates, loadBlackLittermanSandbox, expectedReturnModel, expectedReturnError, expectedReturnSummary, expectedReturnPolicy, expectedReturnBucketPriors, expectedReturnAssetPriors, expectedReturnVisibleBuckets, expectedReturnVisibleAssets, loadExpectedReturnModel, walkForwardBacktest, walkForwardError, walkForwardSummary, walkForwardAggregate, walkForwardVisibleRows, loadWalkForwardBacktest, modelGovernanceDashboard, modelGovernanceError, modelGovernanceSummary, modelGovernanceRegistry, modelGovernanceFlags, modelGovernanceVisibleRegistry, modelGovernanceVisibleFlags, loadModelGovernanceDashboard, forecastFeatureStore, forecastFeatureError, forecastFeatureSummary, forecastFeatureSample, forecastFeatureRows, forecastFeatureVisibleRows, loadForecastFeatureStore, alphaResearchSandbox, alphaResearchError, alphaResearchSummary, alphaResearchPolicy, alphaResearchRows, alphaResearchVisibleRows, loadAlphaResearchSandbox, rebalanceCandidateRanking, rebalanceRankingError, rebalanceRankingSummary, rebalanceRankingPolicy, rebalanceRankingRows, rebalanceRankingVisibleRows, loadRebalanceCandidateRanking, alphaValidationGate, alphaValidationError, alphaValidationSummary, alphaValidationGates, alphaValidationVisibleGates, loadAlphaValidationGate, manualRebalanceProposal, manualProposalError, manualProposalSummary, manualProposalRows, manualProposalVisibleRows, loadManualRebalanceProposal, executionReadyDraft, executionDraftError, executionDraftSummary, executionDraftRows, executionDraftVisibleRows, loadExecutionReadyDraft, approvalBadgeClass, machineReviewLabel, machineReviewReason, machineReviewBadgeClass, zhText, zhList, zhBool, selectedOptimizerExplainKey, optimizerExplainabilityCandidates, selectedOptimizerExplainability, setOptimizerExplainCandidate, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
         };
     }
 }).mount('#app');

@@ -1,0 +1,51 @@
+{
+  "version": "v8.0",
+  "status": "OK",
+  "generated_at": "2026-06-08T05:15:47+00:00",
+  "mode": "execution_ready_draft",
+  "safe_mode": true,
+  "research_only": true,
+  "execution_ready_draft_enabled": true,
+  "broker_submission_enabled": false,
+  "official_rebalance_enabled": false,
+  "trade_signal_enabled": false,
+  "execution_permission": false,
+  "not_trade_order": true,
+  "not_buy_signal": true,
+  "not_sell_signal": true,
+  "maximum_sharpe_optimization_enabled": false,
+  "supabase_write_enabled": false,
+  "source_files": {
+    "alpha_validation_gate": "data/alpha/alpha_validation_gate_latest.json",
+    "manual_rebalance_proposal": "data/alpha/manual_rebalance_proposal_latest.json"
+  },
+  "readiness_policy": {
+    "purpose": "Package manual-review proposals into pre-execution checklists without enabling execution.",
+    "execution_ready_draft_is_not_trade_order": true,
+    "manual_entry_required": true,
+    "system_cannot_submit_orders": true,
+    "human_must_independently_validate": true
+  },
+  "summary": {
+    "readiness_status": "blocked_by_alpha_validation_gate",
+    "validation_status": "watch_only_validation",
+    "source_proposal_count": 11,
+    "eligible_proposal_count": 0,
+    "draft_count": 0,
+    "broker_submission_enabled": false,
+    "trade_signal_enabled": false,
+    "execution_permission": false
+  },
+  "draft_rows": [],
+  "global_pre_execution_checklist": [
+    "確認 GitHub Actions 與 Validation Gate 均為 OK",
+    "確認前端顯示仍為非交易指令 / 不自動執行",
+    "確認沒有 execution_permission=true、trade_signal_enabled=true、official_rebalance_enabled=true",
+    "確認實際交易前重新檢查最新市價、匯率、現金、稅費、流動性與個人限制"
+  ],
+  "safety_boundary": [
+    "v8 is a pre-execution draft layer only.",
+    "It does not generate broker orders, does not submit trades, and does not approve buy/sell.",
+    "execution_permission remains false and broker_submission_enabled remains false."
+  ]
+}

@@ -4222,6 +4222,117 @@
                             </div>
 
 
+
+                            <!-- v6-v8 Alpha validation / manual proposal / execution-ready draft boundary -->
+                            <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-rose-500/20 bg-rose-500/[0.04] shadow-lg overflow-hidden">
+                                <div class="px-4 py-3 border-b border-rose-500/20 bg-rose-500/[0.08] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-shield-check text-rose-300"></i>
+                                            v6.0 Alpha 驗證閘門 ＋ v7.0 人工研究提案 ＋ v8.0 預執行草案
+                                        </div>
+                                        <div class="text-[11px] text-rose-100/70 mt-1">
+                                            這是研究到人工檢查的封裝層；預執行草案不等於買入、不等於看多、不等於正式調倉，也不能送單。
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <button @click="loadAlphaValidationGate" class="px-3 py-1.5 rounded-lg bg-rose-500/20 border border-rose-500/30 text-rose-100 text-xs hover:bg-rose-500/30">重新讀取 v6</button>
+                                        <button @click="loadManualRebalanceProposal" class="px-3 py-1.5 rounded-lg bg-rose-500/20 border border-rose-500/30 text-rose-100 text-xs hover:bg-rose-500/30">重新讀取 v7</button>
+                                        <button @click="loadExecutionReadyDraft" class="px-3 py-1.5 rounded-lg bg-rose-500/20 border border-rose-500/30 text-rose-100 text-xs hover:bg-rose-500/30">重新讀取 v8</button>
+                                    </div>
+                                </div>
+                                <div class="p-4 space-y-4">
+                                    <div v-if="alphaValidationError || manualProposalError || executionDraftError" class="rounded-xl border border-red-500/20 bg-red-500/[0.05] p-3 text-xs text-red-200 space-y-1">
+                                        <div v-if="alphaValidationError">{{ alphaValidationError }}</div>
+                                        <div v-if="manualProposalError">{{ manualProposalError }}</div>
+                                        <div v-if="executionDraftError">{{ executionDraftError }}</div>
+                                    </div>
+                                    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                        <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                            <div class="quant-label text-rose-300">v6 驗證狀態</div>
+                                            <div class="quant-value text-white text-sm">{{ zhText(alphaValidationSummary?.validation_status) }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">{{ alphaValidationSummary?.pass_count ?? 0 }} 通過 / {{ alphaValidationSummary?.watch_count ?? 0 }} 觀察</div>
+                                        </div>
+                                        <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                            <div class="quant-label text-rose-300">v7 研究提案</div>
+                                            <div class="quant-value text-white">{{ manualProposalSummary?.manual_research_proposal_count ?? 0 }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">總數：{{ manualProposalSummary?.proposal_count ?? 0 }}</div>
+                                        </div>
+                                        <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                            <div class="quant-label text-rose-300">v8 草案狀態</div>
+                                            <div class="quant-value text-white text-sm">{{ zhText(executionDraftSummary?.readiness_status) }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">草案：{{ executionDraftSummary?.draft_count ?? 0 }}</div>
+                                        </div>
+                                        <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                            <div class="quant-label text-rose-300">交易訊號</div>
+                                            <div class="quant-value text-white text-base">{{ zhBool(executionReadyDraft?.trade_signal_enabled === false ? false : executionReadyDraft?.trade_signal_enabled) }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">應維持「否」</div>
+                                        </div>
+                                        <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                            <div class="quant-label text-rose-300">送單權限</div>
+                                            <div class="quant-value text-white text-base">{{ zhBool(executionReadyDraft?.broker_submission_enabled === false ? false : executionReadyDraft?.broker_submission_enabled) }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">應維持「否」</div>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] text-xs font-bold text-white">v6 驗證閘門</div>
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full text-[11px]">
+                                                    <thead class="text-gray-500 border-b border-white/10">
+                                                        <tr>
+                                                            <th class="text-left px-3 py-2">閘門</th>
+                                                            <th class="text-left px-3 py-2">狀態</th>
+                                                            <th class="text-left px-3 py-2">原因</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="gate in alphaValidationVisibleGates" :key="gate.gate_id" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                            <td class="px-3 py-2 text-white">{{ zhText(gate.gate_id || gate.name) }}</td>
+                                                            <td class="px-3 py-2"><span class="px-2 py-0.5 rounded border text-[10px]" :class="gate.status === 'pass' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : gate.status === 'watch' ? 'border-amber-500/30 bg-amber-500/10 text-amber-300' : 'border-red-500/30 bg-red-500/10 text-red-300'">{{ zhText(gate.status) }}</span></td>
+                                                            <td class="px-3 py-2 text-gray-400 max-w-[360px] truncate" :title="zhList(gate.reason_codes)">{{ zhList(gate.reason_codes) }}</td>
+                                                        </tr>
+                                                        <tr v-if="!alphaValidationVisibleGates.length">
+                                                            <td colspan="3" class="px-3 py-4 text-center text-gray-500">尚未讀到 v6 驗證閘門。</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] text-xs font-bold text-white">v7 / v8 研究提案與預執行草案</div>
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full text-[11px]">
+                                                    <thead class="text-gray-500 border-b border-white/10">
+                                                        <tr>
+                                                            <th class="text-left px-3 py-2">提案</th>
+                                                            <th class="text-left px-3 py-2">狀態</th>
+                                                            <th class="text-right px-3 py-2">排序分</th>
+                                                            <th class="text-left px-3 py-2">理由</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="row in manualProposalVisibleRows" :key="row.proposal_id" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                            <td class="px-3 py-2 font-mono text-white max-w-[240px] truncate" :title="zhText(row.source_ranking_id)">{{ zhText(row.source_ranking_id) }}</td>
+                                                            <td class="px-3 py-2"><span class="px-2 py-0.5 rounded border text-[10px]" :class="row.proposal_status === 'manual_research_proposal' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : row.proposal_status && row.proposal_status.includes('watch') ? 'border-amber-500/30 bg-amber-500/10 text-amber-300' : 'border-red-500/30 bg-red-500/10 text-red-300'">{{ zhText(row.proposal_status) }}</span></td>
+                                                            <td class="px-3 py-2 text-right text-rose-200">{{ row.ranking_score ?? '—' }}</td>
+                                                            <td class="px-3 py-2 text-gray-400 max-w-[360px] truncate" :title="zhList(row.reason_codes)">{{ zhList((row.reason_codes || []).slice(0, 4)) }}</td>
+                                                        </tr>
+                                                        <tr v-if="!manualProposalVisibleRows.length">
+                                                            <td colspan="4" class="px-3 py-4 text-center text-gray-500">尚未讀到 v7 人工研究提案。</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="rounded-xl border border-red-500/20 bg-red-500/[0.04] p-3 text-[11px] text-gray-400 leading-relaxed">
+                                        <span class="font-bold text-red-200">執行邊界：</span>
+                                        v8「預執行草案」只是人工檢查清單，不是下單單據；不代表買入、不代表賣出、不代表看多、不代表最佳配置，也不能自動送單。
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Risk contribution + model assumptions -->
                             <div v-show="analyticsViewMode === 'risk'" class="grid grid-cols-1 xl:grid-cols-3 gap-4">
                                 <div class="xl:col-span-2 rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
@@ -5881,7 +5992,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=v5-2-rebalance-ranking-1"></script>
+<script src="assets/js/app.bundle.js?v=v8-execution-draft-1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>

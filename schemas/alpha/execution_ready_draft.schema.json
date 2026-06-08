@@ -1,0 +1,29 @@
+{
+  "type": "object",
+  "required": ["version", "status", "generated_at", "mode", "safe_mode", "research_only", "trade_signal_enabled", "execution_permission", "not_trade_order", "broker_submission_enabled", "summary", "draft_rows"],
+  "properties": {
+    "version": {"type": "string"},
+    "status": {"type": "string"},
+    "generated_at": {"type": "string"},
+    "mode": {"type": "string"},
+    "safe_mode": {"type": "boolean"},
+    "research_only": {"type": "boolean"},
+    "trade_signal_enabled": {"type": "boolean"},
+    "execution_permission": {"type": "boolean"},
+    "not_trade_order": {"type": "boolean"},
+    "broker_submission_enabled": {"type": "boolean"},
+    "summary": {
+      "type": "object",
+      "required": ["readiness_status", "validation_status", "draft_count", "broker_submission_enabled", "trade_signal_enabled", "execution_permission"],
+      "properties": {
+        "readiness_status": {"type": "string"},
+        "validation_status": {"type": "string"},
+        "draft_count": {"type": "integer"},
+        "broker_submission_enabled": {"type": "boolean"},
+        "trade_signal_enabled": {"type": "boolean"},
+        "execution_permission": {"type": "boolean"}
+      }
+    },
+    "draft_rows": {"type": "array"}
+  }
+}

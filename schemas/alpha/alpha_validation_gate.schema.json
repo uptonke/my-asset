@@ -1,0 +1,27 @@
+{
+  "type": "object",
+  "required": ["version", "status", "generated_at", "mode", "safe_mode", "research_only", "trade_signal_enabled", "execution_permission", "not_trade_order", "summary", "gates"],
+  "properties": {
+    "version": {"type": "string"},
+    "status": {"type": "string"},
+    "generated_at": {"type": "string"},
+    "mode": {"type": "string"},
+    "safe_mode": {"type": "boolean"},
+    "research_only": {"type": "boolean"},
+    "trade_signal_enabled": {"type": "boolean"},
+    "execution_permission": {"type": "boolean"},
+    "not_trade_order": {"type": "boolean"},
+    "summary": {
+      "type": "object",
+      "required": ["validation_status", "gate_count", "pass_count", "watch_count", "fail_count"],
+      "properties": {
+        "validation_status": {"type": "string"},
+        "gate_count": {"type": "integer"},
+        "pass_count": {"type": "integer"},
+        "watch_count": {"type": "integer"},
+        "fail_count": {"type": "integer"}
+      }
+    },
+    "gates": {"type": "array"}
+  }
+}
