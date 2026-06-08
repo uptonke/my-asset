@@ -251,6 +251,12 @@ jobs:
           set -euo pipefail
           python scripts/build_alpha_research_sandbox.py
 
+      - name: Build Rebalance Candidate Ranking v5.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build_rebalance_candidate_ranking.py
+
       - name: Validation Gate v4.6
         shell: bash
         run: |
@@ -286,6 +292,7 @@ jobs:
             docs/TECHNICAL_DEBT_MAP.md
             docs/SCHEMA_REGISTRY.md
             docs/ALPHA_RESEARCH_SANDBOX.md
+            docs/REBALANCE_CANDIDATE_RANKING.md
 
       - name: Commit task output
         shell: bash
@@ -295,7 +302,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add data/optimizer/ data/alpha/ data/repo_architecture/ data/repo_health/ docs/ schemas/ package.json split-manifest.json || true
-          git add .github/workflows/ scripts/README.md scripts/v191_workflow_consolidation_cleanup.py scripts/validate_repo_integrity.py scripts/build_forecast_feature_store.py scripts/build_alpha_research_sandbox.py || true
+          git add .github/workflows/ scripts/README.md scripts/v191_workflow_consolidation_cleanup.py scripts/validate_repo_integrity.py scripts/build_forecast_feature_store.py scripts/build_alpha_research_sandbox.py scripts/build_rebalance_candidate_ranking.py || true
 
           if [ "${{ github.event.inputs.task }}" = "apply_terminal_ia_phase2" ]; then
             git add index.html assets/css/80-terminal-ia-phase2.css assets/js/terminal-ia-phase2.js scripts/apply_terminal_ia_phase2.py assets/css/tailwind-built.css || true
