@@ -275,6 +275,24 @@ jobs:
           set -euo pipefail
           python scripts/build_execution_ready_draft.py
 
+      - name: Build Formal Draft Pass Conditions v8.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build_formal_draft_pass_conditions.py
+
+      - name: Build Manual Approval Input Layer v8.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build_manual_approval_input_layer.py
+
+      - name: Build Trading Constraints Snapshot v8.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build_trading_constraints_snapshot.py
+
       - name: Build Formal Rebalance Draft Gate v8.1
         shell: bash
         run: |
@@ -286,6 +304,12 @@ jobs:
         run: |
           set -euo pipefail
           python scripts/build_manual_trade_ticket_generator.py
+
+      - name: Build Paper Trade Tracker v9.2
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build_paper_trade_tracker.py
 
       - name: Validation Gate v4.6
         shell: bash
@@ -326,6 +350,10 @@ jobs:
             docs/EXECUTION_READY_DRAFT_BOUNDARY.md
             docs/FORMAL_REBALANCE_DRAFT_GATE.md
             docs/MANUAL_TRADE_TICKET_GENERATOR.md
+            docs/PAPER_TRADE_TRACKER.md
+            docs/TRADING_CONSTRAINTS_SNAPSHOT.md
+            docs/MANUAL_APPROVAL_INPUT_LAYER.md
+            docs/FORMAL_DRAFT_PASS_CONDITIONS.md
 
       - name: Commit task output
         shell: bash
@@ -334,7 +362,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add data/optimizer/ data/alpha/ data/repo_architecture/ data/repo_health/ docs/ schemas/ package.json split-manifest.json || true
+          git add data/optimizer/ data/alpha/ data/repo_architecture/ data/repo_health/ docs/ schemas/ config/manual_approval_override.json package.json split-manifest.json || true
           git add .github/workflows/ scripts/README.md scripts/v191_workflow_consolidation_cleanup.py scripts/validate_repo_integrity.py scripts/build_forecast_feature_store.py scripts/build_alpha_research_sandbox.py scripts/build_rebalance_candidate_ranking.py scripts/build_alpha_validation_gate.py scripts/build_manual_rebalance_proposal.py scripts/build_execution_ready_draft.py scripts/build_formal_rebalance_draft_gate.py scripts/build_manual_trade_ticket_generator.py || true
 
           if [ "${{ github.event.inputs.task }}" = "apply_terminal_ia_phase2" ]; then
