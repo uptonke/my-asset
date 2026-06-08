@@ -4353,12 +4353,14 @@
                                         <button @click="loadFormalRebalanceDraftGate" class="px-3 py-1.5 rounded-lg bg-orange-500/20 border border-orange-500/30 text-orange-100 text-xs hover:bg-orange-500/30">重新讀取 v8.1</button>
                                         <button @click="loadManualTradeTicket" class="px-3 py-1.5 rounded-lg bg-orange-500/20 border border-orange-500/30 text-orange-100 text-xs hover:bg-orange-500/30">重新讀取 v9</button>
                                         <button @click="loadPaperTradeTracker" class="px-3 py-1.5 rounded-lg bg-orange-500/20 border border-orange-500/30 text-orange-100 text-xs hover:bg-orange-500/30">紙上追蹤</button>
+                                        <button @click="loadTradeSizingDiagnostics" class="px-3 py-1.5 rounded-lg bg-red-500/20 border border-red-500/30 text-red-100 text-xs hover:bg-red-500/30">阻擋診斷</button>
                                     </div>
                                 </div>
                                 <div class="p-4 space-y-4">
-                                    <div v-if="formalDraftGateError || manualTradeTicketError" class="rounded-xl border border-red-500/20 bg-red-500/[0.05] p-3 text-xs text-red-200 space-y-1">
+                                    <div v-if="formalDraftGateError || manualTradeTicketError || tradeSizingDiagnosticsError" class="rounded-xl border border-red-500/20 bg-red-500/[0.05] p-3 text-xs text-red-200 space-y-1">
                                         <div v-if="formalDraftGateError">{{ formalDraftGateError }}</div>
                                         <div v-if="manualTradeTicketError">{{ manualTradeTicketError }}</div>
+                                        <div v-if="tradeSizingDiagnosticsError">{{ tradeSizingDiagnosticsError }}</div>
                                     </div>
                                     <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
                                         <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
@@ -4485,6 +4487,71 @@
                                             </div>
                                         </div>
                                     </div>
+                                    <div class="rounded-xl border border-red-500/20 bg-red-500/[0.04] overflow-hidden">
+                                        <div class="px-3 py-2 border-b border-red-500/20 bg-red-500/[0.08] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
+                                            <div>
+                                                <div class="text-xs font-bold text-white flex items-center gap-2">
+                                                    <i class="fas fa-triangle-exclamation text-red-300"></i>
+                                                    v9.3 阻擋原因與交易 sizing 診斷
+                                                </div>
+                                                <div class="text-[11px] text-red-100/70 mt-1">說明為什麼正式草案／人工交易票據沒有產生；這不是買賣建議或看多／看空訊號。</div>
+                                            </div>
+                                            <button @click="loadTradeSizingDiagnostics" class="px-3 py-1.5 rounded-lg bg-red-500/20 border border-red-500/30 text-red-100 text-xs hover:bg-red-500/30">重新讀取診斷</button>
+                                        </div>
+                                        <div class="p-3 space-y-3">
+                                            <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                                <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                                    <div class="quant-label text-red-300">診斷狀態</div>
+                                                    <div class="quant-value text-white text-sm">{{ zhText(tradeSizingDiagnosticsSummary?.diagnostic_status) }}</div>
+                                                    <div class="text-[10px] text-gray-500 mt-1">blockers：{{ tradeSizingDiagnosticsSummary?.blocker_count ?? 0 }}</div>
+                                                </div>
+                                                <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                                    <div class="quant-label text-red-300">Alpha 驗證</div>
+                                                    <div class="quant-value text-white text-sm">{{ zhText(tradeSizingDiagnosticsSummary?.alpha_validation_status) }}</div>
+                                                    <div class="text-[10px] text-gray-500 mt-1">研究候選：{{ tradeSizingDiagnosticsSummary?.further_research_count ?? 0 }}</div>
+                                                </div>
+                                                <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                                    <div class="quant-label text-red-300">現金餘額</div>
+                                                    <div class="quant-value text-white text-sm">{{ tradeSizingDiagnosticsSummary?.cash_balance_available ? formatCurrency(tradeSizingDiagnosticsSummary?.cash_balance_twd || 0) : '缺失' }}</div>
+                                                    <div class="text-[10px] text-gray-500 mt-1">{{ tradeSizingDiagnosticsSummary?.cash_balance_source || 'missing' }}</div>
+                                                </div>
+                                                <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                                    <div class="quant-label text-red-300">價格資料</div>
+                                                    <div class="quant-value text-white text-sm">{{ tradeSizingDiagnosticsSummary?.real_world_price_success_count ?? 0 }}/{{ tradeSizingDiagnosticsSummary?.asset_count ?? 0 }}</div>
+                                                    <div class="text-[10px] text-gray-500 mt-1">全即時：{{ zhBool(tradeSizingDiagnosticsSummary?.all_prices_real_world) }}</div>
+                                                </div>
+                                                <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                                    <div class="quant-label text-red-300">票據</div>
+                                                    <div class="quant-value text-white text-sm">{{ tradeSizingDiagnosticsSummary?.manual_ticket_count ?? 0 }}</div>
+                                                    <div class="text-[10px] text-gray-500 mt-1">正式草案：{{ tradeSizingDiagnosticsSummary?.formal_draft_count ?? 0 }}</div>
+                                                </div>
+                                            </div>
+                                            <div class="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                                                <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                                    <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] text-xs font-bold text-white">主要阻擋原因</div>
+                                                    <div class="divide-y divide-white/5">
+                                                        <div v-for="issue in tradeSizingDiagnosticsVisibleIssues" :key="issue.layer + ':' + issue.code" class="p-3 text-[11px]">
+                                                            <div class="flex items-start justify-between gap-2">
+                                                                <div class="font-bold" :class="issue.severity === 'blocker' ? 'text-red-300' : 'text-amber-300'">{{ issue.title }}</div>
+                                                                <span class="shrink-0 px-2 py-0.5 rounded border text-[10px]" :class="issue.severity === 'blocker' ? 'border-red-500/30 bg-red-500/10 text-red-300' : 'border-amber-500/30 bg-amber-500/10 text-amber-300'">{{ issue.severity === 'blocker' ? '阻擋' : '觀察' }}</span>
+                                                            </div>
+                                                            <div class="text-gray-400 mt-1">{{ issue.detail }}</div>
+                                                            <div class="text-gray-500 mt-1">處理：{{ issue.remediation }}</div>
+                                                        </div>
+                                                        <div v-if="!tradeSizingDiagnosticsVisibleIssues.length" class="p-3 text-[11px] text-gray-500 text-center">目前沒有阻擋原因。</div>
+                                                    </div>
+                                                </div>
+                                                <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                                    <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] text-xs font-bold text-white">下一步</div>
+                                                    <div class="divide-y divide-white/5">
+                                                        <div v-for="action in tradeSizingDiagnosticsNextActions" :key="action" class="p-3 text-[11px] text-gray-300">{{ action }}</div>
+                                                        <div v-if="!tradeSizingDiagnosticsNextActions.length" class="p-3 text-[11px] text-gray-500 text-center">沒有建議動作。</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div class="rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-3 text-[11px] text-gray-400 leading-relaxed">
                                         <span class="font-bold text-orange-200">v9 邊界：</span>
                                         人工交易票據只是人工重輸入前的檢查殼，不是券商委託單；若沒有明確目標權重或交易列，系統必須輸出 0 張票據，不能自行捏造買賣明細。
@@ -6152,7 +6219,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=format-currency-fix-1"></script>
+<script src="assets/js/app.bundle.js?v=v9-3-diagnostics-1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>

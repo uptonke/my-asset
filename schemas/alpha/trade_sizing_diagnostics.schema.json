@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Trade Sizing Diagnostics v9.3",
+  "type": "object",
+  "required": [
+    "version",
+    "status",
+    "generated_at",
+    "mode",
+    "safe_mode",
+    "research_only",
+    "diagnostic_status",
+    "summary",
+    "issues",
+    "trade_signal_enabled",
+    "execution_permission",
+    "broker_submission_enabled",
+    "official_rebalance_enabled",
+    "not_trade_order"
+  ],
+  "properties": {
+    "version": {"type": "string"},
+    "status": {"type": "string"},
+    "generated_at": {"type": "string"},
+    "mode": {"type": "string"},
+    "safe_mode": {"type": "boolean"},
+    "research_only": {"type": "boolean"},
+    "diagnostic_status": {"type": "string"},
+    "trade_signal_enabled": {"type": "boolean"},
+    "execution_permission": {"type": "boolean"},
+    "broker_submission_enabled": {"type": "boolean"},
+    "official_rebalance_enabled": {"type": "boolean"},
+    "not_trade_order": {"type": "boolean"},
+    "summary": {
+      "type": "object",
+      "required": ["diagnostic_status", "blocker_count", "watch_count"],
+      "properties": {
+        "diagnostic_status": {"type": "string"},
+        "blocker_count": {"type": "number"},
+        "watch_count": {"type": "number"}
+      }
+    },
+    "issues": {"type": "array"},
+    "trade_sizing_snapshot": {"type": "object"},
+    "next_actions": {"type": "array"}
+  }
+}

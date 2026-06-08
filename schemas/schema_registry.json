@@ -26,7 +26,8 @@
       "v8.1 formal pass conditions must remain research_only and cannot enable execution or trade signals.",
       "Manual approval input may only affect review-only draft promotion; it cannot approve broker submission.",
       "Trading constraints snapshot must use Python real-world price fetch or explicitly mark fallback prices as non-real-time.",
-      "Paper trade tracker is a lagging model-accountability layer, not a forward trade signal."
+      "Paper trade tracker is a lagging model-accountability layer, not a forward trade signal.",
+      "v9.3 trade sizing diagnostics is diagnostic-only; it must not enable trade signals, broker submission, official rebalance, or execution."
     ],
     "v4_8_release_boundary": "Component/backend split is registry-first; dead-file cleanup is plan-only; no auto-delete and no trading execution."
   },
@@ -232,6 +233,12 @@
     {
       "path": "data/alpha/paper_trade_tracker_latest.json",
       "schema": "schemas/alpha/paper_trade_tracker.schema.json",
+      "required": true,
+      "domain": "alpha"
+    },
+    {
+      "path": "data/alpha/trade_sizing_diagnostics_latest.json",
+      "schema": "schemas/alpha/trade_sizing_diagnostics.schema.json",
       "required": true,
       "domain": "alpha"
     }
