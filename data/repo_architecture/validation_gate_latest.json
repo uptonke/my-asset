@@ -1,14 +1,14 @@
 {
   "version": "v4.6",
   "status": "OK",
-  "generated_at": "2026-06-07T13:45:57.385597+00:00",
+  "generated_at": "2026-06-08T04:54:54.777118+00:00",
   "mode": "validation_gate",
   "safe_mode": true,
   "summary": {
     "error_count": 0,
     "warning_count": 0,
-    "schema_validated_count": 22,
-    "python_compiled_count": 42
+    "schema_validated_count": 24,
+    "python_compiled_count": 44
   },
   "checks": {
     "required_files": {
@@ -26,12 +26,15 @@
         "scripts/build_backend_module_registry.py",
         "scripts/build_dead_file_cleanup_plan.py",
         "scripts/build_consolidated_release_manifest.py",
+        "scripts/build_forecast_feature_store.py",
+        "scripts/build_alpha_research_sandbox.py",
         "docs/FRONTEND_SOURCE_OF_TRUTH.md",
         "docs/SCHEMA_REGISTRY.md",
         "docs/UI_COMPONENT_SPLIT.md",
         "docs/BACKEND_SCRIPT_SPLIT.md",
         "docs/DEAD_FILE_CLEANUP_PLAN.md",
         "docs/V4_CONSOLIDATED_RELEASE.md",
+        "docs/ALPHA_RESEARCH_SANDBOX.md",
         ".github/workflows/optimizer-lab.yml.yml",
         ".github/workflows/repo-architecture-audit.yml.yml",
         ".github/workflows/validation-gate.yml.yml"
@@ -49,13 +52,13 @@
       ]
     },
     "json_parse": {
-      "parsed_count": 61,
+      "parsed_count": 65,
       "failed": []
     },
     "schema_registry": {
       "status": "OK",
-      "registry_version": "v4.8",
-      "validated_count": 22,
+      "registry_version": "v5.1",
+      "validated_count": 24,
       "validated": [
         {
           "path": "data/optimizer/skfolio_sandbox_latest.json",
@@ -166,13 +169,23 @@
           "path": "data/repo_architecture/consolidated_release_manifest_latest.json",
           "schema": "schemas/repo_architecture/consolidated_release_manifest.schema.json",
           "required": false
+        },
+        {
+          "path": "data/alpha/feature_store_latest.json",
+          "schema": "schemas/alpha/feature_store.schema.json",
+          "required": true
+        },
+        {
+          "path": "data/alpha/alpha_research_sandbox_latest.json",
+          "schema": "schemas/alpha/alpha_research_sandbox.schema.json",
+          "required": true
         }
       ],
       "skipped": [],
       "errors": []
     },
     "python_compile": {
-      "compiled_count": 42,
+      "compiled_count": 44,
       "failed": []
     },
     "frontend_source_runtime": {
