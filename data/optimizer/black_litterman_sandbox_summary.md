@@ -1,6 +1,6 @@
 # Bayesian / Black-Litterman Sandbox v3.1
 
-Generated: `2026-06-07T08:13:08+00:00`
+Generated: `2026-06-08T04:57:19+00:00`
 
 ## Safety boundary
 
@@ -31,9 +31,9 @@ Generated: `2026-06-07T08:13:08+00:00`
 - Turnover vs prior: `1.874`%
 - Status: `watch_only_bl_proxy_requires_review`
 
-### v3_1_v3_0_v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX_posterior_tilt
+### v3_1_v3_0_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX_posterior_tilt
 
-- Prior: `v3_0_v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX`
+- Prior: `v3_0_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX`
 - Method: `rules_based_bl_tilt_proxy_on_regime_draft`
 - Turnover vs prior: `1.071`%
 - Status: `watch_only_bl_proxy_requires_review`

@@ -3,13 +3,13 @@
 - Status: `OK`
 - Mode: `sandbox_only`
 - Strict sample: `376`
-- Period: `2025-05-28 → 2026-06-07`
+- Period: `2025-05-28 → 2026-06-08`
 - Asset count: `16`
 
 | Portfolio | Status | Ann Vol | VaR95 | ES95 | MDD | Turnover vs Current |
 |---|---:|---:|---:|---:|---:|---:|
-| current_weight | OK | 10.95% | 0.967% | 1.57% | -5.29% | 0.0% |
-| inverse_vol_baseline | OK | 9.25% | 0.823% | 1.374% | -4.99% | 22.51% |
-| scipy_min_variance_fallback | OK | 5.07% | 0.342% | 0.751% | -2.61% | 77.51% |
-| skfolio_min_variance | OK | 5.06% | 0.353% | 0.754% | -2.66% | 76.68% |
-| skfolio_cvar_minimize | OK | 5.68% | 0.389% | 0.716% | -2.48% | 67.24% |
+| current_weight | OK | 11.05% | 0.972% | 1.589% | -5.34% | 0.0% |
+| inverse_vol_baseline | OK | 9.28% | 0.822% | 1.386% | -4.99% | 22.65% |
+| scipy_min_variance_fallback | OK | 5.08% | 0.353% | 0.755% | -2.62% | 77.94% |
+| skfolio_min_variance | OK | 5.07% | 0.371% | 0.755% | -2.67% | 77.07% |
+| skfolio_cvar_minimize | OK | 5.8% | 0.415% | 0.724% | -2.55% | 70.93% |

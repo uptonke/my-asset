@@ -1,15 +1,15 @@
 # v5.1 Alpha Research Sandbox
 
 - Status: **OK**
-- Generated at: `2026-06-08T04:10:57+00:00`
+- Generated at: `2026-06-08T04:57:34+00:00`
 - Asset count: `16`
-- Further research count: `0`
-- Observe-only count: `16`
+- Further research count: `1`
+- Observe-only count: `15`
 - Negative prior count: `0`
 - Regime: `risk_off_liquidity_pressure`
 
 ## Top research candidates
-- None
+- `00981A`
 
 ## Safety boundary
 - Research ranking only.
