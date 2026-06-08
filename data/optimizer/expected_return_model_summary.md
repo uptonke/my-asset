@@ -1,6 +1,6 @@
 # Expected Return Model v3.2
 
-Generated: `2026-06-08T05:38:21+00:00`
+Generated: `2026-06-08T06:35:02+00:00`
 
 ## Safety boundary
 

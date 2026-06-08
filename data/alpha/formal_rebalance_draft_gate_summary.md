@@ -1,6 +1,6 @@
 # v8.1 Formal Rebalance Draft Gate
 
-- Generated: `2026-06-08T05:42:24+00:00`
+- Generated: `2026-06-08T06:35:16+00:00`
 - Gate status: **blocked_by_alpha_validation_gate**
 - Formal draft count: `0`
 - Alpha validation: `watch_only_validation`
