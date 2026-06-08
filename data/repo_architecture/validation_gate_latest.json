@@ -1,14 +1,14 @@
 {
   "version": "v4.6",
   "status": "OK",
-  "generated_at": "2026-06-08T04:57:34.759637+00:00",
+  "generated_at": "2026-06-08T05:15:28.566136+00:00",
   "mode": "validation_gate",
   "safe_mode": true,
   "summary": {
     "error_count": 0,
     "warning_count": 0,
-    "schema_validated_count": 24,
-    "python_compiled_count": 44
+    "schema_validated_count": 25,
+    "python_compiled_count": 45
   },
   "checks": {
     "required_files": {
@@ -28,6 +28,7 @@
         "scripts/build_consolidated_release_manifest.py",
         "scripts/build_forecast_feature_store.py",
         "scripts/build_alpha_research_sandbox.py",
+        "scripts/build_rebalance_candidate_ranking.py",
         "docs/FRONTEND_SOURCE_OF_TRUTH.md",
         "docs/SCHEMA_REGISTRY.md",
         "docs/UI_COMPONENT_SPLIT.md",
@@ -52,13 +53,13 @@
       ]
     },
     "json_parse": {
-      "parsed_count": 65,
+      "parsed_count": 67,
       "failed": []
     },
     "schema_registry": {
       "status": "OK",
-      "registry_version": "v5.1",
-      "validated_count": 24,
+      "registry_version": "v5.2",
+      "validated_count": 25,
       "validated": [
         {
           "path": "data/optimizer/skfolio_sandbox_latest.json",
@@ -179,13 +180,18 @@
           "path": "data/alpha/alpha_research_sandbox_latest.json",
           "schema": "schemas/alpha/alpha_research_sandbox.schema.json",
           "required": true
+        },
+        {
+          "path": "data/alpha/rebalance_candidate_ranking_latest.json",
+          "schema": "schemas/alpha/rebalance_candidate_ranking.schema.json",
+          "required": true
         }
       ],
       "skipped": [],
       "errors": []
     },
     "python_compile": {
-      "compiled_count": 44,
+      "compiled_count": 45,
       "failed": []
     },
     "frontend_source_runtime": {
