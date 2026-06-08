@@ -3504,6 +3504,17 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
             'manual_approval_required': '需要人工確認',
             'requires_manual_approval': '需要人工確認',
             'not_trade_order': '非交易指令',
+                'price_return_features_available': '價格報酬特徵可用',
+                'fallback_metadata_only': '僅有備援中繼資料',
+                'positive_research_prior': '正向研究先驗',
+                'negative_research_prior': '負向研究先驗',
+                'neutral_research_prior': '中性研究先驗',
+                'insufficient_data': '資料不足',
+                'further_research': '進一步研究',
+                'observe_only': '僅供觀察',
+                'observe_only_insufficient_data': '僅觀察｜資料不足',
+                'observe_only_risk_penalty': '僅觀察｜風險懲罰',
+                'negative_prior_observe': '負向先驗｜觀察',
             'execution_permission_false': '未開放自動執行',
             'model_candidate_generated': '模型候選已產生',
             'watch_only_with_governance_warnings': '僅觀察｜治理警示',
@@ -3635,7 +3646,18 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
                 'watch_only_validation': '僅觀察驗證',
                 'risk_off_liquidity_pressure': '避險／流動性壓力',
                 'manual_approval_required': '需要人工確認',
-                'not_trade_order': '非交易指令'
+                'not_trade_order': '非交易指令',
+                'price_return_features_available': '價格報酬特徵可用',
+                'fallback_metadata_only': '僅有備援中繼資料',
+                'positive_research_prior': '正向研究先驗',
+                'negative_research_prior': '負向研究先驗',
+                'neutral_research_prior': '中性研究先驗',
+                'insufficient_data': '資料不足',
+                'further_research': '進一步研究',
+                'observe_only': '僅供觀察',
+                'observe_only_insufficient_data': '僅觀察｜資料不足',
+                'observe_only_risk_penalty': '僅觀察｜風險懲罰',
+                'negative_prior_observe': '負向先驗｜觀察'
             };
             Object.entries(phraseMap).forEach(([from, to]) => {
                 translated = translated.split(from).join(to);
@@ -4308,6 +4330,63 @@ chartCML.data.datasets = [
        const expectedReturnVisibleBuckets = computed(() => expectedReturnBucketPriors.value.slice(0, 10));
        const expectedReturnVisibleAssets = computed(() => expectedReturnAssetPriors.value.slice(0, 10));
 
+
+       const forecastFeatureStore = ref(null);
+       const forecastFeatureError = ref('');
+
+       async function loadForecastFeatureStore() {
+    try {
+        forecastFeatureError.value = '';
+        const response = await fetch(`data/alpha/feature_store_latest.json?v=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) {
+            forecastFeatureStore.value = null;
+            forecastFeatureError.value = `尚未讀到 v5.0 Forecast Feature Store (${response.status})`;
+            return;
+        }
+        const data = await response.json();
+        forecastFeatureStore.value = data && typeof data === 'object' ? data : null;
+    } catch (err) {
+        forecastFeatureStore.value = null;
+        forecastFeatureError.value = err?.message || String(err);
+    }
+}
+
+       const forecastFeatureSummary = computed(() => forecastFeatureStore.value?.summary || {});
+       const forecastFeatureSample = computed(() => forecastFeatureStore.value?.sample || {});
+       const forecastFeatureRows = computed(() => {
+    const rows = forecastFeatureStore.value?.asset_features || [];
+    return Array.isArray(rows) ? rows : [];
+});
+       const forecastFeatureVisibleRows = computed(() => forecastFeatureRows.value.slice(0, 10));
+
+       const alphaResearchSandbox = ref(null);
+       const alphaResearchError = ref('');
+
+       async function loadAlphaResearchSandbox() {
+    try {
+        alphaResearchError.value = '';
+        const response = await fetch(`data/alpha/alpha_research_sandbox_latest.json?v=${Date.now()}`, { cache: 'no-store' });
+        if (!response.ok) {
+            alphaResearchSandbox.value = null;
+            alphaResearchError.value = `尚未讀到 v5.1 Alpha Research Sandbox (${response.status})`;
+            return;
+        }
+        const data = await response.json();
+        alphaResearchSandbox.value = data && typeof data === 'object' ? data : null;
+    } catch (err) {
+        alphaResearchSandbox.value = null;
+        alphaResearchError.value = err?.message || String(err);
+    }
+}
+
+       const alphaResearchSummary = computed(() => alphaResearchSandbox.value?.summary || {});
+       const alphaResearchPolicy = computed(() => alphaResearchSandbox.value?.model_policy || {});
+       const alphaResearchRows = computed(() => {
+    const rows = alphaResearchSandbox.value?.asset_alpha_research || [];
+    return Array.isArray(rows) ? rows : [];
+});
+       const alphaResearchVisibleRows = computed(() => alphaResearchRows.value.slice(0, 10));
+
        const walkForwardBacktest = ref(null);
        const walkForwardError = ref('');
 
@@ -4431,6 +4510,8 @@ chartCML.data.datasets = [
     loadExpectedReturnModel();
     loadWalkForwardBacktest();
     loadModelGovernanceDashboard();
+    loadForecastFeatureStore();
+    loadAlphaResearchSandbox();
 
     window.addEventListener('resize', () => {
         resizeAllCharts();
@@ -4963,7 +5044,7 @@ chartCML.data.datasets = [
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr, navOverlayMode, navOverlayOptions, setNavOverlayMode, navMaConfig, riskRegimeStrip, navTrendSummary,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
-            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerConstraintRules, optimizerConstraintPolicySummaries, selectedOptimizerConstraintPolicy, selectedOptimizerConstraintRows, selectedOptimizerConstraintIssues, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, optimizerStressOutput, optimizerStressError, optimizerStressScenarios, optimizerStressRows, optimizerStressWorstRows, optimizerStressBestWorst, optimizerStressMostFragile, selectedStressScenarioKey, selectedStressScenario, selectedStressScenarioRows, setStressScenario, loadOptimizerStressOutput, humanApprovalLayer, humanApprovalLayerError, humanApprovalTickets, humanApprovalSummary, humanApprovalVisibleTickets, loadHumanApprovalLayer, actionAuditTrail, actionAuditTrailError, actionAuditSummary, actionAuditEvents, loadActionAuditTrail, regimeAwareOptimizer, regimeAwareError, regimeAwareSummary, regimeAwareRegime, regimeAwareActivePolicy, regimeAwareCovariancePolicy, regimeAwareDrafts, regimeAwareVisibleDrafts, loadRegimeAwareOptimizer, blackLittermanSandbox, blackLittermanError, blackLittermanSummary, blackLittermanViewEngine, blackLittermanViews, blackLittermanPosteriorCandidates, loadBlackLittermanSandbox, expectedReturnModel, expectedReturnError, expectedReturnSummary, expectedReturnPolicy, expectedReturnBucketPriors, expectedReturnAssetPriors, expectedReturnVisibleBuckets, expectedReturnVisibleAssets, loadExpectedReturnModel, walkForwardBacktest, walkForwardError, walkForwardSummary, walkForwardAggregate, walkForwardVisibleRows, loadWalkForwardBacktest, modelGovernanceDashboard, modelGovernanceError, modelGovernanceSummary, modelGovernanceRegistry, modelGovernanceFlags, modelGovernanceVisibleRegistry, modelGovernanceVisibleFlags, loadModelGovernanceDashboard, approvalBadgeClass, machineReviewLabel, machineReviewReason, machineReviewBadgeClass, zhText, zhList, zhBool, selectedOptimizerExplainKey, optimizerExplainabilityCandidates, selectedOptimizerExplainability, setOptimizerExplainCandidate, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
+            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerConstraintRules, optimizerConstraintPolicySummaries, selectedOptimizerConstraintPolicy, selectedOptimizerConstraintRows, selectedOptimizerConstraintIssues, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, optimizerStressOutput, optimizerStressError, optimizerStressScenarios, optimizerStressRows, optimizerStressWorstRows, optimizerStressBestWorst, optimizerStressMostFragile, selectedStressScenarioKey, selectedStressScenario, selectedStressScenarioRows, setStressScenario, loadOptimizerStressOutput, humanApprovalLayer, humanApprovalLayerError, humanApprovalTickets, humanApprovalSummary, humanApprovalVisibleTickets, loadHumanApprovalLayer, actionAuditTrail, actionAuditTrailError, actionAuditSummary, actionAuditEvents, loadActionAuditTrail, regimeAwareOptimizer, regimeAwareError, regimeAwareSummary, regimeAwareRegime, regimeAwareActivePolicy, regimeAwareCovariancePolicy, regimeAwareDrafts, regimeAwareVisibleDrafts, loadRegimeAwareOptimizer, blackLittermanSandbox, blackLittermanError, blackLittermanSummary, blackLittermanViewEngine, blackLittermanViews, blackLittermanPosteriorCandidates, loadBlackLittermanSandbox, expectedReturnModel, expectedReturnError, expectedReturnSummary, expectedReturnPolicy, expectedReturnBucketPriors, expectedReturnAssetPriors, expectedReturnVisibleBuckets, expectedReturnVisibleAssets, loadExpectedReturnModel, walkForwardBacktest, walkForwardError, walkForwardSummary, walkForwardAggregate, walkForwardVisibleRows, loadWalkForwardBacktest, modelGovernanceDashboard, modelGovernanceError, modelGovernanceSummary, modelGovernanceRegistry, modelGovernanceFlags, modelGovernanceVisibleRegistry, modelGovernanceVisibleFlags, loadModelGovernanceDashboard, forecastFeatureStore, forecastFeatureError, forecastFeatureSummary, forecastFeatureSample, forecastFeatureRows, forecastFeatureVisibleRows, loadForecastFeatureStore, alphaResearchSandbox, alphaResearchError, alphaResearchSummary, alphaResearchPolicy, alphaResearchRows, alphaResearchVisibleRows, loadAlphaResearchSandbox, approvalBadgeClass, machineReviewLabel, machineReviewReason, machineReviewBadgeClass, zhText, zhList, zhBool, selectedOptimizerExplainKey, optimizerExplainabilityCandidates, selectedOptimizerExplainability, setOptimizerExplainCandidate, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
         };
     }
 }).mount('#app');

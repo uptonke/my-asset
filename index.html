@@ -4001,6 +4001,135 @@
                                 </div>
                             </div>
 
+
+
+                            <!-- v5.0 + v5.1 Forecast / Alpha research sandbox -->
+                            <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-indigo-500/20 bg-indigo-500/[0.04] shadow-lg overflow-hidden">
+                                <div class="px-4 py-3 border-b border-indigo-500/20 bg-indigo-500/[0.08] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-flask-vial text-indigo-300"></i>
+                                            v5.0 特徵資料層 ＋ v5.1 Alpha 研究沙盒
+                                        </div>
+                                        <div class="text-[11px] text-indigo-100/70 mt-1">
+                                            只做研究排序：不代表買入、不代表看多、不代表正式調倉；最大夏普與交易訊號仍關閉。
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <button @click="loadForecastFeatureStore" class="px-3 py-1.5 rounded-lg bg-indigo-500/20 border border-indigo-500/30 text-indigo-100 text-xs hover:bg-indigo-500/30">重新讀取 v5.0</button>
+                                        <button @click="loadAlphaResearchSandbox" class="px-3 py-1.5 rounded-lg bg-indigo-500/20 border border-indigo-500/30 text-indigo-100 text-xs hover:bg-indigo-500/30">重新讀取 v5.1</button>
+                                    </div>
+                                </div>
+
+                                <div class="p-4 space-y-4">
+                                    <div v-if="forecastFeatureError || alphaResearchError" class="rounded-xl border border-red-500/20 bg-red-500/[0.05] p-3 text-xs text-red-200 space-y-1">
+                                        <div v-if="forecastFeatureError">{{ forecastFeatureError }}</div>
+                                        <div v-if="alphaResearchError">{{ alphaResearchError }}</div>
+                                    </div>
+
+                                    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                        <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                            <div class="quant-label text-indigo-300">v5.0 特徵資產</div>
+                                            <div class="quant-value text-white">{{ forecastFeatureSummary?.asset_count ?? 0 }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">可用：{{ forecastFeatureSummary?.feature_ready_count ?? 0 }}</div>
+                                        </div>
+                                        <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                            <div class="quant-label text-indigo-300">資料來源</div>
+                                            <div class="quant-value text-white text-sm truncate" :title="forecastFeatureSample?.source">{{ zhText(forecastFeatureSample?.source) }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">樣本：{{ forecastFeatureSample?.strict_sample ?? '—' }}</div>
+                                        </div>
+                                        <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                            <div class="quant-label text-indigo-300">進一步研究</div>
+                                            <div class="quant-value text-white">{{ alphaResearchSummary?.further_research_count ?? 0 }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">不是買入清單</div>
+                                        </div>
+                                        <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                            <div class="quant-label text-indigo-300">僅供觀察</div>
+                                            <div class="quant-value text-white">{{ alphaResearchSummary?.observe_only_count ?? 0 }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">研究用排序</div>
+                                        </div>
+                                        <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                            <div class="quant-label text-indigo-300">最大夏普</div>
+                                            <div class="quant-value text-white text-base">{{ alphaResearchPolicy?.max_sharpe_enabled === false ? '停用' : '需審閱' }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">交易訊號：關閉</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 2xl:grid-cols-2 gap-4">
+                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
+                                                <div class="text-xs font-bold text-white">v5.0 特徵資料 Top 10</div>
+                                                <div class="text-[10px] text-gray-500">動能 / 波動 / 回撤</div>
+                                            </div>
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full text-[11px]">
+                                                    <thead class="text-gray-500 border-b border-white/10">
+                                                        <tr>
+                                                            <th class="text-left px-3 py-2">標的</th>
+                                                            <th class="text-left px-3 py-2">資產桶</th>
+                                                            <th class="text-right px-3 py-2">特徵分數</th>
+                                                            <th class="text-right px-3 py-2">6M 動能</th>
+                                                            <th class="text-right px-3 py-2">60D 波動</th>
+                                                            <th class="text-right px-3 py-2">信心</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="row in forecastFeatureVisibleRows" :key="row.ticker" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                            <td class="px-3 py-2 font-mono text-white">{{ row.ticker }}</td>
+                                                            <td class="px-3 py-2 text-gray-300">{{ zhText(row.bucket) }}</td>
+                                                            <td class="px-3 py-2 text-right text-indigo-200">{{ row.feature_composite_score ?? '—' }}</td>
+                                                            <td class="px-3 py-2 text-right text-gray-300">{{ row.momentum_6m_pct ?? '—' }}<span v-if="row.momentum_6m_pct !== null && row.momentum_6m_pct !== undefined">%</span></td>
+                                                            <td class="px-3 py-2 text-right text-gray-300">{{ row.volatility_60d_pct ?? '—' }}<span v-if="row.volatility_60d_pct !== null && row.volatility_60d_pct !== undefined">%</span></td>
+                                                            <td class="px-3 py-2 text-right text-gray-400">{{ row.confidence ?? '—' }}</td>
+                                                        </tr>
+                                                        <tr v-if="!forecastFeatureVisibleRows.length">
+                                                            <td colspan="6" class="px-3 py-4 text-center text-gray-500">尚未讀到 v5.0 特徵資料。</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
+                                                <div class="text-xs font-bold text-white">v5.1 Alpha 研究排序</div>
+                                                <div class="text-[10px] text-gray-500">非買賣訊號</div>
+                                            </div>
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full text-[11px]">
+                                                    <thead class="text-gray-500 border-b border-white/10">
+                                                        <tr>
+                                                            <th class="text-left px-3 py-2">標的</th>
+                                                            <th class="text-left px-3 py-2">研究分類</th>
+                                                            <th class="text-right px-3 py-2">分數</th>
+                                                            <th class="text-left px-3 py-2">區間</th>
+                                                            <th class="text-right px-3 py-2">信心</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="row in alphaResearchVisibleRows" :key="row.ticker" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                            <td class="px-3 py-2 font-mono text-white">{{ row.ticker }}</td>
+                                                            <td class="px-3 py-2"><span class="px-2 py-0.5 rounded border text-[10px]" :class="machineReviewBadgeClass({ model_status: row.research_disposition, reason_codes: row.reason_codes })">{{ zhText(row.research_disposition) }}</span></td>
+                                                            <td class="px-3 py-2 text-right text-indigo-200">{{ row.alpha_research_score ?? '—' }}</td>
+                                                            <td class="px-3 py-2 text-gray-300 max-w-[160px] truncate" :title="row.alpha_research_band">{{ zhText(row.alpha_research_band) }}</td>
+                                                            <td class="px-3 py-2 text-right text-gray-400">{{ row.confidence ?? '—' }}</td>
+                                                        </tr>
+                                                        <tr v-if="!alphaResearchVisibleRows.length">
+                                                            <td colspan="5" class="px-3 py-4 text-center text-gray-500">尚未讀到 v5.1 Alpha 研究排序。</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3 text-[11px] text-gray-400 leading-relaxed">
+                                        <span class="font-bold text-amber-200">研究邊界：</span>
+                                        v5.0 / v5.1 只建立特徵與研究排序；「進一步研究」不代表買入、不代表看多、不代表正式調倉。正式 alpha、交易訊號與最大夏普仍關閉。
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Risk contribution + model assumptions -->
                             <div v-show="analyticsViewMode === 'risk'" class="grid grid-cols-1 xl:grid-cols-3 gap-4">
                                 <div class="xl:col-span-2 rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
@@ -5660,7 +5789,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=machine-review-gate-v483-1"></script>
+<script src="assets/js/app.bundle.js?v=v5-alpha-research-1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>

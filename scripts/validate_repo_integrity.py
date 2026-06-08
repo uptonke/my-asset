@@ -42,12 +42,15 @@ REQUIRED_FILES = [
     "scripts/build_backend_module_registry.py",
     "scripts/build_dead_file_cleanup_plan.py",
     "scripts/build_consolidated_release_manifest.py",
+    "scripts/build_forecast_feature_store.py",
+    "scripts/build_alpha_research_sandbox.py",
     "docs/FRONTEND_SOURCE_OF_TRUTH.md",
     "docs/SCHEMA_REGISTRY.md",
     "docs/UI_COMPONENT_SPLIT.md",
     "docs/BACKEND_SCRIPT_SPLIT.md",
     "docs/DEAD_FILE_CLEANUP_PLAN.md",
     "docs/V4_CONSOLIDATED_RELEASE.md",
+    "docs/ALPHA_RESEARCH_SANDBOX.md",
     ".github/workflows/optimizer-lab.yml.yml",
     ".github/workflows/repo-architecture-audit.yml.yml",
     ".github/workflows/validation-gate.yml.yml",
@@ -68,6 +71,8 @@ FORBIDDEN_TRUE_KEYS = {
     "maximum_sharpe_optimization_enabled",
     "auto_trade_enabled",
     "supabase_write_enabled",
+    "trade_signal_enabled",
+    "official_rebalance_enabled",
 }
 FORBIDDEN_FALSE_KEYS = {"not_trade_order"}
 

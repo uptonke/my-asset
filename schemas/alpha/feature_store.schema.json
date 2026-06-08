@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Forecast feature store",
+  "type": "object",
+  "required": [
+    "version",
+    "status",
+    "safe_mode",
+    "research_only",
+    "trade_signal_enabled",
+    "execution_permission",
+    "not_trade_order",
+    "alpha_model_enabled",
+    "maximum_sharpe_optimization_enabled",
+    "asset_features",
+    "summary"
+  ],
+  "properties": {
+    "version": {"type": "string"},
+    "status": {"type": "string"},
+    "safe_mode": {"type": "boolean"},
+    "research_only": {"type": "boolean"},
+    "trade_signal_enabled": {"type": "boolean"},
+    "execution_permission": {"type": "boolean"},
+    "not_trade_order": {"type": "boolean"},
+    "alpha_model_enabled": {"type": "boolean"},
+    "maximum_sharpe_optimization_enabled": {"type": "boolean"},
+    "asset_features": {"type": "array"},
+    "summary": {"type": "object"}
+  }
+}

@@ -1,6 +1,6 @@
 {
-  "version": "v4.8",
-  "generated_by": "Schema Registry + Consolidated Release v4.8",
+  "version": "v5.1",
+  "generated_by": "Schema Registry + Alpha Research Sandbox v5.1",
   "policy": {
     "mode": "permissive_structural_validation",
     "strictness": "top_level_contract_plus_safety_flags",
@@ -9,7 +9,10 @@
       "Optimizer outputs must not enable execution_permission.",
       "Outputs containing not_trade_order must keep it true.",
       "Expected-return and Black-Litterman sandbox must not enable official alpha or max Sharpe execution.",
-      "Schema validation is a pre-commit gate for workflow-generated outputs."
+      "Schema validation is a pre-commit gate for workflow-generated outputs.",
+      "v5 forecast/alpha research outputs must remain research_only.",
+      "v5 outputs must not enable trade_signal_enabled, official_alpha_enabled, alpha_model_enabled, execution_permission, maximum_sharpe_optimization_enabled, auto_trade_enabled, or supabase_write_enabled.",
+      "v5 further_research means research queue only; it is not a buy signal, not bullish, and not rebalance advice."
     ],
     "v4_8_release_boundary": "Component/backend split is registry-first; dead-file cleanup is plan-only; no auto-delete and no trading execution."
   },
@@ -145,6 +148,18 @@
       "schema": "schemas/repo_architecture/consolidated_release_manifest.schema.json",
       "required": false,
       "domain": "repo_architecture"
+    },
+    {
+      "path": "data/alpha/feature_store_latest.json",
+      "schema": "schemas/alpha/feature_store.schema.json",
+      "required": true,
+      "domain": "alpha_research"
+    },
+    {
+      "path": "data/alpha/alpha_research_sandbox_latest.json",
+      "schema": "schemas/alpha/alpha_research_sandbox.schema.json",
+      "required": true,
+      "domain": "alpha_research"
     }
   ]
 }

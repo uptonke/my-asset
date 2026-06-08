@@ -1,0 +1,537 @@
+{
+  "version": "v5.1",
+  "status": "OK",
+  "generated_at": "2026-06-08T04:10:57+00:00",
+  "mode": "alpha_research_sandbox",
+  "safe_mode": true,
+  "safe_mode_note": "v5.1 Alpha Research Sandbox 只建立研究用 alpha proxy ranking；不輸出買賣訊號、不做最大夏普、不自動調倉、不寫 Supabase。",
+  "research_only": true,
+  "trade_signal_enabled": false,
+  "execution_permission": false,
+  "not_trade_order": true,
+  "not_buy_signal": true,
+  "not_sell_signal": true,
+  "alpha_model_enabled": false,
+  "official_alpha_enabled": false,
+  "maximum_sharpe_optimization_enabled": false,
+  "source_files": {
+    "feature_store": "data/alpha/feature_store_latest.json",
+    "expected_return_model": "data/optimizer/expected_return_model_latest.json",
+    "regime_aware_optimizer": "data/optimizer/regime_aware_optimizer_latest.json"
+  },
+  "model_policy": {
+    "model_type": "research_proxy_score",
+    "official_alpha_enabled": false,
+    "absolute_return_forecast_enabled": false,
+    "trade_signal_enabled": false,
+    "max_sharpe_enabled": false,
+    "allowed_use": "research_ranking_only",
+    "disallowed_use": [
+      "BUY_SELL",
+      "auto_trade",
+      "official_weight_update",
+      "supabase_write",
+      "maximum_sharpe_rebalance"
+    ]
+  },
+  "regime_context": {
+    "selected_regime": "risk_off_liquidity_pressure",
+    "regime_bucket_adjustments": {
+      "cash": 1.0,
+      "gold": 0.35,
+      "crypto": -0.9,
+      "us_tech": -0.25,
+      "taiwan_tech": -0.35,
+      "theme_etf": -0.2
+    }
+  },
+  "asset_alpha_research": [
+    {
+      "ticker": "BOXX",
+      "bucket": "cash",
+      "current_weight_pct": 11.625,
+      "feature_status": "fallback_metadata_only",
+      "alpha_research_score": 0.305,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "score_components": {
+        "feature_composite_score": 0.0,
+        "momentum_score": 0.0,
+        "trend_score": null,
+        "volatility_penalty": -0.4,
+        "drawdown_penalty": 0.0,
+        "bucket_prior_score": 2.05,
+        "regime_adjustment_score": 1.0
+      },
+      "reason_codes": [
+        "feature_status:fallback_metadata_only",
+        "bucket:cash",
+        "regime:risk_off_liquidity_pressure",
+        "band:insufficient_data",
+        "feature_data_unavailable"
+      ],
+      "not_trade_signal": true,
+      "not_buy_signal": true,
+      "not_sell_signal": true
+    },
+    {
+      "ticker": "GLDM",
+      "bucket": "gold",
+      "current_weight_pct": 0.849,
+      "feature_status": "fallback_metadata_only",
+      "alpha_research_score": 0.097,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "score_components": {
+        "feature_composite_score": 0.0,
+        "momentum_score": 0.0,
+        "trend_score": null,
+        "volatility_penalty": -0.4,
+        "drawdown_penalty": 0.0,
+        "bucket_prior_score": 0.622,
+        "regime_adjustment_score": 0.35
+      },
+      "reason_codes": [
+        "feature_status:fallback_metadata_only",
+        "bucket:gold",
+        "regime:risk_off_liquidity_pressure",
+        "band:insufficient_data",
+        "feature_data_unavailable"
+      ],
+      "not_trade_signal": true,
+      "not_buy_signal": true,
+      "not_sell_signal": true
+    },
+    {
+      "ticker": "AVUV",
+      "bucket": "us_equity",
+      "current_weight_pct": 8.924,
+      "feature_status": "fallback_metadata_only",
+      "alpha_research_score": 0.0,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "score_components": {
+        "feature_composite_score": 0.0,
+        "momentum_score": 0.0,
+        "trend_score": null,
+        "volatility_penalty": -0.4,
+        "drawdown_penalty": 0.0,
+        "bucket_prior_score": 0.0,
+        "regime_adjustment_score": 0.0
+      },
+      "reason_codes": [
+        "feature_status:fallback_metadata_only",
+        "bucket:us_equity",
+        "regime:risk_off_liquidity_pressure",
+        "band:insufficient_data",
+        "feature_data_unavailable"
+      ],
+      "not_trade_signal": true,
+      "not_buy_signal": true,
+      "not_sell_signal": true
+    },
+    {
+      "ticker": "USMV",
+      "bucket": "us_equity",
+      "current_weight_pct": 6.655,
+      "feature_status": "fallback_metadata_only",
+      "alpha_research_score": 0.0,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "score_components": {
+        "feature_composite_score": 0.0,
+        "momentum_score": 0.0,
+        "trend_score": null,
+        "volatility_penalty": -0.4,
+        "drawdown_penalty": 0.0,
+        "bucket_prior_score": 0.0,
+        "regime_adjustment_score": 0.0
+      },
+      "reason_codes": [
+        "feature_status:fallback_metadata_only",
+        "bucket:us_equity",
+        "regime:risk_off_liquidity_pressure",
+        "band:insufficient_data",
+        "feature_data_unavailable"
+      ],
+      "not_trade_signal": true,
+      "not_buy_signal": true,
+      "not_sell_signal": true
+    },
+    {
+      "ticker": "VEA",
+      "bucket": "global_equity",
+      "current_weight_pct": 8.251,
+      "feature_status": "fallback_metadata_only",
+      "alpha_research_score": 0.0,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "score_components": {
+        "feature_composite_score": 0.0,
+        "momentum_score": 0.0,
+        "trend_score": null,
+        "volatility_penalty": -0.4,
+        "drawdown_penalty": 0.0,
+        "bucket_prior_score": 0.0,
+        "regime_adjustment_score": 0.0
+      },
+      "reason_codes": [
+        "feature_status:fallback_metadata_only",
+        "bucket:global_equity",
+        "regime:risk_off_liquidity_pressure",
+        "band:insufficient_data",
+        "feature_data_unavailable"
+      ],
+      "not_trade_signal": true,
+      "not_buy_signal": true,
+      "not_sell_signal": true
+    },
+    {
+      "ticker": "VNM",
+      "bucket": "global_equity",
+      "current_weight_pct": 3.398,
+      "feature_status": "fallback_metadata_only",
+      "alpha_research_score": 0.0,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "score_components": {
+        "feature_composite_score": 0.0,
+        "momentum_score": 0.0,
+        "trend_score": null,
+        "volatility_penalty": -0.4,
+        "drawdown_penalty": 0.0,
+        "bucket_prior_score": 0.0,
+        "regime_adjustment_score": 0.0
+      },
+      "reason_codes": [
+        "feature_status:fallback_metadata_only",
+        "bucket:global_equity",
+        "regime:risk_off_liquidity_pressure",
+        "band:insufficient_data",
+        "feature_data_unavailable"
+      ],
+      "not_trade_signal": true,
+      "not_buy_signal": true,
+      "not_sell_signal": true
+    },
+    {
+      "ticker": "VOO",
+      "bucket": "us_equity",
+      "current_weight_pct": 10.109,
+      "feature_status": "fallback_metadata_only",
+      "alpha_research_score": 0.0,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "score_components": {
+        "feature_composite_score": 0.0,
+        "momentum_score": 0.0,
+        "trend_score": null,
+        "volatility_penalty": -0.4,
+        "drawdown_penalty": 0.0,
+        "bucket_prior_score": 0.0,
+        "regime_adjustment_score": 0.0
+      },
+      "reason_codes": [
+        "feature_status:fallback_metadata_only",
+        "bucket:us_equity",
+        "regime:risk_off_liquidity_pressure",
+        "band:insufficient_data",
+        "feature_data_unavailable"
+      ],
+      "not_trade_signal": true,
+      "not_buy_signal": true,
+      "not_sell_signal": true
+    },
+    {
+      "ticker": "GRID",
+      "bucket": "theme_etf",
+      "current_weight_pct": 3.729,
+      "feature_status": "fallback_metadata_only",
+      "alpha_research_score": -0.065,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "score_components": {
+        "feature_composite_score": 0.0,
+        "momentum_score": 0.0,
+        "trend_score": null,
+        "volatility_penalty": -0.4,
+        "drawdown_penalty": 0.0,
+        "bucket_prior_score": -0.45,
+        "regime_adjustment_score": -0.2
+      },
+      "reason_codes": [
+        "feature_status:fallback_metadata_only",
+        "bucket:theme_etf",
+        "regime:risk_off_liquidity_pressure",
+        "band:insufficient_data",
+        "feature_data_unavailable"
+      ],
+      "not_trade_signal": true,
+      "not_buy_signal": true,
+      "not_sell_signal": true
+    },
+    {
+      "ticker": "IFRA",
+      "bucket": "theme_etf",
+      "current_weight_pct": 5.787,
+      "feature_status": "fallback_metadata_only",
+      "alpha_research_score": -0.065,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "score_components": {
+        "feature_composite_score": 0.0,
+        "momentum_score": 0.0,
+        "trend_score": null,
+        "volatility_penalty": -0.4,
+        "drawdown_penalty": 0.0,
+        "bucket_prior_score": -0.45,
+        "regime_adjustment_score": -0.2
+      },
+      "reason_codes": [
+        "feature_status:fallback_metadata_only",
+        "bucket:theme_etf",
+        "regime:risk_off_liquidity_pressure",
+        "band:insufficient_data",
+        "feature_data_unavailable"
+      ],
+      "not_trade_signal": true,
+      "not_buy_signal": true,
+      "not_sell_signal": true
+    },
+    {
+      "ticker": "PICK",
+      "bucket": "theme_etf",
+      "current_weight_pct": 4.299,
+      "feature_status": "fallback_metadata_only",
+      "alpha_research_score": -0.065,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "score_components": {
+        "feature_composite_score": 0.0,
+        "momentum_score": 0.0,
+        "trend_score": null,
+        "volatility_penalty": -0.4,
+        "drawdown_penalty": 0.0,
+        "bucket_prior_score": -0.45,
+        "regime_adjustment_score": -0.2
+      },
+      "reason_codes": [
+        "feature_status:fallback_metadata_only",
+        "bucket:theme_etf",
+        "regime:risk_off_liquidity_pressure",
+        "band:insufficient_data",
+        "feature_data_unavailable"
+      ],
+      "not_trade_signal": true,
+      "not_buy_signal": true,
+      "not_sell_signal": true
+    },
+    {
+      "ticker": "SRVR",
+      "bucket": "theme_etf",
+      "current_weight_pct": 2.857,
+      "feature_status": "fallback_metadata_only",
+      "alpha_research_score": -0.065,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "score_components": {
+        "feature_composite_score": 0.0,
+        "momentum_score": 0.0,
+        "trend_score": null,
+        "volatility_penalty": -0.4,
+        "drawdown_penalty": 0.0,
+        "bucket_prior_score": -0.45,
+        "regime_adjustment_score": -0.2
+      },
+      "reason_codes": [
+        "feature_status:fallback_metadata_only",
+        "bucket:theme_etf",
+        "regime:risk_off_liquidity_pressure",
+        "band:insufficient_data",
+        "feature_data_unavailable"
+      ],
+      "not_trade_signal": true,
+      "not_buy_signal": true,
+      "not_sell_signal": true
+    },
+    {
+      "ticker": "00981A",
+      "bucket": "taiwan_tech",
+      "current_weight_pct": 9.415,
+      "feature_status": "fallback_metadata_only",
+      "alpha_research_score": -0.09,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "score_components": {
+        "feature_composite_score": 0.0,
+        "momentum_score": 0.0,
+        "trend_score": null,
+        "volatility_penalty": -0.4,
+        "drawdown_penalty": 0.0,
+        "bucket_prior_score": -0.55,
+        "regime_adjustment_score": -0.35
+      },
+      "reason_codes": [
+        "feature_status:fallback_metadata_only",
+        "bucket:taiwan_tech",
+        "regime:risk_off_liquidity_pressure",
+        "band:insufficient_data",
+        "feature_data_unavailable"
+      ],
+      "not_trade_signal": true,
+      "not_buy_signal": true,
+      "not_sell_signal": true
+    },
+    {
+      "ticker": "2330",
+      "bucket": "taiwan_tech",
+      "current_weight_pct": 1.489,
+      "feature_status": "fallback_metadata_only",
+      "alpha_research_score": -0.09,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "score_components": {
+        "feature_composite_score": 0.0,
+        "momentum_score": 0.0,
+        "trend_score": null,
+        "volatility_penalty": -0.4,
+        "drawdown_penalty": 0.0,
+        "bucket_prior_score": -0.55,
+        "regime_adjustment_score": -0.35
+      },
+      "reason_codes": [
+        "feature_status:fallback_metadata_only",
+        "bucket:taiwan_tech",
+        "regime:risk_off_liquidity_pressure",
+        "band:insufficient_data",
+        "feature_data_unavailable"
+      ],
+      "not_trade_signal": true,
+      "not_buy_signal": true,
+      "not_sell_signal": true
+    },
+    {
+      "ticker": "QQQ",
+      "bucket": "us_tech",
+      "current_weight_pct": 10.512,
+      "feature_status": "fallback_metadata_only",
+      "alpha_research_score": -0.119,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "score_components": {
+        "feature_composite_score": 0.0,
+        "momentum_score": 0.0,
+        "trend_score": null,
+        "volatility_penalty": -0.4,
+        "drawdown_penalty": 0.0,
+        "bucket_prior_score": -0.94,
+        "regime_adjustment_score": -0.25
+      },
+      "reason_codes": [
+        "feature_status:fallback_metadata_only",
+        "bucket:us_tech",
+        "regime:risk_off_liquidity_pressure",
+        "band:insufficient_data",
+        "feature_data_unavailable"
+      ],
+      "not_trade_signal": true,
+      "not_buy_signal": true,
+      "not_sell_signal": true
+    },
+    {
+      "ticker": "BTC-USD",
+      "bucket": "crypto",
+      "current_weight_pct": 8.242,
+      "feature_status": "fallback_metadata_only",
+      "alpha_research_score": -0.288,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "score_components": {
+        "feature_composite_score": 0.0,
+        "momentum_score": 0.0,
+        "trend_score": null,
+        "volatility_penalty": -0.4,
+        "drawdown_penalty": 0.0,
+        "bucket_prior_score": -1.98,
+        "regime_adjustment_score": -0.9
+      },
+      "reason_codes": [
+        "feature_status:fallback_metadata_only",
+        "bucket:crypto",
+        "regime:risk_off_liquidity_pressure",
+        "band:insufficient_data",
+        "feature_data_unavailable"
+      ],
+      "not_trade_signal": true,
+      "not_buy_signal": true,
+      "not_sell_signal": true
+    },
+    {
+      "ticker": "ETH-USD",
+      "bucket": "crypto",
+      "current_weight_pct": 3.862,
+      "feature_status": "fallback_metadata_only",
+      "alpha_research_score": -0.288,
+      "alpha_research_band": "insufficient_data",
+      "research_disposition": "observe_only_insufficient_data",
+      "confidence": 0.15,
+      "score_components": {
+        "feature_composite_score": 0.0,
+        "momentum_score": 0.0,
+        "trend_score": null,
+        "volatility_penalty": -0.4,
+        "drawdown_penalty": 0.0,
+        "bucket_prior_score": -1.98,
+        "regime_adjustment_score": -0.9
+      },
+      "reason_codes": [
+        "feature_status:fallback_metadata_only",
+        "bucket:crypto",
+        "regime:risk_off_liquidity_pressure",
+        "band:insufficient_data",
+        "feature_data_unavailable"
+      ],
+      "not_trade_signal": true,
+      "not_buy_signal": true,
+      "not_sell_signal": true
+    }
+  ],
+  "summary": {
+    "asset_count": 16,
+    "further_research_count": 0,
+    "observe_only_count": 16,
+    "negative_prior_count": 0,
+    "top_research_candidates": [],
+    "top_ranked_assets": [
+      "BOXX",
+      "GLDM",
+      "AVUV",
+      "USMV",
+      "VEA"
+    ],
+    "bottom_ranked_assets": [
+      "00981A",
+      "2330",
+      "QQQ",
+      "BTC-USD",
+      "ETH-USD"
+    ],
+    "research_boundary": "通過 alpha research ranking 不代表值得買入、不代表看多、不代表正式調倉。"
+  },
+  "warnings": []
+}
