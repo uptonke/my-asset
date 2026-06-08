@@ -1,0 +1,54 @@
+{
+  "version": "v9.0",
+  "status": "OK",
+  "generated_at": "2026-06-08T05:42:25+00:00",
+  "mode": "manual_trade_ticket_generator",
+  "safe_mode": true,
+  "research_only": true,
+  "manual_trade_ticket_generator_enabled": true,
+  "ticket_status": "blocked_by_formal_rebalance_draft_gate",
+  "trade_signal_enabled": false,
+  "execution_permission": false,
+  "broker_submission_enabled": false,
+  "official_rebalance_enabled": false,
+  "auto_trade_enabled": false,
+  "supabase_write_enabled": false,
+  "not_trade_order": true,
+  "not_buy_signal": true,
+  "not_sell_signal": true,
+  "maximum_sharpe_optimization_enabled": false,
+  "source_files": {
+    "formal_rebalance_draft_gate": "data/alpha/formal_rebalance_draft_gate_latest.json"
+  },
+  "ticket_policy": {
+    "purpose": "Convert formal rebalance review drafts into manual-review ticket shells only when explicit target weights or order lines exist.",
+    "system_cannot_submit_orders": true,
+    "manual_entry_required": true,
+    "requires_final_human_confirmation": true,
+    "do_not_fabricate_order_lines": true,
+    "ticket_is_not_broker_order": true
+  },
+  "summary": {
+    "ticket_status": "blocked_by_formal_rebalance_draft_gate",
+    "formal_gate_status": "blocked_by_alpha_validation_gate",
+    "source_formal_draft_count": 0,
+    "manual_ticket_count": 0,
+    "trade_signal_enabled": false,
+    "execution_permission": false,
+    "broker_submission_enabled": false,
+    "blocked_reason_codes": [
+      "formal_rebalance_draft_gate_not_available",
+      "no_formal_rebalance_draft_rows"
+    ]
+  },
+  "ticket_rows": [],
+  "blocked_reason_codes": [
+    "formal_rebalance_draft_gate_not_available",
+    "no_formal_rebalance_draft_rows"
+  ],
+  "safety_boundary": [
+    "v9.0 creates manual-review ticket shells only; it does not submit orders.",
+    "No broker API, no automatic execution, no buy/sell approval, and no official rebalance is enabled.",
+    "If explicit target weights or order lines are missing, v9.0 must output zero tickets rather than fabricate them."
+  ]
+}

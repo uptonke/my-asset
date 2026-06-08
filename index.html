@@ -4333,6 +4333,118 @@
                                 </div>
                             </div>
 
+
+
+                            <!-- v8.1-v9 Formal rebalance draft gate / manual trade ticket generator -->
+                            <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-orange-500/20 bg-orange-500/[0.04] shadow-lg overflow-hidden">
+                                <div class="px-4 py-3 border-b border-orange-500/20 bg-orange-500/[0.08] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-clipboard-check text-orange-300"></i>
+                                            v8.1 正式再平衡草案閘門 ＋ v9.0 人工交易票據產生器
+                                        </div>
+                                        <div class="text-[11px] text-orange-100/70 mt-1">
+                                            正式草案只代表可供人工審閱；人工交易票據也不是下單指令，不會自動送單，不代表買入或賣出。
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <button @click="loadFormalRebalanceDraftGate" class="px-3 py-1.5 rounded-lg bg-orange-500/20 border border-orange-500/30 text-orange-100 text-xs hover:bg-orange-500/30">重新讀取 v8.1</button>
+                                        <button @click="loadManualTradeTicket" class="px-3 py-1.5 rounded-lg bg-orange-500/20 border border-orange-500/30 text-orange-100 text-xs hover:bg-orange-500/30">重新讀取 v9</button>
+                                    </div>
+                                </div>
+                                <div class="p-4 space-y-4">
+                                    <div v-if="formalDraftGateError || manualTradeTicketError" class="rounded-xl border border-red-500/20 bg-red-500/[0.05] p-3 text-xs text-red-200 space-y-1">
+                                        <div v-if="formalDraftGateError">{{ formalDraftGateError }}</div>
+                                        <div v-if="manualTradeTicketError">{{ manualTradeTicketError }}</div>
+                                    </div>
+                                    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                        <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                            <div class="quant-label text-orange-300">v8.1 草案閘門</div>
+                                            <div class="quant-value text-white text-sm">{{ zhText(formalDraftGateSummary?.formal_draft_gate_status) }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">正式草案：{{ formalDraftGateSummary?.formal_draft_count ?? 0 }}</div>
+                                        </div>
+                                        <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                            <div class="quant-label text-orange-300">v9 票據狀態</div>
+                                            <div class="quant-value text-white text-sm">{{ zhText(manualTradeTicketSummary?.ticket_status) }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">票據：{{ manualTradeTicketSummary?.manual_ticket_count ?? 0 }}</div>
+                                        </div>
+                                        <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                            <div class="quant-label text-orange-300">交易訊號</div>
+                                            <div class="quant-value text-white text-base">{{ zhBool(manualTradeTicket?.trade_signal_enabled === false ? false : manualTradeTicket?.trade_signal_enabled) }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">應維持「否」</div>
+                                        </div>
+                                        <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                            <div class="quant-label text-orange-300">送單權限</div>
+                                            <div class="quant-value text-white text-base">{{ zhBool(manualTradeTicket?.broker_submission_enabled === false ? false : manualTradeTicket?.broker_submission_enabled) }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">應維持「否」</div>
+                                        </div>
+                                        <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                            <div class="quant-label text-orange-300">執行權限</div>
+                                            <div class="quant-value text-white text-base">{{ zhBool(manualTradeTicket?.execution_permission === false ? false : manualTradeTicket?.execution_permission) }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">應維持「否」</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] text-xs font-bold text-white">v8.1 正式草案列</div>
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full text-[11px]">
+                                                    <thead class="text-gray-500 border-b border-white/10">
+                                                        <tr>
+                                                            <th class="text-left px-3 py-2">草案</th>
+                                                            <th class="text-left px-3 py-2">狀態</th>
+                                                            <th class="text-right px-3 py-2">排序分</th>
+                                                            <th class="text-left px-3 py-2">理由</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="row in formalDraftVisibleRows" :key="row.formal_draft_id" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                            <td class="px-3 py-2 font-mono text-white max-w-[240px] truncate" :title="zhText(row.source_ranking_id)">{{ zhText(row.source_ranking_id) }}</td>
+                                                            <td class="px-3 py-2"><span class="px-2 py-0.5 rounded border text-[10px]" :class="row.formal_draft_status === 'formal_review_draft' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-red-500/30 bg-red-500/10 text-red-300'">{{ zhText(row.formal_draft_status) }}</span></td>
+                                                            <td class="px-3 py-2 text-right text-orange-200">{{ row.ranking_score ?? '—' }}</td>
+                                                            <td class="px-3 py-2 text-gray-400 max-w-[360px] truncate" :title="zhList(row.reason_codes)">{{ zhList((row.reason_codes || []).slice(0, 4)) }}</td>
+                                                        </tr>
+                                                        <tr v-if="!formalDraftVisibleRows.length">
+                                                            <td colspan="4" class="px-3 py-4 text-center text-gray-500">目前沒有正式再平衡草案。若 Alpha 驗證或治理未通過，這是正確阻擋。</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] text-xs font-bold text-white">v9 人工交易票據草案</div>
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full text-[11px]">
+                                                    <thead class="text-gray-500 border-b border-white/10">
+                                                        <tr>
+                                                            <th class="text-left px-3 py-2">票據</th>
+                                                            <th class="text-left px-3 py-2">狀態</th>
+                                                            <th class="text-left px-3 py-2">檢查</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="row in manualTradeTicketVisibleRows" :key="row.ticket_id" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                            <td class="px-3 py-2 font-mono text-white max-w-[240px] truncate" :title="row.ticket_id">{{ row.ticket_id }}</td>
+                                                            <td class="px-3 py-2"><span class="px-2 py-0.5 rounded border text-[10px] border-amber-500/30 bg-amber-500/10 text-amber-300">{{ zhText(row.ticket_status) }}</span></td>
+                                                            <td class="px-3 py-2 text-gray-400 max-w-[360px] truncate">{{ (row.pre_trade_checklist || []).length }} 項人工檢查</td>
+                                                        </tr>
+                                                        <tr v-if="!manualTradeTicketVisibleRows.length">
+                                                            <td colspan="3" class="px-3 py-4 text-center text-gray-500">目前沒有人工交易票據。若缺正式草案或缺明確目標權重，系統不得自行產生交易列。</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-3 text-[11px] text-gray-400 leading-relaxed">
+                                        <span class="font-bold text-orange-200">v9 邊界：</span>
+                                        人工交易票據只是人工重輸入前的檢查殼，不是券商委託單；若沒有明確目標權重或交易列，系統必須輸出 0 張票據，不能自行捏造買賣明細。
+                                    </div>
+                                </div>
+                            </div>
+
+
                             <!-- Risk contribution + model assumptions -->
                             <div v-show="analyticsViewMode === 'risk'" class="grid grid-cols-1 xl:grid-cols-3 gap-4">
                                 <div class="xl:col-span-2 rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
@@ -5992,7 +6104,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=v8-execution-draft-1"></script>
+<script src="assets/js/app.bundle.js?v=v9-manual-ticket-1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
