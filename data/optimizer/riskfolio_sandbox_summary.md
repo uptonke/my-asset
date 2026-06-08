@@ -8,10 +8,10 @@
 
 | Portfolio | Status | Ann Vol | VaR95 | ES95 | MDD | Turnover vs Current |
 |---|---:|---:|---:|---:|---:|---:|
-| current_weight | OK | 11.07% | 0.972% | 1.594% | -5.37% | 0.0% |
-| inverse_vol_baseline | OK | 9.28% | 0.822% | 1.386% | -4.99% | 22.58% |
-| scipy_min_variance_fallback | OK | 5.08% | 0.354% | 0.756% | -2.63% | 77.92% |
-| riskfolio_min_variance | OK | 5.07% | 0.372% | 0.756% | -2.67% | 77.24% |
-| riskfolio_cvar_minimize | OK | 5.37% | 0.385% | 0.729% | -2.53% | 71.79% |
-| riskfolio_risk_parity_mv | OK | 8.32% | 0.71% | 1.199% | -4.1% | 28.12% |
-| riskfolio_hrp_mv | OK | 7.03% | 0.655% | 1.06% | -3.21% | 38.88% |
+| current_weight | OK | 11.09% | 0.98% | 1.6% | -5.4% | 0.0% |
+| inverse_vol_baseline | OK | 9.27% | 0.821% | 1.386% | -4.99% | 22.89% |
+| scipy_min_variance_fallback | OK | 5.07% | 0.352% | 0.756% | -2.63% | 77.7% |
+| riskfolio_min_variance | OK | 5.07% | 0.372% | 0.756% | -2.67% | 77.09% |
+| riskfolio_cvar_minimize | OK | 5.66% | 0.397% | 0.724% | -2.54% | 69.59% |
+| riskfolio_risk_parity_mv | OK | 8.3% | 0.711% | 1.198% | -4.1% | 28.29% |
+| riskfolio_hrp_mv | OK | 7.03% | 0.654% | 1.06% | -3.21% | 39.06% |

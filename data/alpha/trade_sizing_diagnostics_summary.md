@@ -1,6 +1,6 @@
 # v9.3 Gate Failure & Trade Sizing Diagnostics
 
-- Generated: `2026-06-08T14:23:17+00:00`
+- Generated: `2026-06-08T14:36:32+00:00`
 - Diagnostic status: **blocked**
 - Blockers: `11`
 - Watch items: `3`
@@ -22,7 +22,7 @@
 - **watch** `governance_not_clean_pass` — 模型治理仍有觀察警示：Governance verdict = watch_only_with_governance_warnings；score = 92.0。
 - **blocker** `manual_override_disabled` — 人工 override 未啟用：config/manual_approval_override.json 目前未允許升級正式草案。
 - **blocker** `missing_cash_balance` — 現金餘額缺失：cash_balance_twd = None；source = missing_cash_balance。
-- **blocker** `incomplete_real_world_price_fetch` — 部分資產價格不是即時真實抓取：未成功 real-world fetch 的標的：00981A, 2330, AVUV, BOXX, BTC-USD, ETH-USD, GRID, IFRA, PICK, QQQ, SRVR, USMV。
+- **blocker** `incomplete_real_world_price_fetch` — 部分資產價格不是即時真實抓取：未成功 real-world fetch 的標的：安聯台灣科技。
 - **watch** `minimum_trade_unit_not_met` — 部分部位低於最小交易單位：共有 2 檔不符合最小單位檢查。
 - **blocker** `no_formal_rebalance_draft` — 沒有正式再平衡草案：Formal draft gate status = blocked_by_formal_pass_conditions；formal draft count = 0。
 

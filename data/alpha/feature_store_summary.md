@@ -1,7 +1,7 @@
 # v5.0 Forecast Feature Store
 
 - Status: **OK**
-- Generated at: `2026-06-08T06:41:00+00:00`
+- Generated at: `2026-06-08T14:36:28+00:00`
 - Asset count: `16`
 - Feature-ready count: `16`
 - Fallback count: `0`
