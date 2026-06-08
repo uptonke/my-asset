@@ -4130,6 +4130,98 @@
                                 </div>
                             </div>
 
+                            <!-- v5.2 Rebalance Candidate Ranking Engine -->
+                            <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-purple-500/20 bg-purple-500/[0.04] shadow-lg overflow-hidden">
+                                <div class="px-4 py-3 border-b border-purple-500/20 bg-purple-500/[0.08] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-list-ol text-purple-300"></i>
+                                            v5.2 調倉研究候選排序
+                                        </div>
+                                        <div class="text-[11px] text-purple-100/70 mt-1">
+                                            把風險降低、約束、換手率、Alpha 研究分數、樣本外與治理層合併成研究排序；不是買入、不是看多、不是最佳配置。
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <button @click="loadRebalanceCandidateRanking" class="px-3 py-1.5 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-100 text-xs hover:bg-purple-500/30">重新讀取 v5.2</button>
+                                    </div>
+                                </div>
+
+                                <div class="p-4 space-y-4">
+                                    <div v-if="rebalanceRankingError" class="rounded-xl border border-red-500/20 bg-red-500/[0.05] p-3 text-xs text-red-200">
+                                        {{ rebalanceRankingError }}
+                                    </div>
+
+                                    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                        <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                            <div class="quant-label text-purple-300">候選草案</div>
+                                            <div class="quant-value text-white">{{ rebalanceRankingSummary?.candidate_count ?? 0 }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">研究排序，不是交易</div>
+                                        </div>
+                                        <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                            <div class="quant-label text-purple-300">進一步研究</div>
+                                            <div class="quant-value text-white">{{ rebalanceRankingSummary?.further_research_count ?? 0 }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">不是買入清單</div>
+                                        </div>
+                                        <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                            <div class="quant-label text-purple-300">僅供觀察</div>
+                                            <div class="quant-value text-white">{{ rebalanceRankingSummary?.observe_only_count ?? 0 }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">證據不足以行動</div>
+                                        </div>
+                                        <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                            <div class="quant-label text-purple-300">排除 / 阻擋</div>
+                                            <div class="quant-value text-white">{{ rebalanceRankingSummary?.excluded_count ?? 0 }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">高換手 / 約束 / 治理</div>
+                                        </div>
+                                        <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                            <div class="quant-label text-purple-300">交易訊號</div>
+                                            <div class="quant-value text-white text-base">{{ rebalanceCandidateRanking?.trade_signal_enabled === false ? '關閉' : '需審閱' }}</div>
+                                            <div class="text-[10px] text-gray-500 mt-1">最大夏普仍停用</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                        <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
+                                            <div class="text-xs font-bold text-white">調倉研究候選 Top 10</div>
+                                            <div class="text-[10px] text-gray-500">排序分數只代表研究優先順序</div>
+                                        </div>
+                                        <div class="overflow-x-auto">
+                                            <table class="w-full text-[11px]">
+                                                <thead class="text-gray-500 border-b border-white/10">
+                                                    <tr>
+                                                        <th class="text-left px-3 py-2">排名</th>
+                                                        <th class="text-left px-3 py-2">候選</th>
+                                                        <th class="text-left px-3 py-2">分類</th>
+                                                        <th class="text-right px-3 py-2">分數</th>
+                                                        <th class="text-right px-3 py-2">換手率</th>
+                                                        <th class="text-left px-3 py-2">主要理由</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr v-for="row in rebalanceRankingVisibleRows" :key="row.ranking_id" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                        <td class="px-3 py-2 text-gray-400">{{ row.rank ?? '—' }}</td>
+                                                        <td class="px-3 py-2 font-mono text-white max-w-[260px] truncate" :title="zhText(row.ranking_id)">{{ zhText(row.ranking_id) }}</td>
+                                                        <td class="px-3 py-2"><span class="px-2 py-0.5 rounded border text-[10px]" :class="machineReviewBadgeClass({ model_status: row.ranking_status, reason_codes: row.reason_codes })">{{ zhText(row.ranking_status) }}</span></td>
+                                                        <td class="px-3 py-2 text-right text-purple-200">{{ row.ranking_score ?? '—' }}</td>
+                                                        <td class="px-3 py-2 text-right text-gray-300">{{ row.turnover_vs_current_pct ?? '—' }}%</td>
+                                                        <td class="px-3 py-2 text-gray-400 max-w-[360px] truncate" :title="zhList(row.reason_codes)">{{ zhList((row.reason_codes || []).slice(0, 4)) }}</td>
+                                                    </tr>
+                                                    <tr v-if="!rebalanceRankingVisibleRows.length">
+                                                        <td colspan="6" class="px-3 py-4 text-center text-gray-500">尚未讀到 v5.2 調倉研究候選排序。</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div class="rounded-xl border border-purple-500/20 bg-purple-500/[0.04] p-3 text-[11px] text-gray-400 leading-relaxed">
+                                        <span class="font-bold text-purple-200">研究邊界：</span>
+                                        v5.2 只回答「哪些調倉草案較值得研究」。進一步研究不代表值得買入、不代表看多、不代表賣出、不代表最佳配置，也不代表正式調倉。
+                                    </div>
+                                </div>
+                            </div>
+
+
                             <!-- Risk contribution + model assumptions -->
                             <div v-show="analyticsViewMode === 'risk'" class="grid grid-cols-1 xl:grid-cols-3 gap-4">
                                 <div class="xl:col-span-2 rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
@@ -5789,7 +5881,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=v5-alpha-research-1"></script>
+<script src="assets/js/app.bundle.js?v=v5-2-rebalance-ranking-1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>

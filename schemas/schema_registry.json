@@ -1,6 +1,6 @@
 {
-  "version": "v5.1",
-  "generated_by": "Schema Registry + Alpha Research Sandbox v5.1",
+  "version": "v5.2",
+  "generated_by": "Schema Registry + Rebalance Candidate Ranking v5.2",
   "policy": {
     "mode": "permissive_structural_validation",
     "strictness": "top_level_contract_plus_safety_flags",
@@ -12,7 +12,10 @@
       "Schema validation is a pre-commit gate for workflow-generated outputs.",
       "v5 forecast/alpha research outputs must remain research_only.",
       "v5 outputs must not enable trade_signal_enabled, official_alpha_enabled, alpha_model_enabled, execution_permission, maximum_sharpe_optimization_enabled, auto_trade_enabled, or supabase_write_enabled.",
-      "v5 further_research means research queue only; it is not a buy signal, not bullish, and not rebalance advice."
+      "v5 further_research means research queue only; it is not a buy signal, not bullish, and not rebalance advice.",
+      "v5.2 rebalance candidate ranking must remain research_only.",
+      "v5.2 ranking must not enable official_rebalance_enabled, trade_signal_enabled, execution_permission, maximum_sharpe_optimization_enabled, or supabase_write_enabled.",
+      "v5.2 further_research is a research queue label only; it is not a buy/sell signal, not bullish, and not a best-allocation recommendation."
     ],
     "v4_8_release_boundary": "Component/backend split is registry-first; dead-file cleanup is plan-only; no auto-delete and no trading execution."
   },
@@ -158,6 +161,12 @@
     {
       "path": "data/alpha/alpha_research_sandbox_latest.json",
       "schema": "schemas/alpha/alpha_research_sandbox.schema.json",
+      "required": true,
+      "domain": "alpha_research"
+    },
+    {
+      "path": "data/alpha/rebalance_candidate_ranking_latest.json",
+      "schema": "schemas/alpha/rebalance_candidate_ranking.schema.json",
       "required": true,
       "domain": "alpha_research"
     }

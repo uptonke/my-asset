@@ -44,6 +44,7 @@ REQUIRED_FILES = [
     "scripts/build_consolidated_release_manifest.py",
     "scripts/build_forecast_feature_store.py",
     "scripts/build_alpha_research_sandbox.py",
+    "scripts/build_rebalance_candidate_ranking.py",
     "docs/FRONTEND_SOURCE_OF_TRUTH.md",
     "docs/SCHEMA_REGISTRY.md",
     "docs/UI_COMPONENT_SPLIT.md",
