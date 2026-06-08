@@ -257,6 +257,24 @@ jobs:
           set -euo pipefail
           python scripts/build_rebalance_candidate_ranking.py
 
+      - name: Build Alpha Validation Gate v6.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build_alpha_validation_gate.py
+
+      - name: Build Manual Rebalance Proposal v7.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build_manual_rebalance_proposal.py
+
+      - name: Build Execution-Ready Draft v8.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build_execution_ready_draft.py
+
       - name: Validation Gate v4.6
         shell: bash
         run: |
@@ -293,6 +311,7 @@ jobs:
             docs/SCHEMA_REGISTRY.md
             docs/ALPHA_RESEARCH_SANDBOX.md
             docs/REBALANCE_CANDIDATE_RANKING.md
+            docs/EXECUTION_READY_DRAFT_BOUNDARY.md
 
       - name: Commit task output
         shell: bash
@@ -302,7 +321,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add data/optimizer/ data/alpha/ data/repo_architecture/ data/repo_health/ docs/ schemas/ package.json split-manifest.json || true
-          git add .github/workflows/ scripts/README.md scripts/v191_workflow_consolidation_cleanup.py scripts/validate_repo_integrity.py scripts/build_forecast_feature_store.py scripts/build_alpha_research_sandbox.py scripts/build_rebalance_candidate_ranking.py || true
+          git add .github/workflows/ scripts/README.md scripts/v191_workflow_consolidation_cleanup.py scripts/validate_repo_integrity.py scripts/build_forecast_feature_store.py scripts/build_alpha_research_sandbox.py scripts/build_rebalance_candidate_ranking.py scripts/build_alpha_validation_gate.py scripts/build_manual_rebalance_proposal.py scripts/build_execution_ready_draft.py || true
 
           if [ "${{ github.event.inputs.task }}" = "apply_terminal_ia_phase2" ]; then
             git add index.html assets/css/80-terminal-ia-phase2.css assets/js/terminal-ia-phase2.js scripts/apply_terminal_ia_phase2.py assets/css/tailwind-built.css || true
