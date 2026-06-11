@@ -1,6 +1,6 @@
 # Walk-forward Backtest v3.3
 
-Generated: `2026-06-08T14:36:19+00:00`
+Generated: `2026-06-11T13:23:37+00:00`
 
 ## Safety boundary
 
@@ -12,7 +12,7 @@ Generated: `2026-06-08T14:36:19+00:00`
 - Status: `OK`
 - Mode detail: `true_walk_forward_from_price_returns`
 - Method count: `3`
-- Fold count: `11`
+- Fold count: `12`
 - Likely better than current: `-`
 - Verdict: `needs_more_out_of_sample_evidence`
 
@@ -20,9 +20,9 @@ Generated: `2026-06-08T14:36:19+00:00`
 
 | Method | Folds | Avg ES95 | Avg Vol | Avg Turnover | Risk win rate | Decision |
 |---|---:|---:|---:|---:|---:|---|
-| `inverse_vol_baseline` | 11 | 0.0 | 0.0 | 23.182 | 0.0 | `watch_only_validation` |
-| `scipy_min_variance_fallback` | 11 | 0.0 | 0.0 | 74.367 | 0.0 | `watch_only_validation` |
-| `current_weight` | 11 | 0.0 | 0.0 | 0.0 | None | `baseline` |
+| `inverse_vol_baseline` | 12 | 0.0 | 0.0 | 22.609 | 0.0 | `watch_only_validation` |
+| `scipy_min_variance_fallback` | 12 | 0.0 | 0.0 | 73.179 | 0.0 | `watch_only_validation` |
+| `current_weight` | 12 | 0.0 | 0.0 | 0.0 | None | `baseline` |
 
 ## Warnings
 

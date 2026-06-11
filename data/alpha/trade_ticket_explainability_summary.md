@@ -1,6 +1,6 @@
 # v9.6 Trade Ticket Explainability
 
-- Generated: `2026-06-09T12:05:40+00:00`
+- Generated: `2026-06-11T13:23:50+00:00`
 - Explainability status: **ticket_explanations_available**
 - Manual ticket count: `0`
 - Explanation rows: `1`

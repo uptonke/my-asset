@@ -1,8 +1,8 @@
 # v8.1 Formal Draft Pass Conditions
 
-- Generated: `2026-06-08T14:36:28+00:00`
+- Generated: `2026-06-11T13:23:44+00:00`
 - Pass status: **blocked**
-- Hard fails: `4`
+- Hard fails: `3`
 - Watch items: `0`
 - Alpha validation: `watch_only_validation`
 - Governance: `92.0` / `watch_only_with_governance_warnings`

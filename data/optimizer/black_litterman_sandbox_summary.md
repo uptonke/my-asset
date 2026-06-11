@@ -1,6 +1,6 @@
 # Bayesian / Black-Litterman Sandbox v3.1
 
-Generated: `2026-06-08T14:36:10+00:00`
+Generated: `2026-06-11T13:23:31+00:00`
 
 ## Safety boundary
 

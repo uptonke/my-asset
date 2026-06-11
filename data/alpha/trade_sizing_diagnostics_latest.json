@@ -1,7 +1,7 @@
 {
   "version": "v9.3",
   "status": "OK",
-  "generated_at": "2026-06-08T14:36:32+00:00",
+  "generated_at": "2026-06-11T13:23:50+00:00",
   "mode": "gate_failure_and_trade_sizing_diagnostics",
   "safe_mode": true,
   "research_only": true,
@@ -17,24 +17,24 @@
   "diagnostic_status": "blocked",
   "summary": {
     "diagnostic_status": "blocked",
-    "blocker_count": 11,
+    "blocker_count": 9,
     "watch_count": 3,
     "formal_pass_status": "blocked",
-    "formal_hard_fail_count": 4,
+    "formal_hard_fail_count": 3,
     "formal_watch_fail_count": 0,
     "alpha_validation_status": "watch_only_validation",
-    "further_research_count": 0,
+    "further_research_count": 2,
     "governance_score": 92.0,
     "governance_verdict": "watch_only_with_governance_warnings",
     "walk_forward_status": "OK",
-    "walk_forward_fold_count": 11,
+    "walk_forward_fold_count": 12,
     "manual_override_enabled": false,
     "cash_balance_available": false,
     "cash_balance_twd": null,
     "cash_balance_source": "missing_cash_balance",
     "all_prices_real_world": false,
-    "real_world_price_success_count": 16,
-    "asset_count": 17,
+    "real_world_price_success_count": 14,
+    "asset_count": 15,
     "formal_draft_gate_status": "blocked_by_formal_pass_conditions",
     "formal_draft_count": 0,
     "manual_ticket_status": "blocked_by_formal_rebalance_draft_gate",
@@ -42,13 +42,13 @@
     "paper_trade_count": 0,
     "top_block_reasons": [
       "alpha_validation_gate_not_passed",
-      "no_rebalance_candidate_cleared_research_threshold",
       "no_manual_research_proposal",
       "no_pre_execution_draft",
       "alpha_validation_not_passed",
-      "no_further_research_candidates",
       "manual_override_disabled",
-      "missing_cash_balance"
+      "missing_cash_balance",
+      "incomplete_real_world_price_fetch",
+      "no_formal_rebalance_draft"
     ]
   },
   "source_files": {
@@ -66,14 +66,6 @@
       "code": "alpha_validation_gate_not_passed",
       "title": "alpha_validation",
       "detail": "實際值：watch_only_validation；要求：pass_or_conditional_pass。alpha_validation_gate_not_passed",
-      "remediation": "若要產生正式草案，需先改善此 gate；不得用前端文字繞過。"
-    },
-    {
-      "layer": "formal_pass_conditions",
-      "severity": "blocker",
-      "code": "no_rebalance_candidate_cleared_research_threshold",
-      "title": "rebalance_ranking",
-      "detail": "實際值：0；要求：>=1 further research candidate。no_rebalance_candidate_cleared_research_threshold",
       "remediation": "若要產生正式草案，需先改善此 gate；不得用前端文字繞過。"
     },
     {
@@ -99,14 +91,6 @@
       "title": "Alpha 驗證仍未通過",
       "detail": "目前 Alpha validation status = watch_only_validation。",
       "remediation": "維持研究模式；待 walk-forward / governance / ranking 條件改善後再允許正式草案。"
-    },
-    {
-      "layer": "rebalance_ranking",
-      "severity": "blocker",
-      "code": "no_further_research_candidates",
-      "title": "沒有進一步研究候選",
-      "detail": "v5.2 調倉研究候選排序沒有任何草案進入進一步研究。",
-      "remediation": "不要產生交易票據；先改善 alpha / risk / constraint 條件。"
     },
     {
       "layer": "model_governance",
@@ -179,7 +163,7 @@
       "cash_balance_twd": null,
       "source": "missing_cash_balance"
     },
-    "asset_count": 17,
+    "asset_count": 15,
     "failed_price_rows": [
       {
         "ticker": "安聯台灣科技",
@@ -189,10 +173,10 @@
         "quote_symbol": "安聯台灣科技",
         "latest_price": 783.29,
         "quote_currency": "USD",
-        "usd_twd_fx": 31.510000228881836,
-        "price_twd": 24681.468079,
-        "market_value_twd": 1063771.27,
-        "max_sellable_amount_twd": 1063771.27,
+        "usd_twd_fx": 31.632999420166016,
+        "price_twd": 24777.812116,
+        "market_value_twd": 1067923.7,
+        "max_sellable_amount_twd": 1067923.7,
         "max_buy_amount_twd": null,
         "max_trade_budget_twd": null,
         "minimum_trade_unit": 1,
@@ -234,7 +218,6 @@
   "next_actions": [
     "在 config/manual_approval_override.json 補 cash_balance_twd 與 max_trade_budget_twd；manual_override_enabled 可維持 false。",
     "若只想產生正式審閱草案，考慮開啟 review-only manual override；不得開啟交易或送單。",
-    "檢查 v5.2 排名為何沒有進一步研究候選；避免放寬門檻到產生假訊號。",
     "檢查 v6 Alpha Validation Gate 的 watch 條件；在通過前不要生成正式交易票據。"
   ],
   "safety_boundary": [

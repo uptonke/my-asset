@@ -1,9 +1,9 @@
 # v6.0 Alpha Validation Gate
 
-- Generated: `2026-06-08T14:36:28+00:00`
+- Generated: `2026-06-11T13:23:44+00:00`
 - Validation status: **watch_only_validation**
-- Gates: `5` pass / `2` watch / `0` fail
-- Further research rankings: `0`
+- Gates: `6` pass / `1` watch / `0` fail
+- Further research rankings: `2`
 - Trade signal enabled: `False`
 
 ## Gates
@@ -13,7 +13,7 @@
 - `g4_walk_forward_sample` Walk-forward validation depth: **pass** — ok
 - `g5_model_governance` Model governance verdict: **watch** — governance_not_full_pass
 - `g6_safety_flags` Safety flags remain disabled: **pass** — ok
-- `g7_candidate_availability` Research candidate availability: **watch** — no_rebalance_candidate_cleared_research_threshold
+- `g7_candidate_availability` Research candidate availability: **pass** — ok
 
 ## Safety boundary
 - v6 pass/watch labels are validation labels only, not trade instructions.

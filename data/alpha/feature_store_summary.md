@@ -1,17 +1,17 @@
 # v5.0 Forecast Feature Store
 
 - Status: **OK**
-- Generated at: `2026-06-08T14:36:28+00:00`
-- Asset count: `16`
-- Feature-ready count: `16`
+- Generated at: `2026-06-11T13:23:43+00:00`
+- Asset count: `14`
+- Feature-ready count: `14`
 - Fallback count: `0`
 - Return feature source: `live_strict_returns_from_update_stock_meta`
 
 ## Top feature assets
 - `00981A`
-- `2330`
-- `QQQ`
 - `AVUV`
+- `BOXX`
+- `QQQ`
 - `VOO`
 
 ## Safety boundary

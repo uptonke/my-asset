@@ -1,6 +1,6 @@
 # Expected Return Model v3.2
 
-Generated: `2026-06-08T14:36:10+00:00`
+Generated: `2026-06-11T13:23:31+00:00`
 
 ## Safety boundary
 
@@ -10,7 +10,7 @@ Generated: `2026-06-08T14:36:10+00:00`
 
 ## Summary
 
-- Asset priors: `16`
+- Asset priors: `14`
 - Positive prior buckets: `2`
 - Negative prior buckets: `3`
 - Verdict: `relative_prior_only_no_max_sharpe`
@@ -37,19 +37,18 @@ Generated: `2026-06-08T14:36:10+00:00`
 |---|---|---:|---|---:|
 | `BOXX` | `cash` | 2.05 | `relative_overweight_prior` | 0.75 |
 | `GLDM` | `gold` | 0.622 | `neutral_or_no_edge_prior` | 0.75 |
-| `2330` | `other` | 0.0 | `neutral_or_no_edge_prior` | 0.75 |
 | `AVUV` | `other` | 0.0 | `neutral_or_no_edge_prior` | 0.75 |
 | `PICK` | `other` | 0.0 | `neutral_or_no_edge_prior` | 0.75 |
 | `USMV` | `other` | 0.0 | `neutral_or_no_edge_prior` | 0.75 |
 | `VEA` | `other` | 0.0 | `neutral_or_no_edge_prior` | 0.75 |
 | `VOO` | `us_equity` | 0.0 | `neutral_or_no_edge_prior` | 0.75 |
-| `VNM` | `emerging_market` | -0.35 | `neutral_or_no_edge_prior` | 0.7 |
 | `GRID` | `theme_etf` | -0.45 | `neutral_or_no_edge_prior` | 0.7 |
 | `IFRA` | `theme_etf` | -0.45 | `neutral_or_no_edge_prior` | 0.7 |
 | `SRVR` | `theme_etf` | -0.45 | `neutral_or_no_edge_prior` | 0.7 |
 | `00981A` | `taiwan_tech` | -0.55 | `neutral_or_no_edge_prior` | 0.75 |
 | `QQQ` | `us_tech` | -0.94 | `relative_underweight_prior` | 0.75 |
 | `BTC-USD` | `crypto` | -1.98 | `relative_underweight_prior` | 0.7 |
+| `ETH-USD` | `crypto` | -1.98 | `relative_underweight_prior` | 0.7 |
 
 ## Warnings
 
