@@ -1,12 +1,12 @@
 # Validation Gate v4.6
 
 - Status: **OK**
-- Generated at: `2026-06-08T14:36:33.121061+00:00`
+- Generated at: `2026-06-11T13:19:47.457718+00:00`
 - Error count: `0`
 - Warning count: `0`
-- Schema validated: `35` files
-- JSON parsed: `88` files
-- Python compiled: `55` scripts
+- Schema validated: `38` files
+- JSON parsed: `94` files
+- Python compiled: `58` scripts
 
 ## Errors
 - None
