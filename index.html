@@ -4562,10 +4562,26 @@
                                                 </div>
                                                 <div class="text-[11px] text-cyan-100/70 mt-1">這一層只做人工輸入、紙上追蹤與阻擋理由解釋；不代表買入、不代表賣出、不會送單。</div>
                                             </div>
-                                            <div class="flex flex-wrap gap-2">
-                                                <button @click="loadManualApprovalConsole" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-100 text-xs hover:bg-cyan-500/30">重讀審閱控制台</button>
-                                                <button @click="loadPaperTradePerformanceEvaluator" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-100 text-xs hover:bg-cyan-500/30">重讀紙上績效</button>
-                                                <button @click="loadTradeTicketExplainability" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-100 text-xs hover:bg-cyan-500/30">重讀票據解釋</button>
+                                            <div class="space-y-1 lg:text-right">
+                                                <div class="flex flex-wrap gap-2 lg:justify-end">
+                                                    <button @click="loadManualApprovalConsole" :disabled="manualApprovalConsoleLoading" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-100 text-xs disabled:opacity-60 disabled:cursor-wait" :class="manualApprovalConsoleLoading ? '' : 'hover:bg-cyan-500/30'">
+                                                        <span v-if="manualApprovalConsoleLoading">重新載入中...</span>
+                                                        <span v-else>重新載入審閱控制台資料</span>
+                                                    </button>
+                                                    <button @click="loadPaperTradePerformanceEvaluator" :disabled="paperTradePerformanceLoading" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-100 text-xs disabled:opacity-60 disabled:cursor-wait" :class="paperTradePerformanceLoading ? '' : 'hover:bg-cyan-500/30'">
+                                                        <span v-if="paperTradePerformanceLoading">重新載入中...</span>
+                                                        <span v-else>重新載入紙上績效資料</span>
+                                                    </button>
+                                                    <button @click="loadTradeTicketExplainability" :disabled="tradeTicketExplainabilityLoading" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-100 text-xs disabled:opacity-60 disabled:cursor-wait" :class="tradeTicketExplainabilityLoading ? '' : 'hover:bg-cyan-500/30'">
+                                                        <span v-if="tradeTicketExplainabilityLoading">重新載入中...</span>
+                                                        <span v-else>重新載入票據解釋資料</span>
+                                                    </button>
+                                                </div>
+                                                <div class="text-[10px] text-cyan-100/60 leading-relaxed space-y-0.5">
+                                                    <div>{{ manualApprovalConsoleReloadMessage || (manualApprovalConsoleLastLoadedAt ? '審閱控制台已載入：' + manualApprovalConsoleLastLoadedAt : '審閱控制台尚未手動重讀') }}</div>
+                                                    <div>{{ paperTradePerformanceReloadMessage || (paperTradePerformanceLastLoadedAt ? '紙上績效已載入：' + paperTradePerformanceLastLoadedAt : '紙上績效尚未手動重讀') }}</div>
+                                                    <div>{{ tradeTicketExplainabilityReloadMessage || (tradeTicketExplainabilityLastLoadedAt ? '票據解釋已載入：' + tradeTicketExplainabilityLastLoadedAt : '票據解釋尚未手動重讀') }}</div>
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="p-3 space-y-3">
@@ -6309,7 +6325,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=v9-6-console-performance-explainability-1"></script>
+<script src="assets/js/app.bundle.js?v=v9-7-reload-buttons-wiring-1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>

@@ -3496,6 +3496,13 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
             }
             return `${ccy} ` + new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 2 }).format(value);
         }
+        function reloadNowText() {
+            try {
+                return new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false });
+            } catch (err) {
+                return new Date().toLocaleString('zh-TW', { hour12: false });
+            }
+        }
         function formatPercent(n) { return ((n||0)*100).toFixed(1) + '%'; }
         const ZH_TEXT_MAP = Object.freeze({
             'OK': '正常',
@@ -4710,28 +4717,66 @@ chartCML.data.datasets = [
 
        const manualApprovalConsole = ref(null);
        const manualApprovalConsoleError = ref('');
+       const manualApprovalConsoleLoading = ref(false);
+       const manualApprovalConsoleLastLoadedAt = ref('');
+       const manualApprovalConsoleReloadMessage = ref('');
        async function loadManualApprovalConsole() {
         manualApprovalConsoleError.value = '';
+        manualApprovalConsoleLoading.value = true;
+        manualApprovalConsoleReloadMessage.value = '正在重新載入審閱控制台資料...';
+        const startedAt = Date.now();
         try {
-            const response = await fetch('data/alpha/manual_approval_console_latest.json?v=' + Date.now(), { cache: 'no-store' });
-            if (!response.ok) { manualApprovalConsole.value = null; manualApprovalConsoleError.value = `尚未讀到 v9.4 人工審閱控制台 (${response.status})`; return; }
+            const response = await fetch('data/alpha/manual_approval_console_latest.json?_=' + startedAt, { cache: 'no-store' });
+            if (!response.ok) {
+                manualApprovalConsole.value = null;
+                manualApprovalConsoleError.value = `尚未讀到 v9.4 人工審閱控制台 (${response.status})`;
+                manualApprovalConsoleReloadMessage.value = `審閱控制台載入失敗：HTTP ${response.status}`;
+                return;
+            }
             const data = await response.json();
             manualApprovalConsole.value = data && typeof data === 'object' ? data : null;
-        } catch (err) { manualApprovalConsole.value = null; manualApprovalConsoleError.value = err?.message || String(err); }
+            manualApprovalConsoleLastLoadedAt.value = reloadNowText();
+            manualApprovalConsoleReloadMessage.value = `審閱控制台已重新載入：${manualApprovalConsoleLastLoadedAt.value}`;
+        } catch (err) {
+            manualApprovalConsole.value = null;
+            manualApprovalConsoleError.value = err?.message || String(err);
+            manualApprovalConsoleReloadMessage.value = `審閱控制台載入失敗：${manualApprovalConsoleError.value}`;
+        } finally {
+            manualApprovalConsoleLoading.value = false;
+        }
        }
        const manualApprovalConsoleSummary = computed(() => manualApprovalConsole.value?.summary || {});
        const manualApprovalMissingInputs = computed(() => Array.isArray(manualApprovalConsole.value?.missing_inputs) ? manualApprovalConsole.value.missing_inputs : []);
 
        const paperTradePerformanceEvaluator = ref(null);
        const paperTradePerformanceError = ref('');
+       const paperTradePerformanceLoading = ref(false);
+       const paperTradePerformanceLastLoadedAt = ref('');
+       const paperTradePerformanceReloadMessage = ref('');
        async function loadPaperTradePerformanceEvaluator() {
         paperTradePerformanceError.value = '';
+        paperTradePerformanceLoading.value = true;
+        paperTradePerformanceReloadMessage.value = '正在重新載入紙上績效資料...';
+        const startedAt = Date.now();
         try {
-            const response = await fetch('data/alpha/paper_trade_performance_evaluator_latest.json?v=' + Date.now(), { cache: 'no-store' });
-            if (!response.ok) { paperTradePerformanceEvaluator.value = null; paperTradePerformanceError.value = `尚未讀到 v9.5 紙上績效評估 (${response.status})`; return; }
+            const response = await fetch('data/alpha/paper_trade_performance_evaluator_latest.json?_=' + startedAt, { cache: 'no-store' });
+            if (!response.ok) {
+                paperTradePerformanceEvaluator.value = null;
+                paperTradePerformanceError.value = `尚未讀到 v9.5 紙上績效評估 (${response.status})`;
+                paperTradePerformanceReloadMessage.value = `紙上績效載入失敗：HTTP ${response.status}`;
+                return;
+            }
             const data = await response.json();
             paperTradePerformanceEvaluator.value = data && typeof data === 'object' ? data : null;
-        } catch (err) { paperTradePerformanceEvaluator.value = null; paperTradePerformanceError.value = err?.message || String(err); }
+            paperTradePerformanceLastLoadedAt.value = reloadNowText();
+            paperTradePerformanceReloadMessage.value = `紙上績效已重新載入：${paperTradePerformanceLastLoadedAt.value}`;
+        } catch (err) {
+            paperTradePerformanceEvaluator.value = null;
+            paperTradePerformanceError.value = err?.message || String(err);
+            paperTradePerformanceReloadMessage.value = `紙上績效載入失敗：${paperTradePerformanceError.value}`;
+        } finally {
+            paperTradePerformanceLoading.value = false;
+        }
        }
        const paperTradePerformanceSummary = computed(() => paperTradePerformanceEvaluator.value?.summary || {});
        const paperTradePerformanceRows = computed(() => Array.isArray(paperTradePerformanceEvaluator.value?.evaluation_rows) ? paperTradePerformanceEvaluator.value.evaluation_rows : []);
@@ -4739,14 +4784,33 @@ chartCML.data.datasets = [
 
        const tradeTicketExplainability = ref(null);
        const tradeTicketExplainabilityError = ref('');
+       const tradeTicketExplainabilityLoading = ref(false);
+       const tradeTicketExplainabilityLastLoadedAt = ref('');
+       const tradeTicketExplainabilityReloadMessage = ref('');
        async function loadTradeTicketExplainability() {
         tradeTicketExplainabilityError.value = '';
+        tradeTicketExplainabilityLoading.value = true;
+        tradeTicketExplainabilityReloadMessage.value = '正在重新載入票據解釋資料...';
+        const startedAt = Date.now();
         try {
-            const response = await fetch('data/alpha/trade_ticket_explainability_latest.json?v=' + Date.now(), { cache: 'no-store' });
-            if (!response.ok) { tradeTicketExplainability.value = null; tradeTicketExplainabilityError.value = `尚未讀到 v9.6 票據解釋 (${response.status})`; return; }
+            const response = await fetch('data/alpha/trade_ticket_explainability_latest.json?_=' + startedAt, { cache: 'no-store' });
+            if (!response.ok) {
+                tradeTicketExplainability.value = null;
+                tradeTicketExplainabilityError.value = `尚未讀到 v9.6 票據解釋 (${response.status})`;
+                tradeTicketExplainabilityReloadMessage.value = `票據解釋載入失敗：HTTP ${response.status}`;
+                return;
+            }
             const data = await response.json();
             tradeTicketExplainability.value = data && typeof data === 'object' ? data : null;
-        } catch (err) { tradeTicketExplainability.value = null; tradeTicketExplainabilityError.value = err?.message || String(err); }
+            tradeTicketExplainabilityLastLoadedAt.value = reloadNowText();
+            tradeTicketExplainabilityReloadMessage.value = `票據解釋已重新載入：${tradeTicketExplainabilityLastLoadedAt.value}`;
+        } catch (err) {
+            tradeTicketExplainability.value = null;
+            tradeTicketExplainabilityError.value = err?.message || String(err);
+            tradeTicketExplainabilityReloadMessage.value = `票據解釋載入失敗：${tradeTicketExplainabilityError.value}`;
+        } finally {
+            tradeTicketExplainabilityLoading.value = false;
+        }
        }
        const tradeTicketExplainabilitySummary = computed(() => tradeTicketExplainability.value?.summary || {});
        const tradeTicketExplainabilityRows = computed(() => Array.isArray(tradeTicketExplainability.value?.explanation_rows) ? tradeTicketExplainability.value.explanation_rows : []);
@@ -5476,7 +5540,7 @@ chartCML.data.datasets = [
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr, navOverlayMode, navOverlayOptions, setNavOverlayMode, navMaConfig, riskRegimeStrip, navTrendSummary,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
-            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerConstraintRules, optimizerConstraintPolicySummaries, selectedOptimizerConstraintPolicy, selectedOptimizerConstraintRows, selectedOptimizerConstraintIssues, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, optimizerStressOutput, optimizerStressError, optimizerStressScenarios, optimizerStressRows, optimizerStressWorstRows, optimizerStressBestWorst, optimizerStressMostFragile, selectedStressScenarioKey, selectedStressScenario, selectedStressScenarioRows, setStressScenario, loadOptimizerStressOutput, humanApprovalLayer, humanApprovalLayerError, humanApprovalTickets, humanApprovalSummary, humanApprovalVisibleTickets, loadHumanApprovalLayer, actionAuditTrail, actionAuditTrailError, actionAuditSummary, actionAuditEvents, loadActionAuditTrail, regimeAwareOptimizer, regimeAwareError, regimeAwareSummary, regimeAwareRegime, regimeAwareActivePolicy, regimeAwareCovariancePolicy, regimeAwareDrafts, regimeAwareVisibleDrafts, loadRegimeAwareOptimizer, blackLittermanSandbox, blackLittermanError, blackLittermanSummary, blackLittermanViewEngine, blackLittermanViews, blackLittermanPosteriorCandidates, loadBlackLittermanSandbox, expectedReturnModel, expectedReturnError, expectedReturnSummary, expectedReturnPolicy, expectedReturnBucketPriors, expectedReturnAssetPriors, expectedReturnVisibleBuckets, expectedReturnVisibleAssets, loadExpectedReturnModel, walkForwardBacktest, walkForwardError, walkForwardSummary, walkForwardAggregate, walkForwardVisibleRows, loadWalkForwardBacktest, modelGovernanceDashboard, modelGovernanceError, modelGovernanceSummary, modelGovernanceRegistry, modelGovernanceFlags, modelGovernanceVisibleRegistry, modelGovernanceVisibleFlags, loadModelGovernanceDashboard, forecastFeatureStore, forecastFeatureError, forecastFeatureSummary, forecastFeatureSample, forecastFeatureRows, forecastFeatureVisibleRows, loadForecastFeatureStore, alphaResearchSandbox, alphaResearchError, alphaResearchSummary, alphaResearchPolicy, alphaResearchRows, alphaResearchVisibleRows, loadAlphaResearchSandbox, rebalanceCandidateRanking, rebalanceRankingError, rebalanceRankingSummary, rebalanceRankingPolicy, rebalanceRankingRows, rebalanceRankingVisibleRows, loadRebalanceCandidateRanking, alphaValidationGate, alphaValidationError, alphaValidationSummary, alphaValidationGates, alphaValidationVisibleGates, loadAlphaValidationGate, manualRebalanceProposal, manualProposalError, manualProposalSummary, manualProposalRows, manualProposalVisibleRows, loadManualRebalanceProposal, executionReadyDraft, executionDraftError, executionDraftSummary, executionDraftRows, executionDraftVisibleRows, loadExecutionReadyDraft, formalDraftPassConditions, formalDraftPassError, formalDraftPassSummary, loadFormalDraftPassConditions, tradingConstraintsSnapshot, tradingConstraintsError, tradingConstraintsSummary, tradingConstraintsRows, tradingConstraintsVisibleRows, loadTradingConstraintsSnapshot, paperTradeTracker, paperTradeError, paperTradeSummary, paperTradeRows, paperTradeVisibleRows, loadPaperTradeTracker, tradeSizingDiagnostics, tradeSizingDiagnosticsError, tradeSizingDiagnosticsSummary, tradeSizingDiagnosticsIssues, tradeSizingDiagnosticsVisibleIssues, tradeSizingDiagnosticsNextActions, loadTradeSizingDiagnostics, manualApprovalConsole, manualApprovalConsoleError, manualApprovalConsoleSummary, manualApprovalMissingInputs, loadManualApprovalConsole, paperTradePerformanceEvaluator, paperTradePerformanceError, paperTradePerformanceSummary, paperTradePerformanceRows, paperTradePerformanceVisibleRows, loadPaperTradePerformanceEvaluator, tradeTicketExplainability, tradeTicketExplainabilityError, tradeTicketExplainabilitySummary, tradeTicketExplainabilityRows, tradeTicketExplainabilityVisibleRows, loadTradeTicketExplainability, formalRebalanceDraftGate, formalDraftGateError, formalDraftGateSummary, formalDraftRows, formalDraftVisibleRows, loadFormalRebalanceDraftGate, manualTradeTicket, manualTradeTicketError, manualTradeTicketSummary, manualTradeTicketRows, manualTradeTicketVisibleRows, loadManualTradeTicket, approvalBadgeClass, machineReviewLabel, machineReviewReason, machineReviewBadgeClass, zhText, zhList, zhBool, selectedOptimizerExplainKey, optimizerExplainabilityCandidates, selectedOptimizerExplainability, setOptimizerExplainCandidate, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
+            xrayStats, rebalanceMonitor, tailStatsLite, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerConstraintRules, optimizerConstraintPolicySummaries, selectedOptimizerConstraintPolicy, selectedOptimizerConstraintRows, selectedOptimizerConstraintIssues, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, optimizerStressOutput, optimizerStressError, optimizerStressScenarios, optimizerStressRows, optimizerStressWorstRows, optimizerStressBestWorst, optimizerStressMostFragile, selectedStressScenarioKey, selectedStressScenario, selectedStressScenarioRows, setStressScenario, loadOptimizerStressOutput, humanApprovalLayer, humanApprovalLayerError, humanApprovalTickets, humanApprovalSummary, humanApprovalVisibleTickets, loadHumanApprovalLayer, actionAuditTrail, actionAuditTrailError, actionAuditSummary, actionAuditEvents, loadActionAuditTrail, regimeAwareOptimizer, regimeAwareError, regimeAwareSummary, regimeAwareRegime, regimeAwareActivePolicy, regimeAwareCovariancePolicy, regimeAwareDrafts, regimeAwareVisibleDrafts, loadRegimeAwareOptimizer, blackLittermanSandbox, blackLittermanError, blackLittermanSummary, blackLittermanViewEngine, blackLittermanViews, blackLittermanPosteriorCandidates, loadBlackLittermanSandbox, expectedReturnModel, expectedReturnError, expectedReturnSummary, expectedReturnPolicy, expectedReturnBucketPriors, expectedReturnAssetPriors, expectedReturnVisibleBuckets, expectedReturnVisibleAssets, loadExpectedReturnModel, walkForwardBacktest, walkForwardError, walkForwardSummary, walkForwardAggregate, walkForwardVisibleRows, loadWalkForwardBacktest, modelGovernanceDashboard, modelGovernanceError, modelGovernanceSummary, modelGovernanceRegistry, modelGovernanceFlags, modelGovernanceVisibleRegistry, modelGovernanceVisibleFlags, loadModelGovernanceDashboard, forecastFeatureStore, forecastFeatureError, forecastFeatureSummary, forecastFeatureSample, forecastFeatureRows, forecastFeatureVisibleRows, loadForecastFeatureStore, alphaResearchSandbox, alphaResearchError, alphaResearchSummary, alphaResearchPolicy, alphaResearchRows, alphaResearchVisibleRows, loadAlphaResearchSandbox, rebalanceCandidateRanking, rebalanceRankingError, rebalanceRankingSummary, rebalanceRankingPolicy, rebalanceRankingRows, rebalanceRankingVisibleRows, loadRebalanceCandidateRanking, alphaValidationGate, alphaValidationError, alphaValidationSummary, alphaValidationGates, alphaValidationVisibleGates, loadAlphaValidationGate, manualRebalanceProposal, manualProposalError, manualProposalSummary, manualProposalRows, manualProposalVisibleRows, loadManualRebalanceProposal, executionReadyDraft, executionDraftError, executionDraftSummary, executionDraftRows, executionDraftVisibleRows, loadExecutionReadyDraft, formalDraftPassConditions, formalDraftPassError, formalDraftPassSummary, loadFormalDraftPassConditions, tradingConstraintsSnapshot, tradingConstraintsError, tradingConstraintsSummary, tradingConstraintsRows, tradingConstraintsVisibleRows, loadTradingConstraintsSnapshot, paperTradeTracker, paperTradeError, paperTradeSummary, paperTradeRows, paperTradeVisibleRows, loadPaperTradeTracker, tradeSizingDiagnostics, tradeSizingDiagnosticsError, tradeSizingDiagnosticsSummary, tradeSizingDiagnosticsIssues, tradeSizingDiagnosticsVisibleIssues, tradeSizingDiagnosticsNextActions, loadTradeSizingDiagnostics, manualApprovalConsole, manualApprovalConsoleError, manualApprovalConsoleLoading, manualApprovalConsoleLastLoadedAt, manualApprovalConsoleReloadMessage, manualApprovalConsoleSummary, manualApprovalMissingInputs, loadManualApprovalConsole, paperTradePerformanceEvaluator, paperTradePerformanceError, paperTradePerformanceLoading, paperTradePerformanceLastLoadedAt, paperTradePerformanceReloadMessage, paperTradePerformanceSummary, paperTradePerformanceRows, paperTradePerformanceVisibleRows, loadPaperTradePerformanceEvaluator, tradeTicketExplainability, tradeTicketExplainabilityError, tradeTicketExplainabilityLoading, tradeTicketExplainabilityLastLoadedAt, tradeTicketExplainabilityReloadMessage, tradeTicketExplainabilitySummary, tradeTicketExplainabilityRows, tradeTicketExplainabilityVisibleRows, loadTradeTicketExplainability, formalRebalanceDraftGate, formalDraftGateError, formalDraftGateSummary, formalDraftRows, formalDraftVisibleRows, loadFormalRebalanceDraftGate, manualTradeTicket, manualTradeTicketError, manualTradeTicketSummary, manualTradeTicketRows, manualTradeTicketVisibleRows, loadManualTradeTicket, approvalBadgeClass, machineReviewLabel, machineReviewReason, machineReviewBadgeClass, zhText, zhList, zhBool, selectedOptimizerExplainKey, optimizerExplainabilityCandidates, selectedOptimizerExplainability, setOptimizerExplainCandidate, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
         };
     }
 }).mount('#app');
