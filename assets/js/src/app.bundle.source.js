@@ -482,6 +482,7 @@ ${JSON.stringify(payload, null, 2)}
         const holdingsView = ref('all');
         const holdingsSort = ref('value_desc');
         const txFlowMode = ref('internal');
+        const txIntent = computed(() => txFlowMode.value || 'internal');
         const txTypeOptions = computed(() => txFlowMode.value === 'external'
             ? [
                 { value: 'Deposit', label: '入金', hint: '外部資金匯入投資帳戶' },
@@ -493,23 +494,33 @@ ${JSON.stringify(payload, null, 2)}
             ]
         );
 
+        function setTxIntent(intent) {
+            const next = ['internal', 'external', 'adjustment'].includes(intent) ? intent : 'internal';
+            txFlowMode.value = next;
+        }
+
         watch(txFlowMode, (mode) => {
-            const nextType = mode === 'external' ? 'Deposit' : 'Buy';
-            if (!txTypeOptions.value.some(opt => opt.value === txForm.value.type)) {
-                txForm.value.type = nextType;
-            }
             if (mode === 'external') {
+                if (!['Deposit', 'Withdraw'].includes(txForm.value.type)) txForm.value.type = 'Deposit';
                 txForm.value.ticker = '';
                 txForm.value.price = null;
                 txForm.value.shares = null;
-                if (!txForm.value.amount) txForm.value.amount = null;
+            } else if (mode === 'adjustment') {
+                txForm.value.type = 'Expense';
+                txForm.value.category = '校正 / 費用';
+                txForm.value.ticker = '';
+                txForm.value.price = null;
+                txForm.value.shares = null;
             } else {
-                txForm.value.amount = null;
+                if (!['Buy', 'Sell'].includes(txForm.value.type)) txForm.value.type = 'Buy';
+                if (!txForm.value.category || txForm.value.category === '校正 / 費用') txForm.value.category = '美股';
             }
         }, { immediate: true });
 
         watch(() => txForm.value.type, (type) => {
-            txFlowMode.value = (type === 'Deposit' || type === 'Withdraw') ? 'external' : 'internal';
+            if (type === 'Deposit' || type === 'Withdraw') txFlowMode.value = 'external';
+            else if (type === 'Expense' || type === 'Income') txFlowMode.value = 'adjustment';
+            else txFlowMode.value = 'internal';
         }, { immediate: true });
         
         const historyForm = ref({
@@ -2712,7 +2723,7 @@ async function saveData() {
         }
 
         finalFlow = (type === 'Buy' ? -1 : 1) * actualTotal;
-    } else if (type === 'Deposit' || type === 'Withdraw') {
+    } else if (type === 'Deposit' || type === 'Withdraw' || type === 'Expense' || type === 'Income') {
         actualTotal = Number(amount);
 
         if (!actualTotal || actualTotal <= 0) {
@@ -2720,7 +2731,7 @@ async function saveData() {
             return;
         }
 
-        finalFlow = (type === 'Deposit' ? 1 : -1) * actualTotal;
+        finalFlow = (type === 'Deposit' || type === 'Income' ? 1 : -1) * actualTotal;
     } else {
         alert('未知交易類型');
         return;
@@ -2737,7 +2748,7 @@ async function saveData() {
     transactions.value.push({
         date,
         type,
-        category,
+        category: category || (type === 'Expense' ? '校正 / 費用' : ''),
         ticker: (type === 'Buy' || type === 'Sell') ? ticker?.toUpperCase() : '',
         price: finalPrice,
         shares: finalShares,
@@ -4660,7 +4671,7 @@ chartCML.data.datasets = [
        async function loadFormalDraftPassConditions() {
         formalDraftPassError.value = '';
         try {
-            const response = await fetch('data/alpha/formal_draft_pass_conditions_latest.json?v=' + Date.now());
+            const response = await fetch('data/alpha/formal_draft_pass_conditions_latest.json?v=' + Date.now(), { cache: 'no-store' });
             if (!response.ok) { formalDraftPassConditions.value = null; formalDraftPassError.value = `尚未讀到 v8.1 Pass Conditions (${response.status})`; return; }
             const data = await response.json();
             formalDraftPassConditions.value = data && typeof data === 'object' ? data : null;
@@ -4673,7 +4684,7 @@ chartCML.data.datasets = [
        async function loadTradingConstraintsSnapshot() {
         tradingConstraintsError.value = '';
         try {
-            const response = await fetch('data/alpha/trading_constraints_snapshot_latest.json?v=' + Date.now());
+            const response = await fetch('data/alpha/trading_constraints_snapshot_latest.json?v=' + Date.now(), { cache: 'no-store' });
             if (!response.ok) { tradingConstraintsSnapshot.value = null; tradingConstraintsError.value = `尚未讀到交易 sizing 約束 (${response.status})`; return; }
             const data = await response.json();
             tradingConstraintsSnapshot.value = data && typeof data === 'object' ? data : null;
@@ -4688,7 +4699,7 @@ chartCML.data.datasets = [
        async function loadPaperTradeTracker() {
         paperTradeError.value = '';
         try {
-            const response = await fetch('data/alpha/paper_trade_tracker_latest.json?v=' + Date.now());
+            const response = await fetch('data/alpha/paper_trade_tracker_latest.json?v=' + Date.now(), { cache: 'no-store' });
             if (!response.ok) { paperTradeTracker.value = null; paperTradeError.value = `尚未讀到紙上追蹤 (${response.status})`; return; }
             const data = await response.json();
             paperTradeTracker.value = data && typeof data === 'object' ? data : null;
@@ -5500,23 +5511,47 @@ chartCML.data.datasets = [
         });
 
         const txPreview = computed(() => {
-            const type = String(txForm?.value?.type || '');
-            const flow = Number(txForm?.value?.totalCashFlow || 0);
-            let finalFlow = flow;
-            if (type === 'Buy' || type === 'Expense') finalFlow = -Math.abs(flow);
-            if (type === 'Sell' || type === 'Deposit') finalFlow = Math.abs(flow);
-            if (type === 'Withdraw') finalFlow = -Math.abs(flow);
-
-            const projectedCashAfter = Number(cashBalance?.value || 0) + finalFlow;
+            const form = txForm?.value || {};
+            const type = String(form.type || '');
+            const qty = Number(form.shares) || 0;
+            const inputPrice = form.price !== null && form.price !== '' ? Number(form.price) : null;
+            const inputAmount = form.amount !== null && form.amount !== '' ? Number(form.amount) : null;
+            const tradeAmount = (inputAmount && inputAmount > 0)
+                ? inputAmount
+                : ((inputPrice && inputPrice > 0 && qty > 0) ? inputPrice * qty : 0);
+            let finalFlow = 0;
             const errors = [];
             const blockers = [];
             const warnings = [];
-            if ((type === 'Buy' || type === 'Withdraw' || type === 'Expense') && projectedCashAfter < -1) {
+
+            if (!form.date) errors.push('尚未選擇日期。');
+            if (!type) errors.push('尚未選擇交易類型。');
+
+            if (type === 'Buy' || type === 'Sell') {
+                if (!String(form.ticker || '').trim()) errors.push('尚未填寫代號。');
+                if (!qty || qty <= 0) errors.push('尚未填寫有效數量。');
+                if (!tradeAmount || tradeAmount <= 0) errors.push('尚未形成有效成交金額。');
+                finalFlow = (type === 'Buy' ? -1 : 1) * tradeAmount;
+
+                const holding = holdingsFlat.value.find(h => h.ticker === String(form.ticker || '').toUpperCase());
+                if (type === 'Sell') {
+                    if (!holding) blockers.push('目前沒有這檔持倉可賣出。');
+                    else if (qty > Number(holding.shares || 0)) blockers.push(`賣出數量超過現有持倉 (${formatNumber(holding.shares)})。`);
+                }
+            } else if (type === 'Deposit' || type === 'Withdraw' || type === 'Expense' || type === 'Income') {
+                if (!inputAmount || inputAmount <= 0) errors.push('尚未填寫有效金額。');
+                finalFlow = (type === 'Deposit' || type === 'Income' ? 1 : -1) * (inputAmount || 0);
+            } else {
+                errors.push('未知交易類型。');
+            }
+
+            const projectedCashAfter = Number(cashBalance?.value || 0) + finalFlow;
+            if ((type === 'Buy' || type === 'Withdraw' || type === 'Expense') && tradeAmount > 0 && projectedCashAfter < -CASH_EPS) {
                 blockers.push('送出後現金會變成負數。');
             }
-            if (!type) warnings.push('尚未選擇交易類型。');
+            if (type === 'Expense') warnings.push('校正 / 費用會直接扣減現金，請確認不是漏記買入或出金。');
 
-            return { finalFlow, projectedCashAfter, errors, blockers, warnings };
+            return { finalFlow, projectedCashAfter, errors, blockers, warnings, estimatedAmount: tradeAmount };
         });
 
         return { 
@@ -5526,7 +5561,7 @@ chartCML.data.datasets = [
             totalStockValueTwd, totalStockCostTwd, totalStockUnrealizedPL, totalStockReturnRate, 
             reversedTransactions, txForm, historyForm, riskParams, stats, exchangeRate, 
             holdingsSearch, holdingsView, holdingsSort, filteredHoldingsCount, holdingsAlertCount, holdingsVisibleStats,
-            txFlowMode, txTypeOptions, ledgerDraftPreview,
+            txFlowMode, txIntent, txTypeOptions, setTxIntent, ledgerDraftPreview,
             sheetUrl, addTransaction, addHistoryRecord,
             removeTransaction, removeHistoryByDate, manualUpdate, updateMeta, fetchPrices, 
             exportAll, importData, getTypeColor, getCategoryColorCode, formatNumber, formatCurrency, formatPercent, 
