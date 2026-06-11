@@ -1,6 +1,6 @@
 {
-  "version": "v9.2",
-  "generated_by": "Schema Registry + v9.2 Paper Tracking / Real-world Sizing Constraints",
+  "version": "v9.6",
+  "generated_by": "Schema Registry + v9.6 Manual Approval / Paper Performance / Ticket Explainability",
   "policy": {
     "mode": "permissive_structural_validation",
     "strictness": "top_level_contract_plus_safety_flags",
@@ -27,7 +27,10 @@
       "Manual approval input may only affect review-only draft promotion; it cannot approve broker submission.",
       "Trading constraints snapshot must use Python real-world price fetch or explicitly mark fallback prices as non-real-time.",
       "Paper trade tracker is a lagging model-accountability layer, not a forward trade signal.",
-      "v9.3 trade sizing diagnostics is diagnostic-only; it must not enable trade signals, broker submission, official rebalance, or execution."
+      "v9.3 trade sizing diagnostics is diagnostic-only; it must not enable trade signals, broker submission, official rebalance, or execution.",
+      "v9.4 manual approval console is review-only; it cannot approve trades, execution, official rebalance, or broker submission.",
+      "v9.5 paper trade performance evaluator is a lagging accountability layer, not a forward signal.",
+      "v9.6 trade ticket explainability explains tickets and blockers; it cannot enable execution or broker submission."
     ],
     "v4_8_release_boundary": "Component/backend split is registry-first; dead-file cleanup is plan-only; no auto-delete and no trading execution."
   },
@@ -239,6 +242,24 @@
     {
       "path": "data/alpha/trade_sizing_diagnostics_latest.json",
       "schema": "schemas/alpha/trade_sizing_diagnostics.schema.json",
+      "required": true,
+      "domain": "alpha"
+    },
+    {
+      "path": "data/alpha/manual_approval_console_latest.json",
+      "schema": "schemas/alpha/manual_approval_console.schema.json",
+      "required": true,
+      "domain": "alpha"
+    },
+    {
+      "path": "data/alpha/paper_trade_performance_evaluator_latest.json",
+      "schema": "schemas/alpha/paper_trade_performance_evaluator.schema.json",
+      "required": true,
+      "domain": "alpha"
+    },
+    {
+      "path": "data/alpha/trade_ticket_explainability_latest.json",
+      "schema": "schemas/alpha/trade_ticket_explainability.schema.json",
       "required": true,
       "domain": "alpha"
     }

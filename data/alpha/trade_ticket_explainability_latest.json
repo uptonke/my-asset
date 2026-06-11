@@ -1,0 +1,99 @@
+{
+  "version": "v9.6",
+  "status": "OK",
+  "generated_at": "2026-06-09T12:05:40+00:00",
+  "mode": "trade_ticket_explainability",
+  "safe_mode": true,
+  "research_only": true,
+  "explainability_status": "ticket_explanations_available",
+  "trade_signal_enabled": false,
+  "execution_permission": false,
+  "broker_submission_enabled": false,
+  "official_rebalance_enabled": false,
+  "auto_trade_enabled": false,
+  "supabase_write_enabled": false,
+  "not_trade_order": true,
+  "not_buy_signal": true,
+  "not_sell_signal": true,
+  "summary": {
+    "explainability_status": "ticket_explanations_available",
+    "manual_ticket_count": 0,
+    "formal_draft_count": 0,
+    "blocker_count": 11,
+    "manual_override_enabled": false,
+    "cash_balance_available": false,
+    "performance_evaluator_status": "no_paper_trades_to_evaluate"
+  },
+  "explanation_rows": [
+    {
+      "ticket_id": null,
+      "explainability_status": "ticket_not_generated",
+      "plain_language_summary": "人工交易票據未產生，因為上游正式草案、人工輸入、現金或價格條件未滿足。這是保護性阻擋。",
+      "primary_blockers": [
+        {
+          "code": "alpha_validation_gate_not_passed",
+          "message": "alpha_validation_gate_not_passed"
+        },
+        {
+          "code": "no_rebalance_candidate_cleared_research_threshold",
+          "message": "no_rebalance_candidate_cleared_research_threshold"
+        },
+        {
+          "code": "no_manual_research_proposal",
+          "message": "no_manual_research_proposal"
+        },
+        {
+          "code": "no_pre_execution_draft",
+          "message": "no_pre_execution_draft"
+        },
+        {
+          "code": "alpha_validation_not_passed",
+          "message": "Alpha 驗證仍是觀察狀態，不能升級正式草案。"
+        },
+        {
+          "code": "no_further_research_candidates",
+          "message": "調倉排序沒有進一步研究候選。"
+        },
+        {
+          "code": "manual_override_disabled",
+          "message": "人工 override 未啟用；系統只能保持研究模式。"
+        },
+        {
+          "code": "missing_cash_balance",
+          "message": "缺少現金餘額，無法計算可交易金額。"
+        },
+        {
+          "code": "incomplete_real_world_price_fetch",
+          "message": "部分價格不是即時抓取，不應產生交易票據。"
+        },
+        {
+          "code": "no_formal_rebalance_draft",
+          "message": "no_formal_rebalance_draft"
+        },
+        {
+          "code": "no_manual_trade_ticket",
+          "message": "no_manual_trade_ticket"
+        },
+        {
+          "code": "formal_rebalance_draft_gate_not_available",
+          "message": "formal_rebalance_draft_gate_not_available"
+        }
+      ],
+      "why_not_executable": [
+        "trade_signal_enabled_false",
+        "execution_permission_false",
+        "broker_submission_disabled",
+        "not_trade_order_true"
+      ]
+    }
+  ],
+  "source_status": {
+    "manual_ticket_status": "blocked_by_formal_rebalance_draft_gate",
+    "formal_gate_status": "blocked_by_formal_pass_conditions",
+    "diagnostic_status": "blocked"
+  },
+  "safety_boundary": [
+    "v9.6 explains why a ticket exists or is blocked; it does not approve or execute trades.",
+    "Generated explanations are for manual review and model governance only."
+  ]
+}

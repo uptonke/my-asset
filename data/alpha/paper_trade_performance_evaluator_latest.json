@@ -1,0 +1,43 @@
+{
+  "version": "v9.5",
+  "status": "OK",
+  "generated_at": "2026-06-09T12:05:39+00:00",
+  "mode": "paper_trade_performance_evaluator",
+  "safe_mode": true,
+  "research_only": true,
+  "evaluator_status": "no_paper_trades_to_evaluate",
+  "trade_signal_enabled": false,
+  "execution_permission": false,
+  "broker_submission_enabled": false,
+  "official_rebalance_enabled": false,
+  "auto_trade_enabled": false,
+  "supabase_write_enabled": false,
+  "not_trade_order": true,
+  "not_buy_signal": true,
+  "not_sell_signal": true,
+  "summary": {
+    "evaluator_status": "no_paper_trades_to_evaluate",
+    "paper_trade_count": 0,
+    "checkpoint_due_count": 0,
+    "checkpoint_pending_count": 0,
+    "checkpoint_pass_count": 0,
+    "checkpoint_fail_count": 0,
+    "checkpoint_insufficient_count": 0,
+    "real_world_prices_ready": false
+  },
+  "evaluation_rows": [],
+  "methodology": {
+    "baseline": "current_portfolio_no_action",
+    "paper_candidate": "formal_review_draft_or_manual_ticket_hypothesis",
+    "horizons": [
+      "1W",
+      "1M",
+      "3M"
+    ],
+    "required_future_extension": "store baseline and paper portfolio return series at entry and checkpoint dates"
+  },
+  "safety_boundary": [
+    "v9.5 is a lagging accountability evaluator, not a forward signal.",
+    "It cannot approve trades, generate broker orders, or enable execution."
+  ]
+}

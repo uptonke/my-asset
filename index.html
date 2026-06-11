@@ -4552,6 +4552,96 @@
                                         </div>
                                     </div>
 
+
+                                    <div class="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.04] overflow-hidden">
+                                        <div class="px-3 py-2 border-b border-cyan-500/20 bg-cyan-500/[0.08] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
+                                            <div>
+                                                <div class="text-xs font-bold text-white flex items-center gap-2">
+                                                    <i class="fas fa-user-check text-cyan-300"></i>
+                                                    v9.4 人工審閱控制台 ＋ v9.5 紙上績效評估 ＋ v9.6 票據解釋
+                                                </div>
+                                                <div class="text-[11px] text-cyan-100/70 mt-1">這一層只做人工輸入、紙上追蹤與阻擋理由解釋；不代表買入、不代表賣出、不會送單。</div>
+                                            </div>
+                                            <div class="flex flex-wrap gap-2">
+                                                <button @click="loadManualApprovalConsole" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-100 text-xs hover:bg-cyan-500/30">重讀審閱控制台</button>
+                                                <button @click="loadPaperTradePerformanceEvaluator" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-100 text-xs hover:bg-cyan-500/30">重讀紙上績效</button>
+                                                <button @click="loadTradeTicketExplainability" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-100 text-xs hover:bg-cyan-500/30">重讀票據解釋</button>
+                                            </div>
+                                        </div>
+                                        <div class="p-3 space-y-3">
+                                            <div v-if="manualApprovalConsoleError || paperTradePerformanceError || tradeTicketExplainabilityError" class="rounded-xl border border-red-500/20 bg-red-500/[0.05] p-3 text-xs text-red-200 space-y-1">
+                                                <div v-if="manualApprovalConsoleError">{{ manualApprovalConsoleError }}</div>
+                                                <div v-if="paperTradePerformanceError">{{ paperTradePerformanceError }}</div>
+                                                <div v-if="tradeTicketExplainabilityError">{{ tradeTicketExplainabilityError }}</div>
+                                            </div>
+                                            <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+                                                <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                                    <div class="quant-label text-cyan-300">控制台狀態</div>
+                                                    <div class="quant-value text-white text-sm">{{ zhText(manualApprovalConsoleSummary?.console_status) }}</div>
+                                                    <div class="text-[10px] text-gray-500 mt-1">override：{{ zhBool(manualApprovalConsoleSummary?.manual_override_enabled) }}</div>
+                                                </div>
+                                                <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                                    <div class="quant-label text-cyan-300">缺少輸入</div>
+                                                    <div class="quant-value text-white text-sm">{{ manualApprovalConsoleSummary?.missing_input_count ?? 0 }}</div>
+                                                    <div class="text-[10px] text-gray-500 mt-1">核准候選：{{ manualApprovalConsoleSummary?.approved_candidate_count ?? 0 }}</div>
+                                                </div>
+                                                <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                                    <div class="quant-label text-cyan-300">現金餘額</div>
+                                                    <div class="quant-value text-white text-sm">{{ manualApprovalConsoleSummary?.cash_balance_twd != null ? formatCurrency(manualApprovalConsoleSummary?.cash_balance_twd) : '缺失' }}</div>
+                                                    <div class="text-[10px] text-gray-500 mt-1">交易預算：{{ manualApprovalConsoleSummary?.max_trade_budget_twd != null ? formatCurrency(manualApprovalConsoleSummary?.max_trade_budget_twd) : '缺失' }}</div>
+                                                </div>
+                                                <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                                    <div class="quant-label text-cyan-300">紙上績效</div>
+                                                    <div class="quant-value text-white text-sm">{{ zhText(paperTradePerformanceSummary?.evaluator_status) }}</div>
+                                                    <div class="text-[10px] text-gray-500 mt-1">紙上紀錄：{{ paperTradePerformanceSummary?.paper_trade_count ?? 0 }}</div>
+                                                </div>
+                                                <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                                    <div class="quant-label text-cyan-300">票據解釋</div>
+                                                    <div class="quant-value text-white text-sm">{{ zhText(tradeTicketExplainabilitySummary?.explainability_status) }}</div>
+                                                    <div class="text-[10px] text-gray-500 mt-1">阻擋：{{ tradeTicketExplainabilitySummary?.blocker_count ?? 0 }}</div>
+                                                </div>
+                                                <div class="quant-card p-3 rounded-xl border border-white/10 bg-black/20">
+                                                    <div class="quant-label text-cyan-300">執行權限</div>
+                                                    <div class="quant-value text-white text-sm">{{ zhBool(false) }}</div>
+                                                    <div class="text-[10px] text-gray-500 mt-1">永遠不自動送單</div>
+                                                </div>
+                                            </div>
+                                            <div class="grid grid-cols-1 xl:grid-cols-3 gap-3">
+                                                <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                                    <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] text-xs font-bold text-white">人工輸入缺口</div>
+                                                    <div class="divide-y divide-white/5">
+                                                        <div v-for="row in manualApprovalMissingInputs" :key="row.field" class="p-3 text-[11px]">
+                                                            <div class="font-bold" :class="row.severity === 'blocker' ? 'text-red-300' : 'text-amber-300'">{{ row.field }}</div>
+                                                            <div class="text-gray-400 mt-1">{{ row.message }}</div>
+                                                        </div>
+                                                        <div v-if="!manualApprovalMissingInputs.length" class="p-3 text-[11px] text-gray-500 text-center">目前沒有缺少的人工輸入。</div>
+                                                    </div>
+                                                </div>
+                                                <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                                    <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] text-xs font-bold text-white">紙上績效檢查</div>
+                                                    <div class="divide-y divide-white/5">
+                                                        <div v-for="row in paperTradePerformanceVisibleRows" :key="row.paper_id || row.source_formal_draft_id" class="p-3 text-[11px]">
+                                                            <div class="font-mono text-white truncate">{{ row.paper_id || row.source_formal_draft_id }}</div>
+                                                            <div class="text-gray-400 mt-1">{{ zhText(row.current_verdict) }}</div>
+                                                        </div>
+                                                        <div v-if="!paperTradePerformanceVisibleRows.length" class="p-3 text-[11px] text-gray-500 text-center">尚無紙上紀錄可評估。</div>
+                                                    </div>
+                                                </div>
+                                                <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                                    <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] text-xs font-bold text-white">票據解釋</div>
+                                                    <div class="divide-y divide-white/5">
+                                                        <div v-for="row in tradeTicketExplainabilityVisibleRows" :key="row.ticket_id || row.explainability_status" class="p-3 text-[11px]">
+                                                            <div class="font-bold text-cyan-200">{{ zhText(row.explainability_status) }}</div>
+                                                            <div class="text-gray-400 mt-1">{{ row.plain_language_summary }}</div>
+                                                            <div v-if="row.primary_blockers?.length" class="text-gray-500 mt-1">主因：{{ row.primary_blockers.slice(0,3).map(x => x.message || zhText(x.code)).join('；') }}</div>
+                                                        </div>
+                                                        <div v-if="!tradeTicketExplainabilityVisibleRows.length" class="p-3 text-[11px] text-gray-500 text-center">尚無票據解釋。</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <div class="rounded-xl border border-orange-500/20 bg-orange-500/[0.04] p-3 text-[11px] text-gray-400 leading-relaxed">
                                         <span class="font-bold text-orange-200">v9 邊界：</span>
                                         人工交易票據只是人工重輸入前的檢查殼，不是券商委託單；若沒有明確目標權重或交易列，系統必須輸出 0 張票據，不能自行捏造買賣明細。
@@ -6219,7 +6309,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=v9-3-diagnostics-1"></script>
+<script src="assets/js/app.bundle.js?v=v9-6-console-performance-explainability-1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>

@@ -1,0 +1,97 @@
+{
+  "version": "v9.4",
+  "status": "OK",
+  "generated_at": "2026-06-09T12:05:37+00:00",
+  "mode": "manual_approval_console",
+  "safe_mode": true,
+  "research_only": true,
+  "console_status": "blocked_by_upstream_gates",
+  "manual_override_enabled": false,
+  "approval_mode": "research_only",
+  "trade_signal_enabled": false,
+  "execution_permission": false,
+  "broker_submission_enabled": false,
+  "official_rebalance_enabled": false,
+  "auto_trade_enabled": false,
+  "supabase_write_enabled": false,
+  "not_trade_order": true,
+  "not_buy_signal": true,
+  "not_sell_signal": true,
+  "summary": {
+    "console_status": "blocked_by_upstream_gates",
+    "manual_override_enabled": false,
+    "approval_mode": "research_only",
+    "approved_candidate_count": 0,
+    "rejected_candidate_count": 0,
+    "missing_input_count": 2,
+    "cash_balance_twd": null,
+    "max_trade_budget_twd": null,
+    "formal_pass_status": "blocked",
+    "formal_hard_fail_count": 4,
+    "formal_draft_count": 0,
+    "manual_ticket_count": 0
+  },
+  "manual_input_snapshot": {
+    "override_version": "v8.1",
+    "manual_override_enabled": false,
+    "approval_mode": "research_only",
+    "allow_formal_draft_when_validation_watch_only": false,
+    "cash_balance_twd": null,
+    "max_trade_budget_twd": null,
+    "notes": "Manual input file. Keep disabled unless intentionally testing review-only draft promotion. This file never enables broker submission or automatic execution."
+  },
+  "approved_candidates": [],
+  "rejected_candidates": [],
+  "missing_inputs": [
+    {
+      "field": "cash_balance_twd",
+      "severity": "blocker",
+      "message": "缺少現金餘額；無法做交易 sizing。"
+    },
+    {
+      "field": "max_trade_budget_twd",
+      "severity": "blocker",
+      "message": "缺少最大可交易金額；無法限制票據規模。"
+    }
+  ],
+  "permissions": {
+    "can_promote_to_formal_review_draft": false,
+    "can_generate_manual_trade_ticket_shell": false,
+    "can_submit_broker_order": false,
+    "can_auto_execute": false,
+    "can_enable_trade_signal": false
+  },
+  "recommended_actions": [
+    {
+      "action": "補 cash_balance_twd",
+      "required": true,
+      "purpose": "讓 sizing 層知道可用現金；不代表允許交易。"
+    },
+    {
+      "action": "補 max_trade_budget_twd",
+      "required": true,
+      "purpose": "限制任一票據的最大名目金額。"
+    },
+    {
+      "action": "若要研究正式草案，填 approved_candidate_ids",
+      "required": false,
+      "purpose": "只允許被指定的候選進入人工研究流程。"
+    },
+    {
+      "action": "維持 manual_override_enabled=false 直到 v6/v8 gate 改善",
+      "required": true,
+      "purpose": "避免用人工 override 繞過 alpha / governance gate。"
+    }
+  ],
+  "source_files": {
+    "manual_override_config": "config/manual_approval_override.json",
+    "manual_approval_input": "data/alpha/manual_approval_input_latest.json",
+    "formal_pass_conditions": "data/alpha/formal_draft_pass_conditions_latest.json",
+    "trade_sizing_diagnostics": "data/alpha/trade_sizing_diagnostics_latest.json"
+  },
+  "safety_boundary": [
+    "v9.4 is a manual review console, not an order approval console.",
+    "Manual override may only affect review-only draft promotion and cannot enable broker submission or auto execution.",
+    "trade_signal_enabled, execution_permission, broker_submission_enabled, and official_rebalance_enabled must remain false."
+  ]
+}
