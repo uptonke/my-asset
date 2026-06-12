@@ -1,14 +1,14 @@
 {
   "version": "v4.6",
   "status": "OK",
-  "generated_at": "2026-06-12T02:35:39.840185+00:00",
+  "generated_at": "2026-06-12T12:44:01.661542+00:00",
   "mode": "validation_gate",
   "safe_mode": true,
   "summary": {
     "error_count": 0,
     "warning_count": 0,
-    "schema_validated_count": 38,
-    "python_compiled_count": 58
+    "schema_validated_count": 39,
+    "python_compiled_count": 59
   },
   "checks": {
     "required_files": {
@@ -38,6 +38,11 @@
         "scripts/build_manual_approval_input_layer.py",
         "scripts/build_trading_constraints_snapshot.py",
         "scripts/build_paper_trade_tracker.py",
+        "scripts/build_trade_sizing_diagnostics.py",
+        "scripts/build_manual_approval_console.py",
+        "scripts/build_paper_trade_performance_evaluator.py",
+        "scripts/build_trade_ticket_explainability.py",
+        "scripts/build_human_confirmed_trade_ticket.py",
         "config/manual_approval_override.json",
         "docs/FRONTEND_SOURCE_OF_TRUTH.md",
         "docs/SCHEMA_REGISTRY.md",
@@ -54,6 +59,11 @@
         "docs/MANUAL_APPROVAL_INPUT_LAYER.md",
         "docs/TRADING_CONSTRAINTS_SNAPSHOT.md",
         "docs/PAPER_TRADE_TRACKER.md",
+        "docs/TRADE_SIZING_DIAGNOSTICS.md",
+        "docs/MANUAL_APPROVAL_CONSOLE.md",
+        "docs/PAPER_TRADE_PERFORMANCE_EVALUATOR.md",
+        "docs/TRADE_TICKET_EXPLAINABILITY.md",
+        "docs/HUMAN_CONFIRMED_TRADE_TICKET.md",
         ".github/workflows/optimizer-lab.yml.yml",
         ".github/workflows/repo-architecture-audit.yml.yml",
         ".github/workflows/validation-gate.yml.yml"
@@ -71,13 +81,13 @@
       ]
     },
     "json_parse": {
-      "parsed_count": 94,
+      "parsed_count": 96,
       "failed": []
     },
     "schema_registry": {
       "status": "OK",
-      "registry_version": "v9.6",
-      "validated_count": 38,
+      "registry_version": "v10.0",
+      "validated_count": 39,
       "validated": [
         {
           "path": "data/optimizer/skfolio_sandbox_latest.json",
@@ -268,13 +278,18 @@
           "path": "data/alpha/trade_ticket_explainability_latest.json",
           "schema": "schemas/alpha/trade_ticket_explainability.schema.json",
           "required": true
+        },
+        {
+          "path": "data/alpha/human_confirmed_trade_ticket_latest.json",
+          "schema": "schemas/alpha/human_confirmed_trade_ticket.schema.json",
+          "required": true
         }
       ],
       "skipped": [],
       "errors": []
     },
     "python_compile": {
-      "compiled_count": 58,
+      "compiled_count": 59,
       "failed": []
     },
     "frontend_source_runtime": {
