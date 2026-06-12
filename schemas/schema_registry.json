@@ -1,6 +1,6 @@
 {
-  "version": "v9.6",
-  "generated_by": "Schema Registry + v9.6 Manual Approval / Paper Performance / Ticket Explainability",
+  "version": "v10.0",
+  "generated_by": "Schema Registry + v10.0 Human-Confirmed Trade Ticket",
   "policy": {
     "mode": "permissive_structural_validation",
     "strictness": "top_level_contract_plus_safety_flags",
@@ -30,7 +30,8 @@
       "v9.3 trade sizing diagnostics is diagnostic-only; it must not enable trade signals, broker submission, official rebalance, or execution.",
       "v9.4 manual approval console is review-only; it cannot approve trades, execution, official rebalance, or broker submission.",
       "v9.5 paper trade performance evaluator is a lagging accountability layer, not a forward signal.",
-      "v9.6 trade ticket explainability explains tickets and blockers; it cannot enable execution or broker submission."
+      "v9.6 trade ticket explainability explains tickets and blockers; it cannot enable execution or broker submission.",
+      "v10.0 human-confirmed trade ticket is manual-entry only; it must not enable trade signals, broker submission, official rebalance, auto execution, or execution_permission."
     ],
     "v4_8_release_boundary": "Component/backend split is registry-first; dead-file cleanup is plan-only; no auto-delete and no trading execution."
   },
@@ -260,6 +261,12 @@
     {
       "path": "data/alpha/trade_ticket_explainability_latest.json",
       "schema": "schemas/alpha/trade_ticket_explainability.schema.json",
+      "required": true,
+      "domain": "alpha"
+    },
+    {
+      "path": "data/alpha/human_confirmed_trade_ticket_latest.json",
+      "schema": "schemas/alpha/human_confirmed_trade_ticket.schema.json",
       "required": true,
       "domain": "alpha"
     }

@@ -2114,6 +2114,90 @@
                             </div>
 
 
+                            <!-- v10.0 Human-Confirmed Trade Ticket pinned at optimizer top -->
+                            <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-yellow-500/25 bg-yellow-500/[0.045] shadow-lg overflow-hidden">
+                                <div class="px-4 py-3 border-b border-yellow-500/20 bg-yellow-500/[0.08] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-clipboard-check text-yellow-300"></i>
+                                            v10.0 人工確認交易票據
+                                        </div>
+                                        <div class="text-[11px] text-yellow-100/70 mt-1">最佳化頁置頂顯示；只產生人工重輸入前的確認票據，不是券商委託單，也不會自動執行。</div>
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-2 text-[11px]">
+                                        <span class="px-2 py-1 rounded-lg border" :class="humanConfirmedTradeTicketSummary?.confirmed_ticket_count > 0 ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-red-500/30 bg-red-500/10 text-red-200'">
+                                            {{ zhText(humanConfirmedTradeTicketSummary?.human_confirmed_ticket_status || '尚未讀取') }}
+                                        </span>
+                                        <span class="px-2 py-1 rounded-lg border border-yellow-500/20 bg-yellow-500/10 text-yellow-100">execution_permission: false</span>
+                                        <a href="data/alpha/human_confirmed_trade_ticket_latest.json" target="_blank" rel="noopener" class="px-2 py-1 rounded-lg border border-white/10 bg-white/[0.04] text-gray-200 hover:bg-white/[0.08]">開啟來源 JSON</a>
+                                    </div>
+                                </div>
+                                <div class="p-4 space-y-4">
+                                    <div v-if="humanConfirmedTradeTicketError" class="rounded-xl border border-red-500/20 bg-red-500/[0.08] p-3 text-[11px] text-red-200">{{ humanConfirmedTradeTicketError }}</div>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-6 gap-3">
+                                        <div class="quant-card border-yellow-500/20 bg-yellow-500/10">
+                                            <div class="quant-label text-yellow-300">確認票據</div>
+                                            <div class="quant-value text-white">{{ humanConfirmedTradeTicketSummary?.confirmed_ticket_count ?? 0 }}</div>
+                                        </div>
+                                        <div class="quant-card border-sky-500/20 bg-sky-500/10">
+                                            <div class="quant-label text-sky-300">來源票據</div>
+                                            <div class="quant-value text-white">{{ humanConfirmedTradeTicketSummary?.source_manual_ticket_count ?? 0 }}</div>
+                                        </div>
+                                        <div class="quant-card border-red-500/20 bg-red-500/10">
+                                            <div class="quant-label text-red-300">阻擋原因</div>
+                                            <div class="quant-value text-white">{{ humanConfirmedTradeTicketSummary?.blocker_count ?? humanConfirmedTicketBlockers.length ?? 0 }}</div>
+                                        </div>
+                                        <div class="quant-card border-violet-500/20 bg-violet-500/10">
+                                            <div class="quant-label text-violet-300">人工確認</div>
+                                            <div class="quant-value text-white text-sm">{{ zhBool(humanConfirmedTradeTicketSummary?.human_final_confirmation_enabled) }}</div>
+                                        </div>
+                                        <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
+                                            <div class="quant-label text-emerald-300">現金檢查</div>
+                                            <div class="quant-value text-white text-sm">{{ zhBool(humanConfirmedTradeTicketSummary?.cash_balance_available) }}</div>
+                                        </div>
+                                        <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                            <div class="quant-label text-cyan-300">真實價格</div>
+                                            <div class="quant-value text-white text-sm">{{ zhBool(humanConfirmedTradeTicketSummary?.all_prices_real_world) }}</div>
+                                        </div>
+                                    </div>
+
+                                    <div v-if="humanConfirmedTicketVisibleRows.length" class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                        <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] text-xs font-bold text-white">人工確認票據列</div>
+                                        <div class="overflow-x-auto">
+                                            <table class="w-full text-[11px]">
+                                                <thead class="text-gray-500 border-b border-white/10">
+                                                    <tr>
+                                                        <th class="text-left px-3 py-2">票據</th>
+                                                        <th class="text-left px-3 py-2">狀態</th>
+                                                        <th class="text-right px-3 py-2">訂單列</th>
+                                                        <th class="text-left px-3 py-2">邊界</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr v-for="row in humanConfirmedTicketVisibleRows" :key="row.human_ticket_id" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                        <td class="px-3 py-2 font-mono text-white max-w-[260px] truncate" :title="row.human_ticket_id">{{ row.human_ticket_id }}</td>
+                                                        <td class="px-3 py-2 text-yellow-100">{{ zhText(row.ticket_status) }}</td>
+                                                        <td class="px-3 py-2 text-right text-gray-300">{{ (row.estimated_orders || []).length }}</td>
+                                                        <td class="px-3 py-2 text-gray-400">手動輸入｜非交易指令｜不送券商</td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div v-else class="rounded-xl border border-red-500/20 bg-red-500/[0.05] overflow-hidden">
+                                        <div class="px-3 py-2 border-b border-red-500/20 bg-red-500/[0.08] text-xs font-bold text-red-100">目前未產生 v10.0 確認票據</div>
+                                        <div class="divide-y divide-red-500/10">
+                                            <div v-for="row in humanConfirmedTicketVisibleBlockers" :key="row.code" class="p-3 text-[11px]">
+                                                <div class="font-bold text-red-200">{{ zhText(row.code) }}</div>
+                                                <div class="text-gray-400 mt-1">{{ row.message }}</div>
+                                            </div>
+                                            <div v-if="!humanConfirmedTicketVisibleBlockers.length" class="p-3 text-[11px] text-gray-500 text-center">尚未讀到阻擋原因。若 v10.0 JSON 尚未生成，請先跑 Optimizer Lab。</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- v4.8.2 Optimizer UI Consolidation Summary -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.035] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-emerald-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
@@ -6285,7 +6369,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=v9-9-global-reload-all-1"></script>
+<script src="assets/js/app.bundle.js?v=v10-human-confirmed-ticket-1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>

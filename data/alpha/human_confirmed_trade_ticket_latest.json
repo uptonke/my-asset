@@ -1,0 +1,146 @@
+{
+  "version": "v10.0",
+  "status": "OK",
+  "generated_at": "2026-06-12T02:45:28+00:00",
+  "mode": "human_confirmed_trade_ticket",
+  "safe_mode": true,
+  "review_only": true,
+  "manual_entry_only": true,
+  "human_confirmed_trade_ticket_enabled": true,
+  "human_confirmed_ticket_status": "blocked",
+  "trade_signal_enabled": false,
+  "execution_permission": false,
+  "broker_submission_enabled": false,
+  "official_rebalance_enabled": false,
+  "auto_trade_enabled": false,
+  "supabase_write_enabled": false,
+  "not_trade_order": true,
+  "not_buy_signal": true,
+  "not_sell_signal": true,
+  "summary": {
+    "human_confirmed_ticket_status": "blocked",
+    "source_manual_ticket_count": 0,
+    "selected_ticket_count": 0,
+    "confirmed_ticket_count": 0,
+    "blocker_count": 17,
+    "warning_count": 0,
+    "human_final_confirmation_enabled": false,
+    "confirmed_ticket_id_count": 0,
+    "confirmed_candidate_id_count": 0,
+    "manual_override_enabled": false,
+    "diagnostic_status": "blocked",
+    "formal_gate_status": "blocked_by_formal_pass_conditions",
+    "cash_balance_available": false,
+    "all_prices_real_world": false,
+    "trade_signal_enabled": false,
+    "execution_permission": false,
+    "broker_submission_enabled": false
+  },
+  "confirmed_ticket_rows": [],
+  "blockers": [
+    {
+      "code": "no_manual_trade_ticket_rows",
+      "severity": "blocker",
+      "message": "v9.0 尚未產生人工交易票據草案，因此 v10.0 不能建立人工確認票據。"
+    },
+    {
+      "code": "manual_trade_ticket_not_available",
+      "severity": "blocker",
+      "message": "v9.0 人工交易票據草案尚未可用。"
+    },
+    {
+      "code": "human_final_confirmation_disabled",
+      "severity": "blocker",
+      "message": "config/manual_approval_override.json 尚未啟用 human_final_confirmation_enabled。"
+    },
+    {
+      "code": "missing_human_confirmed_ids",
+      "severity": "blocker",
+      "message": "缺少 human_confirmed_ticket_ids 或 human_confirmed_candidate_ids；v10.0 不會猜測要確認哪張票據。"
+    },
+    {
+      "code": "trade_sizing_diagnostics_blocked",
+      "severity": "blocker",
+      "message": "v9.3 阻擋原因與交易 sizing 診斷仍為 blocked。"
+    },
+    {
+      "code": "diagnostic_alpha_validation_gate_not_passed",
+      "severity": "blocker",
+      "message": "alpha_validation_gate_not_passed"
+    },
+    {
+      "code": "diagnostic_no_manual_research_proposal",
+      "severity": "blocker",
+      "message": "no_manual_research_proposal"
+    },
+    {
+      "code": "diagnostic_no_pre_execution_draft",
+      "severity": "blocker",
+      "message": "no_pre_execution_draft"
+    },
+    {
+      "code": "diagnostic_alpha_validation_not_passed",
+      "severity": "blocker",
+      "message": "alpha_validation_not_passed"
+    },
+    {
+      "code": "diagnostic_manual_override_disabled",
+      "severity": "blocker",
+      "message": "manual_override_disabled"
+    },
+    {
+      "code": "diagnostic_missing_cash_balance",
+      "severity": "blocker",
+      "message": "missing_cash_balance"
+    },
+    {
+      "code": "diagnostic_incomplete_real_world_price_fetch",
+      "severity": "blocker",
+      "message": "incomplete_real_world_price_fetch"
+    },
+    {
+      "code": "diagnostic_no_formal_rebalance_draft",
+      "severity": "blocker",
+      "message": "no_formal_rebalance_draft"
+    },
+    {
+      "code": "diagnostic_no_manual_trade_ticket",
+      "severity": "blocker",
+      "message": "no_manual_trade_ticket"
+    },
+    {
+      "code": "manual_override_disabled",
+      "severity": "blocker",
+      "message": "v9.4 人工審閱控制台顯示 manual_override_enabled=false。"
+    },
+    {
+      "code": "cash_balance_missing",
+      "severity": "blocker",
+      "message": "缺少現金餘額；不能確認任何人工交易票據。"
+    },
+    {
+      "code": "not_all_prices_real_world",
+      "severity": "blocker",
+      "message": "仍有價格不是 real-world fetch 成功，不應進入人工確認票據。"
+    }
+  ],
+  "warnings": [],
+  "human_confirmation_input_snapshot": {
+    "manual_override_config": "config/manual_approval_override.json",
+    "human_final_confirmation_enabled": false,
+    "human_confirmed_ticket_ids": [],
+    "human_confirmed_candidate_ids": [],
+    "confirmation_note_present": false
+  },
+  "source_status": {
+    "manual_trade_ticket_status": "blocked_by_formal_rebalance_draft_gate",
+    "trade_sizing_diagnostic_status": "blocked",
+    "manual_approval_console_status": "blocked_by_upstream_gates",
+    "formal_rebalance_gate_status": "blocked_by_formal_pass_conditions"
+  },
+  "safety_boundary": [
+    "v10.0 is a human-confirmed manual-entry ticket layer, not broker submission.",
+    "It cannot enable trade_signal_enabled, execution_permission, official_rebalance_enabled, or broker_submission_enabled.",
+    "If any upstream gate, sizing rule, cash balance, price source, or human confirmation input is missing, v10.0 outputs zero confirmed tickets."
+  ]
+}

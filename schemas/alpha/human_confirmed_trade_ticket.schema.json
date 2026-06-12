@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Human Confirmed Trade Ticket",
+  "type": "object",
+  "required": [
+    "version",
+    "status",
+    "generated_at",
+    "mode",
+    "safe_mode",
+    "review_only",
+    "manual_entry_only",
+    "summary",
+    "not_trade_order",
+    "execution_permission",
+    "trade_signal_enabled",
+    "broker_submission_enabled"
+  ],
+  "properties": {
+    "version": {"type": "string"},
+    "status": {"type": "string"},
+    "generated_at": {"type": "string"},
+    "mode": {"type": "string"},
+    "safe_mode": {"type": "boolean"},
+    "review_only": {"type": "boolean"},
+    "manual_entry_only": {"type": "boolean"},
+    "summary": {"type": "object"},
+    "confirmed_ticket_rows": {"type": "array"},
+    "blockers": {"type": "array"},
+    "not_trade_order": {"type": "boolean"},
+    "trade_signal_enabled": {"type": "boolean"},
+    "execution_permission": {"type": "boolean"},
+    "broker_submission_enabled": {"type": "boolean"},
+    "official_rebalance_enabled": {"type": "boolean"},
+    "auto_trade_enabled": {"type": "boolean"},
+    "supabase_write_enabled": {"type": "boolean"}
+  }
+}
