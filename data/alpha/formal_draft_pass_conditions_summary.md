@@ -1,6 +1,6 @@
 # v8.1 Formal Draft Pass Conditions
 
-- Generated: `2026-06-11T13:23:44+00:00`
+- Generated: `2026-06-12T12:49:10+00:00`
 - Pass status: **blocked**
 - Hard fails: `3`
 - Watch items: `0`

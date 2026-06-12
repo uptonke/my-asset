@@ -2,16 +2,16 @@
 
 - Status: `OK`
 - Mode: `sandbox_only`
-- Strict sample: `380`
-- Period: `2025-05-28 → 2026-06-11`
+- Strict sample: `381`
+- Period: `2025-05-28 → 2026-06-12`
 - Asset count: `14`
 
 | Portfolio | Status | Ann Vol | VaR95 | ES95 | MDD | Turnover vs Current |
 |---|---:|---:|---:|---:|---:|---:|
-| current_weight | OK | 11.3% | 1.0% | 1.658% | -5.52% | 0.0% |
-| inverse_vol_baseline | OK | 9.64% | 0.911% | 1.467% | -4.55% | 21.55% |
-| scipy_min_variance_fallback | OK | 5.13% | 0.391% | 0.776% | -2.74% | 75.44% |
-| riskfolio_min_variance | OK | 5.13% | 0.388% | 0.776% | -2.77% | 75.24% |
-| riskfolio_cvar_minimize | OK | 5.19% | 0.391% | 0.766% | -2.69% | 70.55% |
-| riskfolio_risk_parity_mv | OK | 8.55% | 0.694% | 1.289% | -3.72% | 24.43% |
-| riskfolio_hrp_mv | OK | 6.78% | 0.648% | 1.046% | -2.98% | 42.38% |
+| current_weight | OK | 11.37% | 1.012% | 1.612% | -5.48% | 0.0% |
+| inverse_vol_baseline | OK | 9.69% | 0.913% | 1.42% | -4.54% | 21.96% |
+| scipy_min_variance_fallback | OK | 5.11% | 0.373% | 0.751% | -2.72% | 75.2% |
+| riskfolio_min_variance | OK | 5.11% | 0.376% | 0.752% | -2.75% | 75.3% |
+| riskfolio_cvar_minimize | OK | 5.17% | 0.394% | 0.743% | -2.56% | 68.99% |
+| riskfolio_risk_parity_mv | OK | 8.54% | 0.691% | 1.235% | -3.63% | 25.02% |
+| riskfolio_hrp_mv | OK | 6.75% | 0.628% | 1.011% | -2.98% | 43.3% |

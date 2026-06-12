@@ -1,7 +1,7 @@
 {
   "version": "v3.0",
   "status": "OK",
-  "generated_at": "2026-06-11T13:23:31+00:00",
+  "generated_at": "2026-06-12T12:48:58+00:00",
   "mode": "regime_aware_optimizer",
   "safe_mode": true,
   "safe_mode_note": "v3.0 Regime-Aware Optimizer 只根據本地 optimizer / stress / robustness outputs 建立 regime-aware covariance policy、constraint policy、risk budget 與草案分級；不產生 BUY / SELL 指令，不自動交易，不寫入 Supabase，不修改正式持倉或正式權重。",
@@ -25,30 +25,30 @@
       "neutral_growth": 0.1
     },
     "evidence": {
-      "worst_scenario_return_pct": -24.917,
-      "avg_scenario_return_pct": -17.28,
-      "rate_hike_2022_like_pct": -24.917,
-      "crypto_crash_pct": -15.494,
-      "taiwan_tech_correction_pct": -13.295,
-      "risk_off_usd_squeeze_pct": -19.612,
+      "worst_scenario_return_pct": -24.913,
+      "avg_scenario_return_pct": -17.277,
+      "rate_hike_2022_like_pct": -24.913,
+      "crypto_crash_pct": -15.4,
+      "taiwan_tech_correction_pct": -13.304,
+      "risk_off_usd_squeeze_pct": -19.623,
       "base_exposure": {
-        "cash_pct": 12.185,
-        "gold_pct": 2.103,
-        "crypto_pct": 12.894,
-        "taiwan_tech_pct": 9.527,
-        "us_tech_pct": 10.838,
-        "theme_etf_pct": 17.048,
-        "other_pct": 35.406,
-        "max_single_weight_pct": 12.185,
+        "cash_pct": 11.941,
+        "gold_pct": 2.124,
+        "crypto_pct": 12.706,
+        "taiwan_tech_pct": 9.584,
+        "us_tech_pct": 10.981,
+        "theme_etf_pct": 17.274,
+        "other_pct": 35.39,
+        "max_single_weight_pct": 11.941,
         "max_single_ticker": "BOXX"
       }
     },
     "reason_codes": [
-      "current worst scenario -24.92%",
-      "risk_off_usd_squeeze -19.61%",
-      "rate_hike_2022_like -24.92%",
-      "crypto_crash -15.49%",
-      "taiwan_tech_correction -13.29%"
+      "current worst scenario -24.91%",
+      "risk_off_usd_squeeze -19.62%",
+      "rate_hike_2022_like -24.91%",
+      "crypto_crash -15.40%",
+      "taiwan_tech_correction -13.30%"
     ]
   },
   "active_policy": {
@@ -85,14 +85,14 @@
     }
   },
   "baseline_exposure": {
-    "cash_pct": 12.185,
-    "gold_pct": 2.103,
-    "crypto_pct": 12.894,
-    "taiwan_tech_pct": 9.527,
-    "us_tech_pct": 10.838,
-    "theme_etf_pct": 17.048,
-    "other_pct": 35.406,
-    "max_single_weight_pct": 12.185,
+    "cash_pct": 11.941,
+    "gold_pct": 2.124,
+    "crypto_pct": 12.706,
+    "taiwan_tech_pct": 9.584,
+    "us_tech_pct": 10.981,
+    "theme_etf_pct": 17.274,
+    "other_pct": 35.39,
+    "max_single_weight_pct": 11.941,
     "max_single_ticker": "BOXX"
   },
   "summary": {
@@ -112,35 +112,35 @@
       "execution_permission": false,
       "not_trade_order": true,
       "requires_manual_approval": true,
-      "turnover_vs_current_pct": 6.894,
+      "turnover_vs_current_pct": 6.706,
       "exposure": {
-        "cash_pct": 17.079,
-        "gold_pct": 4.103,
+        "cash_pct": 16.647,
+        "gold_pct": 4.124,
         "crypto_pct": 8.0,
-        "taiwan_tech_pct": 9.527,
-        "us_tech_pct": 9.838,
-        "theme_etf_pct": 17.048,
-        "other_pct": 34.406,
-        "max_single_weight_pct": 17.079,
+        "taiwan_tech_pct": 9.584,
+        "us_tech_pct": 9.981,
+        "theme_etf_pct": 17.274,
+        "other_pct": 34.39,
+        "max_single_weight_pct": 16.647,
         "max_single_ticker": "BOXX"
       },
       "regime_actions": [
         {
           "action": "trim",
           "ticker": "BTC-USD",
-          "amount_pct": 0.269,
+          "amount_pct": 0.205,
           "reason": "regime_crypto_risk_budget"
         },
         {
           "action": "trim",
           "ticker": "ETH-USD",
-          "amount_pct": 0.256,
+          "amount_pct": 0.196,
           "reason": "regime_crypto_risk_budget"
         },
         {
           "action": "add",
           "ticker": "BOXX",
-          "amount_pct": 0.525,
+          "amount_pct": 0.401,
           "reason": "regime_crypto_risk_budget"
         },
         {
@@ -178,62 +178,62 @@
       "top_regime_adjustments": [
         {
           "ticker": "BOXX",
-          "current_weight_pct": 12.185,
-          "regime_weight_pct": 17.079,
-          "delta_pct": 4.894,
+          "current_weight_pct": 11.941,
+          "regime_weight_pct": 16.647,
+          "delta_pct": 4.706,
           "direction": "UP"
         },
         {
           "ticker": "BTC-USD",
-          "current_weight_pct": 8.739,
-          "regime_weight_pct": 4.101,
-          "delta_pct": -4.638,
+          "current_weight_pct": 8.61,
+          "regime_weight_pct": 4.1,
+          "delta_pct": -4.51,
           "direction": "DOWN"
         },
         {
           "ticker": "GLDM",
-          "current_weight_pct": 2.103,
-          "regime_weight_pct": 4.103,
+          "current_weight_pct": 2.124,
+          "regime_weight_pct": 4.124,
           "delta_pct": 2.0,
           "direction": "UP"
         },
         {
           "ticker": "QQQ",
-          "current_weight_pct": 10.838,
-          "regime_weight_pct": 9.838,
+          "current_weight_pct": 10.981,
+          "regime_weight_pct": 9.981,
           "delta_pct": -1.0,
           "direction": "DOWN"
         },
         {
           "ticker": "VOO",
-          "current_weight_pct": 10.422,
-          "regime_weight_pct": 9.422,
+          "current_weight_pct": 10.386,
+          "regime_weight_pct": 9.386,
           "delta_pct": -1.0,
           "direction": "DOWN"
         },
         {
           "ticker": "ETH-USD",
-          "current_weight_pct": 4.155,
-          "regime_weight_pct": 3.899,
-          "delta_pct": -0.256,
+          "current_weight_pct": 4.096,
+          "regime_weight_pct": 3.9,
+          "delta_pct": -0.196,
           "direction": "DOWN"
         }
       ],
       "weights_pct": {
-        "00981A": 9.527,
-        "AVUV": 9.441,
-        "BOXX": 17.079,
-        "BTC-USD": 4.101,
-        "ETH-USD": 3.899,
-        "GLDM": 4.103,
-        "GRID": 3.781,
-        "IFRA": 5.938,
-        "PICK": 4.399,
-        "QQQ": 9.838,
-        "SRVR": 2.93,
-        "USMV": 6.943,
-        "VEA": 8.6,
-        "VOO": 9.422
+        "00981A": 9.584,
+        "AVUV": 9.433,
+        "BOXX": 16.647,
+        "BTC-USD": 4.1,
+        "ETH-USD": 3.9,
+        "GLDM": 4.124,
+        "GRID": 3.866,
+        "IFRA": 5.941,
+        "PICK": 4.558,
+        "QQQ": 9.981,
+        "SRVR": 2.909,
+        "USMV": 6.835,
+        "VEA": 8.736,
+        "VOO": 9.386
       }
     },
     {
@@ -246,29 +246,29 @@
       "execution_permission": false,
       "not_trade_order": true,
       "requires_manual_approval": true,
-      "turnover_vs_current_pct": 6.894,
+      "turnover_vs_current_pct": 6.706,
       "exposure": {
-        "cash_pct": 17.079,
-        "gold_pct": 4.103,
+        "cash_pct": 16.647,
+        "gold_pct": 4.124,
         "crypto_pct": 8.0,
-        "taiwan_tech_pct": 9.527,
-        "us_tech_pct": 9.838,
-        "theme_etf_pct": 17.048,
-        "other_pct": 34.406,
-        "max_single_weight_pct": 17.079,
+        "taiwan_tech_pct": 9.584,
+        "us_tech_pct": 9.981,
+        "theme_etf_pct": 17.274,
+        "other_pct": 34.39,
+        "max_single_weight_pct": 16.647,
         "max_single_ticker": "BOXX"
       },
       "regime_actions": [
         {
           "action": "trim",
           "ticker": "BTC-USD",
-          "amount_pct": 0.739,
+          "amount_pct": 0.61,
           "reason": "regime_crypto_risk_budget"
         },
         {
           "action": "add",
           "ticker": "BOXX",
-          "amount_pct": 0.739,
+          "amount_pct": 0.61,
           "reason": "regime_crypto_risk_budget"
         },
         {
@@ -306,62 +306,62 @@
       "top_regime_adjustments": [
         {
           "ticker": "BOXX",
-          "current_weight_pct": 12.185,
-          "regime_weight_pct": 17.079,
-          "delta_pct": 4.894,
+          "current_weight_pct": 11.941,
+          "regime_weight_pct": 16.647,
+          "delta_pct": 4.706,
           "direction": "UP"
         },
         {
           "ticker": "ETH-USD",
-          "current_weight_pct": 4.155,
+          "current_weight_pct": 4.096,
           "regime_weight_pct": 0.0,
-          "delta_pct": -4.155,
+          "delta_pct": -4.096,
           "direction": "DOWN"
         },
         {
           "ticker": "GLDM",
-          "current_weight_pct": 2.103,
-          "regime_weight_pct": 4.103,
+          "current_weight_pct": 2.124,
+          "regime_weight_pct": 4.124,
           "delta_pct": 2.0,
           "direction": "UP"
         },
         {
           "ticker": "QQQ",
-          "current_weight_pct": 10.838,
-          "regime_weight_pct": 9.838,
+          "current_weight_pct": 10.981,
+          "regime_weight_pct": 9.981,
           "delta_pct": -1.0,
           "direction": "DOWN"
         },
         {
           "ticker": "VOO",
-          "current_weight_pct": 10.422,
-          "regime_weight_pct": 9.422,
+          "current_weight_pct": 10.386,
+          "regime_weight_pct": 9.386,
           "delta_pct": -1.0,
           "direction": "DOWN"
         },
         {
           "ticker": "BTC-USD",
-          "current_weight_pct": 8.739,
+          "current_weight_pct": 8.61,
           "regime_weight_pct": 8.0,
-          "delta_pct": -0.739,
+          "delta_pct": -0.61,
           "direction": "DOWN"
         }
       ],
       "weights_pct": {
-        "00981A": 9.527,
-        "AVUV": 9.441,
-        "BOXX": 17.079,
+        "00981A": 9.584,
+        "AVUV": 9.433,
+        "BOXX": 16.647,
         "BTC-USD": 8.0,
         "ETH-USD": 0.0,
-        "GLDM": 4.103,
-        "GRID": 3.781,
-        "IFRA": 5.938,
-        "PICK": 4.399,
-        "QQQ": 9.838,
-        "SRVR": 2.93,
-        "USMV": 6.943,
-        "VEA": 8.6,
-        "VOO": 9.422
+        "GLDM": 4.124,
+        "GRID": 3.866,
+        "IFRA": 5.941,
+        "PICK": 4.558,
+        "QQQ": 9.981,
+        "SRVR": 2.909,
+        "USMV": 6.835,
+        "VEA": 8.736,
+        "VOO": 9.386
       }
     },
     {
@@ -374,35 +374,35 @@
       "execution_permission": false,
       "not_trade_order": true,
       "requires_manual_approval": true,
-      "turnover_vs_current_pct": 6.894,
+      "turnover_vs_current_pct": 6.706,
       "exposure": {
-        "cash_pct": 17.079,
-        "gold_pct": 4.103,
+        "cash_pct": 16.647,
+        "gold_pct": 4.124,
         "crypto_pct": 8.0,
-        "taiwan_tech_pct": 9.527,
-        "us_tech_pct": 9.838,
-        "theme_etf_pct": 17.048,
-        "other_pct": 34.406,
-        "max_single_weight_pct": 17.079,
+        "taiwan_tech_pct": 9.584,
+        "us_tech_pct": 9.981,
+        "theme_etf_pct": 17.274,
+        "other_pct": 34.39,
+        "max_single_weight_pct": 16.647,
         "max_single_ticker": "BOXX"
       },
       "regime_actions": [
         {
           "action": "trim",
           "ticker": "BTC-USD",
-          "amount_pct": 1.658,
+          "amount_pct": 1.563,
           "reason": "regime_crypto_risk_budget"
         },
         {
           "action": "trim",
           "ticker": "ETH-USD",
-          "amount_pct": 1.051,
+          "amount_pct": 0.991,
           "reason": "regime_crypto_risk_budget"
         },
         {
           "action": "add",
           "ticker": "BOXX",
-          "amount_pct": 2.709,
+          "amount_pct": 2.554,
           "reason": "regime_crypto_risk_budget"
         },
         {
@@ -440,62 +440,62 @@
       "top_regime_adjustments": [
         {
           "ticker": "BOXX",
-          "current_weight_pct": 12.185,
-          "regime_weight_pct": 17.079,
-          "delta_pct": 4.894,
+          "current_weight_pct": 11.941,
+          "regime_weight_pct": 16.647,
+          "delta_pct": 4.706,
           "direction": "UP"
         },
         {
           "ticker": "BTC-USD",
-          "current_weight_pct": 8.739,
-          "regime_weight_pct": 4.896,
-          "delta_pct": -3.843,
+          "current_weight_pct": 8.61,
+          "regime_weight_pct": 4.895,
+          "delta_pct": -3.715,
           "direction": "DOWN"
         },
         {
           "ticker": "GLDM",
-          "current_weight_pct": 2.103,
-          "regime_weight_pct": 4.103,
+          "current_weight_pct": 2.124,
+          "regime_weight_pct": 4.124,
           "delta_pct": 2.0,
           "direction": "UP"
         },
         {
-          "ticker": "ETH-USD",
-          "current_weight_pct": 4.155,
-          "regime_weight_pct": 3.104,
-          "delta_pct": -1.051,
-          "direction": "DOWN"
-        },
-        {
           "ticker": "QQQ",
-          "current_weight_pct": 10.838,
-          "regime_weight_pct": 9.838,
+          "current_weight_pct": 10.981,
+          "regime_weight_pct": 9.981,
           "delta_pct": -1.0,
           "direction": "DOWN"
         },
         {
           "ticker": "VOO",
-          "current_weight_pct": 10.422,
-          "regime_weight_pct": 9.422,
+          "current_weight_pct": 10.386,
+          "regime_weight_pct": 9.386,
           "delta_pct": -1.0,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "ETH-USD",
+          "current_weight_pct": 4.096,
+          "regime_weight_pct": 3.105,
+          "delta_pct": -0.991,
           "direction": "DOWN"
         }
       ],
       "weights_pct": {
-        "00981A": 9.527,
-        "AVUV": 9.441,
-        "BOXX": 17.079,
-        "BTC-USD": 4.896,
-        "ETH-USD": 3.104,
-        "GLDM": 4.103,
-        "GRID": 3.781,
-        "IFRA": 5.938,
-        "PICK": 4.399,
-        "QQQ": 9.838,
-        "SRVR": 2.93,
-        "USMV": 6.943,
-        "VEA": 8.6,
-        "VOO": 9.422
+        "00981A": 9.584,
+        "AVUV": 9.433,
+        "BOXX": 16.647,
+        "BTC-USD": 4.895,
+        "ETH-USD": 3.105,
+        "GLDM": 4.124,
+        "GRID": 3.866,
+        "IFRA": 5.941,
+        "PICK": 4.558,
+        "QQQ": 9.981,
+        "SRVR": 2.909,
+        "USMV": 6.835,
+        "VEA": 8.736,
+        "VOO": 9.386
       }
     },
     {
@@ -508,65 +508,65 @@
       "execution_permission": false,
       "not_trade_order": true,
       "requires_manual_approval": true,
-      "turnover_vs_current_pct": 10.334,
+      "turnover_vs_current_pct": 10.319,
       "exposure": {
-        "cash_pct": 17.613,
-        "gold_pct": 4.721,
+        "cash_pct": 17.483,
+        "gold_pct": 4.74,
         "crypto_pct": 8.0,
-        "taiwan_tech_pct": 8.131,
-        "us_tech_pct": 8.973,
+        "taiwan_tech_pct": 8.178,
+        "us_tech_pct": 9.063,
         "theme_etf_pct": 18.0,
-        "other_pct": 34.562,
-        "max_single_weight_pct": 17.613,
+        "other_pct": 34.536,
+        "max_single_weight_pct": 17.483,
         "max_single_ticker": "BOXX"
       },
       "regime_actions": [
         {
           "action": "trim",
           "ticker": "BTC-USD",
-          "amount_pct": 1.917,
+          "amount_pct": 1.826,
           "reason": "regime_crypto_risk_budget"
         },
         {
           "action": "trim",
           "ticker": "ETH-USD",
-          "amount_pct": 0.941,
+          "amount_pct": 0.898,
           "reason": "regime_crypto_risk_budget"
         },
         {
           "action": "add",
           "ticker": "BOXX",
-          "amount_pct": 2.858,
+          "amount_pct": 2.724,
           "reason": "regime_crypto_risk_budget"
         },
         {
           "action": "trim",
           "ticker": "GRID",
-          "amount_pct": 0.269,
+          "amount_pct": 0.315,
           "reason": "regime_theme_etf_risk_budget"
         },
         {
           "action": "trim",
           "ticker": "IFRA",
-          "amount_pct": 0.39,
+          "amount_pct": 0.452,
           "reason": "regime_theme_etf_risk_budget"
         },
         {
           "action": "trim",
           "ticker": "PICK",
-          "amount_pct": 0.268,
+          "amount_pct": 0.322,
           "reason": "regime_theme_etf_risk_budget"
         },
         {
           "action": "trim",
           "ticker": "SRVR",
-          "amount_pct": 0.241,
+          "amount_pct": 0.279,
           "reason": "regime_theme_etf_risk_budget"
         },
         {
           "action": "add",
           "ticker": "BOXX",
-          "amount_pct": 1.168,
+          "amount_pct": 1.369,
           "reason": "regime_theme_etf_risk_budget"
         },
         {
@@ -604,104 +604,104 @@
       "top_regime_adjustments": [
         {
           "ticker": "BOXX",
-          "current_weight_pct": 12.185,
-          "regime_weight_pct": 17.613,
-          "delta_pct": 5.428,
+          "current_weight_pct": 11.941,
+          "regime_weight_pct": 17.483,
+          "delta_pct": 5.542,
           "direction": "UP"
         },
         {
           "ticker": "BTC-USD",
-          "current_weight_pct": 8.739,
-          "regime_weight_pct": 5.366,
-          "delta_pct": -3.373,
+          "current_weight_pct": 8.61,
+          "regime_weight_pct": 5.363,
+          "delta_pct": -3.247,
           "direction": "DOWN"
         },
         {
           "ticker": "GLDM",
-          "current_weight_pct": 2.103,
-          "regime_weight_pct": 4.721,
-          "delta_pct": 2.618,
+          "current_weight_pct": 2.124,
+          "regime_weight_pct": 4.74,
+          "delta_pct": 2.616,
           "direction": "UP"
         },
         {
           "ticker": "QQQ",
-          "current_weight_pct": 10.838,
-          "regime_weight_pct": 8.973,
-          "delta_pct": -1.865,
+          "current_weight_pct": 10.981,
+          "regime_weight_pct": 9.063,
+          "delta_pct": -1.918,
           "direction": "DOWN"
         },
         {
           "ticker": "ETH-USD",
-          "current_weight_pct": 4.155,
-          "regime_weight_pct": 2.634,
-          "delta_pct": -1.521,
+          "current_weight_pct": 4.096,
+          "regime_weight_pct": 2.637,
+          "delta_pct": -1.459,
           "direction": "DOWN"
         },
         {
           "ticker": "00981A",
-          "current_weight_pct": 9.527,
-          "regime_weight_pct": 8.131,
-          "delta_pct": -1.396,
+          "current_weight_pct": 9.584,
+          "regime_weight_pct": 8.178,
+          "delta_pct": -1.406,
           "direction": "DOWN"
         },
         {
           "ticker": "USMV",
-          "current_weight_pct": 6.943,
-          "regime_weight_pct": 8.011,
-          "delta_pct": 1.068,
+          "current_weight_pct": 6.835,
+          "regime_weight_pct": 7.948,
+          "delta_pct": 1.113,
           "direction": "UP"
         },
         {
           "ticker": "VOO",
-          "current_weight_pct": 10.422,
-          "regime_weight_pct": 9.422,
+          "current_weight_pct": 10.386,
+          "regime_weight_pct": 9.386,
           "delta_pct": -1.0,
           "direction": "DOWN"
         },
         {
           "ticker": "SRVR",
-          "current_weight_pct": 2.93,
-          "regime_weight_pct": 3.715,
-          "delta_pct": 0.785,
+          "current_weight_pct": 2.909,
+          "regime_weight_pct": 3.67,
+          "delta_pct": 0.761,
           "direction": "UP"
         },
         {
           "ticker": "AVUV",
-          "current_weight_pct": 9.441,
-          "regime_weight_pct": 8.773,
-          "delta_pct": -0.668,
+          "current_weight_pct": 9.433,
+          "regime_weight_pct": 8.771,
+          "delta_pct": -0.662,
           "direction": "DOWN"
         },
         {
-          "ticker": "GRID",
-          "current_weight_pct": 3.781,
-          "regime_weight_pct": 4.148,
-          "delta_pct": 0.367,
-          "direction": "UP"
+          "ticker": "PICK",
+          "current_weight_pct": 4.558,
+          "regime_weight_pct": 4.236,
+          "delta_pct": -0.322,
+          "direction": "DOWN"
         },
         {
-          "ticker": "PICK",
-          "current_weight_pct": 4.399,
-          "regime_weight_pct": 4.131,
-          "delta_pct": -0.268,
+          "ticker": "VEA",
+          "current_weight_pct": 8.736,
+          "regime_weight_pct": 8.431,
+          "delta_pct": -0.305,
           "direction": "DOWN"
         }
       ],
       "weights_pct": {
-        "00981A": 8.131,
-        "AVUV": 8.773,
-        "BOXX": 17.613,
-        "BTC-USD": 5.366,
-        "ETH-USD": 2.634,
-        "GLDM": 4.721,
-        "GRID": 4.148,
-        "IFRA": 6.006,
-        "PICK": 4.131,
-        "QQQ": 8.973,
-        "SRVR": 3.715,
-        "USMV": 8.011,
-        "VEA": 8.356,
-        "VOO": 9.422
+        "00981A": 8.178,
+        "AVUV": 8.771,
+        "BOXX": 17.483,
+        "BTC-USD": 5.363,
+        "ETH-USD": 2.637,
+        "GLDM": 4.74,
+        "GRID": 4.146,
+        "IFRA": 5.949,
+        "PICK": 4.236,
+        "QQQ": 9.063,
+        "SRVR": 3.67,
+        "USMV": 7.948,
+        "VEA": 8.431,
+        "VOO": 9.386
       }
     },
     {
@@ -714,16 +714,16 @@
       "execution_permission": false,
       "not_trade_order": true,
       "requires_manual_approval": true,
-      "turnover_vs_current_pct": 10.739,
+      "turnover_vs_current_pct": 10.61,
       "exposure": {
-        "cash_pct": 20.924,
-        "gold_pct": 4.103,
-        "crypto_pct": 4.155,
-        "taiwan_tech_pct": 9.527,
-        "us_tech_pct": 9.838,
-        "theme_etf_pct": 17.048,
-        "other_pct": 34.406,
-        "max_single_weight_pct": 20.924,
+        "cash_pct": 20.551,
+        "gold_pct": 4.124,
+        "crypto_pct": 4.096,
+        "taiwan_tech_pct": 9.584,
+        "us_tech_pct": 9.981,
+        "theme_etf_pct": 17.274,
+        "other_pct": 34.39,
+        "max_single_weight_pct": 20.551,
         "max_single_ticker": "BOXX"
       },
       "regime_actions": [
@@ -762,55 +762,55 @@
       "top_regime_adjustments": [
         {
           "ticker": "BOXX",
-          "current_weight_pct": 12.185,
-          "regime_weight_pct": 20.924,
-          "delta_pct": 8.739,
+          "current_weight_pct": 11.941,
+          "regime_weight_pct": 20.551,
+          "delta_pct": 8.61,
           "direction": "UP"
         },
         {
           "ticker": "BTC-USD",
-          "current_weight_pct": 8.739,
+          "current_weight_pct": 8.61,
           "regime_weight_pct": 0.0,
-          "delta_pct": -8.739,
+          "delta_pct": -8.61,
           "direction": "DOWN"
         },
         {
           "ticker": "GLDM",
-          "current_weight_pct": 2.103,
-          "regime_weight_pct": 4.103,
+          "current_weight_pct": 2.124,
+          "regime_weight_pct": 4.124,
           "delta_pct": 2.0,
           "direction": "UP"
         },
         {
           "ticker": "QQQ",
-          "current_weight_pct": 10.838,
-          "regime_weight_pct": 9.838,
+          "current_weight_pct": 10.981,
+          "regime_weight_pct": 9.981,
           "delta_pct": -1.0,
           "direction": "DOWN"
         },
         {
           "ticker": "VOO",
-          "current_weight_pct": 10.422,
-          "regime_weight_pct": 9.422,
+          "current_weight_pct": 10.386,
+          "regime_weight_pct": 9.386,
           "delta_pct": -1.0,
           "direction": "DOWN"
         }
       ],
       "weights_pct": {
-        "00981A": 9.527,
-        "AVUV": 9.441,
-        "BOXX": 20.924,
+        "00981A": 9.584,
+        "AVUV": 9.433,
+        "BOXX": 20.551,
         "BTC-USD": 0.0,
-        "ETH-USD": 4.155,
-        "GLDM": 4.103,
-        "GRID": 3.781,
-        "IFRA": 5.938,
-        "PICK": 4.399,
-        "QQQ": 9.838,
-        "SRVR": 2.93,
-        "USMV": 6.943,
-        "VEA": 8.6,
-        "VOO": 9.422
+        "ETH-USD": 4.096,
+        "GLDM": 4.124,
+        "GRID": 3.866,
+        "IFRA": 5.941,
+        "PICK": 4.558,
+        "QQQ": 9.981,
+        "SRVR": 2.909,
+        "USMV": 6.835,
+        "VEA": 8.736,
+        "VOO": 9.386
       }
     },
     {
@@ -823,40 +823,40 @@
       "execution_permission": false,
       "not_trade_order": true,
       "requires_manual_approval": true,
-      "turnover_vs_current_pct": 11.031,
+      "turnover_vs_current_pct": 10.808,
       "exposure": {
-        "cash_pct": 18.646,
-        "gold_pct": 4.849,
+        "cash_pct": 18.386,
+        "gold_pct": 4.853,
         "crypto_pct": 8.0,
-        "taiwan_tech_pct": 8.527,
-        "us_tech_pct": 8.548,
-        "theme_etf_pct": 17.733,
-        "other_pct": 33.697,
-        "max_single_weight_pct": 18.646,
+        "taiwan_tech_pct": 8.806,
+        "us_tech_pct": 8.63,
+        "theme_etf_pct": 17.675,
+        "other_pct": 33.65,
+        "max_single_weight_pct": 18.386,
         "max_single_ticker": "BOXX"
       },
       "regime_actions": [
         {
           "action": "trim",
           "ticker": "BTC-USD",
-          "amount_pct": 1.963,
+          "amount_pct": 1.86,
           "reason": "regime_crypto_risk_budget"
         },
         {
           "action": "trim",
           "ticker": "ETH-USD",
-          "amount_pct": 0.963,
+          "amount_pct": 0.915,
           "reason": "regime_crypto_risk_budget"
         },
         {
           "action": "add",
           "ticker": "BOXX",
-          "amount_pct": 2.926,
+          "amount_pct": 2.775,
           "reason": "regime_crypto_risk_budget"
         },
         {
           "action": "trim",
-          "ticker": "00981A",
+          "ticker": "QQQ",
           "amount_pct": 1.0,
           "reason": "regime_gold_target_source_funding"
         },
@@ -889,104 +889,104 @@
       "top_regime_adjustments": [
         {
           "ticker": "BOXX",
-          "current_weight_pct": 12.185,
-          "regime_weight_pct": 18.646,
-          "delta_pct": 6.461,
+          "current_weight_pct": 11.941,
+          "regime_weight_pct": 18.386,
+          "delta_pct": 6.445,
           "direction": "UP"
         },
         {
           "ticker": "BTC-USD",
-          "current_weight_pct": 8.739,
-          "regime_weight_pct": 5.367,
-          "delta_pct": -3.372,
+          "current_weight_pct": 8.61,
+          "regime_weight_pct": 5.364,
+          "delta_pct": -3.246,
           "direction": "DOWN"
         },
         {
           "ticker": "GLDM",
-          "current_weight_pct": 2.103,
-          "regime_weight_pct": 4.849,
-          "delta_pct": 2.746,
+          "current_weight_pct": 2.124,
+          "regime_weight_pct": 4.853,
+          "delta_pct": 2.729,
           "direction": "UP"
         },
         {
           "ticker": "QQQ",
-          "current_weight_pct": 10.838,
-          "regime_weight_pct": 8.548,
-          "delta_pct": -2.29,
+          "current_weight_pct": 10.981,
+          "regime_weight_pct": 8.63,
+          "delta_pct": -2.351,
           "direction": "DOWN"
         },
         {
           "ticker": "ETH-USD",
-          "current_weight_pct": 4.155,
-          "regime_weight_pct": 2.633,
-          "delta_pct": -1.522,
-          "direction": "DOWN"
-        },
-        {
-          "ticker": "00981A",
-          "current_weight_pct": 9.527,
-          "regime_weight_pct": 8.527,
-          "delta_pct": -1.0,
-          "direction": "DOWN"
-        },
-        {
-          "ticker": "AVUV",
-          "current_weight_pct": 9.441,
-          "regime_weight_pct": 8.508,
-          "delta_pct": -0.933,
+          "current_weight_pct": 4.096,
+          "regime_weight_pct": 2.636,
+          "delta_pct": -1.46,
           "direction": "DOWN"
         },
         {
           "ticker": "USMV",
-          "current_weight_pct": 6.943,
-          "regime_weight_pct": 7.862,
-          "delta_pct": 0.919,
+          "current_weight_pct": 6.835,
+          "regime_weight_pct": 7.791,
+          "delta_pct": 0.956,
           "direction": "UP"
         },
         {
+          "ticker": "AVUV",
+          "current_weight_pct": 9.433,
+          "regime_weight_pct": 8.492,
+          "delta_pct": -0.941,
+          "direction": "DOWN"
+        },
+        {
           "ticker": "VOO",
-          "current_weight_pct": 10.422,
-          "regime_weight_pct": 9.506,
-          "delta_pct": -0.916,
+          "current_weight_pct": 10.386,
+          "regime_weight_pct": 9.472,
+          "delta_pct": -0.914,
           "direction": "DOWN"
         },
         {
           "ticker": "VEA",
-          "current_weight_pct": 8.6,
-          "regime_weight_pct": 7.821,
-          "delta_pct": -0.779,
+          "current_weight_pct": 8.736,
+          "regime_weight_pct": 7.895,
+          "delta_pct": -0.841,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "00981A",
+          "current_weight_pct": 9.584,
+          "regime_weight_pct": 8.806,
+          "delta_pct": -0.778,
           "direction": "DOWN"
         },
         {
           "ticker": "SRVR",
-          "current_weight_pct": 2.93,
-          "regime_weight_pct": 3.603,
-          "delta_pct": 0.673,
+          "current_weight_pct": 2.909,
+          "regime_weight_pct": 3.587,
+          "delta_pct": 0.678,
           "direction": "UP"
         },
         {
-          "ticker": "GRID",
-          "current_weight_pct": 3.781,
-          "regime_weight_pct": 4.013,
-          "delta_pct": 0.232,
-          "direction": "UP"
+          "ticker": "PICK",
+          "current_weight_pct": 4.558,
+          "regime_weight_pct": 4.281,
+          "delta_pct": -0.277,
+          "direction": "DOWN"
         }
       ],
       "weights_pct": {
-        "00981A": 8.527,
-        "AVUV": 8.508,
-        "BOXX": 18.646,
-        "BTC-USD": 5.367,
-        "ETH-USD": 2.633,
-        "GLDM": 4.849,
-        "GRID": 4.013,
-        "IFRA": 5.938,
-        "PICK": 4.179,
-        "QQQ": 8.548,
-        "SRVR": 3.603,
-        "USMV": 7.862,
-        "VEA": 7.821,
-        "VOO": 9.506
+        "00981A": 8.806,
+        "AVUV": 8.492,
+        "BOXX": 18.386,
+        "BTC-USD": 5.364,
+        "ETH-USD": 2.636,
+        "GLDM": 4.853,
+        "GRID": 3.866,
+        "IFRA": 5.941,
+        "PICK": 4.281,
+        "QQQ": 8.63,
+        "SRVR": 3.587,
+        "USMV": 7.791,
+        "VEA": 7.895,
+        "VOO": 9.472
       }
     },
     {
@@ -999,35 +999,35 @@
       "execution_permission": false,
       "not_trade_order": true,
       "requires_manual_approval": true,
-      "turnover_vs_current_pct": 11.657,
+      "turnover_vs_current_pct": 11.498,
       "exposure": {
-        "cash_pct": 21.842,
-        "gold_pct": 4.103,
+        "cash_pct": 21.439,
+        "gold_pct": 4.124,
         "crypto_pct": 8.0,
-        "taiwan_tech_pct": 4.764,
-        "us_tech_pct": 9.838,
-        "theme_etf_pct": 17.048,
-        "other_pct": 34.406,
-        "max_single_weight_pct": 21.842,
+        "taiwan_tech_pct": 4.792,
+        "us_tech_pct": 9.981,
+        "theme_etf_pct": 17.274,
+        "other_pct": 34.39,
+        "max_single_weight_pct": 21.439,
         "max_single_ticker": "BOXX"
       },
       "regime_actions": [
         {
           "action": "trim",
           "ticker": "BTC-USD",
-          "amount_pct": 3.317,
+          "amount_pct": 3.189,
           "reason": "regime_crypto_risk_budget"
         },
         {
           "action": "trim",
           "ticker": "ETH-USD",
-          "amount_pct": 1.577,
+          "amount_pct": 1.517,
           "reason": "regime_crypto_risk_budget"
         },
         {
           "action": "add",
           "ticker": "BOXX",
-          "amount_pct": 4.894,
+          "amount_pct": 4.706,
           "reason": "regime_crypto_risk_budget"
         },
         {
@@ -1065,69 +1065,69 @@
       "top_regime_adjustments": [
         {
           "ticker": "BOXX",
-          "current_weight_pct": 12.185,
-          "regime_weight_pct": 21.842,
-          "delta_pct": 9.657,
+          "current_weight_pct": 11.941,
+          "regime_weight_pct": 21.439,
+          "delta_pct": 9.498,
           "direction": "UP"
         },
         {
           "ticker": "00981A",
-          "current_weight_pct": 9.527,
-          "regime_weight_pct": 4.764,
-          "delta_pct": -4.763,
+          "current_weight_pct": 9.584,
+          "regime_weight_pct": 4.792,
+          "delta_pct": -4.792,
           "direction": "DOWN"
         },
         {
           "ticker": "BTC-USD",
-          "current_weight_pct": 8.739,
-          "regime_weight_pct": 5.422,
-          "delta_pct": -3.317,
+          "current_weight_pct": 8.61,
+          "regime_weight_pct": 5.421,
+          "delta_pct": -3.189,
           "direction": "DOWN"
         },
         {
           "ticker": "GLDM",
-          "current_weight_pct": 2.103,
-          "regime_weight_pct": 4.103,
+          "current_weight_pct": 2.124,
+          "regime_weight_pct": 4.124,
           "delta_pct": 2.0,
           "direction": "UP"
         },
         {
           "ticker": "ETH-USD",
-          "current_weight_pct": 4.155,
-          "regime_weight_pct": 2.578,
-          "delta_pct": -1.577,
+          "current_weight_pct": 4.096,
+          "regime_weight_pct": 2.579,
+          "delta_pct": -1.517,
           "direction": "DOWN"
         },
         {
           "ticker": "QQQ",
-          "current_weight_pct": 10.838,
-          "regime_weight_pct": 9.838,
+          "current_weight_pct": 10.981,
+          "regime_weight_pct": 9.981,
           "delta_pct": -1.0,
           "direction": "DOWN"
         },
         {
           "ticker": "VOO",
-          "current_weight_pct": 10.422,
-          "regime_weight_pct": 9.422,
+          "current_weight_pct": 10.386,
+          "regime_weight_pct": 9.386,
           "delta_pct": -1.0,
           "direction": "DOWN"
         }
       ],
       "weights_pct": {
-        "00981A": 4.764,
-        "AVUV": 9.441,
-        "BOXX": 21.842,
-        "BTC-USD": 5.422,
-        "ETH-USD": 2.578,
-        "GLDM": 4.103,
-        "GRID": 3.781,
-        "IFRA": 5.938,
-        "PICK": 4.399,
-        "QQQ": 9.838,
-        "SRVR": 2.93,
-        "USMV": 6.943,
-        "VEA": 8.6,
-        "VOO": 9.422
+        "00981A": 4.792,
+        "AVUV": 9.433,
+        "BOXX": 21.439,
+        "BTC-USD": 5.421,
+        "ETH-USD": 2.579,
+        "GLDM": 4.124,
+        "GRID": 3.866,
+        "IFRA": 5.941,
+        "PICK": 4.558,
+        "QQQ": 9.981,
+        "SRVR": 2.909,
+        "USMV": 6.835,
+        "VEA": 8.736,
+        "VOO": 9.386
       }
     },
     {
@@ -1140,35 +1140,35 @@
       "execution_permission": false,
       "not_trade_order": true,
       "requires_manual_approval": true,
-      "turnover_vs_current_pct": 12.313,
+      "turnover_vs_current_pct": 12.196,
       "exposure": {
-        "cash_pct": 22.498,
-        "gold_pct": 4.103,
+        "cash_pct": 22.137,
+        "gold_pct": 4.124,
         "crypto_pct": 8.0,
-        "taiwan_tech_pct": 8.527,
-        "us_tech_pct": 5.419,
-        "theme_etf_pct": 17.048,
-        "other_pct": 34.406,
-        "max_single_weight_pct": 22.498,
+        "taiwan_tech_pct": 8.584,
+        "us_tech_pct": 5.491,
+        "theme_etf_pct": 17.274,
+        "other_pct": 34.39,
+        "max_single_weight_pct": 22.137,
         "max_single_ticker": "BOXX"
       },
       "regime_actions": [
         {
           "action": "trim",
           "ticker": "BTC-USD",
-          "amount_pct": 3.317,
+          "amount_pct": 3.189,
           "reason": "regime_crypto_risk_budget"
         },
         {
           "action": "trim",
           "ticker": "ETH-USD",
-          "amount_pct": 1.577,
+          "amount_pct": 1.517,
           "reason": "regime_crypto_risk_budget"
         },
         {
           "action": "add",
           "ticker": "BOXX",
-          "amount_pct": 4.894,
+          "amount_pct": 4.706,
           "reason": "regime_crypto_risk_budget"
         },
         {
@@ -1207,69 +1207,69 @@
       "top_regime_adjustments": [
         {
           "ticker": "BOXX",
-          "current_weight_pct": 12.185,
-          "regime_weight_pct": 22.498,
-          "delta_pct": 10.313,
+          "current_weight_pct": 11.941,
+          "regime_weight_pct": 22.137,
+          "delta_pct": 10.196,
           "direction": "UP"
         },
         {
           "ticker": "QQQ",
-          "current_weight_pct": 10.838,
-          "regime_weight_pct": 5.419,
-          "delta_pct": -5.419,
+          "current_weight_pct": 10.981,
+          "regime_weight_pct": 5.491,
+          "delta_pct": -5.49,
           "direction": "DOWN"
         },
         {
           "ticker": "BTC-USD",
-          "current_weight_pct": 8.739,
-          "regime_weight_pct": 5.422,
-          "delta_pct": -3.317,
+          "current_weight_pct": 8.61,
+          "regime_weight_pct": 5.421,
+          "delta_pct": -3.189,
           "direction": "DOWN"
         },
         {
           "ticker": "GLDM",
-          "current_weight_pct": 2.103,
-          "regime_weight_pct": 4.103,
+          "current_weight_pct": 2.124,
+          "regime_weight_pct": 4.124,
           "delta_pct": 2.0,
           "direction": "UP"
         },
         {
           "ticker": "ETH-USD",
-          "current_weight_pct": 4.155,
-          "regime_weight_pct": 2.578,
-          "delta_pct": -1.577,
+          "current_weight_pct": 4.096,
+          "regime_weight_pct": 2.579,
+          "delta_pct": -1.517,
           "direction": "DOWN"
         },
         {
           "ticker": "00981A",
-          "current_weight_pct": 9.527,
-          "regime_weight_pct": 8.527,
+          "current_weight_pct": 9.584,
+          "regime_weight_pct": 8.584,
           "delta_pct": -1.0,
           "direction": "DOWN"
         },
         {
           "ticker": "VOO",
-          "current_weight_pct": 10.422,
-          "regime_weight_pct": 9.422,
+          "current_weight_pct": 10.386,
+          "regime_weight_pct": 9.386,
           "delta_pct": -1.0,
           "direction": "DOWN"
         }
       ],
       "weights_pct": {
-        "00981A": 8.527,
-        "AVUV": 9.441,
-        "BOXX": 22.498,
-        "BTC-USD": 5.422,
-        "ETH-USD": 2.578,
-        "GLDM": 4.103,
-        "GRID": 3.781,
-        "IFRA": 5.938,
-        "PICK": 4.399,
-        "QQQ": 5.419,
-        "SRVR": 2.93,
-        "USMV": 6.943,
-        "VEA": 8.6,
-        "VOO": 9.422
+        "00981A": 8.584,
+        "AVUV": 9.433,
+        "BOXX": 22.137,
+        "BTC-USD": 5.421,
+        "ETH-USD": 2.579,
+        "GLDM": 4.124,
+        "GRID": 3.866,
+        "IFRA": 5.941,
+        "PICK": 4.558,
+        "QQQ": 5.491,
+        "SRVR": 2.909,
+        "USMV": 6.835,
+        "VEA": 8.736,
+        "VOO": 9.386
       }
     },
     {
@@ -1282,35 +1282,35 @@
       "execution_permission": false,
       "not_trade_order": true,
       "requires_manual_approval": true,
-      "turnover_vs_current_pct": 14.464,
+      "turnover_vs_current_pct": 14.534,
       "exposure": {
-        "cash_pct": 22.65,
-        "gold_pct": 4.103,
+        "cash_pct": 22.476,
+        "gold_pct": 4.124,
         "crypto_pct": 8.0,
-        "taiwan_tech_pct": 7.946,
-        "us_tech_pct": 9.113,
-        "theme_etf_pct": 15.619,
-        "other_pct": 32.569,
-        "max_single_weight_pct": 22.65,
+        "taiwan_tech_pct": 7.992,
+        "us_tech_pct": 9.193,
+        "theme_etf_pct": 15.736,
+        "other_pct": 32.479,
+        "max_single_weight_pct": 22.476,
         "max_single_ticker": "BOXX"
       },
       "regime_actions": [
         {
           "action": "trim",
           "ticker": "BTC-USD",
-          "amount_pct": 1.324,
+          "amount_pct": 1.227,
           "reason": "regime_crypto_risk_budget"
         },
         {
           "action": "trim",
           "ticker": "ETH-USD",
-          "amount_pct": 0.627,
+          "amount_pct": 0.581,
           "reason": "regime_crypto_risk_budget"
         },
         {
           "action": "add",
           "ticker": "BOXX",
-          "amount_pct": 1.951,
+          "amount_pct": 1.808,
           "reason": "regime_crypto_risk_budget"
         },
         {
@@ -1349,104 +1349,104 @@
       "top_regime_adjustments": [
         {
           "ticker": "BOXX",
-          "current_weight_pct": 12.185,
-          "regime_weight_pct": 22.65,
-          "delta_pct": 10.465,
+          "current_weight_pct": 11.941,
+          "regime_weight_pct": 22.476,
+          "delta_pct": 10.535,
           "direction": "UP"
         },
         {
           "ticker": "BTC-USD",
-          "current_weight_pct": 8.739,
-          "regime_weight_pct": 5.431,
-          "delta_pct": -3.308,
+          "current_weight_pct": 8.61,
+          "regime_weight_pct": 5.429,
+          "delta_pct": -3.181,
           "direction": "DOWN"
         },
         {
           "ticker": "GLDM",
-          "current_weight_pct": 2.103,
-          "regime_weight_pct": 4.103,
+          "current_weight_pct": 2.124,
+          "regime_weight_pct": 4.124,
           "delta_pct": 2.0,
           "direction": "UP"
         },
         {
           "ticker": "VOO",
-          "current_weight_pct": 10.422,
-          "regime_weight_pct": 8.422,
+          "current_weight_pct": 10.386,
+          "regime_weight_pct": 8.386,
           "delta_pct": -2.0,
           "direction": "DOWN"
         },
         {
           "ticker": "USMV",
-          "current_weight_pct": 6.943,
-          "regime_weight_pct": 8.942,
+          "current_weight_pct": 6.835,
+          "regime_weight_pct": 8.834,
           "delta_pct": 1.999,
           "direction": "UP"
         },
         {
           "ticker": "QQQ",
-          "current_weight_pct": 10.838,
-          "regime_weight_pct": 9.113,
-          "delta_pct": -1.725,
-          "direction": "DOWN"
-        },
-        {
-          "ticker": "ETH-USD",
-          "current_weight_pct": 4.155,
-          "regime_weight_pct": 2.569,
-          "delta_pct": -1.586,
+          "current_weight_pct": 10.981,
+          "regime_weight_pct": 9.193,
+          "delta_pct": -1.788,
           "direction": "DOWN"
         },
         {
           "ticker": "00981A",
-          "current_weight_pct": 9.527,
-          "regime_weight_pct": 7.946,
-          "delta_pct": -1.581,
+          "current_weight_pct": 9.584,
+          "regime_weight_pct": 7.992,
+          "delta_pct": -1.592,
           "direction": "DOWN"
         },
         {
           "ticker": "AVUV",
-          "current_weight_pct": 9.441,
-          "regime_weight_pct": 7.91,
-          "delta_pct": -1.531,
+          "current_weight_pct": 9.433,
+          "regime_weight_pct": 7.899,
+          "delta_pct": -1.534,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "ETH-USD",
+          "current_weight_pct": 4.096,
+          "regime_weight_pct": 2.571,
+          "delta_pct": -1.525,
           "direction": "DOWN"
         },
         {
           "ticker": "VEA",
-          "current_weight_pct": 8.6,
-          "regime_weight_pct": 7.295,
-          "delta_pct": -1.305,
+          "current_weight_pct": 8.736,
+          "regime_weight_pct": 7.36,
+          "delta_pct": -1.376,
           "direction": "DOWN"
         },
         {
           "ticker": "PICK",
-          "current_weight_pct": 4.399,
-          "regime_weight_pct": 3.798,
-          "delta_pct": -0.601,
+          "current_weight_pct": 4.558,
+          "regime_weight_pct": 3.898,
+          "delta_pct": -0.66,
           "direction": "DOWN"
         },
         {
           "ticker": "IFRA",
-          "current_weight_pct": 5.938,
-          "regime_weight_pct": 5.474,
-          "delta_pct": -0.464,
+          "current_weight_pct": 5.941,
+          "regime_weight_pct": 5.472,
+          "delta_pct": -0.469,
           "direction": "DOWN"
         }
       ],
       "weights_pct": {
-        "00981A": 7.946,
-        "AVUV": 7.91,
-        "BOXX": 22.65,
-        "BTC-USD": 5.431,
-        "ETH-USD": 2.569,
-        "GLDM": 4.103,
-        "GRID": 3.417,
-        "IFRA": 5.474,
-        "PICK": 3.798,
-        "QQQ": 9.113,
-        "SRVR": 2.93,
-        "USMV": 8.942,
-        "VEA": 7.295,
-        "VOO": 8.422
+        "00981A": 7.992,
+        "AVUV": 7.899,
+        "BOXX": 22.476,
+        "BTC-USD": 5.429,
+        "ETH-USD": 2.571,
+        "GLDM": 4.124,
+        "GRID": 3.457,
+        "IFRA": 5.472,
+        "PICK": 3.898,
+        "QQQ": 9.193,
+        "SRVR": 2.909,
+        "USMV": 8.834,
+        "VEA": 7.36,
+        "VOO": 8.386
       }
     },
     {
@@ -1459,35 +1459,35 @@
       "execution_permission": false,
       "not_trade_order": true,
       "requires_manual_approval": true,
-      "turnover_vs_current_pct": 16.421,
+      "turnover_vs_current_pct": 16.29,
       "exposure": {
-        "cash_pct": 26.606,
-        "gold_pct": 4.103,
+        "cash_pct": 26.231,
+        "gold_pct": 4.124,
         "crypto_pct": 8.0,
         "taiwan_tech_pct": 0.0,
-        "us_tech_pct": 9.838,
-        "theme_etf_pct": 17.048,
-        "other_pct": 34.406,
-        "max_single_weight_pct": 26.606,
+        "us_tech_pct": 9.981,
+        "theme_etf_pct": 17.274,
+        "other_pct": 34.39,
+        "max_single_weight_pct": 26.231,
         "max_single_ticker": "BOXX"
       },
       "regime_actions": [
         {
           "action": "trim",
           "ticker": "BTC-USD",
-          "amount_pct": 3.317,
+          "amount_pct": 3.189,
           "reason": "regime_crypto_risk_budget"
         },
         {
           "action": "trim",
           "ticker": "ETH-USD",
-          "amount_pct": 1.577,
+          "amount_pct": 1.517,
           "reason": "regime_crypto_risk_budget"
         },
         {
           "action": "add",
           "ticker": "BOXX",
-          "amount_pct": 4.894,
+          "amount_pct": 4.706,
           "reason": "regime_crypto_risk_budget"
         },
         {
@@ -1526,69 +1526,69 @@
       "top_regime_adjustments": [
         {
           "ticker": "BOXX",
-          "current_weight_pct": 12.185,
-          "regime_weight_pct": 26.606,
-          "delta_pct": 14.421,
+          "current_weight_pct": 11.941,
+          "regime_weight_pct": 26.231,
+          "delta_pct": 14.29,
           "direction": "UP"
         },
         {
           "ticker": "00981A",
-          "current_weight_pct": 9.527,
+          "current_weight_pct": 9.584,
           "regime_weight_pct": 0.0,
-          "delta_pct": -9.527,
+          "delta_pct": -9.584,
           "direction": "DOWN"
         },
         {
           "ticker": "BTC-USD",
-          "current_weight_pct": 8.739,
-          "regime_weight_pct": 5.422,
-          "delta_pct": -3.317,
+          "current_weight_pct": 8.61,
+          "regime_weight_pct": 5.421,
+          "delta_pct": -3.189,
           "direction": "DOWN"
         },
         {
           "ticker": "GLDM",
-          "current_weight_pct": 2.103,
-          "regime_weight_pct": 4.103,
+          "current_weight_pct": 2.124,
+          "regime_weight_pct": 4.124,
           "delta_pct": 2.0,
           "direction": "UP"
         },
         {
           "ticker": "ETH-USD",
-          "current_weight_pct": 4.155,
-          "regime_weight_pct": 2.578,
-          "delta_pct": -1.577,
+          "current_weight_pct": 4.096,
+          "regime_weight_pct": 2.579,
+          "delta_pct": -1.517,
           "direction": "DOWN"
         },
         {
           "ticker": "QQQ",
-          "current_weight_pct": 10.838,
-          "regime_weight_pct": 9.838,
+          "current_weight_pct": 10.981,
+          "regime_weight_pct": 9.981,
           "delta_pct": -1.0,
           "direction": "DOWN"
         },
         {
           "ticker": "VOO",
-          "current_weight_pct": 10.422,
-          "regime_weight_pct": 9.422,
+          "current_weight_pct": 10.386,
+          "regime_weight_pct": 9.386,
           "delta_pct": -1.0,
           "direction": "DOWN"
         }
       ],
       "weights_pct": {
         "00981A": 0.0,
-        "AVUV": 9.441,
-        "BOXX": 26.606,
-        "BTC-USD": 5.422,
-        "ETH-USD": 2.578,
-        "GLDM": 4.103,
-        "GRID": 3.781,
-        "IFRA": 5.938,
-        "PICK": 4.399,
-        "QQQ": 9.838,
-        "SRVR": 2.93,
-        "USMV": 6.943,
-        "VEA": 8.6,
-        "VOO": 9.422
+        "AVUV": 9.433,
+        "BOXX": 26.231,
+        "BTC-USD": 5.421,
+        "ETH-USD": 2.579,
+        "GLDM": 4.124,
+        "GRID": 3.866,
+        "IFRA": 5.941,
+        "PICK": 4.558,
+        "QQQ": 9.981,
+        "SRVR": 2.909,
+        "USMV": 6.835,
+        "VEA": 8.736,
+        "VOO": 9.386
       }
     },
     {
@@ -1601,35 +1601,35 @@
       "execution_permission": false,
       "not_trade_order": true,
       "requires_manual_approval": true,
-      "turnover_vs_current_pct": 17.732,
+      "turnover_vs_current_pct": 17.687,
       "exposure": {
-        "cash_pct": 27.917,
-        "gold_pct": 4.103,
+        "cash_pct": 27.628,
+        "gold_pct": 4.124,
         "crypto_pct": 8.0,
-        "taiwan_tech_pct": 8.527,
+        "taiwan_tech_pct": 8.584,
         "us_tech_pct": 0.0,
-        "theme_etf_pct": 17.048,
-        "other_pct": 34.406,
-        "max_single_weight_pct": 27.917,
+        "theme_etf_pct": 17.274,
+        "other_pct": 34.39,
+        "max_single_weight_pct": 27.628,
         "max_single_ticker": "BOXX"
       },
       "regime_actions": [
         {
           "action": "trim",
           "ticker": "BTC-USD",
-          "amount_pct": 3.317,
+          "amount_pct": 3.189,
           "reason": "regime_crypto_risk_budget"
         },
         {
           "action": "trim",
           "ticker": "ETH-USD",
-          "amount_pct": 1.577,
+          "amount_pct": 1.517,
           "reason": "regime_crypto_risk_budget"
         },
         {
           "action": "add",
           "ticker": "BOXX",
-          "amount_pct": 4.894,
+          "amount_pct": 4.706,
           "reason": "regime_crypto_risk_budget"
         },
         {
@@ -1668,69 +1668,69 @@
       "top_regime_adjustments": [
         {
           "ticker": "BOXX",
-          "current_weight_pct": 12.185,
-          "regime_weight_pct": 27.917,
-          "delta_pct": 15.732,
+          "current_weight_pct": 11.941,
+          "regime_weight_pct": 27.628,
+          "delta_pct": 15.687,
           "direction": "UP"
         },
         {
           "ticker": "QQQ",
-          "current_weight_pct": 10.838,
+          "current_weight_pct": 10.981,
           "regime_weight_pct": 0.0,
-          "delta_pct": -10.838,
+          "delta_pct": -10.981,
           "direction": "DOWN"
         },
         {
           "ticker": "BTC-USD",
-          "current_weight_pct": 8.739,
-          "regime_weight_pct": 5.422,
-          "delta_pct": -3.317,
+          "current_weight_pct": 8.61,
+          "regime_weight_pct": 5.421,
+          "delta_pct": -3.189,
           "direction": "DOWN"
         },
         {
           "ticker": "GLDM",
-          "current_weight_pct": 2.103,
-          "regime_weight_pct": 4.103,
+          "current_weight_pct": 2.124,
+          "regime_weight_pct": 4.124,
           "delta_pct": 2.0,
           "direction": "UP"
         },
         {
           "ticker": "ETH-USD",
-          "current_weight_pct": 4.155,
-          "regime_weight_pct": 2.578,
-          "delta_pct": -1.577,
+          "current_weight_pct": 4.096,
+          "regime_weight_pct": 2.579,
+          "delta_pct": -1.517,
           "direction": "DOWN"
         },
         {
           "ticker": "00981A",
-          "current_weight_pct": 9.527,
-          "regime_weight_pct": 8.527,
+          "current_weight_pct": 9.584,
+          "regime_weight_pct": 8.584,
           "delta_pct": -1.0,
           "direction": "DOWN"
         },
         {
           "ticker": "VOO",
-          "current_weight_pct": 10.422,
-          "regime_weight_pct": 9.422,
+          "current_weight_pct": 10.386,
+          "regime_weight_pct": 9.386,
           "delta_pct": -1.0,
           "direction": "DOWN"
         }
       ],
       "weights_pct": {
-        "00981A": 8.527,
-        "AVUV": 9.441,
-        "BOXX": 27.917,
-        "BTC-USD": 5.422,
-        "ETH-USD": 2.578,
-        "GLDM": 4.103,
-        "GRID": 3.781,
-        "IFRA": 5.938,
-        "PICK": 4.399,
+        "00981A": 8.584,
+        "AVUV": 9.433,
+        "BOXX": 27.628,
+        "BTC-USD": 5.421,
+        "ETH-USD": 2.579,
+        "GLDM": 4.124,
+        "GRID": 3.866,
+        "IFRA": 5.941,
+        "PICK": 4.558,
         "QQQ": 0.0,
-        "SRVR": 2.93,
-        "USMV": 6.943,
-        "VEA": 8.6,
-        "VOO": 9.422
+        "SRVR": 2.909,
+        "USMV": 6.835,
+        "VEA": 8.736,
+        "VOO": 9.386
       }
     }
   ],

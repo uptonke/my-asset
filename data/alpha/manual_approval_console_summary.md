@@ -1,6 +1,6 @@
 # v9.4 Manual Approval Console
 
-- Generated: `2026-06-11T13:23:50+00:00`
+- Generated: `2026-06-12T12:49:14+00:00`
 - Console status: **blocked_by_upstream_gates**
 - Manual override enabled: `False`
 - Missing inputs: `2`

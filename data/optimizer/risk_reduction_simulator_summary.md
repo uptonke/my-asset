@@ -1,6 +1,6 @@
 # Risk Reduction Simulator v2.2
 
-Generated at: `2026-06-11T13:23:31+00:00`
+Generated at: `2026-06-12T12:48:58+00:00`
 
 ## Safety Boundary
 
@@ -22,18 +22,18 @@ Generated at: `2026-06-11T13:23:31+00:00`
 
 | Simulation | Verdict | Trim | Worst stress improvement | Avg stress improvement | ES proxy change | Vol proxy change | Score |
 |---|---|---:|---:|---:|---:|---:|---:|
-| `v2_2_trim_BTC_USD_100pct_to_BOXX` | `risk_reduction_candidate` | 8.739% | 4.824pp | 2.844pp | -0.189pp | -1.286pp | 12.005 |
-| `v2_2_trim_QQQ_100pct_to_BOXX` | `risk_reduction_candidate` | 10.838% | 3.49pp | 1.178pp | -0.133pp | -0.904pp | 7.645 |
-| `v2_2_trim_BTC_USD_50pct_to_BOXX` | `risk_reduction_candidate` | 4.369% | 2.412pp | 1.422pp | -0.142pp | -0.966pp | 6.234 |
-| `v2_2_trim_00981A_100pct_to_BOXX` | `risk_reduction_candidate` | 9.527% | 2.687pp | 1.195pp | -0.11pp | -0.751pp | 6.047 |
-| `v2_2_trim_ETH_USD_100pct_to_BOXX` | `risk_reduction_candidate` | 4.155% | 2.294pp | 1.352pp | -0.039pp | -0.269pp | 5.462 |
-| `v2_2_trim_QQQ_50pct_to_BOXX` | `risk_reduction_candidate` | 5.419% | 1.745pp | 0.589pp | -0.102pp | -0.693pp | 3.996 |
-| `v2_2_trim_BTC_USD_25pct_to_BOXX` | `risk_reduction_candidate` | 2.185% | 1.206pp | 0.711pp | -0.082pp | -0.556pp | 3.17 |
-| `v2_2_trim_00981A_50pct_to_BOXX` | `risk_reduction_candidate` | 4.763% | 1.344pp | 0.598pp | -0.085pp | -0.576pp | 3.169 |
-| `v2_2_trim_ETH_USD_50pct_to_BOXX` | `risk_reduction_candidate` | 2.077% | 1.147pp | 0.676pp | -0.03pp | -0.207pp | 2.783 |
-| `v2_2_trim_QQQ_25pct_to_BOXX` | `tradeoff_review` | 2.709% | 0.873pp | 0.295pp | -0.059pp | -0.402pp | 2.039 |
-| `v2_2_trim_00981A_25pct_to_BOXX` | `tradeoff_review` | 2.382% | 0.672pp | 0.299pp | -0.049pp | -0.335pp | 1.618 |
-| `v2_2_trim_ETH_USD_25pct_to_BOXX` | `tradeoff_review` | 1.039% | 0.574pp | 0.339pp | -0.018pp | -0.121pp | 1.406 |
+| `v2_2_trim_BTC_USD_100pct_to_BOXX` | `risk_reduction_candidate` | 8.61% | 4.753pp | 2.801pp | -0.178pp | -1.253pp | 11.812 |
+| `v2_2_trim_QQQ_100pct_to_BOXX` | `risk_reduction_candidate` | 10.981% | 3.536pp | 1.193pp | -0.133pp | -0.936pp | 7.756 |
+| `v2_2_trim_BTC_USD_50pct_to_BOXX` | `risk_reduction_candidate` | 4.305% | 2.377pp | 1.401pp | -0.134pp | -0.942pp | 6.133 |
+| `v2_2_trim_00981A_100pct_to_BOXX` | `risk_reduction_candidate` | 9.584% | 2.703pp | 1.201pp | -0.109pp | -0.766pp | 6.087 |
+| `v2_2_trim_ETH_USD_100pct_to_BOXX` | `risk_reduction_candidate` | 4.096% | 2.261pp | 1.333pp | -0.037pp | -0.263pp | 5.381 |
+| `v2_2_trim_QQQ_50pct_to_BOXX` | `risk_reduction_candidate` | 5.49% | 1.768pp | 0.597pp | -0.102pp | -0.717pp | 4.056 |
+| `v2_2_trim_00981A_50pct_to_BOXX` | `risk_reduction_candidate` | 4.792% | 1.352pp | 0.601pp | -0.083pp | -0.587pp | 3.19 |
+| `v2_2_trim_BTC_USD_25pct_to_BOXX` | `risk_reduction_candidate` | 2.152% | 1.189pp | 0.7pp | -0.077pp | -0.542pp | 3.118 |
+| `v2_2_trim_ETH_USD_50pct_to_BOXX` | `risk_reduction_candidate` | 2.048% | 1.131pp | 0.666pp | -0.029pp | -0.202pp | 2.742 |
+| `v2_2_trim_QQQ_25pct_to_BOXX` | `tradeoff_review` | 2.745% | 0.884pp | 0.298pp | -0.059pp | -0.416pp | 2.069 |
+| `v2_2_trim_00981A_25pct_to_BOXX` | `tradeoff_review` | 2.396% | 0.676pp | 0.3pp | -0.048pp | -0.342pp | 1.629 |
+| `v2_2_trim_ETH_USD_25pct_to_BOXX` | `tradeoff_review` | 1.024% | 0.566pp | 0.333pp | -0.017pp | -0.118pp | 1.384 |
 
 ## Method Notes
 
