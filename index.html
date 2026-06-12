@@ -792,7 +792,7 @@
                 </p>
             </div>
 
-            <button class="shrink-0 text-indigo-400 hover:text-white transition-transform duration-300 transform bg-black/20 w-9 h-9 rounded-xl flex items-center justify-center border border-indigo-500/20"
+            <button type="button" @click.stop="isAiExpanded = !isAiExpanded" class="shrink-0 text-indigo-400 hover:text-white transition-transform duration-300 transform bg-black/20 w-9 h-9 rounded-xl flex items-center justify-center border border-indigo-500/20"
                     :class="{'rotate-180': isAiExpanded}">
                 <i class="fas fa-chevron-down"></i>
             </button>
@@ -2126,8 +2126,19 @@
                                             主畫面只保留決策層資訊；早期依賴、沙盒、穩健性與壓力測試已收進下方「技術診斷與歷史沙盒」。
                                         </div>
                                     </div>
-                                    <div class="text-[11px] text-emerald-200 border border-emerald-500/20 bg-emerald-500/10 rounded-lg px-3 py-1.5">
-                                        研究模式｜非買入訊號｜非交易指令
+                                    <div class="flex flex-col md:items-end gap-1">
+                                        <div class="flex flex-wrap md:justify-end items-center gap-2">
+                                            <div class="text-[11px] text-emerald-200 border border-emerald-500/20 bg-emerald-500/10 rounded-lg px-3 py-1.5">
+                                                研究模式｜非買入訊號｜非交易指令
+                                            </div>
+                                            <button @click="reloadAllOptimizerData" :disabled="optimizerDataReloading" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-100 text-xs disabled:opacity-60 disabled:cursor-wait" :class="optimizerDataReloading ? '' : 'hover:bg-emerald-500/30'">
+                                                <i class="fas fa-rotate-right mr-1" :class="optimizerDataReloading ? 'fa-spin' : ''"></i>
+                                                {{ optimizerDataReloading ? '重新載入中...' : '重新載入全部資料' }}
+                                            </button>
+                                        </div>
+                                        <div class="text-[10px] text-emerald-100/60 md:text-right leading-relaxed">
+                                            {{ optimizerDataReloadMessage || (optimizerDataLastLoadedAt ? '最後載入：' + optimizerDataLastLoadedAt : '頁面載入時自動讀取全部資料') }}
+                                        </div>
                                     </div>
                                 </div>
 
@@ -2306,9 +2317,6 @@
                                         <i class="fas fa-hourglass-half mr-2"></i>
                                         尚未讀到 skfolio 沙盒輸出。請先跑 GitHub Actions 的 <span class="font-mono">skfolio 最佳化沙盒</span>。
                                         <div class="text-[11px] text-amber-200/80 mt-1" v-if="optimizerSandboxError">{{ optimizerSandboxError }}</div>
-                                        <button @click="loadOptimizerSandboxOutput" class="mt-2 px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-100 text-xs hover:bg-amber-500/30">
-                                            重新讀取
-                                        </button>
                                     </div>
 
                                     <template v-else>
@@ -2535,12 +2543,6 @@
                                         <div class="text-[11px] text-amber-200/80 mt-1" v-if="optimizerSandboxError">skfolio：{{ optimizerSandboxError }}</div>
                                         <div class="text-[11px] text-amber-200/80 mt-1" v-if="riskfolioSandboxError">Riskfolio：{{ riskfolioSandboxError }}</div>
                                         <div class="flex gap-2 mt-2">
-                                            <button @click="loadOptimizerSandboxOutput" class="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-100 text-xs hover:bg-amber-500/30">
-                                                重新讀取 skfolio
-                                            </button>
-                                            <button @click="loadRiskfolioSandboxOutput" class="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-100 text-xs hover:bg-amber-500/30">
-                                                重新讀取 Riskfolio
-                                            </button>
                                         </div>
                                     </div>
 
@@ -2737,9 +2739,6 @@
                                         <i class="fas fa-hourglass-half mr-2"></i>
                                         尚未讀到 optimizer 穩健性 output。請先跑 GitHub Actions 的 <span class="font-mono">最佳化器穩健性沙盒</span>。
                                         <div class="text-[11px] text-amber-200/80 mt-1" v-if="optimizerRobustnessError">{{ optimizerRobustnessError }}</div>
-                                        <button @click="loadOptimizerRobustnessOutput" class="mt-2 px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-100 text-xs hover:bg-amber-500/30">
-                                            重新讀取
-                                        </button>
                                     </div>
 
                                     <template v-else>
@@ -3236,9 +3235,6 @@
                                         <i class="fas fa-hourglass-half mr-2"></i>
                                         尚未讀到 optimizer 壓力測試輸出。請先跑 GitHub Actions 的 <span class="font-mono">最佳化器壓力測試</span>。
                                         <div class="text-[11px] text-amber-200/80 mt-1" v-if="optimizerStressError">{{ optimizerStressError }}</div>
-                                        <button @click="loadOptimizerStressOutput" class="mt-2 px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-100 text-xs hover:bg-amber-500/30">
-                                            重新讀取
-                                        </button>
                                     </div>
 
                                     <template v-else>
@@ -3579,12 +3575,6 @@
                                         </div>
                                     </div>
                                     <div class="flex gap-2">
-                                        <button @click="loadHumanApprovalLayer" class="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-100 text-xs hover:bg-amber-500/30">
-                                            重新讀取 v2.4
-                                        </button>
-                                        <button @click="loadActionAuditTrail" class="px-3 py-1.5 rounded-lg bg-sky-500/20 border border-sky-500/30 text-sky-100 text-xs hover:bg-sky-500/30">
-                                            重新讀取 v2.5
-                                        </button>
                                     </div>
                                 </div>
 
@@ -3716,12 +3706,6 @@
                                         </div>
                                     </div>
                                     <div class="flex gap-2">
-                                        <button @click="loadRegimeAwareOptimizer" class="px-3 py-1.5 rounded-lg bg-violet-500/20 border border-violet-500/30 text-violet-100 text-xs hover:bg-violet-500/30">
-                                            重新讀取 v3.0
-                                        </button>
-                                        <button @click="loadBlackLittermanSandbox" class="px-3 py-1.5 rounded-lg bg-fuchsia-500/20 border border-fuchsia-500/30 text-fuchsia-100 text-xs hover:bg-fuchsia-500/30">
-                                            重新讀取 v3.1
-                                        </button>
                                     </div>
                                 </div>
 
@@ -3865,9 +3849,6 @@
                                         </div>
                                     </div>
                                     <div class="flex flex-wrap gap-2">
-                                        <button @click="loadExpectedReturnModel" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-100 text-xs hover:bg-cyan-500/30">重新讀取 v3.2</button>
-                                        <button @click="loadWalkForwardBacktest" class="px-3 py-1.5 rounded-lg bg-blue-500/20 border border-blue-500/30 text-blue-100 text-xs hover:bg-blue-500/30">重新讀取 v3.3</button>
-                                        <button @click="loadModelGovernanceDashboard" class="px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-100 text-xs hover:bg-emerald-500/30">重新讀取 v3.4</button>
                                     </div>
                                 </div>
 
@@ -4016,8 +3997,6 @@
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-2 flex-wrap">
-                                        <button @click="loadForecastFeatureStore" class="px-3 py-1.5 rounded-lg bg-indigo-500/20 border border-indigo-500/30 text-indigo-100 text-xs hover:bg-indigo-500/30">重新讀取 v5.0</button>
-                                        <button @click="loadAlphaResearchSandbox" class="px-3 py-1.5 rounded-lg bg-indigo-500/20 border border-indigo-500/30 text-indigo-100 text-xs hover:bg-indigo-500/30">重新讀取 v5.1</button>
                                     </div>
                                 </div>
 
@@ -4143,7 +4122,6 @@
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-2 flex-wrap">
-                                        <button @click="loadRebalanceCandidateRanking" class="px-3 py-1.5 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-100 text-xs hover:bg-purple-500/30">重新讀取 v5.2</button>
                                     </div>
                                 </div>
 
@@ -4236,9 +4214,6 @@
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-2 flex-wrap">
-                                        <button @click="loadAlphaValidationGate" class="px-3 py-1.5 rounded-lg bg-rose-500/20 border border-rose-500/30 text-rose-100 text-xs hover:bg-rose-500/30">重新讀取 v6</button>
-                                        <button @click="loadManualRebalanceProposal" class="px-3 py-1.5 rounded-lg bg-rose-500/20 border border-rose-500/30 text-rose-100 text-xs hover:bg-rose-500/30">重新讀取 v7</button>
-                                        <button @click="loadExecutionReadyDraft" class="px-3 py-1.5 rounded-lg bg-rose-500/20 border border-rose-500/30 text-rose-100 text-xs hover:bg-rose-500/30">重新讀取 v8</button>
                                     </div>
                                 </div>
                                 <div class="p-4 space-y-4">
@@ -4350,8 +4325,6 @@
                                     <div class="flex items-center gap-2 flex-wrap">
                                         <button @click="loadFormalDraftPassConditions" class="px-3 py-1.5 rounded-lg bg-orange-500/20 border border-orange-500/30 text-orange-100 text-xs hover:bg-orange-500/30">通過條件</button>
                                         <button @click="loadTradingConstraintsSnapshot" class="px-3 py-1.5 rounded-lg bg-orange-500/20 border border-orange-500/30 text-orange-100 text-xs hover:bg-orange-500/30">交易約束</button>
-                                        <button @click="loadFormalRebalanceDraftGate" class="px-3 py-1.5 rounded-lg bg-orange-500/20 border border-orange-500/30 text-orange-100 text-xs hover:bg-orange-500/30">重新讀取 v8.1</button>
-                                        <button @click="loadManualTradeTicket" class="px-3 py-1.5 rounded-lg bg-orange-500/20 border border-orange-500/30 text-orange-100 text-xs hover:bg-orange-500/30">重新讀取 v9</button>
                                         <button @click="loadPaperTradeTracker" class="px-3 py-1.5 rounded-lg bg-orange-500/20 border border-orange-500/30 text-orange-100 text-xs hover:bg-orange-500/30">紙上追蹤</button>
                                         <button @click="loadTradeSizingDiagnostics" class="px-3 py-1.5 rounded-lg bg-red-500/20 border border-red-500/30 text-red-100 text-xs hover:bg-red-500/30">阻擋診斷</button>
                                     </div>
@@ -4496,7 +4469,6 @@
                                                 </div>
                                                 <div class="text-[11px] text-red-100/70 mt-1">說明為什麼正式草案／人工交易票據沒有產生；這不是買賣建議或看多／看空訊號。</div>
                                             </div>
-                                            <button @click="loadTradeSizingDiagnostics" class="px-3 py-1.5 rounded-lg bg-red-500/20 border border-red-500/30 text-red-100 text-xs hover:bg-red-500/30">重新讀取診斷</button>
                                         </div>
                                         <div class="p-3 space-y-3">
                                             <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -4564,18 +4536,6 @@
                                             </div>
                                             <div class="space-y-1 lg:text-right">
                                                 <div class="flex flex-wrap gap-2 lg:justify-end">
-                                                    <button @click="loadManualApprovalConsole" :disabled="manualApprovalConsoleLoading" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-100 text-xs disabled:opacity-60 disabled:cursor-wait" :class="manualApprovalConsoleLoading ? '' : 'hover:bg-cyan-500/30'">
-                                                        <span v-if="manualApprovalConsoleLoading">重新載入中...</span>
-                                                        <span v-else>重新載入審閱控制台資料</span>
-                                                    </button>
-                                                    <button @click="loadPaperTradePerformanceEvaluator" :disabled="paperTradePerformanceLoading" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-100 text-xs disabled:opacity-60 disabled:cursor-wait" :class="paperTradePerformanceLoading ? '' : 'hover:bg-cyan-500/30'">
-                                                        <span v-if="paperTradePerformanceLoading">重新載入中...</span>
-                                                        <span v-else>重新載入紙上績效資料</span>
-                                                    </button>
-                                                    <button @click="loadTradeTicketExplainability" :disabled="tradeTicketExplainabilityLoading" class="px-3 py-1.5 rounded-lg bg-cyan-500/20 border border-cyan-500/30 text-cyan-100 text-xs disabled:opacity-60 disabled:cursor-wait" :class="tradeTicketExplainabilityLoading ? '' : 'hover:bg-cyan-500/30'">
-                                                        <span v-if="tradeTicketExplainabilityLoading">重新載入中...</span>
-                                                        <span v-else>重新載入票據解釋資料</span>
-                                                    </button>
                                                 </div>
                                                 <div class="text-[10px] text-cyan-100/60 leading-relaxed space-y-0.5">
                                                     <div>{{ manualApprovalConsoleReloadMessage || (manualApprovalConsoleLastLoadedAt ? '審閱控制台已載入：' + manualApprovalConsoleLastLoadedAt : '審閱控制台尚未手動重讀') }}</div>
@@ -4850,7 +4810,7 @@
                         </h3>
                         <div class="flex items-center gap-3">
                             <span class="text-xs text-gray-500" v-if="!isHistoryExpanded">點擊展開</span>
-                            <button class="text-gray-400 hover:text-white transition-transform duration-300 transform w-8 h-8 rounded-full flex items-center justify-center bg-gray-900/50 border border-gray-700" :class="{'rotate-180 text-blue-400 border-blue-500/30': isHistoryExpanded}">
+                            <button type="button" @click.stop="isHistoryExpanded = !isHistoryExpanded" class="text-gray-400 hover:text-white transition-transform duration-300 transform w-8 h-8 rounded-full flex items-center justify-center bg-gray-900/50 border border-gray-700" :class="{'rotate-180 text-blue-400 border-blue-500/30': isHistoryExpanded}">
                                 <i class="fas fa-chevron-down"></i>
                             </button>
                         </div>
@@ -6325,7 +6285,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=v9-8-button-wiring-guard-1"></script>
+<script src="assets/js/app.bundle.js?v=v9-9-global-reload-all-1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
