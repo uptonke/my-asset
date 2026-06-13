@@ -1,0 +1,606 @@
+{
+  "version": "v10.1",
+  "status": "OK",
+  "generated_at": "2026-06-12T17:05:53+00:00",
+  "mode": "delegated_target_weight_and_draft_generator",
+  "safe_mode": true,
+  "research_only": true,
+  "review_only": true,
+  "delegated_draft_mode_enabled": true,
+  "target_weight_source": "machine_generated_this_run",
+  "trade_signal_enabled": false,
+  "execution_permission": false,
+  "broker_submission_enabled": false,
+  "official_rebalance_enabled": false,
+  "auto_trade_enabled": false,
+  "supabase_write_enabled": false,
+  "not_trade_order": true,
+  "not_buy_signal": true,
+  "not_sell_signal": true,
+  "delegated_draft_status": "machine_delegated_draft_available",
+  "policy": {
+    "version": "v10.1",
+    "name": "Delegated Target Weight & Draft Generator",
+    "eligible_pool_policy": {
+      "pool_source": "all_current_assets",
+      "max_pool_size": 50,
+      "asset_class_required": false,
+      "allow_all_assets_into_pool": true
+    },
+    "target_generation_policy": {
+      "target_weight_source": "machine_generated_this_run",
+      "use_external_target_weights": false,
+      "included_asset_min_weight_pct": 0.02,
+      "single_asset_max_weight_pct": 0.4,
+      "min_weight_applies_to": "selected_assets_only",
+      "allow_zero_weight_for_unselected_assets": true,
+      "respect_liquidity_buffer": true,
+      "no_leverage": true,
+      "no_shorting": true
+    },
+    "cash_policy": {
+      "cash_ratio_source": "liquidity_buffer_pct",
+      "liquidity_buffer_pct": 0.05,
+      "buying_power_policy": "surplus_above_liquidity_buffer_or_internal_rebalance"
+    },
+    "trade_sizing_policy": {
+      "use_absolute_trade_budget_cap": false,
+      "use_single_trade_cap": false,
+      "size_to_machine_generated_target": true,
+      "prevent_overshoot_after_lot_rounding": true
+    },
+    "lot_rules": {
+      "us_fractional_shares_allowed": false,
+      "tw_odd_lot_allowed": true,
+      "crypto_fractional_units_allowed": false
+    }
+  },
+  "summary": {
+    "delegated_draft_status": "machine_delegated_draft_available",
+    "pool_asset_count": 15,
+    "selected_asset_count": 15,
+    "target_asset_weight_sum_pct": 95.0001,
+    "liquidity_buffer_pct": 5.0,
+    "cash_target_weight_pct": 5.0,
+    "included_asset_min_weight_pct": 2.0,
+    "single_asset_max_weight_pct": 40.0,
+    "draft_line_count": 13,
+    "blocker_count": 0,
+    "warning_count": 2,
+    "cash_balance_available": false,
+    "cash_balance_twd": null,
+    "nav_twd": 1674925.71,
+    "source_candidate_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX",
+    "alpha_validation_status": "watch_only_validation",
+    "trade_signal_enabled": false,
+    "execution_permission": false,
+    "broker_submission_enabled": false
+  },
+  "eligible_pool_rows": [
+    {
+      "ticker": "00981A",
+      "current_weight_pct": 3.444739,
+      "market_value_twd": 57696.82,
+      "real_world_price_fetched": true,
+      "alpha_research_score": 1.389,
+      "ranking_prior_weight_pct": 9.527,
+      "eligible": true
+    },
+    {
+      "ticker": "AVUV",
+      "current_weight_pct": 3.423881,
+      "market_value_twd": 57347.46,
+      "real_world_price_fetched": true,
+      "alpha_research_score": 0.334,
+      "ranking_prior_weight_pct": 9.441,
+      "eligible": true
+    },
+    {
+      "ticker": "BOXX",
+      "current_weight_pct": 4.418995,
+      "market_value_twd": 74014.89,
+      "real_world_price_fetched": true,
+      "alpha_research_score": 0.285,
+      "ranking_prior_weight_pct": 16.554,
+      "eligible": true
+    },
+    {
+      "ticker": "BTC-USD",
+      "current_weight_pct": 3.159731,
+      "market_value_twd": 52923.14,
+      "real_world_price_fetched": true,
+      "alpha_research_score": -3.25,
+      "ranking_prior_weight_pct": 4.37,
+      "eligible": true
+    },
+    {
+      "ticker": "ETH-USD",
+      "current_weight_pct": 1.501786,
+      "market_value_twd": 25153.8,
+      "real_world_price_fetched": true,
+      "alpha_research_score": -3.359,
+      "ranking_prior_weight_pct": 4.155,
+      "eligible": true
+    },
+    {
+      "ticker": "GLDM",
+      "current_weight_pct": 0.76272,
+      "market_value_twd": 12774.99,
+      "real_world_price_fetched": true,
+      "alpha_research_score": -2.192,
+      "ranking_prior_weight_pct": 3.103,
+      "eligible": true
+    },
+    {
+      "ticker": "GRID",
+      "current_weight_pct": 1.371063,
+      "market_value_twd": 22964.29,
+      "real_world_price_fetched": true,
+      "alpha_research_score": -0.672,
+      "ranking_prior_weight_pct": 3.781,
+      "eligible": true
+    },
+    {
+      "ticker": "IFRA",
+      "current_weight_pct": 2.153387,
+      "market_value_twd": 36067.63,
+      "real_world_price_fetched": true,
+      "alpha_research_score": -0.353,
+      "ranking_prior_weight_pct": 5.938,
+      "eligible": true
+    },
+    {
+      "ticker": "PICK",
+      "current_weight_pct": 1.595431,
+      "market_value_twd": 26722.29,
+      "real_world_price_fetched": true,
+      "alpha_research_score": -0.968,
+      "ranking_prior_weight_pct": 4.399,
+      "eligible": true
+    },
+    {
+      "ticker": "QQQ",
+      "current_weight_pct": 3.930353,
+      "market_value_twd": 65830.49,
+      "real_world_price_fetched": true,
+      "alpha_research_score": -0.072,
+      "ranking_prior_weight_pct": 9.838,
+      "eligible": true
+    },
+    {
+      "ticker": "SRVR",
+      "current_weight_pct": 1.062406,
+      "market_value_twd": 17794.51,
+      "real_world_price_fetched": true,
+      "alpha_research_score": -0.631,
+      "ranking_prior_weight_pct": 2.93,
+      "eligible": true
+    },
+    {
+      "ticker": "USMV",
+      "current_weight_pct": 2.517683,
+      "market_value_twd": 42169.32,
+      "real_world_price_fetched": true,
+      "alpha_research_score": -0.146,
+      "ranking_prior_weight_pct": 6.943,
+      "eligible": true
+    },
+    {
+      "ticker": "VEA",
+      "current_weight_pct": 3.118944,
+      "market_value_twd": 52240.0,
+      "real_world_price_fetched": true,
+      "alpha_research_score": -0.297,
+      "ranking_prior_weight_pct": 8.6,
+      "eligible": true
+    },
+    {
+      "ticker": "VOO",
+      "current_weight_pct": 3.779414,
+      "market_value_twd": 63302.38,
+      "real_world_price_fetched": true,
+      "alpha_research_score": -0.07,
+      "ranking_prior_weight_pct": 10.422,
+      "eligible": true
+    },
+    {
+      "ticker": "安聯台灣科技",
+      "current_weight_pct": 63.759467,
+      "market_value_twd": 1067923.7,
+      "real_world_price_fetched": false,
+      "alpha_research_score": null,
+      "ranking_prior_weight_pct": 0.0,
+      "eligible": true
+    }
+  ],
+  "machine_target_rows": [
+    {
+      "ticker": "安聯台灣科技",
+      "current_weight_pct": 63.759467,
+      "machine_target_weight_pct": 21.4899,
+      "delta_weight_pct": -42.269567,
+      "direction": "DOWN",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0
+    },
+    {
+      "ticker": "BOXX",
+      "current_weight_pct": 4.418995,
+      "machine_target_weight_pct": 10.5838,
+      "delta_weight_pct": 6.164805,
+      "direction": "UP",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0
+    },
+    {
+      "ticker": "00981A",
+      "current_weight_pct": 3.444739,
+      "machine_target_weight_pct": 7.3087,
+      "delta_weight_pct": 3.863961,
+      "direction": "UP",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0
+    },
+    {
+      "ticker": "VOO",
+      "current_weight_pct": 3.779414,
+      "machine_target_weight_pct": 7.5179,
+      "delta_weight_pct": 3.738486,
+      "direction": "UP",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0
+    },
+    {
+      "ticker": "AVUV",
+      "current_weight_pct": 3.423881,
+      "machine_target_weight_pct": 6.9917,
+      "delta_weight_pct": 3.567819,
+      "direction": "UP",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0
+    },
+    {
+      "ticker": "QQQ",
+      "current_weight_pct": 3.930353,
+      "machine_target_weight_pct": 7.3618,
+      "delta_weight_pct": 3.431447,
+      "direction": "UP",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0
+    },
+    {
+      "ticker": "VEA",
+      "current_weight_pct": 3.118944,
+      "machine_target_weight_pct": 6.2922,
+      "delta_weight_pct": 3.173256,
+      "direction": "UP",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0
+    },
+    {
+      "ticker": "USMV",
+      "current_weight_pct": 2.517683,
+      "machine_target_weight_pct": 5.268,
+      "delta_weight_pct": 2.750317,
+      "direction": "UP",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0
+    },
+    {
+      "ticker": "IFRA",
+      "current_weight_pct": 2.153387,
+      "machine_target_weight_pct": 4.5711,
+      "delta_weight_pct": 2.417713,
+      "direction": "UP",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0
+    },
+    {
+      "ticker": "PICK",
+      "current_weight_pct": 1.595431,
+      "machine_target_weight_pct": 3.4282,
+      "delta_weight_pct": 1.832769,
+      "direction": "UP",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0
+    },
+    {
+      "ticker": "GRID",
+      "current_weight_pct": 1.371063,
+      "machine_target_weight_pct": 3.107,
+      "delta_weight_pct": 1.735937,
+      "direction": "UP",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0
+    },
+    {
+      "ticker": "SRVR",
+      "current_weight_pct": 1.062406,
+      "machine_target_weight_pct": 2.5718,
+      "delta_weight_pct": 1.509394,
+      "direction": "UP",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0
+    },
+    {
+      "ticker": "GLDM",
+      "current_weight_pct": 0.76272,
+      "machine_target_weight_pct": 2.0673,
+      "delta_weight_pct": 1.30458,
+      "direction": "UP",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0
+    },
+    {
+      "ticker": "ETH-USD",
+      "current_weight_pct": 1.501786,
+      "machine_target_weight_pct": 2.6609,
+      "delta_weight_pct": 1.159114,
+      "direction": "UP",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0
+    },
+    {
+      "ticker": "BTC-USD",
+      "current_weight_pct": 3.159731,
+      "machine_target_weight_pct": 3.7798,
+      "delta_weight_pct": 0.620069,
+      "direction": "UP",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0
+    }
+  ],
+  "machine_target_weights_pct": {
+    "00981A": 7.3087,
+    "AVUV": 6.9917,
+    "BOXX": 10.5838,
+    "BTC-USD": 3.7798,
+    "ETH-USD": 2.6609,
+    "GLDM": 2.0673,
+    "GRID": 3.107,
+    "IFRA": 4.5711,
+    "PICK": 3.4282,
+    "QQQ": 7.3618,
+    "SRVR": 2.5718,
+    "USMV": 5.268,
+    "VEA": 6.2922,
+    "VOO": 7.5179,
+    "安聯台灣科技": 21.4899
+  },
+  "delegated_draft_lines": [
+    {
+      "ticker": "安聯台灣科技",
+      "side": "SELL",
+      "quantity": 28.0,
+      "estimated_price_twd": 24777.812116,
+      "estimated_value_twd": 693778.74,
+      "current_weight_pct": 63.759467,
+      "target_weight_pct": 21.4899,
+      "delta_weight_pct": -42.269567,
+      "asset_kind": "us",
+      "minimum_trade_unit": 1.0,
+      "real_world_price_fetched": false,
+      "not_trade_order": true
+    },
+    {
+      "ticker": "BOXX",
+      "side": "BUY",
+      "quantity": 27.0,
+      "estimated_price_twd": 3700.744535,
+      "estimated_value_twd": 99920.1,
+      "current_weight_pct": 4.418995,
+      "target_weight_pct": 10.5838,
+      "delta_weight_pct": 6.164805,
+      "asset_kind": "us",
+      "minimum_trade_unit": 1.0,
+      "real_world_price_fetched": true,
+      "not_trade_order": true
+    },
+    {
+      "ticker": "00981A",
+      "side": "BUY",
+      "quantity": 2178.0,
+      "estimated_price_twd": 29.709999,
+      "estimated_value_twd": 64708.38,
+      "current_weight_pct": 3.444739,
+      "target_weight_pct": 7.3087,
+      "delta_weight_pct": 3.863961,
+      "asset_kind": "taiwan",
+      "minimum_trade_unit": 1.0,
+      "real_world_price_fetched": true,
+      "not_trade_order": true
+    },
+    {
+      "ticker": "AVUV",
+      "side": "BUY",
+      "quantity": 15.0,
+      "estimated_price_twd": 3823.164329,
+      "estimated_value_twd": 57347.46,
+      "current_weight_pct": 3.423881,
+      "target_weight_pct": 6.9917,
+      "delta_weight_pct": 3.567819,
+      "asset_kind": "us",
+      "minimum_trade_unit": 1.0,
+      "real_world_price_fetched": true,
+      "not_trade_order": true
+    },
+    {
+      "ticker": "VEA",
+      "side": "BUY",
+      "quantity": 24.0,
+      "estimated_price_twd": 2176.666613,
+      "estimated_value_twd": 52240.0,
+      "current_weight_pct": 3.118944,
+      "target_weight_pct": 6.2922,
+      "delta_weight_pct": 3.173256,
+      "asset_kind": "us",
+      "minimum_trade_unit": 1.0,
+      "real_world_price_fetched": true,
+      "not_trade_order": true
+    },
+    {
+      "ticker": "USMV",
+      "side": "BUY",
+      "quantity": 15.0,
+      "estimated_price_twd": 3012.094243,
+      "estimated_value_twd": 45181.41,
+      "current_weight_pct": 2.517683,
+      "target_weight_pct": 5.268,
+      "delta_weight_pct": 2.750317,
+      "asset_kind": "us",
+      "minimum_trade_unit": 1.0,
+      "real_world_price_fetched": true,
+      "not_trade_order": true
+    },
+    {
+      "ticker": "QQQ",
+      "side": "BUY",
+      "quantity": 2.0,
+      "estimated_price_twd": 21943.495445,
+      "estimated_value_twd": 43886.99,
+      "current_weight_pct": 3.930353,
+      "target_weight_pct": 7.3618,
+      "delta_weight_pct": 3.431447,
+      "asset_kind": "us",
+      "minimum_trade_unit": 1.0,
+      "real_world_price_fetched": true,
+      "not_trade_order": true
+    },
+    {
+      "ticker": "VOO",
+      "side": "BUY",
+      "quantity": 2.0,
+      "estimated_price_twd": 21100.791877,
+      "estimated_value_twd": 42201.58,
+      "current_weight_pct": 3.779414,
+      "target_weight_pct": 7.5179,
+      "delta_weight_pct": 3.738486,
+      "asset_kind": "us",
+      "minimum_trade_unit": 1.0,
+      "real_world_price_fetched": true,
+      "not_trade_order": true
+    },
+    {
+      "ticker": "IFRA",
+      "side": "BUY",
+      "quantity": 21.0,
+      "estimated_price_twd": 1898.296242,
+      "estimated_value_twd": 39864.22,
+      "current_weight_pct": 2.153387,
+      "target_weight_pct": 4.5711,
+      "delta_weight_pct": 2.417713,
+      "asset_kind": "us",
+      "minimum_trade_unit": 1.0,
+      "real_world_price_fetched": true,
+      "not_trade_order": true
+    },
+    {
+      "ticker": "PICK",
+      "side": "BUY",
+      "quantity": 16.0,
+      "estimated_price_twd": 1908.73519,
+      "estimated_value_twd": 30539.76,
+      "current_weight_pct": 1.595431,
+      "target_weight_pct": 3.4282,
+      "delta_weight_pct": 1.832769,
+      "asset_kind": "us",
+      "minimum_trade_unit": 1.0,
+      "real_world_price_fetched": true,
+      "not_trade_order": true
+    },
+    {
+      "ticker": "GRID",
+      "side": "BUY",
+      "quantity": 5.0,
+      "estimated_price_twd": 5741.073239,
+      "estimated_value_twd": 28705.37,
+      "current_weight_pct": 1.371063,
+      "target_weight_pct": 3.107,
+      "delta_weight_pct": 1.735937,
+      "asset_kind": "us",
+      "minimum_trade_unit": 1.0,
+      "real_world_price_fetched": true,
+      "not_trade_order": true
+    },
+    {
+      "ticker": "SRVR",
+      "side": "BUY",
+      "quantity": 24.0,
+      "estimated_price_twd": 1046.735956,
+      "estimated_value_twd": 25121.66,
+      "current_weight_pct": 1.062406,
+      "target_weight_pct": 2.5718,
+      "delta_weight_pct": 1.509394,
+      "asset_kind": "us",
+      "minimum_trade_unit": 1.0,
+      "real_world_price_fetched": true,
+      "not_trade_order": true
+    },
+    {
+      "ticker": "GLDM",
+      "side": "BUY",
+      "quantity": 8.0,
+      "estimated_price_twd": 2554.997257,
+      "estimated_value_twd": 20439.98,
+      "current_weight_pct": 0.76272,
+      "target_weight_pct": 2.0673,
+      "delta_weight_pct": 1.30458,
+      "asset_kind": "us",
+      "minimum_trade_unit": 1.0,
+      "real_world_price_fetched": true,
+      "not_trade_order": true
+    }
+  ],
+  "sizing_summary": {
+    "nav_twd": 1674925.71,
+    "liquidity_buffer_pct": 5.0,
+    "cash_balance_twd": null,
+    "cash_buffer_target_twd": 83746.29,
+    "sell_proceeds_twd": 693778.74,
+    "requested_buy_twd": 550156.91,
+    "buying_power_twd": 693778.74,
+    "buy_scaling_factor": 1.0,
+    "draft_line_count": 13,
+    "unit_warning_count": 1
+  },
+  "blockers": [],
+  "warnings": [
+    {
+      "code": "fallback_price_in_pool",
+      "severity": "warning",
+      "ticker": "安聯台灣科技",
+      "message": "此資產在 pool 中，但價格不是 real-world fetch 成功。"
+    },
+    {
+      "ticker": "ETH-USD",
+      "code": "below_minimum_trade_unit",
+      "message": "調整金額低於最小交易單位。"
+    }
+  ],
+  "source_context": {
+    "ranking_candidate_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX",
+    "ranking_status": "further_research",
+    "alpha_validation_status": "watch_only_validation",
+    "trading_constraints_asset_count": 15
+  },
+  "safety_boundary": [
+    "v10.1 may generate machine target weights and a delegated review draft, but it is not a trade order.",
+    "It cannot enable trade_signal_enabled, execution_permission, official_rebalance_enabled, auto_trade_enabled, or broker_submission_enabled.",
+    "All current assets enter the eligible pool, but only selected assets receive the 2% minimum target weight; unselected assets may be zero."
+  ]
+}

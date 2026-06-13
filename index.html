@@ -2114,6 +2114,127 @@
                             </div>
 
 
+
+                            <!-- v10.1 Delegated Target Weight & Draft Generator pinned above v10.0 -->
+                            <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.045] shadow-lg overflow-hidden">
+                                <div class="px-4 py-3 border-b border-cyan-500/20 bg-cyan-500/[0.08] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-wand-magic-sparkles text-cyan-300"></i>
+                                            v10.1 機器委任目標權重與交易草案
+                                        </div>
+                                        <div class="text-[11px] text-cyan-100/70 mt-1">所有目前資產都進 pool；系統本輪產生 machine target weights；入選資產 2%～40%，現金目標等於流動性緩衝。非交易指令、不送券商。</div>
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-2 text-[11px]">
+                                        <span class="px-2 py-1 rounded-lg border" :class="delegatedTargetWeightDraftSummary?.delegated_draft_status === 'machine_delegated_draft_available' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-red-500/30 bg-red-500/10 text-red-200'">
+                                            {{ zhText(delegatedTargetWeightDraftSummary?.delegated_draft_status || '尚未讀取') }}
+                                        </span>
+                                        <span class="px-2 py-1 rounded-lg border border-cyan-500/20 bg-cyan-500/10 text-cyan-100">machine-generated target</span>
+                                        <span class="px-2 py-1 rounded-lg border border-yellow-500/20 bg-yellow-500/10 text-yellow-100">execution_permission: false</span>
+                                        <a href="data/alpha/delegated_target_weight_draft_latest.json" target="_blank" rel="noopener" class="px-2 py-1 rounded-lg border border-white/10 bg-white/[0.04] text-gray-200 hover:bg-white/[0.08]">開啟來源 JSON</a>
+                                    </div>
+                                </div>
+                                <div class="p-4 space-y-4">
+                                    <div v-if="delegatedTargetWeightDraftError" class="rounded-xl border border-red-500/20 bg-red-500/[0.08] p-3 text-[11px] text-red-200">{{ delegatedTargetWeightDraftError }}</div>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3">
+                                        <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                            <div class="quant-label text-cyan-300">Pool 檔數</div>
+                                            <div class="quant-value text-white">{{ delegatedTargetWeightDraftSummary?.pool_asset_count ?? 0 }}</div>
+                                        </div>
+                                        <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
+                                            <div class="quant-label text-emerald-300">入選檔數</div>
+                                            <div class="quant-value text-white">{{ delegatedTargetWeightDraftSummary?.selected_asset_count ?? 0 }}</div>
+                                        </div>
+                                        <div class="quant-card border-violet-500/20 bg-violet-500/10">
+                                            <div class="quant-label text-violet-300">資產權重</div>
+                                            <div class="quant-value text-white">{{ delegatedTargetWeightDraftSummary?.target_asset_weight_sum_pct ?? '-' }}%</div>
+                                        </div>
+                                        <div class="quant-card border-yellow-500/20 bg-yellow-500/10">
+                                            <div class="quant-label text-yellow-300">現金目標</div>
+                                            <div class="quant-value text-white">{{ delegatedTargetWeightDraftSummary?.cash_target_weight_pct ?? delegatedTargetWeightDraftSummary?.liquidity_buffer_pct ?? '-' }}%</div>
+                                        </div>
+                                        <div class="quant-card border-sky-500/20 bg-sky-500/10">
+                                            <div class="quant-label text-sky-300">草案列</div>
+                                            <div class="quant-value text-white">{{ delegatedTargetWeightDraftSummary?.draft_line_count ?? 0 }}</div>
+                                        </div>
+                                        <div class="quant-card border-red-500/20 bg-red-500/10">
+                                            <div class="quant-label text-red-300">阻擋</div>
+                                            <div class="quant-value text-white">{{ delegatedTargetWeightDraftSummary?.blocker_count ?? 0 }}</div>
+                                        </div>
+                                        <div class="quant-card border-amber-500/20 bg-amber-500/10">
+                                            <div class="quant-label text-amber-300">警示</div>
+                                            <div class="quant-value text-white">{{ delegatedTargetWeightDraftSummary?.warning_count ?? 0 }}</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid xl:grid-cols-2 gap-4">
+                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] text-xs font-bold text-white">Machine target weights Top 12</div>
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full text-[11px]">
+                                                    <thead class="text-gray-500 border-b border-white/10">
+                                                        <tr>
+                                                            <th class="text-left px-3 py-2">標的</th>
+                                                            <th class="text-right px-3 py-2">目前</th>
+                                                            <th class="text-right px-3 py-2">目標</th>
+                                                            <th class="text-right px-3 py-2">差異</th>
+                                                            <th class="text-left px-3 py-2">方向</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="row in delegatedTargetVisibleRows" :key="row.ticker" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                            <td class="px-3 py-2 font-mono text-white">{{ row.ticker }}</td>
+                                                            <td class="px-3 py-2 text-right text-gray-300">{{ row.current_weight_pct ?? '-' }}%</td>
+                                                            <td class="px-3 py-2 text-right text-cyan-200">{{ row.machine_target_weight_pct ?? '-' }}%</td>
+                                                            <td class="px-3 py-2 text-right" :class="(row.delta_weight_pct || 0) >= 0 ? 'text-emerald-300' : 'text-red-300'">{{ row.delta_weight_pct ?? '-' }}%</td>
+                                                            <td class="px-3 py-2 text-gray-300">{{ zhText(row.direction) }}</td>
+                                                        </tr>
+                                                        <tr v-if="!delegatedTargetVisibleRows.length"><td colspan="5" class="px-3 py-4 text-center text-gray-500">尚未讀到目標權重資料。</td></tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] text-xs font-bold text-white">委任草案交易列 Top 10</div>
+                                            <div class="overflow-x-auto">
+                                                <table class="w-full text-[11px]">
+                                                    <thead class="text-gray-500 border-b border-white/10">
+                                                        <tr>
+                                                            <th class="text-left px-3 py-2">標的</th>
+                                                            <th class="text-left px-3 py-2">方向</th>
+                                                            <th class="text-right px-3 py-2">數量</th>
+                                                            <th class="text-right px-3 py-2">預估金額</th>
+                                                            <th class="text-left px-3 py-2">資料</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <tr v-for="row in delegatedDraftVisibleLines" :key="row.ticker + row.side" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                            <td class="px-3 py-2 font-mono text-white">{{ row.ticker }}</td>
+                                                            <td class="px-3 py-2 font-bold" :class="row.side === 'BUY' ? 'text-emerald-300' : 'text-red-300'">{{ row.side }}</td>
+                                                            <td class="px-3 py-2 text-right text-gray-300">{{ formatNumber(row.quantity) }}</td>
+                                                            <td class="px-3 py-2 text-right text-cyan-200">{{ formatCurrency(row.estimated_value_twd, 'TWD') }}</td>
+                                                            <td class="px-3 py-2 text-gray-400">{{ row.real_world_price_fetched ? 'real-world' : 'fallback' }}</td>
+                                                        </tr>
+                                                        <tr v-if="!delegatedDraftVisibleLines.length"><td colspan="5" class="px-3 py-4 text-center text-gray-500">尚未產生委任草案交易列。</td></tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div v-if="delegatedDraftVisibleWarnings.length" class="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] overflow-hidden">
+                                        <div class="px-3 py-2 border-b border-amber-500/20 bg-amber-500/[0.08] text-xs font-bold text-amber-100">v10.1 警示</div>
+                                        <div class="divide-y divide-amber-500/10">
+                                            <div v-for="row in delegatedDraftVisibleWarnings" :key="(row.ticker || '') + row.code" class="p-3 text-[11px]">
+                                                <div class="font-bold text-amber-200">{{ row.ticker ? row.ticker + '｜' : '' }}{{ zhText(row.code) }}</div>
+                                                <div class="text-gray-400 mt-1">{{ row.message || row.code }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- v10.0 Human-Confirmed Trade Ticket pinned at optimizer top -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-yellow-500/25 bg-yellow-500/[0.045] shadow-lg overflow-hidden">
                                 <div class="px-4 py-3 border-b border-yellow-500/20 bg-yellow-500/[0.08] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
@@ -6369,7 +6490,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=v10-human-confirmed-ticket-1"></script>
+<script src="assets/js/app.bundle.js?v=v10-1-delegated-draft-1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
