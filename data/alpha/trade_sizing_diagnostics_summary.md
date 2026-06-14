@@ -1,9 +1,9 @@
 # v9.3 Gate Failure & Trade Sizing Diagnostics
 
-- Generated: `2026-06-14T07:03:24+00:00`
+- Generated: `2026-06-14T16:41:29+00:00`
 - Diagnostic status: **blocked**
 - Blockers: `9`
-- Watch items: `3`
+- Watch items: `2`
 - Formal pass status: `blocked`
 - Alpha validation: `watch_only_validation`
 - Further research candidates: `2`
@@ -20,8 +20,7 @@
 - **watch** `governance_not_clean_pass` — 模型治理仍有觀察警示：Governance verdict = watch_only_with_governance_warnings；score = 92.0。
 - **blocker** `manual_override_disabled` — 人工 override 未啟用：config/manual_approval_override.json 目前未允許升級正式草案。
 - **blocker** `missing_cash_balance` — 現金餘額缺失：cash_balance_twd = None；source = missing_cash_balance。
-- **blocker** `incomplete_real_world_price_fetch` — 部分資產價格不是即時真實抓取：未成功 real-world fetch 的標的：安聯台灣科技。
-- **watch** `minimum_trade_unit_not_met` — 部分部位低於最小交易單位：共有 2 檔不符合最小單位檢查。
+- **blocker** `incomplete_real_world_price_fetch` — 部分資產價格不是即時真實抓取：未成功 real-world fetch 的標的：00981A, AVUV, BOXX, BTC-USD, ETH-USD, GLDM, GRID, IFRA, PICK, QQQ, SRVR, USMV。
 - **blocker** `no_formal_rebalance_draft` — 沒有正式再平衡草案：Formal draft gate status = blocked_by_formal_pass_conditions；formal draft count = 0。
 - **blocker** `no_manual_trade_ticket` — 沒有人工交易票據草案：Ticket status = blocked_by_formal_rebalance_draft_gate；manual ticket count = 0。
 - **watch** `no_paper_trade_tracking_items` — 沒有紙上追蹤項目：因為沒有正式草案或票據，所以沒有建立 1W / 1M / 3M 追蹤。

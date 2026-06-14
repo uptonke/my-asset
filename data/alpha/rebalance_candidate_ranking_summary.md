@@ -1,7 +1,7 @@
 # v5.2 Rebalance Candidate Ranking
 
 - Status: **OK**
-- Generated at: `2026-06-14T07:03:22+00:00`
+- Generated at: `2026-06-14T16:41:27+00:00`
 - Candidate count: `11`
 - Further research count: `2`
 - Observe-only count: `9`
@@ -13,15 +13,15 @@
 
 ## Top ranked candidates
 - Rank 1: `v5_2_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX` — `further_research` — score `1.043`
-- Rank 2: `v5_2_v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX` — `further_research` — score `1.03`
+- Rank 2: `v5_2_v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX` — `further_research` — score `1.026`
 - Rank 3: `v5_2_v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX` — `observe_only` — score `0.723`
-- Rank 4: `v5_2_v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX` — `observe_only` — score `0.64`
-- Rank 5: `v5_2_v2_3_from_v2_2_trim_00981A_100pct_to_BOXX` — `observe_only` — score `0.47`
+- Rank 4: `v5_2_v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX` — `observe_only` — score `0.636`
+- Rank 5: `v5_2_v2_3_from_v2_2_trim_00981A_100pct_to_BOXX` — `observe_only` — score `0.468`
 - Rank 6: `v5_2_v2_3_from_v2_2_trim_QQQ_50pct_to_BOXX` — `observe_only` — score `0.4`
-- Rank 7: `v5_2_v2_3_from_v2_2_trim_00981A_50pct_to_BOXX` — `observe_only` — score `0.323`
-- Rank 8: `v5_2_v2_3_v2_1_riskfolio_risk_parity_mv` — `observe_only` — score `0.296`
-- Rank 9: `v5_2_v2_3_v2_1_inverse_vol_baseline` — `observe_only` — score `0.277`
-- Rank 10: `v5_2_v2_3_v2_1_riskfolio_hrp_mv` — `observe_only` — score `0.058`
+- Rank 7: `v5_2_v2_3_from_v2_2_trim_00981A_50pct_to_BOXX` — `observe_only` — score `0.322`
+- Rank 8: `v5_2_v2_3_v2_1_riskfolio_risk_parity_mv` — `observe_only` — score `0.295`
+- Rank 9: `v5_2_v2_3_v2_1_inverse_vol_baseline` — `observe_only` — score `0.276`
+- Rank 10: `v5_2_v2_3_v2_1_riskfolio_hrp_mv` — `observe_only` — score `0.057`
 
 ## Safety boundary
 - Research candidate ranking only.
