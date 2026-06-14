@@ -1,12 +1,12 @@
 # v8.1 Trading Constraints Snapshot
 
-- Generated: `2026-06-12T12:49:14+00:00`
+- Generated: `2026-06-14T05:49:14+00:00`
 - Portfolio source: `supabase_live`
 - Assets: `15`
 - Real-world price success: `14`
 - Price fallback/failed: `1`
 - Cash balance: `None` / `missing_cash_balance`
-- Total market value TWD: `1687119.5`
+- Total market value TWD: `1690299.79`
 
 ## Real-world data policy
 - Uses Python requests to Yahoo Finance chart API for current prices and USD/TWD FX.
