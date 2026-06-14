@@ -3624,18 +3624,22 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
             'missing_explicit_trade_lines_or_target_weights': '缺明確交易列或目標權重',
             'manual_ticket_draft_requires_human_entry': '人工票據草案｜需手動輸入',
             'machine_delegated_draft_available': '機器委任草案可供審閱',
+            'machine_delegated_target_available_no_sizing_lines': '已產生目標權重｜無可 sizing 交易列',
             'delegated_target_weight_and_draft_generator': '機器委任目標權重與草案生成器',
             'UP': '增加',
             'DOWN': '降低',
             'HOLD': '維持',
             'UNCHANGED_ZERO': '未入選',
             'fallback_price_in_pool': 'pool 內有 fallback 價格',
+            'excluded_from_delegated_draft_due_to_price_quality': '價格品質不足，排除交易草案列',
             'pool_pruned_by_min_weight_capacity': '因最低權重容量限制而裁切 pool',
             'low_weight_assets_excluded': '低於 2% 的資產未入選',
             'single_asset_cap_applied': '已套用單檔 40% 上限',
             'below_minimum_trade_unit': '低於最小交易單位',
             'no_sellable_whole_unit': '沒有可賣整數單位',
             'buy_scaled_below_minimum_unit': '買入縮小後低於最小交易單位',
+            'stored_fallback': '非即時 fallback 價格',
+            'fallback_or_unavailable': 'fallback 或缺價',
             'human_confirmed_manual_entry_ticket_available': '人工確認票據可供手動輸入',
             'human_confirmed_manual_entry_ticket': '人工確認票據｜手動輸入',
             'human_final_confirmation_disabled': '人工最終確認未啟用',
@@ -4861,7 +4865,7 @@ chartCML.data.datasets = [
             const response = await fetch('data/alpha/delegated_target_weight_draft_latest.json?_=' + Date.now(), { cache: 'no-store' });
             if (!response.ok) {
                 delegatedTargetWeightDraft.value = null;
-                delegatedTargetWeightDraftError.value = `尚未讀到 v10.1 機器委任目標權重草案 (${response.status})`;
+                delegatedTargetWeightDraftError.value = `尚未讀到 v10.2 機器委任目標權重草案 (${response.status})`;
                 return;
             }
             const data = await response.json();

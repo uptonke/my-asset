@@ -64,8 +64,8 @@ def round6(x: float) -> float:
 def load_policy(config: Dict[str, Any]) -> Dict[str, Any]:
     delegated = as_dict(config.get("delegated_draft_policy"))
     return {
-        "version": "v10.1",
-        "name": "Delegated Target Weight & Draft Generator",
+        "version": "v10.2",
+        "name": "Delegated Target Weight & Draft Generator with Price Quality Guard",
         "eligible_pool_policy": {
             "pool_source": "all_current_assets",
             "max_pool_size": int(num(delegated.get("max_pool_size"), MAX_POOL_SIZE)),
@@ -176,7 +176,7 @@ def build_order_lines(
     nav_twd: float,
     liquidity_buffer_pct: float,
     cash_balance_twd: float | None,
-) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], Dict[str, Any]]:
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], Dict[str, Any], Dict[str, Any]]:
     rows_by_ticker = {asset_key(r): r for r in asset_rows if asset_key(r)}
     current_weights = {
         t: (num(r.get("market_value_twd")) / nav_twd if nav_twd > 0 else 0.0)
@@ -184,6 +184,7 @@ def build_order_lines(
     }
     draft_lines: List[Dict[str, Any]] = []
     unit_warnings: List[Dict[str, Any]] = []
+    price_quality_excluded: List[Dict[str, Any]] = []
 
     # First build requested sell/buy lines before buying-power scaling.
     sell_lines: List[Dict[str, Any]] = []
@@ -198,22 +199,36 @@ def build_order_lines(
         min_unit = max(1.0, num(row.get("minimum_trade_unit"), 1.0))
         asset_kind = str(row.get("asset_kind") or "").lower()
         real_world = bool(row.get("real_world_price_fetched"))
+        trade_sizing_allowed = bool(row.get("trade_sizing_allowed", real_world)) and real_world
         if abs(delta_value) < max(1.0, price_twd * min_unit * 0.25):
             continue
+        if not trade_sizing_allowed:
+            price_quality_excluded.append({
+                "ticker": ticker,
+                "code": "excluded_from_delegated_draft_due_to_price_quality",
+                "severity": "warning",
+                "message": "此資產價格不是 real-world fetch 成功；可進 target weight pool，但不得產生 BUY / SELL 草案列。",
+                "side_if_sized": "BUY" if delta_value > 0 else "SELL",
+                "estimated_delta_value_twd_if_sized": round(delta_value, 2),
+                "price_provider": row.get("price_provider"),
+                "price_quality_status": row.get("price_quality_status", "fallback_or_unavailable"),
+                "real_world_price_fetched": real_world,
+            })
+            continue
         if price_twd <= 0:
-            unit_warnings.append({"ticker": ticker, "code": "missing_price_twd", "message": "缺少 TWD 價格，無法 sizing。"})
+            unit_warnings.append({"ticker": ticker, "code": "missing_price_twd", "severity": "warning", "message": "缺少 TWD 價格，無法 sizing。"})
             continue
         requested_qty = abs(delta_value) / price_twd
         # User rule: US no fractional shares, TW odd lot accepted as integer shares, crypto integer-only.
         rounded_qty = math.floor(requested_qty / min_unit) * min_unit
         if rounded_qty <= 0:
-            unit_warnings.append({"ticker": ticker, "code": "below_minimum_trade_unit", "message": "調整金額低於最小交易單位。"})
+            unit_warnings.append({"ticker": ticker, "code": "below_minimum_trade_unit", "severity": "warning", "message": "調整金額低於最小交易單位。"})
             continue
         side = "BUY" if delta_value > 0 else "SELL"
         if side == "SELL":
             max_qty = math.floor(shares / min_unit) * min_unit
             if max_qty <= 0:
-                unit_warnings.append({"ticker": ticker, "code": "no_sellable_whole_unit", "message": "依最小交易單位規則，沒有可賣整數單位。"})
+                unit_warnings.append({"ticker": ticker, "code": "no_sellable_whole_unit", "severity": "warning", "message": "依最小交易單位規則，沒有可賣整數單位。"})
                 continue
             rounded_qty = min(rounded_qty, max_qty)
         line = {
@@ -228,6 +243,9 @@ def build_order_lines(
             "asset_kind": asset_kind,
             "minimum_trade_unit": min_unit,
             "real_world_price_fetched": real_world,
+            "price_quality_status": row.get("price_quality_status", "real_world"),
+            "price_provider": row.get("price_provider"),
+            "trade_sizing_allowed": trade_sizing_allowed,
             "not_trade_order": True,
         }
         if side == "SELL":
@@ -250,12 +268,19 @@ def build_order_lines(
             min_unit = max(1.0, num(row.get("minimum_trade_unit"), 1.0))
             scaled_qty = math.floor((num(line.get("quantity")) * scale) / min_unit) * min_unit
             if scaled_qty <= 0:
-                unit_warnings.append({"ticker": line["ticker"], "code": "buy_scaled_below_minimum_unit", "message": "買入因資金約束縮小後低於最小交易單位。"})
+                unit_warnings.append({"ticker": line["ticker"], "code": "buy_scaled_below_minimum_unit", "severity": "warning", "message": "買入因資金約束縮小後低於最小交易單位。"})
                 continue
             line = {**line, "quantity": round6(scaled_qty), "estimated_value_twd": round(scaled_qty * price_twd, 2), "buy_scaled_by_available_power": True}
         buy_lines.append(line)
 
     draft_lines = sorted(sell_lines, key=lambda x: -abs(num(x.get("estimated_value_twd")))) + sorted(buy_lines, key=lambda x: -abs(num(x.get("estimated_value_twd"))))
+    price_quality_guard = {
+        "enabled": True,
+        "rule": "fallback_or_missing_prices_may_enter_target_pool_but_cannot_create_delegated_buy_sell_lines",
+        "trade_sizing_requires_real_world_price": True,
+        "excluded_line_count": len(price_quality_excluded),
+        "excluded_rows": price_quality_excluded,
+    }
     sizing_summary = {
         "nav_twd": round(nav_twd, 2),
         "liquidity_buffer_pct": round6(liquidity_buffer_pct * 100),
@@ -267,9 +292,9 @@ def build_order_lines(
         "buy_scaling_factor": round6(scale),
         "draft_line_count": len(draft_lines),
         "unit_warning_count": len(unit_warnings),
+        "price_quality_excluded_line_count": len(price_quality_excluded),
     }
-    return draft_lines, unit_warnings, sizing_summary
-
+    return draft_lines, unit_warnings, sizing_summary, price_quality_guard
 
 def main() -> None:
     config = as_dict(read_json("config/manual_approval_override.json", {}))
@@ -331,6 +356,9 @@ def main() -> None:
             "current_weight_pct": round6(current_w * 100),
             "market_value_twd": round(mv, 2),
             "real_world_price_fetched": bool(row.get("real_world_price_fetched")),
+            "price_quality_status": row.get("price_quality_status", "real_world" if bool(row.get("real_world_price_fetched")) else "fallback_or_unavailable"),
+            "trade_sizing_allowed": bool(row.get("trade_sizing_allowed", bool(row.get("real_world_price_fetched")))) and bool(row.get("real_world_price_fetched")),
+            "price_provider": row.get("price_provider"),
             "alpha_research_score": None if alpha_score is None else round6(alpha_score),
             "ranking_prior_weight_pct": round6(rank_w * 100),
             "eligible": True,
@@ -372,16 +400,25 @@ def main() -> None:
     draft_lines: List[Dict[str, Any]] = []
     unit_warnings: List[Dict[str, Any]] = []
     sizing_summary: Dict[str, Any] = {}
+    price_quality_guard: Dict[str, Any] = {"enabled": True, "excluded_line_count": 0, "excluded_rows": []}
     if not blockers:
-        draft_lines, unit_warnings, sizing_summary = build_order_lines(asset_rows, target_weights, nav_twd, liquidity_buffer_pct, cash_balance_twd)
+        draft_lines, unit_warnings, sizing_summary, price_quality_guard = build_order_lines(asset_rows, target_weights, nav_twd, liquidity_buffer_pct, cash_balance_twd)
+        warnings.extend(as_list(price_quality_guard.get("excluded_rows")))
         warnings.extend(unit_warnings)
 
     selected_count = sum(1 for v in target_weights.values() if v > 0)
     target_sum_pct = sum(target_weights.values()) * 100
-    status = "machine_delegated_draft_available" if not blockers and selected_count > 0 else "blocked"
+    if blockers:
+        status = "blocked"
+    elif selected_count > 0 and len(draft_lines) > 0:
+        status = "machine_delegated_draft_available"
+    elif selected_count > 0:
+        status = "machine_delegated_target_available_no_sizing_lines"
+    else:
+        status = "blocked"
 
     output = {
-        "version": "v10.1",
+        "version": "v10.2",
         "status": "OK",
         "generated_at": now_iso(),
         "mode": "delegated_target_weight_and_draft_generator",
@@ -411,6 +448,8 @@ def main() -> None:
             "included_asset_min_weight_pct": round6(MIN_INCLUDED_WEIGHT * 100),
             "single_asset_max_weight_pct": round6(MAX_SINGLE_WEIGHT * 100),
             "draft_line_count": len(draft_lines),
+            "price_quality_excluded_line_count": int(num(price_quality_guard.get("excluded_line_count"))),
+            "trade_sizing_requires_real_world_price": True,
             "blocker_count": len(blockers),
             "warning_count": len(warnings),
             "cash_balance_available": cash_available,
@@ -427,6 +466,7 @@ def main() -> None:
         "machine_target_weights_pct": {k: round6(v * 100) for k, v in sorted(target_weights.items())},
         "delegated_draft_lines": draft_lines,
         "sizing_summary": sizing_summary,
+        "price_quality_guard": price_quality_guard,
         "blockers": blockers,
         "warnings": warnings,
         "source_context": {
@@ -436,15 +476,15 @@ def main() -> None:
             "trading_constraints_asset_count": len(asset_rows_all),
         },
         "safety_boundary": [
-            "v10.1 may generate machine target weights and a delegated review draft, but it is not a trade order.",
+            "v10.2 may generate machine target weights and a delegated review draft, but it is not a trade order.",
             "It cannot enable trade_signal_enabled, execution_permission, official_rebalance_enabled, auto_trade_enabled, or broker_submission_enabled.",
-            "All current assets enter the eligible pool, but only selected assets receive the 2% minimum target weight; unselected assets may be zero.",
+            "All current assets enter the eligible pool, but fallback or missing prices cannot create delegated BUY/SELL draft lines.",
         ],
     }
 
     LATEST_JSON.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
     SUMMARY_MD.write_text("\n".join([
-        "# v10.1 Delegated Target Weight & Draft Generator",
+        "# v10.2 Delegated Target Weight & Draft Generator",
         "",
         f"- Generated: `{output['generated_at']}`",
         f"- Delegated draft status: **{status}**",
@@ -453,6 +493,7 @@ def main() -> None:
         f"- Liquidity buffer: `{round6(liquidity_buffer_pct * 100)}`%",
         f"- Target asset weight sum: `{round6(target_sum_pct)}`%",
         f"- Draft line count: `{len(draft_lines)}`",
+        f"- Price-quality excluded lines: `{int(num(price_quality_guard.get('excluded_line_count')))} `",
         f"- Blockers: `{len(blockers)}`",
         f"- Warnings: `{len(warnings)}`",
         f"- Trade signal enabled: `{output['trade_signal_enabled']}`",
@@ -460,8 +501,8 @@ def main() -> None:
         f"- Broker submission enabled: `{output['broker_submission_enabled']}`",
         "",
         "## Boundary",
-        "- v10.1 is a delegated machine draft, not a broker order and not a human-confirmed ticket.",
-        "- The target weights are generated this run from current assets, ranking priors, alpha research scores, liquidity buffer and unit constraints.",
+        "- v10.2 is a delegated machine draft, not a broker order and not a human-confirmed ticket.",
+        "- The target weights are generated this run from current assets, ranking priors, alpha research scores, liquidity buffer and unit constraints. Fallback prices may be shown in the target pool but cannot generate BUY/SELL draft lines.",
     ]) + "\n", encoding="utf-8")
 
     print(f"Wrote {LATEST_JSON}")

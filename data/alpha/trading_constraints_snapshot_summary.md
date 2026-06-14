@@ -6,7 +6,7 @@
 - Real-world price success: `14`
 - Price fallback/failed: `1`
 - Cash balance: `None` / `missing_cash_balance`
-- Total market value TWD: `1690299.79`
+- Total market value TWD: `656912.32`
 
 ## Real-world data policy
 - Uses Python requests to Yahoo Finance chart API for current prices and USD/TWD FX.

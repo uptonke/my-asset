@@ -90,6 +90,17 @@ def get_map() -> Dict[str, Any]:
     data = read_json("data/quant_ticker_map.json", {}) or {}
     return {str(k).upper(): v for k,v in data.items()} if isinstance(data, dict) else {}
 
+def has_cjk(text: str) -> bool:
+    return any("\u4e00" <= ch <= "\u9fff" for ch in str(text or ""))
+
+def is_twd_local_fund(ticker: str, category: str) -> bool:
+    c = str(category or "")
+    t = str(ticker or "")
+    # Mutual-fund style local holdings in this project are recorded in TWD priceMap values
+    # and usually have Chinese display names. Treating them as USD multiplies by USD/TWD
+    # and creates a false market value.
+    return "基金" in c or (has_cjk(t) and not (t.upper().endswith("-USD") or "加密" in c))
+
 def asset_kind(ticker: str, category: str) -> str:
     t = ticker.upper()
     c = str(category or "")
@@ -97,6 +108,8 @@ def asset_kind(ticker: str, category: str) -> str:
         return "crypto"
     if "台" in c or t.replace(".TW", "").isdigit() or t.endswith(".TW") or t.endswith(".TWO"):
         return "taiwan"
+    if is_twd_local_fund(ticker, category):
+        return "fund_twd"
     if t in {"CASH", "TWD", "NTD", "USD"}:
         return "cash"
     return "us"
@@ -109,6 +122,8 @@ def yahoo_symbol(ticker: str, category: str, ticker_map: Dict[str, Any]) -> str:
     if kind == "taiwan":
         base = ticker.upper().replace(".TW", "").replace(".TWO", "")
         return f"{base}.TW"
+    if kind == "fund_twd":
+        return ticker
     return ticker.upper()
 
 def fetch_yahoo_latest(symbol: str, timeout: int = 4) -> Dict[str, Any]:
@@ -151,6 +166,8 @@ def fetch_yahoo_latest(symbol: str, timeout: int = 4) -> Dict[str, Any]:
 def trade_rules(kind: str) -> Dict[str, Any]:
     if kind == "taiwan":
         return {"market": "TW", "min_trade_unit": 1, "unit_name": "share", "odd_lot_or_fractional_allowed": True, "fractional_shares_allowed": False, "rule_note": "台股允許零股；系統以 1 股為最小檢查單位。"}
+    if kind == "fund_twd":
+        return {"market": "TWD_FUND", "min_trade_unit": 1, "unit_name": "fund_unit", "odd_lot_or_fractional_allowed": True, "fractional_shares_allowed": False, "rule_note": "本地基金以 TWD 記帳；若價格只是 stored fallback，不允許進入交易草案 sizing。"}
     if kind == "crypto":
         return {"market": "CRYPTO", "min_trade_unit": 1, "unit_name": "coin", "odd_lot_or_fractional_allowed": False, "fractional_shares_allowed": False, "rule_note": "依使用者約束，不允許加密小數交易；少於 1 顆不列為可交易單位。"}
     if kind == "cash":
@@ -221,11 +238,13 @@ def main() -> None:
             # Stored price fallback is explicitly marked as non-real-time, so downstream gates can block if needed.
             price = finite_float(price_map.get(ticker) or price_map.get(symbol), None)
             provider = "stored_price_fallback_not_real_time" if price is not None else "unavailable"
+            if price is not None and kind in {"taiwan", "fund_twd", "cash"}:
+                currency = "TWD"
             live_failed += 1
         shares = finite_float(h.get("shares"), 0) or 0.0
         price_twd = None
         if price is not None:
-            if str(currency).upper() == "TWD" or kind == "taiwan":
+            if str(currency).upper() == "TWD" or kind in {"taiwan", "fund_twd", "cash"}:
                 price_twd = price
             elif fx is not None:
                 price_twd = price * fx
@@ -256,6 +275,10 @@ def main() -> None:
             "price_provider": provider,
             "price_provider_url": provider_url,
             "real_world_price_fetched": provider == "yahoo_chart_api",
+            "price_quality_status": "real_world" if provider == "yahoo_chart_api" else ("stored_fallback" if provider == "stored_price_fallback_not_real_time" else "unavailable"),
+            "trade_sizing_allowed": provider == "yahoo_chart_api" and price_twd is not None,
+            "price_quality_block_reason": None if provider == "yahoo_chart_api" else "fallback_or_missing_price_not_allowed_for_trade_sizing",
+            "holdings_source": row_source,
             "fetch_error": fetch_error,
         })
 
@@ -273,7 +296,7 @@ def main() -> None:
         "official_rebalance_enabled": False,
         "not_trade_order": True,
         "real_world_data_policy": {
-            "price_fetch_method": "Python urllib requests to Yahoo Finance chart API; no browser scraping; stored price fallback is marked non-real-time and blocks execution readiness.",
+            "price_fetch_method": "Python urllib requests to Yahoo Finance chart API; no browser scraping; stored price fallback is marked non-real-time and is not allowed for delegated trade sizing.",
             "cash_balance_source_priority": ["config/manual_approval_override.json", "Supabase settings fields", "missing"],
             "no_fabricated_prices": True,
         },

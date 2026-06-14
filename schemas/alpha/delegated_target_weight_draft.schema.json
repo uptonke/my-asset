@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "v10.1 Delegated Target Weight & Draft Generator",
+  "title": "v10.2 Delegated Target Weight & Draft Generator with Price Quality Guard",
   "type": "object",
   "required": [
     "version",
@@ -52,6 +52,8 @@
         "liquidity_buffer_pct": { "type": "number" },
         "cash_target_weight_pct": { "type": "number" },
         "draft_line_count": { "type": "integer" },
+        "price_quality_excluded_line_count": { "type": "integer" },
+        "trade_sizing_requires_real_world_price": { "type": "boolean" },
         "blocker_count": { "type": "integer" },
         "warning_count": { "type": "integer" },
         "trade_signal_enabled": { "type": "boolean" },
@@ -65,6 +67,7 @@
     "machine_target_weights_pct": { "type": "object" },
     "delegated_draft_lines": { "type": "array" },
     "sizing_summary": { "type": "object" },
+    "price_quality_guard": { "type": "object" },
     "blockers": { "type": "array" },
     "warnings": { "type": "array" },
     "source_context": { "type": "object" },
