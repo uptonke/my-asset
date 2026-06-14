@@ -167,12 +167,36 @@ def trade_rules(kind: str) -> Dict[str, Any]:
     if kind == "taiwan":
         return {"market": "TW", "min_trade_unit": 1, "unit_name": "share", "odd_lot_or_fractional_allowed": True, "fractional_shares_allowed": False, "rule_note": "台股允許零股；系統以 1 股為最小檢查單位。"}
     if kind == "fund_twd":
-        return {"market": "TWD_FUND", "min_trade_unit": 1, "unit_name": "fund_unit", "odd_lot_or_fractional_allowed": True, "fractional_shares_allowed": False, "rule_note": "本地基金以 TWD 記帳；若價格只是 stored fallback，不允許進入交易草案 sizing。"}
+        return {"market": "TWD_FUND", "min_trade_unit": 1, "unit_name": "fund_unit", "odd_lot_or_fractional_allowed": True, "fractional_shares_allowed": False, "rule_note": "本地基金以庫存現價 TWD 作為委任草案 sizing 價格來源。"}
     if kind == "crypto":
-        return {"market": "CRYPTO", "min_trade_unit": 1, "unit_name": "coin", "odd_lot_or_fractional_allowed": False, "fractional_shares_allowed": False, "rule_note": "依使用者約束，不允許加密小數交易；少於 1 顆不列為可交易單位。"}
+        return {"market": "CRYPTO", "min_trade_unit": 0.00000001, "unit_name": "coin", "odd_lot_or_fractional_allowed": True, "fractional_shares_allowed": True, "rule_note": "加密資產允許小數交易；系統以 0.00000001 顆作為最小 sizing 單位。"}
     if kind == "cash":
         return {"market": "CASH", "min_trade_unit": 1, "unit_name": "currency_unit", "odd_lot_or_fractional_allowed": True, "fractional_shares_allowed": True, "rule_note": "現金餘額作為買入預算約束，不是證券交易單位。"}
     return {"market": "US", "min_trade_unit": 1, "unit_name": "share", "odd_lot_or_fractional_allowed": False, "fractional_shares_allowed": False, "rule_note": "美股不接受 fractional shares；系統以 1 股為最小檢查單位。"}
+
+
+def holdings_snapshot_price(ticker: str, category: str, kind: str, settings: Dict[str, Any], stock_meta: Dict[str, Any], fx: Optional[float]) -> Tuple[Optional[float], Optional[float], str]:
+    """Return (quote_price, price_twd, source) using the same authoritative snapshot that feeds the holdings table.
+
+    priceMap / stock_meta.last_price are the user's current inventory snapshot. For US and crypto
+    symbols they are quote prices in USD and are converted to TWD; for Taiwan/local fund/cash
+    holdings they are already TWD. This is allowed for delegated draft sizing because the user
+    explicitly wants the draft to use 庫存・現價(TWD) rather than blocking on live fetch.
+    """
+    price_map = settings.get("priceMap") or {}
+    meta = stock_meta.get(ticker) or {}
+    quote_price = finite_float(price_map.get(ticker), None)
+    source = "settings.priceMap" if quote_price is not None else ""
+    if quote_price is None and isinstance(meta, dict):
+        quote_price = finite_float(meta.get("last_price") or meta.get("pivot_current_price"), None)
+        source = "stock_meta.last_price" if quote_price is not None else ""
+    if quote_price is None:
+        return None, None, "missing_holdings_snapshot_price"
+    if kind in {"taiwan", "fund_twd", "cash"}:
+        return quote_price, quote_price, source
+    if fx is None:
+        return quote_price, None, source + ":missing_fx"
+    return quote_price, quote_price * fx, source + ":converted_usd_to_twd"
 
 def get_cash_balance(row: Dict[str, Any], manual_input: Dict[str, Any]) -> Tuple[Optional[float], str]:
     override = manual_input.get("cash_balance_twd_override")
@@ -198,6 +222,7 @@ def main() -> None:
     ledger = row.get("ledger_data") or []
     settings = row.get("settings") or {}
     price_map = settings.get("priceMap") or {}
+    stock_meta = row.get("stock_meta") or {}
     ticker_map = get_map()
     holdings = active_holdings_from_ledger(ledger)
 
@@ -222,32 +247,40 @@ def main() -> None:
         rules = trade_rules(kind)
         symbol = yahoo_symbol(ticker, category, ticker_map)
         price = None
-        currency = "TWD" if kind == "taiwan" else "USD"
+        currency = "TWD" if kind in {"taiwan", "fund_twd", "cash"} else "USD"
         provider = "unavailable"
         provider_url = None
         fetch_error = None
+        price_twd = None
+        holdings_quote_price, holdings_price_twd, holdings_price_source = holdings_snapshot_price(ticker, category, kind, settings, stock_meta, fx)
         try:
             q = fetch_yahoo_latest(symbol)
             price = finite_float(q.get("price"), None)
             currency = str(q.get("currency") or currency)
             provider = str(q.get("provider") or "yahoo_chart_api")
             provider_url = q.get("provider_url")
+            if price is not None:
+                if str(currency).upper() == "TWD" or kind in {"taiwan", "fund_twd", "cash"}:
+                    price_twd = price
+                elif fx is not None:
+                    price_twd = price * fx
             live_success += 1
         except Exception as exc:
             fetch_error = str(exc)
-            # Stored price fallback is explicitly marked as non-real-time, so downstream gates can block if needed.
-            price = finite_float(price_map.get(ticker) or price_map.get(symbol), None)
-            provider = "stored_price_fallback_not_real_time" if price is not None else "unavailable"
-            if price is not None and kind in {"taiwan", "fund_twd", "cash"}:
-                currency = "TWD"
+            price = holdings_quote_price
+            price_twd = holdings_price_twd
+            provider = "holdings_current_price_snapshot" if price_twd is not None else "unavailable"
+            if price_twd is not None:
+                currency = "TWD" if kind in {"taiwan", "fund_twd", "cash"} else "USD"
             live_failed += 1
+        # For delegated sizing, the authoritative holdings table price is preferred when available.
+        # This prevents local funds / holdings-table values from being blocked merely because Yahoo cannot fetch them.
+        if holdings_price_twd is not None:
+            price = holdings_quote_price
+            price_twd = holdings_price_twd
+            provider = "holdings_current_price_snapshot"
+            provider_url = None
         shares = finite_float(h.get("shares"), 0) or 0.0
-        price_twd = None
-        if price is not None:
-            if str(currency).upper() == "TWD" or kind in {"taiwan", "fund_twd", "cash"}:
-                price_twd = price
-            elif fx is not None:
-                price_twd = price * fx
         market_value_twd = price_twd * shares if price_twd is not None else None
         min_unit = finite_float(rules.get("min_trade_unit"), 1) or 1
         whole_units_available = math.floor(shares / min_unit) * min_unit if min_unit > 0 else shares
@@ -275,9 +308,11 @@ def main() -> None:
             "price_provider": provider,
             "price_provider_url": provider_url,
             "real_world_price_fetched": provider == "yahoo_chart_api",
-            "price_quality_status": "real_world" if provider == "yahoo_chart_api" else ("stored_fallback" if provider == "stored_price_fallback_not_real_time" else "unavailable"),
-            "trade_sizing_allowed": provider == "yahoo_chart_api" and price_twd is not None,
-            "price_quality_block_reason": None if provider == "yahoo_chart_api" else "fallback_or_missing_price_not_allowed_for_trade_sizing",
+            "holdings_snapshot_price_used": provider == "holdings_current_price_snapshot",
+            "holdings_price_source": holdings_price_source,
+            "price_quality_status": "real_world" if provider == "yahoo_chart_api" else ("holdings_snapshot" if provider == "holdings_current_price_snapshot" else "unavailable"),
+            "trade_sizing_allowed": price_twd is not None and provider in {"yahoo_chart_api", "holdings_current_price_snapshot"},
+            "price_quality_block_reason": None if price_twd is not None and provider in {"yahoo_chart_api", "holdings_current_price_snapshot"} else "missing_price_not_allowed_for_trade_sizing",
             "holdings_source": row_source,
             "fetch_error": fetch_error,
         })
@@ -296,8 +331,8 @@ def main() -> None:
         "official_rebalance_enabled": False,
         "not_trade_order": True,
         "real_world_data_policy": {
-            "price_fetch_method": "Python urllib requests to Yahoo Finance chart API; no browser scraping; stored price fallback is marked non-real-time and is not allowed for delegated trade sizing.",
-            "cash_balance_source_priority": ["config/manual_approval_override.json", "Supabase settings fields", "missing"],
+            "price_fetch_method": "Python urllib requests to Yahoo Finance chart API when available; delegated sizing may also use the authoritative holdings-table current price snapshot from settings.priceMap / stock_meta.last_price.",
+            "cash_balance_source_priority": ["config/manual_approval_override.json", "Supabase settings fields", "missing; internal sells can still fund buys in delegated draft mode"],
             "no_fabricated_prices": True,
         },
         "portfolio_source": row_source,
@@ -315,14 +350,14 @@ def main() -> None:
         "constraints": {
             "us_fractional_shares_allowed": False,
             "taiwan_odd_lot_or_fractional_allowed": True,
-            "crypto_fractional_trading_allowed": False,
-            "minimum_trade_unit_policy": "US=1 share; Taiwan=1 share odd-lot; Crypto=1 coin; cash balance must be explicitly available for buys.",
+            "crypto_fractional_trading_allowed": True,
+            "minimum_trade_unit_policy": "US=1 share; Taiwan=1 share odd-lot; Crypto=0.00000001 coin; missing cash balance does not block internal rebalance funded by sells.",
         },
         "asset_rows": rows,
         "safety_boundary": [
             "Trading constraints snapshot supplies real-world price and sizing constraints only.",
             "It does not generate buy/sell instructions and does not approve execution.",
-            "If live price or cash balance is missing, downstream ticket generation must block or mark incomplete.",
+            "If both live price and holdings-table current price are missing, downstream ticket generation must block or mark incomplete.",
         ],
     }
     LATEST_JSON.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")

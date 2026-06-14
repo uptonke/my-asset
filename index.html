@@ -2115,15 +2115,15 @@
 
 
 
-                            <!-- v10.2 Delegated Target Weight & Draft Generator pinned above v10.0 -->
+                            <!-- v10.3 Delegated Target Weight & Draft Generator pinned above v10.0 -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.045] shadow-lg overflow-hidden">
                                 <div class="px-4 py-3 border-b border-cyan-500/20 bg-cyan-500/[0.08] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-wand-magic-sparkles text-cyan-300"></i>
-                                            v10.2 機器委任目標權重與交易草案
+                                            v10.3 機器委任目標權重與交易草案
                                         </div>
-                                        <div class="text-[11px] text-cyan-100/70 mt-1">所有目前資產都進 pool；系統本輪產生 machine target weights；入選資產 2%～40%。v10.2 禁止 fallback 價格產生 BUY / SELL 草案列。</div>
+                                        <div class="text-[11px] text-cyan-100/70 mt-1">所有目前資產都進 pool；系統本輪產生 machine target weights；入選資產 2%～40%。v10.3 使用庫存現價(TWD)做 sizing；加密允許小數交易；賣出所得可資助買入。</div>
                                     </div>
                                     <div class="flex flex-wrap items-center gap-2 text-[11px]">
                                         <span class="px-2 py-1 rounded-lg border" :class="delegatedTargetWeightDraftSummary?.delegated_draft_status === 'machine_delegated_draft_available' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-red-500/30 bg-red-500/10 text-red-200'">
@@ -2158,7 +2158,7 @@
                                             <div class="quant-value text-white">{{ delegatedTargetWeightDraftSummary?.draft_line_count ?? 0 }}</div>
                                         </div>
                                         <div class="quant-card border-orange-500/20 bg-orange-500/10">
-                                            <div class="quant-label text-orange-300">價格排除</div>
+                                            <div class="quant-label text-orange-300">缺價排除</div>
                                             <div class="quant-value text-white">{{ delegatedTargetWeightDraftSummary?.price_quality_excluded_line_count ?? 0 }}</div>
                                         </div>
                                         <div class="quant-card border-red-500/20 bg-red-500/10">
@@ -2200,7 +2200,7 @@
                                         </div>
 
                                         <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
-                                            <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] text-xs font-bold text-white">委任草案交易列 Top 10（僅 real-world 價格）</div>
+                                            <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] text-xs font-bold text-white">委任草案交易列 Top 10（庫存現價 / real-world 可 sizing）</div>
                                             <div class="overflow-x-auto">
                                                 <table class="w-full text-[11px]">
                                                     <thead class="text-gray-500 border-b border-white/10">
@@ -2228,7 +2228,7 @@
                                     </div>
 
                                     <div v-if="delegatedDraftVisibleWarnings.length" class="rounded-xl border border-amber-500/20 bg-amber-500/[0.05] overflow-hidden">
-                                        <div class="px-3 py-2 border-b border-amber-500/20 bg-amber-500/[0.08] text-xs font-bold text-amber-100">v10.2 警示</div>
+                                        <div class="px-3 py-2 border-b border-amber-500/20 bg-amber-500/[0.08] text-xs font-bold text-amber-100">v10.3 警示</div>
                                         <div class="divide-y divide-amber-500/10">
                                             <div v-for="row in delegatedDraftVisibleWarnings" :key="(row.ticker || '') + row.code" class="p-3 text-[11px]">
                                                 <div class="font-bold text-amber-200">{{ row.ticker ? row.ticker + '｜' : '' }}{{ zhText(row.code) }}</div>
@@ -6494,7 +6494,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=v10-2-price-quality-guard-1"></script>
+<script src="assets/js/app.bundle.js?v=v10-3-holdings-source-internal-rebalance-1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
