@@ -1,6 +1,6 @@
 # v10.2 Delegated Target Weight & Draft Generator
 
-- Generated: `2026-06-14T06:23:18+00:00`
+- Generated: `2026-06-14T07:03:25+00:00`
 - Delegated draft status: **machine_delegated_target_available_no_sizing_lines**
 - Pool asset count: `15`
 - Selected asset count: `14`
