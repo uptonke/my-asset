@@ -1,13 +1,13 @@
 {
-  "version": "v10.4",
+  "version": "v10.5",
   "status": "OK",
-  "generated_at": "2026-06-16T14:36:39+00:00",
-  "mode": "delegated_target_weight_and_draft_generator",
+  "generated_at": "2026-06-16T15:00:54+00:00",
+  "mode": "integrated_delegated_target_weight_daily_quant_monte_carlo_engine",
   "safe_mode": true,
   "research_only": true,
   "review_only": true,
   "delegated_draft_mode_enabled": true,
-  "target_weight_source": "machine_generated_this_run",
+  "target_weight_source": "machine_generated_this_run_with_daily_quant_monte_carlo_inputs",
   "trade_signal_enabled": false,
   "execution_permission": false,
   "broker_submission_enabled": false,
@@ -19,8 +19,8 @@
   "not_sell_signal": true,
   "delegated_draft_status": "machine_delegated_draft_available",
   "policy": {
-    "version": "v10.4",
-    "name": "Delegated Target Weight & Draft Generator with Liquidity Buffer Source-of-Truth Guard",
+    "version": "v10.5",
+    "name": "Integrated Delegated Target Weight Generator with Daily Quant and Monte Carlo Inputs",
     "eligible_pool_policy": {
       "pool_source": "all_current_assets",
       "max_pool_size": 50,
@@ -28,8 +28,9 @@
       "allow_all_assets_into_pool": true
     },
     "target_generation_policy": {
-      "target_weight_source": "machine_generated_this_run",
+      "target_weight_source": "machine_generated_this_run_with_daily_quant_monte_carlo_inputs",
       "use_external_target_weights": false,
+      "daily_quant_monte_carlo_inputs_enabled": true,
       "included_asset_min_weight_pct": 0.02,
       "single_asset_max_weight_pct": 0.4,
       "min_weight_applies_to": "selected_assets_only",
@@ -61,25 +62,31 @@
     "delegated_draft_status": "machine_delegated_draft_available",
     "pool_asset_count": 15,
     "selected_asset_count": 15,
-    "target_asset_weight_sum_pct": 99.9998,
+    "target_asset_weight_sum_pct": 100.0002,
     "liquidity_buffer_pct": 0.0,
     "cash_target_weight_pct": 0.0,
     "liquidity_buffer_source": "portfolio_settings.liquidity_buffer_ratio_pct",
     "zero_liquidity_buffer_is_valid": true,
     "included_asset_min_weight_pct": 2.0,
     "single_asset_max_weight_pct": 40.0,
-    "draft_line_count": 3,
+    "draft_line_count": 7,
     "price_quality_excluded_line_count": 0,
     "trade_sizing_requires_real_world_price": false,
     "holdings_snapshot_price_allowed": true,
     "blocker_count": 0,
-    "warning_count": 22,
+    "warning_count": 19,
     "cash_balance_available": false,
     "internal_rebalance_can_fund_buys": true,
     "cash_balance_twd": null,
     "cash_balance_missing_but_internal_rebalance_allowed": true,
     "nav_twd": 655338.15,
     "source_candidate_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX",
+    "daily_quant_reference_available": true,
+    "daily_quant_reference_source": "latest_backup:portfolio_backup_2026-06-14.json",
+    "synthetic_risk_available": true,
+    "monte_carlo_reference_available": true,
+    "daily_quant_mc_risk_mode": "high_tail_pressure",
+    "mc_fragile_node_count": 3,
     "alpha_validation_status": "watch_only_validation",
     "trade_signal_enabled": false,
     "execution_permission": false,
@@ -97,6 +104,11 @@
       "price_provider": "holdings_current_price_snapshot",
       "alpha_research_score": 1.527,
       "ranking_prior_weight_pct": 9.522,
+      "daily_quant_mc_multiplier": 1.0,
+      "daily_quant_mc_reasons": [],
+      "mc_fragile_node": false,
+      "raw_score_before_daily_quant_mc": 0.089069,
+      "raw_score_after_daily_quant_mc": 0.089069,
       "eligible": true
     },
     {
@@ -110,6 +122,11 @@
       "price_provider": "holdings_current_price_snapshot",
       "alpha_research_score": 0.42,
       "ranking_prior_weight_pct": 9.265,
+      "daily_quant_mc_multiplier": 1.0,
+      "daily_quant_mc_reasons": [],
+      "mc_fragile_node": false,
+      "raw_score_before_daily_quant_mc": 0.085912,
+      "raw_score_after_daily_quant_mc": 0.085912,
       "eligible": true
     },
     {
@@ -123,6 +140,11 @@
       "price_provider": "holdings_current_price_snapshot",
       "alpha_research_score": 0.282,
       "ranking_prior_weight_pct": 20.471,
+      "daily_quant_mc_multiplier": 1.0,
+      "daily_quant_mc_reasons": [],
+      "mc_fragile_node": false,
+      "raw_score_before_daily_quant_mc": 0.130744,
+      "raw_score_after_daily_quant_mc": 0.130744,
       "eligible": true
     },
     {
@@ -136,6 +158,11 @@
       "price_provider": "holdings_current_price_snapshot",
       "alpha_research_score": -3.029,
       "ranking_prior_weight_pct": 0.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "daily_quant_mc_reasons": [],
+      "mc_fragile_node": false,
+      "raw_score_before_daily_quant_mc": 0.04992,
+      "raw_score_after_daily_quant_mc": 0.04992,
       "eligible": true
     },
     {
@@ -149,6 +176,14 @@
       "price_provider": "holdings_current_price_snapshot",
       "alpha_research_score": -3.308,
       "ranking_prior_weight_pct": 4.287,
+      "daily_quant_mc_multiplier": 0.63,
+      "daily_quant_mc_reasons": [
+        "monte_carlo_fragile_node_penalty",
+        "high_tail_pressure_extra_fragile_penalty"
+      ],
+      "mc_fragile_node": true,
+      "raw_score_before_daily_quant_mc": 0.035362,
+      "raw_score_after_daily_quant_mc": 0.022278,
       "eligible": true
     },
     {
@@ -162,6 +197,11 @@
       "price_provider": "holdings_current_price_snapshot",
       "alpha_research_score": -1.521,
       "ranking_prior_weight_pct": 3.141,
+      "daily_quant_mc_multiplier": 1.0,
+      "daily_quant_mc_reasons": [],
+      "mc_fragile_node": false,
+      "raw_score_before_daily_quant_mc": 0.023765,
+      "raw_score_after_daily_quant_mc": 0.023765,
       "eligible": true
     },
     {
@@ -175,6 +215,14 @@
       "price_provider": "holdings_current_price_snapshot",
       "alpha_research_score": 0.017,
       "ranking_prior_weight_pct": 3.872,
+      "daily_quant_mc_multiplier": 0.63,
+      "daily_quant_mc_reasons": [
+        "monte_carlo_fragile_node_penalty",
+        "high_tail_pressure_extra_fragile_penalty"
+      ],
+      "mc_fragile_node": true,
+      "raw_score_before_daily_quant_mc": 0.038145,
+      "raw_score_after_daily_quant_mc": 0.024032,
       "eligible": true
     },
     {
@@ -188,6 +236,11 @@
       "price_provider": "holdings_current_price_snapshot",
       "alpha_research_score": 0.222,
       "ranking_prior_weight_pct": 5.967,
+      "daily_quant_mc_multiplier": 1.0,
+      "daily_quant_mc_reasons": [],
+      "mc_fragile_node": false,
+      "raw_score_before_daily_quant_mc": 0.056546,
+      "raw_score_after_daily_quant_mc": 0.056546,
       "eligible": true
     },
     {
@@ -201,6 +254,11 @@
       "price_provider": "holdings_current_price_snapshot",
       "alpha_research_score": 0.095,
       "ranking_prior_weight_pct": 4.6,
+      "daily_quant_mc_multiplier": 1.0,
+      "daily_quant_mc_reasons": [],
+      "mc_fragile_node": false,
+      "raw_score_before_daily_quant_mc": 0.044785,
+      "raw_score_after_daily_quant_mc": 0.044785,
       "eligible": true
     },
     {
@@ -214,6 +272,11 @@
       "price_provider": "holdings_current_price_snapshot",
       "alpha_research_score": 0.645,
       "ranking_prior_weight_pct": 10.091,
+      "daily_quant_mc_multiplier": 1.0,
+      "daily_quant_mc_reasons": [],
+      "mc_fragile_node": false,
+      "raw_score_before_daily_quant_mc": 0.0972,
+      "raw_score_after_daily_quant_mc": 0.0972,
       "eligible": true
     },
     {
@@ -227,6 +290,11 @@
       "price_provider": "holdings_current_price_snapshot",
       "alpha_research_score": -0.333,
       "ranking_prior_weight_pct": 2.9,
+      "daily_quant_mc_multiplier": 1.0,
+      "daily_quant_mc_reasons": [],
+      "mc_fragile_node": false,
+      "raw_score_before_daily_quant_mc": 0.029544,
+      "raw_score_after_daily_quant_mc": 0.029544,
       "eligible": true
     },
     {
@@ -240,6 +308,11 @@
       "price_provider": "holdings_current_price_snapshot",
       "alpha_research_score": 0.019,
       "ranking_prior_weight_pct": 6.752,
+      "daily_quant_mc_multiplier": 1.0,
+      "daily_quant_mc_reasons": [],
+      "mc_fragile_node": false,
+      "raw_score_before_daily_quant_mc": 0.063188,
+      "raw_score_after_daily_quant_mc": 0.063188,
       "eligible": true
     },
     {
@@ -253,6 +326,14 @@
       "price_provider": "holdings_current_price_snapshot",
       "alpha_research_score": 0.313,
       "ranking_prior_weight_pct": 8.725,
+      "daily_quant_mc_multiplier": 0.63,
+      "daily_quant_mc_reasons": [
+        "monte_carlo_fragile_node_penalty",
+        "high_tail_pressure_extra_fragile_penalty"
+      ],
+      "mc_fragile_node": true,
+      "raw_score_before_daily_quant_mc": 0.079941,
+      "raw_score_after_daily_quant_mc": 0.050363,
       "eligible": true
     },
     {
@@ -266,6 +347,11 @@
       "price_provider": "holdings_current_price_snapshot",
       "alpha_research_score": 0.366,
       "ranking_prior_weight_pct": 10.407,
+      "daily_quant_mc_multiplier": 1.0,
+      "daily_quant_mc_reasons": [],
+      "mc_fragile_node": false,
+      "raw_score_before_daily_quant_mc": 0.094215,
+      "raw_score_after_daily_quant_mc": 0.094215,
       "eligible": true
     },
     {
@@ -279,189 +365,260 @@
       "price_provider": "holdings_current_price_snapshot",
       "alpha_research_score": null,
       "ranking_prior_weight_pct": 0.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "daily_quant_mc_reasons": [],
+      "mc_fragile_node": false,
+      "raw_score_before_daily_quant_mc": 0.035201,
+      "raw_score_after_daily_quant_mc": 0.035201,
       "eligible": true
     }
   ],
   "machine_target_rows": [
     {
-      "ticker": "BTC-USD",
-      "current_weight_pct": 8.243109,
-      "machine_target_weight_pct": 4.4369,
-      "delta_weight_pct": -3.806209,
-      "direction": "DOWN",
-      "selected_in_target": true,
-      "min_weight_rule_pct": 2.0,
-      "max_weight_rule_pct": 40.0
-    },
-    {
       "ticker": "BOXX",
       "current_weight_pct": 11.247519,
-      "machine_target_weight_pct": 14.3654,
-      "delta_weight_pct": 3.117881,
+      "machine_target_weight_pct": 14.5796,
+      "delta_weight_pct": 3.332081,
       "direction": "UP",
       "selected_in_target": true,
       "min_weight_rule_pct": 2.0,
-      "max_weight_rule_pct": 40.0
+      "max_weight_rule_pct": 40.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false
     },
     {
-      "ticker": "安聯台灣科技",
-      "current_weight_pct": 5.200176,
-      "machine_target_weight_pct": 3.2912,
-      "delta_weight_pct": -1.908976,
+      "ticker": "BTC-USD",
+      "current_weight_pct": 8.243109,
+      "machine_target_weight_pct": 5.5667,
+      "delta_weight_pct": -2.676409,
       "direction": "DOWN",
       "selected_in_target": true,
       "min_weight_rule_pct": 2.0,
-      "max_weight_rule_pct": 40.0
-    },
-    {
-      "ticker": "GLDM",
-      "current_weight_pct": 2.002272,
-      "machine_target_weight_pct": 2.6224,
-      "delta_weight_pct": 0.620128,
-      "direction": "UP",
-      "selected_in_target": true,
-      "min_weight_rule_pct": 2.0,
-      "max_weight_rule_pct": 40.0
-    },
-    {
-      "ticker": "GRID",
-      "current_weight_pct": 3.633695,
-      "machine_target_weight_pct": 4.0977,
-      "delta_weight_pct": 0.464005,
-      "direction": "UP",
-      "selected_in_target": true,
-      "min_weight_rule_pct": 2.0,
-      "max_weight_rule_pct": 40.0
-    },
-    {
-      "ticker": "SRVR",
-      "current_weight_pct": 2.750215,
-      "machine_target_weight_pct": 3.1907,
-      "delta_weight_pct": 0.440485,
-      "direction": "UP",
-      "selected_in_target": true,
-      "min_weight_rule_pct": 2.0,
-      "max_weight_rule_pct": 40.0
-    },
-    {
-      "ticker": "PICK",
-      "current_weight_pct": 4.379045,
-      "machine_target_weight_pct": 4.781,
-      "delta_weight_pct": 0.401955,
-      "direction": "UP",
-      "selected_in_target": true,
-      "min_weight_rule_pct": 2.0,
-      "max_weight_rule_pct": 40.0
-    },
-    {
-      "ticker": "00981A",
-      "current_weight_pct": 9.067868,
-      "machine_target_weight_pct": 9.4133,
-      "delta_weight_pct": 0.345432,
-      "direction": "UP",
-      "selected_in_target": true,
-      "min_weight_rule_pct": 2.0,
-      "max_weight_rule_pct": 40.0
-    },
-    {
-      "ticker": "IFRA",
-      "current_weight_pct": 5.666295,
-      "machine_target_weight_pct": 6.0002,
-      "delta_weight_pct": 0.333905,
-      "direction": "UP",
-      "selected_in_target": true,
-      "min_weight_rule_pct": 2.0,
-      "max_weight_rule_pct": 40.0
-    },
-    {
-      "ticker": "QQQ",
-      "current_weight_pct": 10.400759,
-      "machine_target_weight_pct": 10.1386,
-      "delta_weight_pct": -0.262159,
-      "direction": "DOWN",
-      "selected_in_target": true,
-      "min_weight_rule_pct": 2.0,
-      "max_weight_rule_pct": 40.0
-    },
-    {
-      "ticker": "ETH-USD",
-      "current_weight_pct": 3.893105,
-      "machine_target_weight_pct": 3.6595,
-      "delta_weight_pct": -0.233605,
-      "direction": "DOWN",
-      "selected_in_target": true,
-      "min_weight_rule_pct": 2.0,
-      "max_weight_rule_pct": 40.0
-    },
-    {
-      "ticker": "USMV",
-      "current_weight_pct": 6.462926,
-      "machine_target_weight_pct": 6.6702,
-      "delta_weight_pct": 0.207274,
-      "direction": "UP",
-      "selected_in_target": true,
-      "min_weight_rule_pct": 2.0,
-      "max_weight_rule_pct": 40.0
+      "max_weight_rule_pct": 40.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false
     },
     {
       "ticker": "VEA",
       "current_weight_pct": 8.253243,
-      "machine_target_weight_pct": 8.4182,
-      "delta_weight_pct": 0.164957,
+      "machine_target_weight_pct": 5.6161,
+      "delta_weight_pct": -2.637143,
+      "direction": "DOWN",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0,
+      "daily_quant_mc_multiplier": 0.63,
+      "mc_fragile_node": true
+    },
+    {
+      "ticker": "ETH-USD",
+      "current_weight_pct": 3.893105,
+      "machine_target_weight_pct": 2.4843,
+      "delta_weight_pct": -1.408805,
+      "direction": "DOWN",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0,
+      "daily_quant_mc_multiplier": 0.63,
+      "mc_fragile_node": true
+    },
+    {
+      "ticker": "安聯台灣科技",
+      "current_weight_pct": 5.200176,
+      "machine_target_weight_pct": 3.9254,
+      "delta_weight_pct": -1.274776,
+      "direction": "DOWN",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false
+    },
+    {
+      "ticker": "GRID",
+      "current_weight_pct": 3.633695,
+      "machine_target_weight_pct": 2.6798,
+      "delta_weight_pct": -0.953895,
+      "direction": "DOWN",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0,
+      "daily_quant_mc_multiplier": 0.63,
+      "mc_fragile_node": true
+    },
+    {
+      "ticker": "00981A",
+      "current_weight_pct": 9.067868,
+      "machine_target_weight_pct": 9.9323,
+      "delta_weight_pct": 0.864432,
       "direction": "UP",
       "selected_in_target": true,
       "min_weight_rule_pct": 2.0,
-      "max_weight_rule_pct": 40.0
+      "max_weight_rule_pct": 40.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false
     },
     {
       "ticker": "VOO",
       "current_weight_pct": 9.832808,
-      "machine_target_weight_pct": 9.8933,
-      "delta_weight_pct": 0.060492,
+      "machine_target_weight_pct": 10.5062,
+      "delta_weight_pct": 0.673392,
       "direction": "UP",
       "selected_in_target": true,
       "min_weight_rule_pct": 2.0,
-      "max_weight_rule_pct": 40.0
+      "max_weight_rule_pct": 40.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false
+    },
+    {
+      "ticker": "GLDM",
+      "current_weight_pct": 2.002272,
+      "machine_target_weight_pct": 2.6501,
+      "delta_weight_pct": 0.647828,
+      "direction": "UP",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false
+    },
+    {
+      "ticker": "IFRA",
+      "current_weight_pct": 5.666295,
+      "machine_target_weight_pct": 6.3056,
+      "delta_weight_pct": 0.639305,
+      "direction": "UP",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false
+    },
+    {
+      "ticker": "PICK",
+      "current_weight_pct": 4.379045,
+      "machine_target_weight_pct": 4.9941,
+      "delta_weight_pct": 0.615055,
+      "direction": "UP",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false
     },
     {
       "ticker": "AVUV",
       "current_weight_pct": 8.966966,
-      "machine_target_weight_pct": 9.0212,
-      "delta_weight_pct": 0.054234,
+      "machine_target_weight_pct": 9.5803,
+      "delta_weight_pct": 0.613334,
       "direction": "UP",
       "selected_in_target": true,
       "min_weight_rule_pct": 2.0,
-      "max_weight_rule_pct": 40.0
+      "max_weight_rule_pct": 40.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false
+    },
+    {
+      "ticker": "USMV",
+      "current_weight_pct": 6.462926,
+      "machine_target_weight_pct": 7.0462,
+      "delta_weight_pct": 0.583274,
+      "direction": "UP",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false
+    },
+    {
+      "ticker": "SRVR",
+      "current_weight_pct": 2.750215,
+      "machine_target_weight_pct": 3.2945,
+      "delta_weight_pct": 0.544285,
+      "direction": "UP",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false
+    },
+    {
+      "ticker": "QQQ",
+      "current_weight_pct": 10.400759,
+      "machine_target_weight_pct": 10.839,
+      "delta_weight_pct": 0.438241,
+      "direction": "UP",
+      "selected_in_target": true,
+      "min_weight_rule_pct": 2.0,
+      "max_weight_rule_pct": 40.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false
     }
   ],
   "machine_target_weights_pct": {
-    "00981A": 9.4133,
-    "AVUV": 9.0212,
-    "BOXX": 14.3654,
-    "BTC-USD": 4.4369,
-    "ETH-USD": 3.6595,
-    "GLDM": 2.6224,
-    "GRID": 4.0977,
-    "IFRA": 6.0002,
-    "PICK": 4.781,
-    "QQQ": 10.1386,
-    "SRVR": 3.1907,
-    "USMV": 6.6702,
-    "VEA": 8.4182,
-    "VOO": 9.8933,
-    "安聯台灣科技": 3.2912
+    "00981A": 9.9323,
+    "AVUV": 9.5803,
+    "BOXX": 14.5796,
+    "BTC-USD": 5.5667,
+    "ETH-USD": 2.4843,
+    "GLDM": 2.6501,
+    "GRID": 2.6798,
+    "IFRA": 6.3056,
+    "PICK": 4.9941,
+    "QQQ": 10.839,
+    "SRVR": 3.2945,
+    "USMV": 7.0462,
+    "VEA": 5.6161,
+    "VOO": 10.5062,
+    "安聯台灣科技": 3.9254
   },
   "delegated_draft_lines": [
     {
+      "ticker": "VEA",
+      "side": "SELL",
+      "quantity": 7.0,
+      "estimated_price_twd": 2253.610331,
+      "estimated_value_twd": 15775.27,
+      "current_weight_pct": 8.253243,
+      "target_weight_pct": 5.6161,
+      "delta_weight_pct": -2.637143,
+      "asset_kind": "us",
+      "minimum_trade_unit": 1.0,
+      "real_world_price_fetched": false,
+      "holdings_snapshot_price_used": true,
+      "price_quality_status": "holdings_snapshot",
+      "price_provider": "holdings_current_price_snapshot",
+      "trade_sizing_allowed": true,
+      "not_trade_order": true
+    },
+    {
       "ticker": "安聯台灣科技",
       "side": "SELL",
-      "quantity": 15.0,
+      "quantity": 10.0,
       "estimated_price_twd": 790.69,
-      "estimated_value_twd": 11860.35,
+      "estimated_value_twd": 7906.9,
       "current_weight_pct": 5.200176,
-      "target_weight_pct": 3.2912,
-      "delta_weight_pct": -1.908976,
+      "target_weight_pct": 3.9254,
+      "delta_weight_pct": -1.274776,
       "asset_kind": "fund_twd",
+      "minimum_trade_unit": 1.0,
+      "real_world_price_fetched": false,
+      "holdings_snapshot_price_used": true,
+      "price_quality_status": "holdings_snapshot",
+      "price_provider": "holdings_current_price_snapshot",
+      "trade_sizing_allowed": true,
+      "not_trade_order": true
+    },
+    {
+      "ticker": "GRID",
+      "side": "SELL",
+      "quantity": 1.0,
+      "estimated_price_twd": 5953.247921,
+      "estimated_value_twd": 5953.25,
+      "current_weight_pct": 3.633695,
+      "target_weight_pct": 2.6798,
+      "delta_weight_pct": -0.953895,
+      "asset_kind": "us",
       "minimum_trade_unit": 1.0,
       "real_world_price_fetched": false,
       "holdings_snapshot_price_used": true,
@@ -473,12 +630,12 @@
     {
       "ticker": "BOXX",
       "side": "BUY",
-      "quantity": 2.0,
+      "quantity": 3.0,
       "estimated_price_twd": 3685.46394,
-      "estimated_value_twd": 7370.93,
+      "estimated_value_twd": 11056.39,
       "current_weight_pct": 11.247519,
-      "target_weight_pct": 14.3654,
-      "delta_weight_pct": 3.117881,
+      "target_weight_pct": 14.5796,
+      "delta_weight_pct": 3.332081,
       "asset_kind": "us",
       "minimum_trade_unit": 1.0,
       "real_world_price_fetched": false,
@@ -492,13 +649,51 @@
     {
       "ticker": "00981A",
       "side": "BUY",
-      "quantity": 29.0,
+      "quantity": 128.0,
       "estimated_price_twd": 30.6,
-      "estimated_value_twd": 887.4,
+      "estimated_value_twd": 3916.8,
       "current_weight_pct": 9.067868,
-      "target_weight_pct": 9.4133,
-      "delta_weight_pct": 0.345432,
+      "target_weight_pct": 9.9323,
+      "delta_weight_pct": 0.864432,
       "asset_kind": "taiwan",
+      "minimum_trade_unit": 1.0,
+      "real_world_price_fetched": false,
+      "holdings_snapshot_price_used": true,
+      "price_quality_status": "holdings_snapshot",
+      "price_provider": "holdings_current_price_snapshot",
+      "trade_sizing_allowed": true,
+      "not_trade_order": true,
+      "buy_scaled_by_available_power": true
+    },
+    {
+      "ticker": "SRVR",
+      "side": "BUY",
+      "quantity": 2.0,
+      "estimated_price_twd": 1060.189011,
+      "estimated_value_twd": 2120.38,
+      "current_weight_pct": 2.750215,
+      "target_weight_pct": 3.2945,
+      "delta_weight_pct": 0.544285,
+      "asset_kind": "us",
+      "minimum_trade_unit": 1.0,
+      "real_world_price_fetched": false,
+      "holdings_snapshot_price_used": true,
+      "price_quality_status": "holdings_snapshot",
+      "price_provider": "holdings_current_price_snapshot",
+      "trade_sizing_allowed": true,
+      "not_trade_order": true,
+      "buy_scaled_by_available_power": true
+    },
+    {
+      "ticker": "IFRA",
+      "side": "BUY",
+      "quantity": 1.0,
+      "estimated_price_twd": 1954.388834,
+      "estimated_value_twd": 1954.39,
+      "current_weight_pct": 5.666295,
+      "target_weight_pct": 6.3056,
+      "delta_weight_pct": 0.639305,
+      "asset_kind": "us",
       "minimum_trade_unit": 1.0,
       "real_world_price_fetched": false,
       "holdings_snapshot_price_used": true,
@@ -515,12 +710,12 @@
     "cash_balance_twd": null,
     "cash_balance_missing_but_internal_rebalance_allowed": true,
     "cash_buffer_target_twd": 0.0,
-    "sell_proceeds_twd": 11860.35,
-    "requested_buy_twd": 29410.04,
-    "buying_power_twd": 11860.35,
-    "buy_scaling_factor": 0.403276,
-    "draft_line_count": 3,
-    "unit_warning_count": 7,
+    "sell_proceeds_twd": 29635.42,
+    "requested_buy_twd": 42794.71,
+    "buying_power_twd": 29635.42,
+    "buy_scaling_factor": 0.692502,
+    "draft_line_count": 7,
+    "unit_warning_count": 4,
     "price_quality_excluded_line_count": 0
   },
   "price_quality_guard": {
@@ -531,6 +726,58 @@
     "excluded_line_count": 0,
     "excluded_rows": []
   },
+  "daily_quant_monte_carlo_context": {
+    "available": true,
+    "daily_reference_generated_at": "2026-06-16T15:00:52+00:00",
+    "portfolio_source": "latest_backup:portfolio_backup_2026-06-14.json",
+    "synthetic_risk_available": true,
+    "monte_carlo_reference_available": true,
+    "settings_reference": {
+      "exchange_rate": 31.6,
+      "liquidity_buffer_ratio": 0,
+      "price_map_count": 33
+    },
+    "synthetic_risk_metrics": {
+      "sample_count": 381,
+      "ann_vol_pct": 11.36,
+      "var95_pct": 1.01,
+      "es95_pct": 1.61,
+      "max_drawdown_pct": -5.47
+    },
+    "monte_carlo_reference": {
+      "stressed_var95_pct": 7.08,
+      "stressed_es95_pct": 9.5,
+      "liquidity_run_probability_pct": 20.75,
+      "fragile_nodes": [
+        "ETH-USD",
+        "GRID",
+        "VEA"
+      ]
+    },
+    "risk_mode": "high_tail_pressure",
+    "target_weight_coefficients": {
+      "current_weight": 0.6,
+      "ranking_prior": 0.28,
+      "alpha_research": 0.12
+    },
+    "fragile_nodes": [
+      "ETH-USD",
+      "GRID",
+      "VEA"
+    ],
+    "high_tail_pressure": true,
+    "moderate_tail_pressure": true,
+    "source_priority_policy": [
+      "Daily Quant / holdings current price is the primary portfolio-state source.",
+      "Monte Carlo / chaos_meta fragile nodes penalize target-weight raw scores before normalization.",
+      "Synthetic portfolio risk and Monte Carlo stress levels adjust the current-weight / ranking / alpha blend before target weights are generated."
+    ]
+  },
+  "target_weight_generation_notes": [
+    "v10.5 uses Daily Quant / Monte Carlo as target-weight inputs before normalization, not only as a post-hoc card.",
+    "Monte Carlo fragile nodes receive an explicit raw-score penalty before 2%-40% target-weight normalization.",
+    "Global Daily Quant tail-pressure changes the blend among current weight, ranking prior and alpha research score."
+  ],
   "blockers": [],
   "warnings": [
     {
@@ -624,31 +871,13 @@
       "message": "此資產使用庫存頁現價(TWD)作為委任草案 sizing 價格。"
     },
     {
-      "ticker": "GRID",
-      "code": "below_minimum_trade_unit",
-      "severity": "warning",
-      "message": "調整金額低於最小交易單位。"
-    },
-    {
-      "ticker": "USMV",
-      "code": "below_minimum_trade_unit",
-      "severity": "warning",
-      "message": "調整金額低於最小交易單位。"
-    },
-    {
-      "ticker": "VEA",
-      "code": "below_minimum_trade_unit",
-      "severity": "warning",
-      "message": "調整金額低於最小交易單位。"
-    },
-    {
-      "ticker": "GLDM",
+      "ticker": "AVUV",
       "code": "buy_scaled_below_minimum_unit",
       "severity": "warning",
       "message": "買入因資金約束縮小後低於最小交易單位。"
     },
     {
-      "ticker": "IFRA",
+      "ticker": "GLDM",
       "code": "buy_scaled_below_minimum_unit",
       "severity": "warning",
       "message": "買入因資金約束縮小後低於最小交易單位。"
@@ -660,7 +889,7 @@
       "message": "買入因資金約束縮小後低於最小交易單位。"
     },
     {
-      "ticker": "SRVR",
+      "ticker": "USMV",
       "code": "buy_scaled_below_minimum_unit",
       "severity": "warning",
       "message": "買入因資金約束縮小後低於最小交易單位。"
@@ -673,7 +902,8 @@
     "trading_constraints_asset_count": 15
   },
   "safety_boundary": [
-    "v10.4 may generate machine target weights and a delegated review draft, but it is not a trade order.",
+    "v10.5 may generate Daily-Quant-aware machine target weights and a delegated review draft, but it is not a trade order.",
+    "Daily Quant / Monte Carlo influence target weights before normalization; they are not only a post-hoc reference card.",
     "It cannot enable trade_signal_enabled, execution_permission, official_rebalance_enabled, auto_trade_enabled, or broker_submission_enabled.",
     "All current assets enter the eligible pool; missing prices cannot create delegated BUY/SELL draft lines, but holdings-table current prices are allowed for delegated sizing.",
     "Internal sells can fund buys even when explicit cash balance is missing; cash balance is not fabricated."

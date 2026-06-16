@@ -95,8 +95,8 @@ def load_policy(config: Dict[str, Any], constraints: Dict[str, Any]) -> Dict[str
     delegated = as_dict(config.get("delegated_draft_policy"))
     liquidity_buffer_pct, liquidity_buffer_source = resolve_liquidity_buffer_pct(config, constraints)
     return {
-        "version": "v10.4",
-        "name": "Delegated Target Weight & Draft Generator with Liquidity Buffer Source-of-Truth Guard",
+        "version": "v10.5",
+        "name": "Integrated Delegated Target Weight Generator with Daily Quant and Monte Carlo Inputs",
         "eligible_pool_policy": {
             "pool_source": "all_current_assets",
             "max_pool_size": int(num(delegated.get("max_pool_size"), MAX_POOL_SIZE)),
@@ -104,8 +104,9 @@ def load_policy(config: Dict[str, Any], constraints: Dict[str, Any]) -> Dict[str
             "allow_all_assets_into_pool": True,
         },
         "target_generation_policy": {
-            "target_weight_source": "machine_generated_this_run",
+            "target_weight_source": "machine_generated_this_run_with_daily_quant_monte_carlo_inputs",
             "use_external_target_weights": False,
+            "daily_quant_monte_carlo_inputs_enabled": True,
             "included_asset_min_weight_pct": MIN_INCLUDED_WEIGHT,
             "single_asset_max_weight_pct": MAX_SINGLE_WEIGHT,
             "min_weight_applies_to": "selected_assets_only",
@@ -134,6 +135,77 @@ def load_policy(config: Dict[str, Any], constraints: Dict[str, Any]) -> Dict[str
         },
     }
 
+
+
+def load_daily_quant_context() -> Dict[str, Any]:
+    daily = as_dict(read_json("data/alpha/daily_quant_reference_latest.json", {}))
+    synthetic = as_dict(daily.get("synthetic_risk_reference"))
+    mc = as_dict(daily.get("monte_carlo_reference"))
+    settings_ref = as_dict(daily.get("settings_reference"))
+    fragile_nodes = {str(x).strip() for x in as_list(mc.get("fragile_nodes")) if str(x).strip()}
+    metrics = as_dict(synthetic.get("metrics"))
+    stressed_es95 = abs(num(mc.get("stressed_es95_pct")))
+    stressed_var95 = abs(num(mc.get("stressed_var95_pct")))
+    liquidity_run_prob = num(mc.get("liquidity_run_probability_pct"))
+    ann_vol = abs(num(metrics.get("ann_vol_pct")))
+    es95 = abs(num(metrics.get("es95_pct")))
+    high_tail_pressure = bool(stressed_es95 >= 8.0 or liquidity_run_prob >= 20.0 or ann_vol >= 18.0)
+    moderate_tail_pressure = bool(stressed_es95 >= 5.0 or liquidity_run_prob >= 10.0 or es95 >= 1.5)
+    if high_tail_pressure:
+        risk_mode = "high_tail_pressure"
+        current_coeff, rank_coeff, alpha_coeff = 0.60, 0.28, 0.12
+    elif moderate_tail_pressure:
+        risk_mode = "moderate_tail_pressure"
+        current_coeff, rank_coeff, alpha_coeff = 0.55, 0.32, 0.13
+    else:
+        risk_mode = "normal_reference"
+        current_coeff, rank_coeff, alpha_coeff = 0.50, 0.35, 0.15
+    return {
+        "available": bool(daily),
+        "daily_reference_generated_at": daily.get("generated_at"),
+        "portfolio_source": daily.get("portfolio_source"),
+        "synthetic_risk_available": bool(synthetic.get("available")),
+        "monte_carlo_reference_available": bool(mc.get("available")),
+        "settings_reference": settings_ref,
+        "synthetic_risk_metrics": metrics,
+        "monte_carlo_reference": {
+            "stressed_var95_pct": mc.get("stressed_var95_pct"),
+            "stressed_es95_pct": mc.get("stressed_es95_pct"),
+            "liquidity_run_probability_pct": mc.get("liquidity_run_probability_pct"),
+            "fragile_nodes": sorted(fragile_nodes),
+        },
+        "risk_mode": risk_mode,
+        "target_weight_coefficients": {
+            "current_weight": current_coeff,
+            "ranking_prior": rank_coeff,
+            "alpha_research": alpha_coeff,
+        },
+        "fragile_nodes": sorted(fragile_nodes),
+        "high_tail_pressure": high_tail_pressure,
+        "moderate_tail_pressure": moderate_tail_pressure,
+        "source_priority_policy": [
+            "Daily Quant / holdings current price is the primary portfolio-state source.",
+            "Monte Carlo / chaos_meta fragile nodes penalize target-weight raw scores before normalization.",
+            "Synthetic portfolio risk and Monte Carlo stress levels adjust the current-weight / ranking / alpha blend before target weights are generated.",
+        ],
+    }
+
+
+def daily_quant_mc_multiplier(ticker: str, context: Dict[str, Any]) -> Tuple[float, List[str]]:
+    reasons: List[str] = []
+    multiplier = 1.0
+    fragile_nodes = set(context.get("fragile_nodes") or [])
+    if ticker in fragile_nodes:
+        multiplier *= 0.70
+        reasons.append("monte_carlo_fragile_node_penalty")
+    if context.get("high_tail_pressure") and ticker in fragile_nodes:
+        multiplier *= 0.90
+        reasons.append("high_tail_pressure_extra_fragile_penalty")
+    if not context.get("synthetic_risk_available"):
+        reasons.append("synthetic_risk_reference_unavailable_no_penalty")
+    if not context.get("monte_carlo_reference_available"):
+        reasons.append("monte_carlo_reference_unavailable_no_penalty")
+    return round6(multiplier), reasons
 
 def asset_key(row: Dict[str, Any]) -> str:
     return str(row.get("ticker") or row.get("symbol") or "").strip()
@@ -346,6 +418,7 @@ def main() -> None:
     ranking = as_dict(read_json("data/alpha/rebalance_candidate_ranking_latest.json", {}))
     alpha = as_dict(read_json("data/alpha/alpha_research_sandbox_latest.json", {}))
     validation = as_dict(read_json("data/alpha/alpha_validation_gate_latest.json", {}))
+    daily_quant_context = load_daily_quant_context()
 
     asset_rows_all = [as_dict(x) for x in as_list(constraints.get("asset_rows")) if asset_key(as_dict(x))]
     pool_limit = int(policy["eligible_pool_policy"]["max_pool_size"])
@@ -357,6 +430,10 @@ def main() -> None:
         warnings.append({"code": "pool_truncated_to_50", "severity": "warning", "message": "eligible pool 超過 50 檔，已截斷至前 50 檔。"})
     if not asset_rows:
         blockers.append({"code": "no_asset_pool", "severity": "blocker", "message": "沒有可建立 pool 的目前資產。"})
+    if not daily_quant_context.get("available"):
+        warnings.append({"code": "daily_quant_reference_missing", "severity": "warning", "message": "未讀到 v10.5 Daily Quant / Monte Carlo 參考層；本輪目標權重將退回 v10.4 scoring。"})
+    elif not daily_quant_context.get("synthetic_risk_available") or not daily_quant_context.get("monte_carlo_reference_available"):
+        warnings.append({"code": "daily_quant_reference_partial", "severity": "warning", "message": "Daily Quant / Monte Carlo 參考不完整；仍納入可用部分，但不啟用交易。"})
 
     summary0 = as_dict(constraints.get("summary"))
     total_mv = num(summary0.get("total_market_value_twd"), sum(num(r.get("market_value_twd")) for r in asset_rows))
@@ -391,7 +468,14 @@ def main() -> None:
         alpha_norm = 0.5 if alpha_score is None else (alpha_score - score_min) / denom
         sizing_allowed = bool(row.get("trade_sizing_allowed")) and num(row.get("price_twd")) > 0
         data_quality_multiplier = 1.0 if sizing_allowed else 0.55
-        raw_score = max(0.0001, (0.50 * current_w) + (0.35 * rank_w) + (0.15 * alpha_norm / max(1, len(asset_rows)))) * data_quality_multiplier
+        coeffs = as_dict(daily_quant_context.get("target_weight_coefficients"))
+        current_coeff = num(coeffs.get("current_weight"), 0.50)
+        rank_coeff = num(coeffs.get("ranking_prior"), 0.35)
+        alpha_coeff = num(coeffs.get("alpha_research"), 0.15)
+        alpha_component = alpha_norm / max(1, len(asset_rows))
+        dq_multiplier, dq_reasons = daily_quant_mc_multiplier(ticker, daily_quant_context)
+        raw_before_risk = max(0.0001, (current_coeff * current_w) + (rank_coeff * rank_w) + (alpha_coeff * alpha_component))
+        raw_score = raw_before_risk * data_quality_multiplier * dq_multiplier
         raw[ticker] = raw_score
         pool_rows.append({
             "ticker": ticker,
@@ -404,6 +488,11 @@ def main() -> None:
             "price_provider": row.get("price_provider"),
             "alpha_research_score": None if alpha_score is None else round6(alpha_score),
             "ranking_prior_weight_pct": round6(rank_w * 100),
+            "daily_quant_mc_multiplier": dq_multiplier,
+            "daily_quant_mc_reasons": dq_reasons,
+            "mc_fragile_node": ticker in set(daily_quant_context.get("fragile_nodes") or []),
+            "raw_score_before_daily_quant_mc": round6(raw_before_risk),
+            "raw_score_after_daily_quant_mc": round6(raw_score),
             "eligible": True,
         })
         if not sizing_allowed:
@@ -440,6 +529,8 @@ def main() -> None:
             "selected_in_target": target_w >= MIN_INCLUDED_WEIGHT - 1e-9,
             "min_weight_rule_pct": round6(MIN_INCLUDED_WEIGHT * 100),
             "max_weight_rule_pct": round6(MAX_SINGLE_WEIGHT * 100),
+            "daily_quant_mc_multiplier": next((pr.get("daily_quant_mc_multiplier") for pr in pool_rows if pr.get("ticker") == ticker), 1.0),
+            "mc_fragile_node": next((pr.get("mc_fragile_node") for pr in pool_rows if pr.get("ticker") == ticker), False),
         })
 
     draft_lines: List[Dict[str, Any]] = []
@@ -463,15 +554,15 @@ def main() -> None:
         status = "blocked"
 
     output = {
-        "version": "v10.4",
+        "version": "v10.5",
         "status": "OK",
         "generated_at": now_iso(),
-        "mode": "delegated_target_weight_and_draft_generator",
+        "mode": "integrated_delegated_target_weight_daily_quant_monte_carlo_engine",
         "safe_mode": True,
         "research_only": True,
         "review_only": True,
         "delegated_draft_mode_enabled": True,
-        "target_weight_source": "machine_generated_this_run",
+        "target_weight_source": "machine_generated_this_run_with_daily_quant_monte_carlo_inputs",
         "trade_signal_enabled": False,
         "execution_permission": False,
         "broker_submission_enabled": False,
@@ -507,6 +598,12 @@ def main() -> None:
             "cash_balance_missing_but_internal_rebalance_allowed": cash_balance_twd is None and num(sizing_summary.get("sell_proceeds_twd")) > 0,
             "nav_twd": round(nav_twd, 2),
             "source_candidate_id": source_candidate.get("ranking_id"),
+            "daily_quant_reference_available": bool(daily_quant_context.get("available")),
+            "daily_quant_reference_source": daily_quant_context.get("portfolio_source"),
+            "synthetic_risk_available": bool(daily_quant_context.get("synthetic_risk_available")),
+            "monte_carlo_reference_available": bool(daily_quant_context.get("monte_carlo_reference_available")),
+            "daily_quant_mc_risk_mode": daily_quant_context.get("risk_mode"),
+            "mc_fragile_node_count": len(daily_quant_context.get("fragile_nodes") or []),
             "alpha_validation_status": as_dict(validation.get("summary")).get("validation_status"),
             "trade_signal_enabled": False,
             "execution_permission": False,
@@ -518,6 +615,12 @@ def main() -> None:
         "delegated_draft_lines": draft_lines,
         "sizing_summary": sizing_summary,
         "price_quality_guard": price_quality_guard,
+        "daily_quant_monte_carlo_context": daily_quant_context,
+        "target_weight_generation_notes": [
+            "v10.5 uses Daily Quant / Monte Carlo as target-weight inputs before normalization, not only as a post-hoc card.",
+            "Monte Carlo fragile nodes receive an explicit raw-score penalty before 2%-40% target-weight normalization.",
+            "Global Daily Quant tail-pressure changes the blend among current weight, ranking prior and alpha research score.",
+        ],
         "blockers": blockers,
         "warnings": warnings,
         "source_context": {
@@ -527,7 +630,8 @@ def main() -> None:
             "trading_constraints_asset_count": len(asset_rows_all),
         },
         "safety_boundary": [
-            "v10.4 may generate machine target weights and a delegated review draft, but it is not a trade order.",
+            "v10.5 may generate Daily-Quant-aware machine target weights and a delegated review draft, but it is not a trade order.",
+            "Daily Quant / Monte Carlo influence target weights before normalization; they are not only a post-hoc reference card.",
             "It cannot enable trade_signal_enabled, execution_permission, official_rebalance_enabled, auto_trade_enabled, or broker_submission_enabled.",
             "All current assets enter the eligible pool; missing prices cannot create delegated BUY/SELL draft lines, but holdings-table current prices are allowed for delegated sizing.",
             "Internal sells can fund buys even when explicit cash balance is missing; cash balance is not fabricated.",
@@ -536,7 +640,7 @@ def main() -> None:
 
     LATEST_JSON.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
     SUMMARY_MD.write_text("\n".join([
-        "# v10.4 Delegated Target Weight & Draft Generator",
+        "# v10.5 Integrated Delegated Target Weight + Daily Quant / Monte Carlo Engine",
         "",
         f"- Generated: `{output['generated_at']}`",
         f"- Delegated draft status: **{status}**",
@@ -544,6 +648,11 @@ def main() -> None:
         f"- Selected asset count: `{selected_count}`",
         f"- Liquidity buffer: `{round6(liquidity_buffer_pct * 100)}`%",
         f"- Liquidity buffer source: `{liquidity_buffer_source}`",
+        f"- Daily Quant reference source: `{daily_quant_context.get('portfolio_source')}`",
+        f"- Daily Quant / MC risk mode: `{daily_quant_context.get('risk_mode')}`",
+        f"- Synthetic risk available: `{daily_quant_context.get('synthetic_risk_available')}`",
+        f"- Monte Carlo reference available: `{daily_quant_context.get('monte_carlo_reference_available')}`",
+        f"- MC fragile nodes: `{len(daily_quant_context.get('fragile_nodes') or [])}`",
         f"- Target asset weight sum: `{round6(target_sum_pct)}`%",
         f"- Draft line count: `{len(draft_lines)}`",
         f"- Price-quality excluded lines: `{int(num(price_quality_guard.get('excluded_line_count')))} `",
@@ -554,14 +663,18 @@ def main() -> None:
         f"- Broker submission enabled: `{output['broker_submission_enabled']}`",
         "",
         "## Boundary",
-        "- v10.4 is a delegated machine draft, not a broker order and not a human-confirmed ticket.",
-        "- The target weights are generated this run from current assets, ranking priors, alpha research scores, liquidity buffer and unit constraints. Holdings-table current prices may be used for delegated sizing; missing prices cannot generate BUY/SELL draft lines. Internal sells may fund buys even when explicit cash balance is missing.",
+        "- v10.5 is an integrated delegated machine draft, not a broker order and not a human-confirmed ticket.",
+        "- Target weights are generated this run from current assets, ranking priors, alpha research scores, Daily Quant synthetic risk context, Monte Carlo fragile-node penalties, liquidity buffer and unit constraints.",
+        "- Daily Quant / Monte Carlo now influence target weights before normalization; they are not only a post-hoc reference card.",
+        "- Holdings-table current prices may be used for delegated sizing; missing prices cannot generate BUY/SELL draft lines. Internal sells may fund buys even when explicit cash balance is missing.",
     ]) + "\n", encoding="utf-8")
 
     print(f"Wrote {LATEST_JSON}")
     print(f"Wrote {SUMMARY_MD}")
     print(f"Delegated draft status: {status}")
     print(f"Selected assets: {selected_count}")
+    print(f"Daily Quant / MC risk mode: {daily_quant_context.get('risk_mode')}")
+    print(f"MC fragile nodes: {len(daily_quant_context.get('fragile_nodes') or [])}")
     print(f"Draft lines: {len(draft_lines)}")
     print("Execution permission: False")
 
