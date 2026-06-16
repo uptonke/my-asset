@@ -1,6 +1,6 @@
-# v10.3 Delegated Target Weight & Draft Generator
+# v10.4 Delegated Target Weight & Draft Generator
 
-v10.3 產生「機器委任目標權重與交易草案」，並加入 Price Quality + Holdings Source Guard。它不是 Human-Confirmed Trade Ticket，也不是券商委託單。
+v10.4 產生「機器委任目標權重與交易草案」，並加入 Price Quality + Holdings Source Guard。它不是 Human-Confirmed Trade Ticket，也不是券商委託單。
 
 ## 目標
 
@@ -16,9 +16,9 @@ v10.3 產生「機器委任目標權重與交易草案」，並加入 Price Qual
 - 台股允許零股，以 1 股為最小單位。
 - 加密允許小數交易，最小 sizing 單位為 0.00000001 顆。
 
-## v10.3 價格品質防線
+## v10.4 價格品質防線
 
-v10.3 的交易 sizing 允許使用「庫存頁現價(TWD)」或 real-world price fetch 成功的資產。
+v10.4 的交易 sizing 允許使用「庫存頁現價(TWD)」或 real-world price fetch 成功的資產。
 
 - 庫存頁現價(TWD) 可用：可產生 BUY / SELL 草案列。
 - real-world price 成功：可產生 BUY / SELL 草案列。
@@ -37,7 +37,7 @@ trading constraints snapshot 會修正本地基金／中文名稱資產的 fallb
 
 ## 安全邊界
 
-v10.3 固定保持：
+v10.4 固定保持：
 
 ```json
 {
@@ -50,9 +50,15 @@ v10.3 固定保持：
 }
 ```
 
-## v10.3 更新
+## v10.4 更新
 
 - 加密資產允許小數交易，最小 sizing 單位為 0.00000001 顆。
 - 委任草案可使用庫存頁「現價(TWD)」作為 sizing 價格來源。
 - 明確允許先賣出舊有部位，賣出所得可作為買入資金來源；缺少現金餘額不再阻擋內部再平衡草案。
 - 仍維持 execution_permission=false、broker_submission_enabled=false、not_trade_order=true。
+
+## v10.4 Liquidity buffer source of truth
+
+- Delegated target weights now read the dashboard/Supabase `settings.liquidityBufferRatio` from `trading_constraints_snapshot_latest.json` first.
+- Explicit `0` is valid and must not fall back to 5%.
+- Config `delegated_draft_policy.liquidity_buffer_pct` is only a fallback when the portfolio setting is missing.

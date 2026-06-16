@@ -4865,7 +4865,7 @@ chartCML.data.datasets = [
             const response = await fetch('data/alpha/delegated_target_weight_draft_latest.json?_=' + Date.now(), { cache: 'no-store' });
             if (!response.ok) {
                 delegatedTargetWeightDraft.value = null;
-                delegatedTargetWeightDraftError.value = `尚未讀到 v10.3 機器委任目標權重草案 (${response.status})`;
+                delegatedTargetWeightDraftError.value = `尚未讀到 v10.4 機器委任目標權重草案 (${response.status})`;
                 return;
             }
             const data = await response.json();

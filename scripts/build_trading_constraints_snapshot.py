@@ -214,8 +214,40 @@ def get_cash_balance(row: Dict[str, Any], manual_input: Dict[str, Any]) -> Tuple
             return x, f"settings.{key}"
     return None, "missing_cash_balance"
 
+def pct_like_to_percent(v: Any) -> Optional[float]:
+    x = finite_float(v, None)
+    if x is None:
+        return None
+    # Settings.liquidityBufferRatio is stored as a percent, e.g. 0, 5, 10.
+    # Config.liquidity_buffer_pct may be stored as either 0.05 or 5. Preserve explicit 0.
+    return x * 100.0 if 0 < x <= 1 else x
+
+def get_liquidity_buffer_ratio(row: Dict[str, Any], config: Dict[str, Any]) -> Tuple[Optional[float], str]:
+    settings = row.get("settings") or {}
+    for key in ["liquidityBufferRatio", "liquidity_buffer_ratio", "liquidityBufferPct", "liquidity_buffer_pct"]:
+        if key in settings and settings.get(key) is not None and settings.get(key) != "":
+            x = pct_like_to_percent(settings.get(key))
+            if x is not None:
+                return max(0.0, min(80.0, x)), f"settings.{key}"
+
+    delegated = config.get("delegated_draft_policy") or {}
+    for key in ["liquidity_buffer_pct", "liquidityBufferRatio", "cash_target_weight_pct"]:
+        if key in delegated and delegated.get(key) is not None and delegated.get(key) != "":
+            x = pct_like_to_percent(delegated.get(key))
+            if x is not None:
+                return max(0.0, min(80.0, x)), f"config.delegated_draft_policy.{key}"
+
+    for key in ["liquidity_buffer_pct", "liquidityBufferRatio", "cash_target_weight_pct"]:
+        if key in config and config.get(key) is not None and config.get(key) != "":
+            x = pct_like_to_percent(config.get(key))
+            if x is not None:
+                return max(0.0, min(80.0, x)), f"config.{key}"
+
+    return None, "missing_liquidity_buffer_ratio"
+
 def main() -> None:
     manual_input = read_json("data/alpha/manual_approval_input_latest.json", {}) or {}
+    config = read_json("config/manual_approval_override.json", {}) or {}
     supa_row, supa_status = fetch_supabase_row()
     row = supa_row or latest_backup_row()
     row_source = supa_status if supa_row else "latest_backup_fallback"
@@ -227,6 +259,7 @@ def main() -> None:
     holdings = active_holdings_from_ledger(ledger)
 
     cash_balance, cash_source = get_cash_balance(row, manual_input)
+    liquidity_buffer_ratio_pct, liquidity_buffer_ratio_source = get_liquidity_buffer_ratio(row, config)
     trade_budget_override = finite_float(manual_input.get("max_trade_budget_twd"), None)
     fx = None
     fx_source = "missing"
@@ -333,10 +366,16 @@ def main() -> None:
         "real_world_data_policy": {
             "price_fetch_method": "Python urllib requests to Yahoo Finance chart API when available; delegated sizing may also use the authoritative holdings-table current price snapshot from settings.priceMap / stock_meta.last_price.",
             "cash_balance_source_priority": ["config/manual_approval_override.json", "Supabase settings fields", "missing; internal sells can still fund buys in delegated draft mode"],
+            "liquidity_buffer_source_priority": ["Supabase settings.liquidityBufferRatio", "config delegated_draft_policy.liquidity_buffer_pct", "default only if missing"],
             "no_fabricated_prices": True,
         },
         "portfolio_source": row_source,
         "cash_balance": {"cash_balance_twd": cash_balance, "source": cash_source},
+        "portfolio_settings": {
+            "liquidity_buffer_ratio_pct": liquidity_buffer_ratio_pct,
+            "liquidity_buffer_ratio_source": liquidity_buffer_ratio_source,
+            "zero_is_valid": True,
+        },
         "fx": {"usd_twd": fx, "source": fx_source},
         "summary": {
             "asset_count": len(rows),
@@ -345,6 +384,8 @@ def main() -> None:
             "total_market_value_twd": round(total_mv, 2),
             "cash_balance_twd": cash_balance,
             "cash_balance_available": cash_balance is not None,
+            "liquidity_buffer_ratio_pct": liquidity_buffer_ratio_pct,
+            "liquidity_buffer_ratio_source": liquidity_buffer_ratio_source,
             "all_prices_real_world": live_failed == 0 and live_success == len(rows),
         },
         "constraints": {
@@ -370,6 +411,7 @@ def main() -> None:
         f"- Real-world price success: `{live_success}`",
         f"- Price fallback/failed: `{live_failed}`",
         f"- Cash balance: `{cash_balance}` / `{cash_source}`",
+        f"- Liquidity buffer ratio: `{liquidity_buffer_ratio_pct}` / `{liquidity_buffer_ratio_source}`",
         f"- Total market value TWD: `{round(total_mv,2)}`",
         "",
         "## Real-world data policy",
@@ -381,6 +423,7 @@ def main() -> None:
     print(f"Asset constraints: {len(rows)}")
     print(f"Real-world price success: {live_success}")
     print(f"Cash balance: {cash_balance} ({cash_source})")
+    print(f"Liquidity buffer ratio: {liquidity_buffer_ratio_pct} ({liquidity_buffer_ratio_source})")
 
 if __name__ == "__main__":
     main()

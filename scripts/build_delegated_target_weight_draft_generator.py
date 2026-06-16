@@ -57,15 +57,46 @@ def pct_to_float(v: Any, default: float) -> float:
     return max(0.0, min(0.90, x))
 
 
+def has_value(d: Dict[str, Any], key: str) -> bool:
+    return key in d and d.get(key) is not None and d.get(key) != ""
+
+
+def resolve_liquidity_buffer_pct(config: Dict[str, Any], constraints: Dict[str, Any]) -> Tuple[float, str]:
+    delegated = as_dict(config.get("delegated_draft_policy"))
+    portfolio_settings = as_dict(constraints.get("portfolio_settings"))
+    summary = as_dict(constraints.get("summary"))
+
+    # Source of truth: dashboard/Supabase settings.liquidityBufferRatio. Explicit 0 is valid.
+    for source_name, source in [
+        ("portfolio_settings.liquidity_buffer_ratio_pct", portfolio_settings),
+        ("summary.liquidity_buffer_ratio_pct", summary),
+    ]:
+        key = source_name.split(".")[-1]
+        if has_value(source, key):
+            return pct_to_float(source.get(key), DEFAULT_LIQUIDITY_BUFFER), source_name
+
+    # Config override is only used when the dashboard setting is unavailable. Explicit 0 is valid.
+    for key in ["liquidity_buffer_pct", "liquidityBufferRatio", "cash_target_weight_pct"]:
+        if has_value(delegated, key):
+            return pct_to_float(delegated.get(key), DEFAULT_LIQUIDITY_BUFFER), f"config.delegated_draft_policy.{key}"
+    for key in ["liquidity_buffer_pct", "liquidityBufferRatio", "cash_target_weight_pct"]:
+        if has_value(config, key):
+            return pct_to_float(config.get(key), DEFAULT_LIQUIDITY_BUFFER), f"config.{key}"
+
+    default_from_policy = delegated.get("default_liquidity_buffer_pct", DEFAULT_LIQUIDITY_BUFFER)
+    return pct_to_float(default_from_policy, DEFAULT_LIQUIDITY_BUFFER), "default_missing_setting"
+
+
 def round6(x: float) -> float:
     return round(float(x), 6)
 
 
-def load_policy(config: Dict[str, Any]) -> Dict[str, Any]:
+def load_policy(config: Dict[str, Any], constraints: Dict[str, Any]) -> Dict[str, Any]:
     delegated = as_dict(config.get("delegated_draft_policy"))
+    liquidity_buffer_pct, liquidity_buffer_source = resolve_liquidity_buffer_pct(config, constraints)
     return {
-        "version": "v10.3",
-        "name": "Delegated Target Weight & Draft Generator with Holdings Price and Internal Rebalance Guard",
+        "version": "v10.4",
+        "name": "Delegated Target Weight & Draft Generator with Liquidity Buffer Source-of-Truth Guard",
         "eligible_pool_policy": {
             "pool_source": "all_current_assets",
             "max_pool_size": int(num(delegated.get("max_pool_size"), MAX_POOL_SIZE)),
@@ -85,10 +116,9 @@ def load_policy(config: Dict[str, Any]) -> Dict[str, Any]:
         },
         "cash_policy": {
             "cash_ratio_source": "liquidity_buffer_pct",
-            "liquidity_buffer_pct": pct_to_float(
-                delegated.get("liquidity_buffer_pct", config.get("liquidity_buffer_pct", DEFAULT_LIQUIDITY_BUFFER)),
-                DEFAULT_LIQUIDITY_BUFFER,
-            ),
+            "liquidity_buffer_pct": liquidity_buffer_pct,
+            "liquidity_buffer_source": liquidity_buffer_source,
+            "zero_liquidity_buffer_is_valid": True,
             "buying_power_policy": "surplus_above_liquidity_buffer_or_internal_rebalance",
         },
         "trade_sizing_policy": {
@@ -308,10 +338,11 @@ def build_order_lines(
 
 def main() -> None:
     config = as_dict(read_json("config/manual_approval_override.json", {}))
-    policy = load_policy(config)
-    liquidity_buffer_pct = policy["cash_policy"]["liquidity_buffer_pct"]
-
     constraints = as_dict(read_json("data/alpha/trading_constraints_snapshot_latest.json", {}))
+    policy = load_policy(config, constraints)
+    liquidity_buffer_pct = policy["cash_policy"]["liquidity_buffer_pct"]
+    liquidity_buffer_source = policy["cash_policy"].get("liquidity_buffer_source", "unknown")
+
     ranking = as_dict(read_json("data/alpha/rebalance_candidate_ranking_latest.json", {}))
     alpha = as_dict(read_json("data/alpha/alpha_research_sandbox_latest.json", {}))
     validation = as_dict(read_json("data/alpha/alpha_validation_gate_latest.json", {}))
@@ -432,7 +463,7 @@ def main() -> None:
         status = "blocked"
 
     output = {
-        "version": "v10.3",
+        "version": "v10.4",
         "status": "OK",
         "generated_at": now_iso(),
         "mode": "delegated_target_weight_and_draft_generator",
@@ -459,6 +490,8 @@ def main() -> None:
             "target_asset_weight_sum_pct": round6(target_sum_pct),
             "liquidity_buffer_pct": round6(liquidity_buffer_pct * 100),
             "cash_target_weight_pct": round6(liquidity_buffer_pct * 100),
+            "liquidity_buffer_source": liquidity_buffer_source,
+            "zero_liquidity_buffer_is_valid": True,
             "included_asset_min_weight_pct": round6(MIN_INCLUDED_WEIGHT * 100),
             "single_asset_max_weight_pct": round6(MAX_SINGLE_WEIGHT * 100),
             "draft_line_count": len(draft_lines),
@@ -469,6 +502,7 @@ def main() -> None:
             "warning_count": len(warnings),
             "cash_balance_available": cash_available,
             "internal_rebalance_can_fund_buys": True,
+            "liquidity_buffer_source": liquidity_buffer_source,
             "cash_balance_twd": None if cash_balance_twd is None else round(cash_balance_twd, 2),
             "cash_balance_missing_but_internal_rebalance_allowed": cash_balance_twd is None and num(sizing_summary.get("sell_proceeds_twd")) > 0,
             "nav_twd": round(nav_twd, 2),
@@ -493,7 +527,7 @@ def main() -> None:
             "trading_constraints_asset_count": len(asset_rows_all),
         },
         "safety_boundary": [
-            "v10.2 may generate machine target weights and a delegated review draft, but it is not a trade order.",
+            "v10.4 may generate machine target weights and a delegated review draft, but it is not a trade order.",
             "It cannot enable trade_signal_enabled, execution_permission, official_rebalance_enabled, auto_trade_enabled, or broker_submission_enabled.",
             "All current assets enter the eligible pool; missing prices cannot create delegated BUY/SELL draft lines, but holdings-table current prices are allowed for delegated sizing.",
             "Internal sells can fund buys even when explicit cash balance is missing; cash balance is not fabricated.",
@@ -502,13 +536,14 @@ def main() -> None:
 
     LATEST_JSON.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
     SUMMARY_MD.write_text("\n".join([
-        "# v10.3 Delegated Target Weight & Draft Generator",
+        "# v10.4 Delegated Target Weight & Draft Generator",
         "",
         f"- Generated: `{output['generated_at']}`",
         f"- Delegated draft status: **{status}**",
         f"- Pool asset count: `{len(asset_rows)}`",
         f"- Selected asset count: `{selected_count}`",
         f"- Liquidity buffer: `{round6(liquidity_buffer_pct * 100)}`%",
+        f"- Liquidity buffer source: `{liquidity_buffer_source}`",
         f"- Target asset weight sum: `{round6(target_sum_pct)}`%",
         f"- Draft line count: `{len(draft_lines)}`",
         f"- Price-quality excluded lines: `{int(num(price_quality_guard.get('excluded_line_count')))} `",
@@ -519,7 +554,7 @@ def main() -> None:
         f"- Broker submission enabled: `{output['broker_submission_enabled']}`",
         "",
         "## Boundary",
-        "- v10.3 is a delegated machine draft, not a broker order and not a human-confirmed ticket.",
+        "- v10.4 is a delegated machine draft, not a broker order and not a human-confirmed ticket.",
         "- The target weights are generated this run from current assets, ranking priors, alpha research scores, liquidity buffer and unit constraints. Holdings-table current prices may be used for delegated sizing; missing prices cannot generate BUY/SELL draft lines. Internal sells may fund buys even when explicit cash balance is missing.",
     ]) + "\n", encoding="utf-8")
 
