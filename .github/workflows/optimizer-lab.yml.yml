@@ -341,14 +341,24 @@ jobs:
           set -euo pipefail
           python scripts/build_human_confirmed_trade_ticket.py
 
-      - name: Build Delegated Target Weight Draft v10.1
+      - name: Build Daily Quant + Monte Carlo Reference Inputs v10.5
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_TABLE: portfolio_db
+          PORTFOLIO_ROW_ID: '1'
+        run: |
+          set -euo pipefail
+          python scripts/build_daily_quant_monte_carlo_reference.py
+
+      - name: Build Integrated Delegated Target Weight Draft v10.5
         shell: bash
         run: |
           set -euo pipefail
           python scripts/build_delegated_target_weight_draft_generator.py
 
-
-      - name: Build Daily Quant + Monte Carlo Reference Layer v10.5
+      - name: Build Daily Quant + Monte Carlo Reference Check v10.5
         shell: bash
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
