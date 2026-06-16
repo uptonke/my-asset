@@ -1,7 +1,7 @@
 # v10.5 Daily Quant Reference Layer
 
-- Generated: `2026-06-16T15:00:56+00:00`
-- Portfolio source: `latest_backup:portfolio_backup_2026-06-14.json`
+- Generated: `2026-06-16T15:12:15+00:00`
+- Portfolio source: `supabase_live`
 - Daily update workflow exists: `True`
 - Synthetic risk available: `True`
 - Monte Carlo / chaos_meta available: `True`

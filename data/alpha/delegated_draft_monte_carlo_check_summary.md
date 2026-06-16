@@ -1,6 +1,6 @@
 # v10.5 Delegated Draft Monte Carlo Reference Check
 
-- Generated: `2026-06-16T15:00:56+00:00`
+- Generated: `2026-06-16T15:12:15+00:00`
 - Reference check status: **reference_available**
 - Delegated draft status: `machine_delegated_draft_available`
 - Draft line count: `7`
