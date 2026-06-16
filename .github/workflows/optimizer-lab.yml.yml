@@ -341,11 +341,23 @@ jobs:
           set -euo pipefail
           python scripts/build_human_confirmed_trade_ticket.py
 
-      - name: Build Delegated Target Weight Draft v10.2
+      - name: Build Delegated Target Weight Draft v10.1
         shell: bash
         run: |
           set -euo pipefail
           python scripts/build_delegated_target_weight_draft_generator.py
+
+
+      - name: Build Daily Quant + Monte Carlo Reference Layer v10.5
+        shell: bash
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_TABLE: portfolio_db
+          PORTFOLIO_ROW_ID: '1'
+        run: |
+          set -euo pipefail
+          python scripts/build_daily_quant_monte_carlo_reference.py
 
       - name: Validation Gate v4.6
         shell: bash
@@ -405,7 +417,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add data/optimizer/ data/alpha/ data/repo_architecture/ data/repo_health/ docs/ schemas/ config/manual_approval_override.json package.json split-manifest.json || true
-          git add .github/workflows/ scripts/README.md scripts/v191_workflow_consolidation_cleanup.py scripts/validate_repo_integrity.py scripts/build_forecast_feature_store.py scripts/build_alpha_research_sandbox.py scripts/build_rebalance_candidate_ranking.py scripts/build_alpha_validation_gate.py scripts/build_manual_rebalance_proposal.py scripts/build_execution_ready_draft.py scripts/build_formal_rebalance_draft_gate.py scripts/build_manual_trade_ticket_generator.py scripts/build_paper_trade_tracker.py scripts/build_trade_sizing_diagnostics.py scripts/build_manual_approval_console.py scripts/build_paper_trade_performance_evaluator.py scripts/build_trade_ticket_explainability.py scripts/build_human_confirmed_trade_ticket.py scripts/build_delegated_target_weight_draft_generator.py || true
+          git add .github/workflows/ scripts/README.md scripts/v191_workflow_consolidation_cleanup.py scripts/validate_repo_integrity.py scripts/build_forecast_feature_store.py scripts/build_alpha_research_sandbox.py scripts/build_rebalance_candidate_ranking.py scripts/build_alpha_validation_gate.py scripts/build_manual_rebalance_proposal.py scripts/build_execution_ready_draft.py scripts/build_formal_rebalance_draft_gate.py scripts/build_manual_trade_ticket_generator.py scripts/build_paper_trade_tracker.py scripts/build_trade_sizing_diagnostics.py scripts/build_manual_approval_console.py scripts/build_paper_trade_performance_evaluator.py scripts/build_trade_ticket_explainability.py scripts/build_human_confirmed_trade_ticket.py scripts/build_delegated_target_weight_draft_generator.py scripts/build_daily_quant_monte_carlo_reference.py || true
 
           if [ "${{ github.event.inputs.task }}" = "apply_terminal_ia_phase2" ]; then
             git add index.html assets/css/80-terminal-ia-phase2.css assets/js/terminal-ia-phase2.js scripts/apply_terminal_ia_phase2.py assets/css/tailwind-built.css || true
