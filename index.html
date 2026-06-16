@@ -2115,6 +2115,93 @@
 
 
 
+
+                            <!-- v10.5 Daily Quant + Monte Carlo Reference Layer -->
+                            <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] shadow-lg overflow-hidden">
+                                <div class="px-4 py-3 border-b border-emerald-500/20 bg-emerald-500/[0.08] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-diagram-project text-emerald-300"></i>
+                                            v10.5 Daily Quant + Monte Carlo 參考層
+                                        </div>
+                                        <div class="text-[11px] text-emerald-100/70 mt-1">引用 .github/workflows/daily_update.yml 產出的庫存、stock_meta、synthetic risk 與 Monte Carlo / chaos_meta；只做 v10.x 草案風險參考，不重跑 MC、不取代 Daily Quant、不啟用交易。</div>
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-2 text-[11px]">
+                                        <span class="px-2 py-1 rounded-lg border" :class="delegatedDraftMonteCarloSummary?.reference_check_status === 'reference_available' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-amber-500/30 bg-amber-500/10 text-amber-200'">
+                                            {{ zhText(delegatedDraftMonteCarloSummary?.reference_check_status || '尚未讀取') }}
+                                        </span>
+                                        <span class="px-2 py-1 rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-100">daily_update reference</span>
+                                        <span class="px-2 py-1 rounded-lg border border-yellow-500/20 bg-yellow-500/10 text-yellow-100">execution_permission: false</span>
+                                        <a href="data/alpha/delegated_draft_monte_carlo_check_latest.json" target="_blank" rel="noopener" class="px-2 py-1 rounded-lg border border-white/10 bg-white/[0.04] text-gray-200 hover:bg-white/[0.08]">開啟 MC 檢查 JSON</a>
+                                    </div>
+                                </div>
+                                <div class="p-4 space-y-4">
+                                    <div v-if="dailyQuantReferenceError || delegatedDraftMonteCarloCheckError" class="rounded-xl border border-red-500/20 bg-red-500/[0.08] p-3 text-[11px] text-red-200">
+                                        {{ dailyQuantReferenceError || delegatedDraftMonteCarloCheckError }}
+                                    </div>
+                                    <div class="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
+                                        <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
+                                            <div class="quant-label text-emerald-300">Daily Update</div>
+                                            <div class="quant-value text-white">{{ zhBool(dailyQuantReferenceSummary?.daily_update_workflow_exists) }}</div>
+                                        </div>
+                                        <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                            <div class="quant-label text-cyan-300">Synthetic Risk</div>
+                                            <div class="quant-value text-white">{{ zhBool(dailyQuantReferenceSummary?.synthetic_risk_available) }}</div>
+                                        </div>
+                                        <div class="quant-card border-purple-500/20 bg-purple-500/10">
+                                            <div class="quant-label text-purple-300">Monte Carlo 參考</div>
+                                            <div class="quant-value text-white">{{ zhBool(dailyQuantReferenceSummary?.monte_carlo_reference_available) }}</div>
+                                        </div>
+                                        <div class="quant-card border-yellow-500/20 bg-yellow-500/10">
+                                            <div class="quant-label text-yellow-300">MC 風險備註</div>
+                                            <div class="quant-value text-white">{{ delegatedDraftMonteCarloSummary?.risk_note_count ?? 0 }}</div>
+                                        </div>
+                                        <div class="quant-card border-red-500/20 bg-red-500/10">
+                                            <div class="quant-label text-red-300">Stressed VaR95</div>
+                                            <div class="quant-value text-white">{{ delegatedDraftMonteCarloSummary?.stressed_var95_pct ?? '-' }}%</div>
+                                        </div>
+                                        <div class="quant-card border-red-500/20 bg-red-500/10">
+                                            <div class="quant-label text-red-300">Stressed ES95</div>
+                                            <div class="quant-value text-white">{{ delegatedDraftMonteCarloSummary?.stressed_es95_pct ?? '-' }}%</div>
+                                        </div>
+                                        <div class="quant-card border-orange-500/20 bg-orange-500/10">
+                                            <div class="quant-label text-orange-300">流動性壓力機率</div>
+                                            <div class="quant-value text-white">{{ delegatedDraftMonteCarloSummary?.liquidity_run_probability_pct ?? '-' }}%</div>
+                                        </div>
+                                        <div class="quant-card border-sky-500/20 bg-sky-500/10">
+                                            <div class="quant-label text-sky-300">Draft lines</div>
+                                            <div class="quant-value text-white">{{ delegatedDraftMonteCarloSummary?.delegated_draft_line_count ?? '-' }}</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid xl:grid-cols-2 gap-4">
+                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] text-xs font-bold text-white">v10.5 參考檢查</div>
+                                            <div class="divide-y divide-white/5">
+                                                <div v-for="row in delegatedDraftMonteCarloVisibleChecks" :key="row.check" class="p-3 text-[11px] flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <div class="font-bold text-white">{{ zhText(row.check) }}</div>
+                                                        <div class="text-gray-400 mt-1">{{ row.message }}</div>
+                                                    </div>
+                                                    <span class="px-2 py-1 rounded-lg border text-[10px]" :class="row.status === 'pass' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-amber-500/30 bg-amber-500/10 text-amber-200'">{{ zhText(row.status) }}</span>
+                                                </div>
+                                                <div v-if="!delegatedDraftMonteCarloVisibleChecks.length" class="p-3 text-[11px] text-gray-500">尚未讀到參考檢查。</div>
+                                            </div>
+                                        </div>
+                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] text-xs font-bold text-white">Monte Carlo / Daily Quant 風險備註</div>
+                                            <div class="divide-y divide-white/5">
+                                                <div v-for="row in delegatedDraftMonteCarloVisibleRiskNotes" :key="row.code" class="p-3 text-[11px]">
+                                                    <div class="font-bold" :class="row.severity === 'warning' ? 'text-amber-200' : 'text-emerald-200'">{{ zhText(row.code) }}</div>
+                                                    <div class="text-gray-400 mt-1">{{ row.message }}</div>
+                                                </div>
+                                                <div v-if="!delegatedDraftMonteCarloVisibleRiskNotes.length" class="p-3 text-[11px] text-gray-500">目前沒有額外 MC 風險備註。</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- v10.4 Delegated Target Weight & Draft Generator pinned above v10.0 -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-cyan-500/25 bg-cyan-500/[0.045] shadow-lg overflow-hidden">
                                 <div class="px-4 py-3 border-b border-cyan-500/20 bg-cyan-500/[0.08] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
@@ -6494,7 +6581,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=v10-3-holdings-source-internal-rebalance-1"></script>
+<script src="assets/js/app.bundle.js?v=v10-5-daily-quant-mc-reference-1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>

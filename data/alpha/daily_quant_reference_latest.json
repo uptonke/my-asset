@@ -1,0 +1,114 @@
+{
+  "version": "v10.5",
+  "status": "OK",
+  "generated_at": "2026-06-16T12:22:26+00:00",
+  "mode": "daily_quant_reference_layer",
+  "safe_mode": true,
+  "research_only": true,
+  "review_only": true,
+  "trade_signal_enabled": false,
+  "execution_permission": false,
+  "broker_submission_enabled": false,
+  "official_rebalance_enabled": false,
+  "auto_trade_enabled": false,
+  "supabase_write_enabled": false,
+  "not_trade_order": true,
+  "portfolio_source": "latest_backup:portfolio_backup_2026-05-31.json",
+  "daily_update_workflow": {
+    "path": ".github/workflows/daily_update.yml",
+    "exists": true,
+    "name": "Daily Quant Pipeline",
+    "step_count": 6,
+    "steps": [
+      "📥 下載程式碼",
+      "🐍 設定 Python 環境",
+      "📦 安裝套件",
+      "🚀 執行量化分析腳本",
+      "🧮 修正 X-Ray 實際資金權重",
+      "🧭 更新 Phase 3 Market Compass"
+    ],
+    "referenced_scripts": [
+      "main.py",
+      "scripts/fix_xray_twd_weights.py",
+      "scripts/update_market_compass.py"
+    ],
+    "role": "data_and_risk_foundation_for_v10_delegated_drafts"
+  },
+  "settings_reference": {
+    "exchange_rate": 31.3,
+    "liquidity_buffer_ratio": 0,
+    "price_map_count": 33
+  },
+  "stock_meta_reference": {
+    "stock_meta_count": 52,
+    "synthetic_risk_key": "__synthetic_portfolio_risk__",
+    "synthetic_risk_available": false
+  },
+  "synthetic_risk_reference": {
+    "available": false,
+    "status": null,
+    "confidence": null,
+    "generated_at": null,
+    "method": null,
+    "metrics": {
+      "sample_count": null,
+      "ann_vol_pct": null,
+      "var95_pct": null,
+      "es95_pct": null,
+      "max_drawdown_pct": null
+    },
+    "coverage": {
+      "strict_sample": null,
+      "flexible_sample": null,
+      "usable_weight_pct": null
+    },
+    "quantstats_status": null,
+    "ewma_regime_status": null,
+    "component_tail_status": null,
+    "risk_budgeting_status": null
+  },
+  "monte_carlo_reference": {
+    "available": true,
+    "source": "Supabase chaos_meta produced by Daily Quant Pipeline / dashboard Monte Carlo layer",
+    "stressed_var95_pct": 6.73,
+    "stressed_es95_pct": 9.87,
+    "contagion_loss_pct": 1.64,
+    "fire_sale_loss_pct": 1.5,
+    "liquidity_run_probability_pct": 20.75,
+    "fragile_nodes": [
+      "GRID",
+      "VEA",
+      "BTC-USD"
+    ],
+    "jump_diffusion": {
+      "jd_var95": -2.22,
+      "jd_es95": -8.38,
+      "jd_tail_loss": 8.38,
+      "jd_crash_prob": 1.55,
+      "jd_horizon_weeks": 13
+    },
+    "evt_tail": {
+      "evt_var95": null,
+      "evt_es95": null,
+      "evt_shape_xi": null,
+      "evt_exceedance_count": 0
+    },
+    "sample_context": {
+      "sample_weeks": 54,
+      "tail_sample_count": 3,
+      "crisis_sample_count": 6,
+      "crisis_window_label": "^TWII <= P10 weekly return"
+    }
+  },
+  "trading_constraints_reference": {
+    "generated_at": "2026-06-14T15:19:03+00:00",
+    "asset_count": 16,
+    "real_world_price_success_count": 0,
+    "liquidity_buffer_ratio_pct": 0
+  },
+  "source_priority_policy": [
+    "Daily Quant / stock_meta / holdings snapshot is the first reference layer for portfolio state and synthetic risk.",
+    "Monte Carlo / chaos_meta is used as a risk reference, not as an execution trigger.",
+    "v10.x delegated drafts may use this reference layer for warnings and diagnostics only."
+  ]
+}
