@@ -1,7 +1,7 @@
 {
   "version": "v10.5",
   "status": "OK",
-  "generated_at": "2026-06-16T12:22:26+00:00",
+  "generated_at": "2026-06-16T14:36:39+00:00",
   "mode": "daily_quant_reference_layer",
   "safe_mode": true,
   "research_only": true,
@@ -13,7 +13,7 @@
   "auto_trade_enabled": false,
   "supabase_write_enabled": false,
   "not_trade_order": true,
-  "portfolio_source": "latest_backup:portfolio_backup_2026-05-31.json",
+  "portfolio_source": "supabase_live",
   "daily_update_workflow": {
     "path": ".github/workflows/daily_update.yml",
     "exists": true,
@@ -35,76 +35,76 @@
     "role": "data_and_risk_foundation_for_v10_delegated_drafts"
   },
   "settings_reference": {
-    "exchange_rate": 31.3,
+    "exchange_rate": 31.6,
     "liquidity_buffer_ratio": 0,
     "price_map_count": 33
   },
   "stock_meta_reference": {
-    "stock_meta_count": 52,
+    "stock_meta_count": 57,
     "synthetic_risk_key": "__synthetic_portfolio_risk__",
-    "synthetic_risk_available": false
+    "synthetic_risk_available": true
   },
   "synthetic_risk_reference": {
-    "available": false,
-    "status": null,
-    "confidence": null,
+    "available": true,
+    "status": "OK",
+    "confidence": "LOW",
     "generated_at": null,
-    "method": null,
+    "method": "current_weight_synthetic_daily_returns",
     "metrics": {
-      "sample_count": null,
-      "ann_vol_pct": null,
-      "var95_pct": null,
-      "es95_pct": null,
-      "max_drawdown_pct": null
+      "sample_count": 384,
+      "ann_vol_pct": 11.55,
+      "var95_pct": 1.03,
+      "es95_pct": 1.64,
+      "max_drawdown_pct": -5.64
     },
     "coverage": {
-      "strict_sample": null,
-      "flexible_sample": null,
-      "usable_weight_pct": null
+      "strict_sample": 384,
+      "flexible_sample": 728,
+      "usable_weight_pct": 100.0
     },
-    "quantstats_status": null,
-    "ewma_regime_status": null,
-    "component_tail_status": null,
-    "risk_budgeting_status": null
+    "quantstats_status": "OK",
+    "ewma_regime_status": "OK",
+    "component_tail_status": "OK",
+    "risk_budgeting_status": "OK"
   },
   "monte_carlo_reference": {
     "available": true,
     "source": "Supabase chaos_meta produced by Daily Quant Pipeline / dashboard Monte Carlo layer",
-    "stressed_var95_pct": 6.73,
-    "stressed_es95_pct": 9.87,
-    "contagion_loss_pct": 1.64,
-    "fire_sale_loss_pct": 1.5,
+    "stressed_var95_pct": 7.08,
+    "stressed_es95_pct": 9.5,
+    "contagion_loss_pct": 0.98,
+    "fire_sale_loss_pct": 1.44,
     "liquidity_run_probability_pct": 20.75,
     "fragile_nodes": [
-      "GRID",
       "VEA",
-      "BTC-USD"
+      "GRID",
+      "ETH-USD"
     ],
     "jump_diffusion": {
-      "jd_var95": -2.22,
-      "jd_es95": -8.38,
-      "jd_tail_loss": 8.38,
-      "jd_crash_prob": 1.55,
+      "jd_var95": -11.63,
+      "jd_es95": -17.69,
+      "jd_tail_loss": 17.69,
+      "jd_crash_prob": 6.4,
       "jd_horizon_weeks": 13
     },
     "evt_tail": {
-      "evt_var95": null,
-      "evt_es95": null,
-      "evt_shape_xi": null,
-      "evt_exceedance_count": 0
+      "evt_var95": -3.0,
+      "evt_es95": -3.81,
+      "evt_shape_xi": -0.1856,
+      "evt_exceedance_count": 18
     },
     "sample_context": {
-      "sample_weeks": 54,
-      "tail_sample_count": 3,
-      "crisis_sample_count": 6,
+      "sample_weeks": 181,
+      "tail_sample_count": 10,
+      "crisis_sample_count": 19,
       "crisis_window_label": "^TWII <= P10 weekly return"
     }
   },
   "trading_constraints_reference": {
-    "generated_at": "2026-06-14T15:19:03+00:00",
-    "asset_count": 16,
-    "real_world_price_success_count": 0,
-    "liquidity_buffer_ratio_pct": 0
+    "generated_at": "2026-06-16T14:36:38+00:00",
+    "asset_count": 15,
+    "real_world_price_success_count": 14,
+    "liquidity_buffer_ratio_pct": 0.0
   },
   "source_priority_policy": [
     "Daily Quant / stock_meta / holdings snapshot is the first reference layer for portfolio state and synthetic risk.",

@@ -1,7 +1,7 @@
 {
   "version": "v10.5",
   "status": "OK",
-  "generated_at": "2026-06-16T12:22:26+00:00",
+  "generated_at": "2026-06-16T14:36:39+00:00",
   "mode": "delegated_draft_monte_carlo_reference_check",
   "safe_mode": true,
   "research_only": true,
@@ -13,18 +13,18 @@
   "auto_trade_enabled": false,
   "supabase_write_enabled": false,
   "not_trade_order": true,
-  "reference_check_status": "reference_available_with_warnings",
+  "reference_check_status": "reference_available",
   "summary": {
-    "reference_check_status": "reference_available_with_warnings",
+    "reference_check_status": "reference_available",
     "daily_update_workflow_exists": true,
-    "synthetic_risk_available": false,
+    "synthetic_risk_available": true,
     "monte_carlo_reference_available": true,
     "delegated_draft_status": "machine_delegated_draft_available",
-    "delegated_draft_line_count": 4,
-    "target_asset_weight_sum_pct": 100.0001,
+    "delegated_draft_line_count": 3,
+    "target_asset_weight_sum_pct": 99.9998,
     "cash_target_weight_pct": 0.0,
-    "stressed_var95_pct": 6.73,
-    "stressed_es95_pct": 9.87,
+    "stressed_var95_pct": 7.08,
+    "stressed_es95_pct": 9.5,
     "liquidity_run_probability_pct": 20.75,
     "risk_note_count": 2,
     "check_count": 4,
@@ -41,9 +41,9 @@
     },
     {
       "check": "synthetic_risk_available",
-      "status": "watch",
-      "severity": "warning",
-      "message": "stock_meta.__synthetic_portfolio_risk__ 尚未可用，v10.5 只能使用其他風險摘要。"
+      "status": "pass",
+      "severity": "info",
+      "message": "Daily Quant synthetic risk 可作為 v10.x 風險參考。"
     },
     {
       "check": "monte_carlo_reference_available",
@@ -61,103 +61,103 @@
   "monte_carlo_reference": {
     "available": true,
     "source": "Supabase chaos_meta produced by Daily Quant Pipeline / dashboard Monte Carlo layer",
-    "stressed_var95_pct": 6.73,
-    "stressed_es95_pct": 9.87,
-    "contagion_loss_pct": 1.64,
-    "fire_sale_loss_pct": 1.5,
+    "stressed_var95_pct": 7.08,
+    "stressed_es95_pct": 9.5,
+    "contagion_loss_pct": 0.98,
+    "fire_sale_loss_pct": 1.44,
     "liquidity_run_probability_pct": 20.75,
     "fragile_nodes": [
-      "GRID",
       "VEA",
-      "BTC-USD"
+      "GRID",
+      "ETH-USD"
     ],
     "jump_diffusion": {
-      "jd_var95": -2.22,
-      "jd_es95": -8.38,
-      "jd_tail_loss": 8.38,
-      "jd_crash_prob": 1.55,
+      "jd_var95": -11.63,
+      "jd_es95": -17.69,
+      "jd_tail_loss": 17.69,
+      "jd_crash_prob": 6.4,
       "jd_horizon_weeks": 13
     },
     "evt_tail": {
-      "evt_var95": null,
-      "evt_es95": null,
-      "evt_shape_xi": null,
-      "evt_exceedance_count": 0
+      "evt_var95": -3.0,
+      "evt_es95": -3.81,
+      "evt_shape_xi": -0.1856,
+      "evt_exceedance_count": 18
     },
     "sample_context": {
-      "sample_weeks": 54,
-      "tail_sample_count": 3,
-      "crisis_sample_count": 6,
+      "sample_weeks": 181,
+      "tail_sample_count": 10,
+      "crisis_sample_count": 19,
       "crisis_window_label": "^TWII <= P10 weekly return"
     }
   },
   "synthetic_risk_reference": {
-    "available": false,
-    "status": null,
-    "confidence": null,
+    "available": true,
+    "status": "OK",
+    "confidence": "LOW",
     "generated_at": null,
-    "method": null,
+    "method": "current_weight_synthetic_daily_returns",
     "metrics": {
-      "sample_count": null,
-      "ann_vol_pct": null,
-      "var95_pct": null,
-      "es95_pct": null,
-      "max_drawdown_pct": null
+      "sample_count": 384,
+      "ann_vol_pct": 11.55,
+      "var95_pct": 1.03,
+      "es95_pct": 1.64,
+      "max_drawdown_pct": -5.64
     },
     "coverage": {
-      "strict_sample": null,
-      "flexible_sample": null,
-      "usable_weight_pct": null
+      "strict_sample": 384,
+      "flexible_sample": 728,
+      "usable_weight_pct": 100.0
     },
-    "quantstats_status": null,
-    "ewma_regime_status": null,
-    "component_tail_status": null,
-    "risk_budgeting_status": null
+    "quantstats_status": "OK",
+    "ewma_regime_status": "OK",
+    "component_tail_status": "OK",
+    "risk_budgeting_status": "OK"
   },
   "delegated_draft_reference": {
-    "generated_at": "2026-06-15T15:11:47+00:00",
+    "generated_at": "2026-06-16T14:36:39+00:00",
     "status": "machine_delegated_draft_available",
     "summary": {
       "delegated_draft_status": "machine_delegated_draft_available",
-      "pool_asset_count": 16,
-      "selected_asset_count": 16,
-      "target_asset_weight_sum_pct": 100.0001,
+      "pool_asset_count": 15,
+      "selected_asset_count": 15,
+      "target_asset_weight_sum_pct": 99.9998,
       "liquidity_buffer_pct": 0.0,
       "cash_target_weight_pct": 0.0,
       "liquidity_buffer_source": "portfolio_settings.liquidity_buffer_ratio_pct",
       "zero_liquidity_buffer_is_valid": true,
       "included_asset_min_weight_pct": 2.0,
       "single_asset_max_weight_pct": 40.0,
-      "draft_line_count": 4,
+      "draft_line_count": 3,
       "price_quality_excluded_line_count": 0,
       "trade_sizing_requires_real_world_price": false,
       "holdings_snapshot_price_allowed": true,
       "blocker_count": 0,
-      "warning_count": 23,
+      "warning_count": 22,
       "cash_balance_available": false,
       "internal_rebalance_can_fund_buys": true,
       "cash_balance_twd": null,
       "cash_balance_missing_but_internal_rebalance_allowed": true,
-      "nav_twd": 687470.5,
-      "source_candidate_id": null,
-      "alpha_validation_status": null,
+      "nav_twd": 655338.15,
+      "source_candidate_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX",
+      "alpha_validation_status": "watch_only_validation",
       "trade_signal_enabled": false,
       "execution_permission": false,
       "broker_submission_enabled": false
     },
     "concentration_delta": {
-      "current_max_weight_pct": 10.642912,
+      "current_max_weight_pct": 11.247519,
       "current_max_weight_ticker": "BOXX",
-      "target_max_weight_pct": 10.0699,
+      "target_max_weight_pct": 14.3654,
       "target_max_weight_ticker": "BOXX",
-      "target_minus_current_max_weight_pct": -0.573012
+      "target_minus_current_max_weight_pct": 3.117881
     }
   },
   "risk_notes": [
     {
       "code": "mc_stressed_es95_reference",
       "severity": "info",
-      "message": "Monte Carlo / chaos_meta stressed ES95 約 9.87%。"
+      "message": "Monte Carlo / chaos_meta stressed ES95 約 9.5%。"
     },
     {
       "code": "liquidity_run_probability_watch",
