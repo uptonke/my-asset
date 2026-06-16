@@ -1,7 +1,7 @@
 # v5.2 Rebalance Candidate Ranking
 
 - Status: **OK**
-- Generated at: `2026-06-14T16:41:27+00:00`
+- Generated at: `2026-06-16T08:33:42+00:00`
 - Candidate count: `11`
 - Further research count: `2`
 - Observe-only count: `9`
@@ -12,16 +12,16 @@
 - `observe_only`: `9`
 
 ## Top ranked candidates
-- Rank 1: `v5_2_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX` — `further_research` — score `1.043`
-- Rank 2: `v5_2_v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX` — `further_research` — score `1.026`
-- Rank 3: `v5_2_v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX` — `observe_only` — score `0.723`
-- Rank 4: `v5_2_v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX` — `observe_only` — score `0.636`
-- Rank 5: `v5_2_v2_3_from_v2_2_trim_00981A_100pct_to_BOXX` — `observe_only` — score `0.468`
-- Rank 6: `v5_2_v2_3_from_v2_2_trim_QQQ_50pct_to_BOXX` — `observe_only` — score `0.4`
-- Rank 7: `v5_2_v2_3_from_v2_2_trim_00981A_50pct_to_BOXX` — `observe_only` — score `0.322`
-- Rank 8: `v5_2_v2_3_v2_1_riskfolio_risk_parity_mv` — `observe_only` — score `0.295`
-- Rank 9: `v5_2_v2_3_v2_1_inverse_vol_baseline` — `observe_only` — score `0.276`
-- Rank 10: `v5_2_v2_3_v2_1_riskfolio_hrp_mv` — `observe_only` — score `0.057`
+- Rank 1: `v5_2_v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX` — `further_research` — score `1.053`
+- Rank 2: `v5_2_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX` — `further_research` — score `1.025`
+- Rank 3: `v5_2_v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX` — `observe_only` — score `0.704`
+- Rank 4: `v5_2_v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX` — `observe_only` — score `0.664`
+- Rank 5: `v5_2_v2_3_from_v2_2_trim_00981A_100pct_to_BOXX` — `observe_only` — score `0.469`
+- Rank 6: `v5_2_v2_3_from_v2_2_trim_QQQ_50pct_to_BOXX` — `observe_only` — score `0.378`
+- Rank 7: `v5_2_v2_3_from_v2_2_trim_00981A_50pct_to_BOXX` — `observe_only` — score `0.338`
+- Rank 8: `v5_2_v2_3_v2_1_riskfolio_risk_parity_mv` — `observe_only` — score `0.305`
+- Rank 9: `v5_2_v2_3_v2_1_inverse_vol_baseline` — `observe_only` — score `0.284`
+- Rank 10: `v5_2_v2_3_v2_1_riskfolio_hrp_mv` — `observe_only` — score `0.056`
 
 ## Safety boundary
 - Research candidate ranking only.

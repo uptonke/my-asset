@@ -1,16 +1,16 @@
 # v10.4 Delegated Target Weight & Draft Generator
 
-- Generated: `2026-06-15T15:11:47+00:00`
+- Generated: `2026-06-16T08:33:45+00:00`
 - Delegated draft status: **machine_delegated_draft_available**
-- Pool asset count: `16`
-- Selected asset count: `16`
+- Pool asset count: `15`
+- Selected asset count: `15`
 - Liquidity buffer: `0.0`%
 - Liquidity buffer source: `portfolio_settings.liquidity_buffer_ratio_pct`
-- Target asset weight sum: `100.0001`%
-- Draft line count: `4`
+- Target asset weight sum: `100.0`%
+- Draft line count: `3`
 - Price-quality excluded lines: `0 `
 - Blockers: `0`
-- Warnings: `23`
+- Warnings: `22`
 - Trade signal enabled: `False`
 - Execution permission: `False`
 - Broker submission enabled: `False`
