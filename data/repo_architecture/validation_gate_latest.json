@@ -1,14 +1,14 @@
 {
   "version": "v4.6",
   "status": "OK",
-  "generated_at": "2026-06-16T08:33:46.109796+00:00",
+  "generated_at": "2026-06-16T14:29:49.724830+00:00",
   "mode": "validation_gate",
   "safe_mode": true,
   "summary": {
     "error_count": 0,
     "warning_count": 0,
-    "schema_validated_count": 40,
-    "python_compiled_count": 60
+    "schema_validated_count": 42,
+    "python_compiled_count": 61
   },
   "checks": {
     "required_files": {
@@ -44,6 +44,7 @@
         "scripts/build_trade_ticket_explainability.py",
         "scripts/build_human_confirmed_trade_ticket.py",
         "scripts/build_delegated_target_weight_draft_generator.py",
+        "scripts/build_daily_quant_monte_carlo_reference.py",
         "config/manual_approval_override.json",
         "docs/FRONTEND_SOURCE_OF_TRUTH.md",
         "docs/SCHEMA_REGISTRY.md",
@@ -66,6 +67,7 @@
         "docs/TRADE_TICKET_EXPLAINABILITY.md",
         "docs/HUMAN_CONFIRMED_TRADE_TICKET.md",
         "docs/DELEGATED_TARGET_WEIGHT_DRAFT_GENERATOR.md",
+        "docs/DAILY_QUANT_MONTE_CARLO_REFERENCE_LAYER.md",
         ".github/workflows/optimizer-lab.yml.yml",
         ".github/workflows/repo-architecture-audit.yml.yml",
         ".github/workflows/validation-gate.yml.yml"
@@ -83,13 +85,13 @@
       ]
     },
     "json_parse": {
-      "parsed_count": 99,
+      "parsed_count": 103,
       "failed": []
     },
     "schema_registry": {
       "status": "OK",
-      "registry_version": "v10.1",
-      "validated_count": 40,
+      "registry_version": "v10.5",
+      "validated_count": 42,
       "validated": [
         {
           "path": "data/optimizer/skfolio_sandbox_latest.json",
@@ -290,13 +292,23 @@
           "path": "data/alpha/delegated_target_weight_draft_latest.json",
           "schema": "schemas/alpha/delegated_target_weight_draft.schema.json",
           "required": true
+        },
+        {
+          "path": "data/alpha/daily_quant_reference_latest.json",
+          "schema": "schemas/alpha/daily_quant_reference.schema.json",
+          "required": true
+        },
+        {
+          "path": "data/alpha/delegated_draft_monte_carlo_check_latest.json",
+          "schema": "schemas/alpha/delegated_draft_monte_carlo_check.schema.json",
+          "required": true
         }
       ],
       "skipped": [],
       "errors": []
     },
     "python_compile": {
-      "compiled_count": 60,
+      "compiled_count": 61,
       "failed": []
     },
     "frontend_source_runtime": {
