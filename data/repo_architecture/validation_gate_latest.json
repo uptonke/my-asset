@@ -1,14 +1,14 @@
 {
   "version": "v4.6",
   "status": "OK",
-  "generated_at": "2026-06-17T13:54:11.403480+00:00",
+  "generated_at": "2026-06-17T14:35:06.646348+00:00",
   "mode": "validation_gate",
   "safe_mode": true,
   "summary": {
     "error_count": 0,
     "warning_count": 0,
-    "schema_validated_count": 42,
-    "python_compiled_count": 61
+    "schema_validated_count": 43,
+    "python_compiled_count": 62
   },
   "checks": {
     "required_files": {
@@ -45,6 +45,7 @@
         "scripts/build_human_confirmed_trade_ticket.py",
         "scripts/build_delegated_target_weight_draft_generator.py",
         "scripts/build_daily_quant_monte_carlo_reference.py",
+        "scripts/build_native_target_thesis_aggregator.py",
         "config/manual_approval_override.json",
         "docs/FRONTEND_SOURCE_OF_TRUTH.md",
         "docs/SCHEMA_REGISTRY.md",
@@ -68,6 +69,7 @@
         "docs/HUMAN_CONFIRMED_TRADE_TICKET.md",
         "docs/DELEGATED_TARGET_WEIGHT_DRAFT_GENERATOR.md",
         "docs/DAILY_QUANT_MONTE_CARLO_REFERENCE_LAYER.md",
+        "docs/NATIVE_TARGET_THESIS_AGGREGATOR.md",
         ".github/workflows/optimizer-lab.yml.yml",
         ".github/workflows/repo-architecture-audit.yml.yml",
         ".github/workflows/validation-gate.yml.yml"
@@ -85,13 +87,13 @@
       ]
     },
     "json_parse": {
-      "parsed_count": 103,
+      "parsed_count": 105,
       "failed": []
     },
     "schema_registry": {
       "status": "OK",
-      "registry_version": "v10.5",
-      "validated_count": 42,
+      "registry_version": "v10.5.2",
+      "validated_count": 43,
       "validated": [
         {
           "path": "data/optimizer/skfolio_sandbox_latest.json",
@@ -289,6 +291,11 @@
           "required": true
         },
         {
+          "path": "data/alpha/native_target_thesis_latest.json",
+          "schema": "schemas/alpha/native_target_thesis.schema.json",
+          "required": true
+        },
+        {
           "path": "data/alpha/delegated_target_weight_draft_latest.json",
           "schema": "schemas/alpha/delegated_target_weight_draft.schema.json",
           "required": true
@@ -308,7 +315,7 @@
       "errors": []
     },
     "python_compile": {
-      "compiled_count": 61,
+      "compiled_count": 62,
       "failed": []
     },
     "frontend_source_runtime": {

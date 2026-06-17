@@ -1,0 +1,1621 @@
+{
+  "version": "v10.5.2",
+  "status": "thesis_available",
+  "generated_at": "2026-06-17T14:32:22+00:00",
+  "mode": "native_target_thesis_aggregation",
+  "safe_mode": true,
+  "research_only": true,
+  "review_only": true,
+  "trade_signal_enabled": false,
+  "execution_permission": false,
+  "broker_submission_enabled": false,
+  "official_rebalance_enabled": false,
+  "auto_trade_enabled": false,
+  "supabase_write_enabled": false,
+  "not_trade_order": true,
+  "not_buy_signal": true,
+  "not_sell_signal": true,
+  "summary": {
+    "status": "thesis_available",
+    "row_count": 15,
+    "draft_line_related_count": 5,
+    "source_agreement_counts": {
+      "unknown": 15
+    },
+    "delegated_draft_status": "machine_delegated_draft_available",
+    "target_weight_source": "dual_blend_cloud_target_and_v105_native_target",
+    "cloud_target_source": "stock_meta[ticker].target_weight",
+    "v105_native_target_source": "ranking_alpha_daily_quant_native_engine",
+    "front_end_manual_mc_percent_target_used": false,
+    "execution_permission": false
+  },
+  "source_files": {
+    "delegated_target_weight_draft": "data/alpha/delegated_target_weight_draft_latest.json",
+    "alpha_research_sandbox": "data/alpha/alpha_research_sandbox_latest.json",
+    "rebalance_candidate_ranking": "data/alpha/rebalance_candidate_ranking_latest.json",
+    "regime_aware_optimizer": "data/optimizer/regime_aware_optimizer_latest.json",
+    "walk_forward_backtest": "data/optimizer/walk_forward_backtest_latest.json",
+    "model_governance_dashboard": "data/optimizer/model_governance_dashboard_latest.json",
+    "daily_quant_reference": "data/alpha/daily_quant_reference_latest.json",
+    "delegated_draft_monte_carlo_check": "data/alpha/delegated_draft_monte_carlo_check_latest.json",
+    "trading_constraints_snapshot": "data/alpha/trading_constraints_snapshot_latest.json"
+  },
+  "thesis_policy": {
+    "purpose": "Explain why each v10.5 native target and final delegated target exists by aggregating evidence already produced by earlier optimizer stages.",
+    "does_not_recalculate_target_weights": true,
+    "does_not_use_frontend_manual_mc_percent": true,
+    "display_position": "between_v10_0_human_confirmed_ticket_and_v10_5_1_delegated_draft"
+  },
+  "thesis_rows": [
+    {
+      "ticker": "BOXX",
+      "current_weight_pct": 11.2477,
+      "cloud_target_weight_pct": null,
+      "v105_native_target_weight_pct": 14.4505,
+      "final_suggested_weight_pct": 14.4505,
+      "delta_weight_pct": 3.2028,
+      "direction": "UP",
+      "cloud_vs_native_gap_pct": null,
+      "cloud_direction_vs_current": "UNKNOWN",
+      "native_direction_vs_current": "UP",
+      "final_direction_vs_current": "UP",
+      "source_agreement": "unknown",
+      "conflict_adjustment_factor": 1.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false,
+      "alpha_research_score": 0.282,
+      "alpha_research_band": "neutral_research_prior",
+      "alpha_research_disposition": "observe_only",
+      "ranking_evidence": {
+        "available": true,
+        "best_rank": 11,
+        "best_ranking_status": "observe_only",
+        "best_ranking_score": -0.388,
+        "matched_adjustments": [
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX",
+            "rank": 1,
+            "ranking_status": "further_research",
+            "ranking_score": 1.036,
+            "delta_pct": 8.771,
+            "direction": "UP",
+            "reason_codes": [
+              "turnover_too_high_review_only",
+              "turnover_moderate",
+              "risk_reduction_detected",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX",
+            "rank": 2,
+            "ranking_status": "further_research",
+            "ranking_score": 1.029,
+            "delta_pct": 4.386,
+            "direction": "UP",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "risk_reduction_detected",
+              "alpha_alignment_positive",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX",
+            "rank": 3,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.712,
+            "delta_pct": 2.193,
+            "direction": "UP",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "risk_reduction_detected",
+              "alpha_alignment_positive",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          }
+        ],
+        "matched_alpha_contributors": [
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX",
+            "rank": 1,
+            "delta_pct": 8.769,
+            "alpha_research_score": 0.282,
+            "alignment_contribution": 2.473
+          },
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX",
+            "rank": 2,
+            "delta_pct": 4.384,
+            "alpha_research_score": 0.282,
+            "alignment_contribution": 1.236
+          },
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX",
+            "rank": 3,
+            "delta_pct": 2.191,
+            "alpha_research_score": 0.282,
+            "alignment_contribution": 0.618
+          }
+        ]
+      },
+      "price_quality_status": "holdings_snapshot",
+      "trade_sizing_allowed": true,
+      "evidence_sources": {
+        "v5_1_alpha_research": true,
+        "v5_2_rebalance_ranking": true,
+        "v3_0_regime": true,
+        "v3_3_walk_forward": true,
+        "v3_4_governance": true,
+        "v10_5_daily_quant_mc": true,
+        "v8_1_trading_constraints": true
+      },
+      "reason_codes": [
+        "cloud_target_missing",
+        "v105_native_target_available",
+        "alpha_score:0.282",
+        "alpha:observe_only",
+        "v5_2_ranking_evidence_available",
+        "risk_mode:high_tail_pressure",
+        "price_quality:holdings_snapshot"
+      ],
+      "thesis_summary": "最終建議權重高於現有權重，形成加碼草案依據。 雲端目標缺失；主要依 v10.5 原生目標 14.4505% 形成研究草案。 v5.1 alpha research score 約 0.282，研究分層為 neutral_research_prior。 v5.2 candidate ranking 或 alpha alignment 中有該標的相關調整證據。 交易 sizing 價格來源為 holdings_snapshot，provider=holdings_current_price_snapshot。"
+    },
+    {
+      "ticker": "VEA",
+      "current_weight_pct": 8.2534,
+      "cloud_target_weight_pct": null,
+      "v105_native_target_weight_pct": 5.5596,
+      "final_suggested_weight_pct": 5.5596,
+      "delta_weight_pct": -2.6938,
+      "direction": "DOWN",
+      "cloud_vs_native_gap_pct": null,
+      "cloud_direction_vs_current": "UNKNOWN",
+      "native_direction_vs_current": "DOWN",
+      "final_direction_vs_current": "DOWN",
+      "source_agreement": "unknown",
+      "conflict_adjustment_factor": 1.0,
+      "daily_quant_mc_multiplier": 0.63,
+      "mc_fragile_node": true,
+      "alpha_research_score": 0.316,
+      "alpha_research_band": "neutral_research_prior",
+      "alpha_research_disposition": "observe_only",
+      "ranking_evidence": {
+        "available": true,
+        "best_rank": 10,
+        "best_ranking_status": "observe_only",
+        "best_ranking_score": 0.054,
+        "matched_adjustments": [
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_riskfolio_risk_parity_mv",
+            "rank": 8,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.309,
+            "delta_pct": -0.828,
+            "direction": "DOWN",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "no_explicit_risk_reduction_score",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_inverse_vol_baseline",
+            "rank": 9,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.289,
+            "delta_pct": -0.297,
+            "direction": "DOWN",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "no_explicit_risk_reduction_score",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_riskfolio_hrp_mv",
+            "rank": 10,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.054,
+            "delta_pct": -1.37,
+            "direction": "DOWN",
+            "reason_codes": [
+              "turnover_too_high_review_only",
+              "turnover_moderate",
+              "no_explicit_risk_reduction_score",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_high_turnover",
+              "governance_warning_flag"
+            ]
+          }
+        ],
+        "matched_alpha_contributors": [
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_riskfolio_risk_parity_mv",
+            "rank": 8,
+            "delta_pct": -0.825,
+            "alpha_research_score": 0.316,
+            "alignment_contribution": -0.261
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_riskfolio_hrp_mv",
+            "rank": 10,
+            "delta_pct": -1.367,
+            "alpha_research_score": 0.316,
+            "alignment_contribution": -0.432
+          }
+        ]
+      },
+      "price_quality_status": "holdings_snapshot",
+      "trade_sizing_allowed": true,
+      "evidence_sources": {
+        "v5_1_alpha_research": true,
+        "v5_2_rebalance_ranking": true,
+        "v3_0_regime": true,
+        "v3_3_walk_forward": true,
+        "v3_4_governance": true,
+        "v10_5_daily_quant_mc": true,
+        "v8_1_trading_constraints": true
+      },
+      "reason_codes": [
+        "cloud_target_missing",
+        "v105_native_target_available",
+        "alpha_score:0.316",
+        "alpha:observe_only",
+        "v5_2_ranking_evidence_available",
+        "risk_mode:high_tail_pressure",
+        "monte_carlo_fragile_node_penalty",
+        "price_quality:holdings_snapshot"
+      ],
+      "thesis_summary": "最終建議權重低於現有權重，形成減碼草案依據。 雲端目標缺失；主要依 v10.5 原生目標 5.5596% 形成研究草案。 Monte Carlo / Daily Quant 風險參考標示為 fragile node，因此 v10.5 原生權重已受風險懲罰。 v5.1 alpha research score 約 0.316，研究分層為 neutral_research_prior。 v5.2 candidate ranking 或 alpha alignment 中有該標的相關調整證據。 交易 sizing 價格來源為 holdings_snapshot，provider=holdings_current_price_snapshot。"
+    },
+    {
+      "ticker": "GRID",
+      "current_weight_pct": 3.6337,
+      "cloud_target_weight_pct": null,
+      "v105_native_target_weight_pct": 2.4439,
+      "final_suggested_weight_pct": 2.4439,
+      "delta_weight_pct": -1.1898,
+      "direction": "DOWN",
+      "cloud_vs_native_gap_pct": null,
+      "cloud_direction_vs_current": "UNKNOWN",
+      "native_direction_vs_current": "DOWN",
+      "final_direction_vs_current": "DOWN",
+      "source_agreement": "unknown",
+      "conflict_adjustment_factor": 1.0,
+      "daily_quant_mc_multiplier": 0.63,
+      "mc_fragile_node": true,
+      "alpha_research_score": 0.04,
+      "alpha_research_band": "neutral_research_prior",
+      "alpha_research_disposition": "observe_only",
+      "ranking_evidence": {
+        "available": true,
+        "best_rank": 9,
+        "best_ranking_status": "observe_only",
+        "best_ranking_score": 0.289,
+        "matched_adjustments": [
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_riskfolio_risk_parity_mv",
+            "rank": 8,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.309,
+            "delta_pct": 0.2,
+            "direction": "UP",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "no_explicit_risk_reduction_score",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_inverse_vol_baseline",
+            "rank": 9,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.289,
+            "delta_pct": 0.593,
+            "direction": "UP",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "no_explicit_risk_reduction_score",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_riskfolio_hrp_mv",
+            "rank": 10,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.054,
+            "delta_pct": -0.411,
+            "direction": "DOWN",
+            "reason_codes": [
+              "turnover_too_high_review_only",
+              "turnover_moderate",
+              "no_explicit_risk_reduction_score",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_high_turnover",
+              "governance_warning_flag"
+            ]
+          }
+        ],
+        "matched_alpha_contributors": []
+      },
+      "price_quality_status": "holdings_snapshot",
+      "trade_sizing_allowed": true,
+      "evidence_sources": {
+        "v5_1_alpha_research": true,
+        "v5_2_rebalance_ranking": true,
+        "v3_0_regime": true,
+        "v3_3_walk_forward": true,
+        "v3_4_governance": true,
+        "v10_5_daily_quant_mc": true,
+        "v8_1_trading_constraints": true
+      },
+      "reason_codes": [
+        "cloud_target_missing",
+        "v105_native_target_available",
+        "alpha_score:0.04",
+        "alpha:observe_only",
+        "v5_2_ranking_evidence_available",
+        "risk_mode:high_tail_pressure",
+        "monte_carlo_fragile_node_penalty",
+        "price_quality:holdings_snapshot"
+      ],
+      "thesis_summary": "最終建議權重低於現有權重，形成減碼草案依據。 雲端目標缺失；主要依 v10.5 原生目標 2.4439% 形成研究草案。 Monte Carlo / Daily Quant 風險參考標示為 fragile node，因此 v10.5 原生權重已受風險懲罰。 v5.1 alpha research score 約 0.04，研究分層為 neutral_research_prior。 v5.2 candidate ranking 或 alpha alignment 中有該標的相關調整證據。 交易 sizing 價格來源為 holdings_snapshot，provider=holdings_current_price_snapshot。"
+    },
+    {
+      "ticker": "00981A",
+      "current_weight_pct": 9.0671,
+      "cloud_target_weight_pct": null,
+      "v105_native_target_weight_pct": 9.8438,
+      "final_suggested_weight_pct": 9.8438,
+      "delta_weight_pct": 0.7767,
+      "direction": "UP",
+      "cloud_vs_native_gap_pct": null,
+      "cloud_direction_vs_current": "UNKNOWN",
+      "native_direction_vs_current": "UP",
+      "final_direction_vs_current": "UP",
+      "source_agreement": "unknown",
+      "conflict_adjustment_factor": 1.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false,
+      "alpha_research_score": 1.527,
+      "alpha_research_band": "positive_research_prior",
+      "alpha_research_disposition": "further_research",
+      "ranking_evidence": {
+        "available": true,
+        "best_rank": 5,
+        "best_ranking_status": "observe_only",
+        "best_ranking_score": 0.465,
+        "matched_adjustments": [
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_00981A_100pct_to_BOXX",
+            "rank": 5,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.465,
+            "delta_pct": -9.517,
+            "direction": "DOWN",
+            "reason_codes": [
+              "turnover_too_high_review_only",
+              "turnover_moderate",
+              "risk_reduction_detected",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_high_turnover",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_00981A_50pct_to_BOXX",
+            "rank": 7,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.337,
+            "delta_pct": -4.759,
+            "direction": "DOWN",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "risk_reduction_detected",
+              "alpha_alignment_negative",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_inverse_vol_baseline",
+            "rank": 9,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.289,
+            "delta_pct": -1.393,
+            "direction": "DOWN",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "no_explicit_risk_reduction_score",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          }
+        ],
+        "matched_alpha_contributors": [
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_00981A_50pct_to_BOXX",
+            "rank": 7,
+            "delta_pct": -4.761,
+            "alpha_research_score": 1.527,
+            "alignment_contribution": -7.27
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_inverse_vol_baseline",
+            "rank": 9,
+            "delta_pct": -1.395,
+            "alpha_research_score": 1.527,
+            "alignment_contribution": -2.13
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_riskfolio_hrp_mv",
+            "rank": 10,
+            "delta_pct": -1.585,
+            "alpha_research_score": 1.527,
+            "alignment_contribution": -2.42
+          }
+        ]
+      },
+      "price_quality_status": "holdings_snapshot",
+      "trade_sizing_allowed": true,
+      "evidence_sources": {
+        "v5_1_alpha_research": true,
+        "v5_2_rebalance_ranking": true,
+        "v3_0_regime": true,
+        "v3_3_walk_forward": true,
+        "v3_4_governance": true,
+        "v10_5_daily_quant_mc": true,
+        "v8_1_trading_constraints": true
+      },
+      "reason_codes": [
+        "cloud_target_missing",
+        "v105_native_target_available",
+        "alpha_score:1.527",
+        "alpha:further_research",
+        "v5_2_ranking_evidence_available",
+        "risk_mode:high_tail_pressure",
+        "price_quality:holdings_snapshot"
+      ],
+      "thesis_summary": "最終建議權重高於現有權重，形成加碼草案依據。 雲端目標缺失；主要依 v10.5 原生目標 9.8438% 形成研究草案。 v5.1 alpha research score 約 1.527，研究分層為 positive_research_prior。 v5.2 candidate ranking 或 alpha alignment 中有該標的相關調整證據。 交易 sizing 價格來源為 holdings_snapshot，provider=holdings_current_price_snapshot。"
+    },
+    {
+      "ticker": "安聯台灣科技",
+      "current_weight_pct": 5.1998,
+      "cloud_target_weight_pct": null,
+      "v105_native_target_weight_pct": 5.4499,
+      "final_suggested_weight_pct": 5.4499,
+      "delta_weight_pct": 0.2501,
+      "direction": "UP",
+      "cloud_vs_native_gap_pct": null,
+      "cloud_direction_vs_current": "UNKNOWN",
+      "native_direction_vs_current": "UP",
+      "final_direction_vs_current": "UP",
+      "source_agreement": "unknown",
+      "conflict_adjustment_factor": 1.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false,
+      "alpha_research_score": null,
+      "alpha_research_band": null,
+      "alpha_research_disposition": null,
+      "ranking_evidence": {
+        "available": false,
+        "best_rank": null,
+        "best_ranking_status": null,
+        "best_ranking_score": null,
+        "matched_adjustments": [],
+        "matched_alpha_contributors": []
+      },
+      "price_quality_status": "holdings_snapshot",
+      "trade_sizing_allowed": true,
+      "evidence_sources": {
+        "v5_1_alpha_research": false,
+        "v5_2_rebalance_ranking": false,
+        "v3_0_regime": true,
+        "v3_3_walk_forward": true,
+        "v3_4_governance": true,
+        "v10_5_daily_quant_mc": true,
+        "v8_1_trading_constraints": true
+      },
+      "reason_codes": [
+        "cloud_target_missing",
+        "v105_native_target_available",
+        "risk_mode:high_tail_pressure",
+        "price_quality:holdings_snapshot"
+      ],
+      "thesis_summary": "最終建議權重高於現有權重，形成加碼草案依據。 雲端目標缺失；主要依 v10.5 原生目標 5.4499% 形成研究草案。 交易 sizing 價格來源為 holdings_snapshot，provider=holdings_current_price_snapshot。"
+    },
+    {
+      "ticker": "BTC-USD",
+      "current_weight_pct": 8.2432,
+      "cloud_target_weight_pct": null,
+      "v105_native_target_weight_pct": 5.9293,
+      "final_suggested_weight_pct": 5.9293,
+      "delta_weight_pct": -2.3139,
+      "direction": "DOWN",
+      "cloud_vs_native_gap_pct": null,
+      "cloud_direction_vs_current": "UNKNOWN",
+      "native_direction_vs_current": "DOWN",
+      "final_direction_vs_current": "DOWN",
+      "source_agreement": "unknown",
+      "conflict_adjustment_factor": 1.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false,
+      "alpha_research_score": -2.998,
+      "alpha_research_band": "negative_research_prior",
+      "alpha_research_disposition": "observe_only_risk_penalty",
+      "ranking_evidence": {
+        "available": true,
+        "best_rank": 1,
+        "best_ranking_status": "further_research",
+        "best_ranking_score": 1.036,
+        "matched_adjustments": [
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX",
+            "rank": 1,
+            "ranking_status": "further_research",
+            "ranking_score": 1.036,
+            "delta_pct": -8.771,
+            "direction": "DOWN",
+            "reason_codes": [
+              "turnover_too_high_review_only",
+              "turnover_moderate",
+              "risk_reduction_detected",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX",
+            "rank": 2,
+            "ranking_status": "further_research",
+            "ranking_score": 1.029,
+            "delta_pct": -4.386,
+            "direction": "DOWN",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "risk_reduction_detected",
+              "alpha_alignment_positive",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX",
+            "rank": 3,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.712,
+            "delta_pct": -2.193,
+            "direction": "DOWN",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "risk_reduction_detected",
+              "alpha_alignment_positive",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          }
+        ],
+        "matched_alpha_contributors": [
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX",
+            "rank": 2,
+            "delta_pct": -4.385,
+            "alpha_research_score": -2.998,
+            "alignment_contribution": 13.146
+          },
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX",
+            "rank": 3,
+            "delta_pct": -2.192,
+            "alpha_research_score": -2.998,
+            "alignment_contribution": 6.572
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_riskfolio_risk_parity_mv",
+            "rank": 8,
+            "delta_pct": -1.424,
+            "alpha_research_score": -2.998,
+            "alignment_contribution": 4.269
+          }
+        ]
+      },
+      "price_quality_status": "holdings_snapshot",
+      "trade_sizing_allowed": true,
+      "evidence_sources": {
+        "v5_1_alpha_research": true,
+        "v5_2_rebalance_ranking": true,
+        "v3_0_regime": true,
+        "v3_3_walk_forward": true,
+        "v3_4_governance": true,
+        "v10_5_daily_quant_mc": true,
+        "v8_1_trading_constraints": true
+      },
+      "reason_codes": [
+        "cloud_target_missing",
+        "v105_native_target_available",
+        "alpha_score:-2.998",
+        "alpha:observe_only_risk_penalty",
+        "v5_2_ranking_evidence_available",
+        "risk_mode:high_tail_pressure",
+        "price_quality:holdings_snapshot"
+      ],
+      "thesis_summary": "最終建議權重低於現有權重，形成減碼草案依據。 雲端目標缺失；主要依 v10.5 原生目標 5.9293% 形成研究草案。 v5.1 alpha research score 約 -2.998，研究分層為 negative_research_prior。 v5.2 candidate ranking 或 alpha alignment 中有該標的相關調整證據。 交易 sizing 價格來源為 holdings_snapshot，provider=holdings_current_price_snapshot。"
+    },
+    {
+      "ticker": "ETH-USD",
+      "current_weight_pct": 3.8932,
+      "cloud_target_weight_pct": null,
+      "v105_native_target_weight_pct": 2.5201,
+      "final_suggested_weight_pct": 2.5201,
+      "delta_weight_pct": -1.3731,
+      "direction": "DOWN",
+      "cloud_vs_native_gap_pct": null,
+      "cloud_direction_vs_current": "UNKNOWN",
+      "native_direction_vs_current": "DOWN",
+      "final_direction_vs_current": "DOWN",
+      "source_agreement": "unknown",
+      "conflict_adjustment_factor": 1.0,
+      "daily_quant_mc_multiplier": 0.63,
+      "mc_fragile_node": true,
+      "alpha_research_score": -3.303,
+      "alpha_research_band": "negative_research_prior",
+      "alpha_research_disposition": "observe_only_risk_penalty",
+      "ranking_evidence": {
+        "available": true,
+        "best_rank": 4,
+        "best_ranking_status": "observe_only",
+        "best_ranking_score": 0.664,
+        "matched_adjustments": [
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX",
+            "rank": 4,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.664,
+            "delta_pct": -4.31,
+            "direction": "DOWN",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "risk_reduction_detected",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_riskfolio_risk_parity_mv",
+            "rank": 8,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.309,
+            "delta_pct": -0.602,
+            "direction": "DOWN",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "no_explicit_risk_reduction_score",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_inverse_vol_baseline",
+            "rank": 9,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.289,
+            "delta_pct": -0.616,
+            "direction": "DOWN",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "no_explicit_risk_reduction_score",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          }
+        ],
+        "matched_alpha_contributors": [
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_riskfolio_risk_parity_mv",
+            "rank": 8,
+            "delta_pct": -0.601,
+            "alpha_research_score": -3.303,
+            "alignment_contribution": 1.985
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_inverse_vol_baseline",
+            "rank": 9,
+            "delta_pct": -0.615,
+            "alpha_research_score": -3.303,
+            "alignment_contribution": 2.031
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_riskfolio_hrp_mv",
+            "rank": 10,
+            "delta_pct": -0.998,
+            "alpha_research_score": -3.303,
+            "alignment_contribution": 3.296
+          }
+        ]
+      },
+      "price_quality_status": "holdings_snapshot",
+      "trade_sizing_allowed": true,
+      "evidence_sources": {
+        "v5_1_alpha_research": true,
+        "v5_2_rebalance_ranking": true,
+        "v3_0_regime": true,
+        "v3_3_walk_forward": true,
+        "v3_4_governance": true,
+        "v10_5_daily_quant_mc": true,
+        "v8_1_trading_constraints": true
+      },
+      "reason_codes": [
+        "cloud_target_missing",
+        "v105_native_target_available",
+        "alpha_score:-3.303",
+        "alpha:observe_only_risk_penalty",
+        "v5_2_ranking_evidence_available",
+        "risk_mode:high_tail_pressure",
+        "monte_carlo_fragile_node_penalty",
+        "price_quality:holdings_snapshot"
+      ],
+      "thesis_summary": "最終建議權重低於現有權重，形成減碼草案依據。 雲端目標缺失；主要依 v10.5 原生目標 2.5201% 形成研究草案。 Monte Carlo / Daily Quant 風險參考標示為 fragile node，因此 v10.5 原生權重已受風險懲罰。 v5.1 alpha research score 約 -3.303，研究分層為 negative_research_prior。 v5.2 candidate ranking 或 alpha alignment 中有該標的相關調整證據。 交易 sizing 價格來源為 holdings_snapshot，provider=holdings_current_price_snapshot。"
+    },
+    {
+      "ticker": "VOO",
+      "current_weight_pct": 9.8329,
+      "cloud_target_weight_pct": null,
+      "v105_native_target_weight_pct": 10.5252,
+      "final_suggested_weight_pct": 10.5252,
+      "delta_weight_pct": 0.6923,
+      "direction": "UP",
+      "cloud_vs_native_gap_pct": null,
+      "cloud_direction_vs_current": "UNKNOWN",
+      "native_direction_vs_current": "UP",
+      "final_direction_vs_current": "UP",
+      "source_agreement": "unknown",
+      "conflict_adjustment_factor": 1.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false,
+      "alpha_research_score": 0.37,
+      "alpha_research_band": "neutral_research_prior",
+      "alpha_research_disposition": "observe_only",
+      "ranking_evidence": {
+        "available": true,
+        "best_rank": 6,
+        "best_ranking_status": "observe_only",
+        "best_ranking_score": 0.384,
+        "matched_adjustments": [
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_QQQ_50pct_to_BOXX",
+            "rank": 6,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.384,
+            "delta_pct": -1.0,
+            "direction": "DOWN",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "risk_reduction_detected",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_high_turnover",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_riskfolio_risk_parity_mv",
+            "rank": 8,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.309,
+            "delta_pct": -0.91,
+            "direction": "DOWN",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "no_explicit_risk_reduction_score",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_inverse_vol_baseline",
+            "rank": 9,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.289,
+            "delta_pct": -1.0,
+            "direction": "DOWN",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "no_explicit_risk_reduction_score",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          }
+        ],
+        "matched_alpha_contributors": [
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_QQQ_50pct_to_BOXX",
+            "rank": 6,
+            "delta_pct": -0.999,
+            "alpha_research_score": 0.37,
+            "alignment_contribution": -0.37
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_riskfolio_risk_parity_mv",
+            "rank": 8,
+            "delta_pct": -0.909,
+            "alpha_research_score": 0.37,
+            "alignment_contribution": -0.336
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_inverse_vol_baseline",
+            "rank": 9,
+            "delta_pct": -0.999,
+            "alpha_research_score": 0.37,
+            "alignment_contribution": -0.37
+          }
+        ]
+      },
+      "price_quality_status": "holdings_snapshot",
+      "trade_sizing_allowed": true,
+      "evidence_sources": {
+        "v5_1_alpha_research": true,
+        "v5_2_rebalance_ranking": true,
+        "v3_0_regime": true,
+        "v3_3_walk_forward": true,
+        "v3_4_governance": true,
+        "v10_5_daily_quant_mc": true,
+        "v8_1_trading_constraints": true
+      },
+      "reason_codes": [
+        "cloud_target_missing",
+        "v105_native_target_available",
+        "alpha_score:0.37",
+        "alpha:observe_only",
+        "v5_2_ranking_evidence_available",
+        "risk_mode:high_tail_pressure",
+        "price_quality:holdings_snapshot"
+      ],
+      "thesis_summary": "最終建議權重高於現有權重，形成加碼草案依據。 雲端目標缺失；主要依 v10.5 原生目標 10.5252% 形成研究草案。 v5.1 alpha research score 約 0.37，研究分層為 neutral_research_prior。 v5.2 candidate ranking 或 alpha alignment 中有該標的相關調整證據。 交易 sizing 價格來源為 holdings_snapshot，provider=holdings_current_price_snapshot。"
+    },
+    {
+      "ticker": "AVUV",
+      "current_weight_pct": 8.9671,
+      "cloud_target_weight_pct": null,
+      "v105_native_target_weight_pct": 9.5238,
+      "final_suggested_weight_pct": 9.5238,
+      "delta_weight_pct": 0.5567,
+      "direction": "UP",
+      "cloud_vs_native_gap_pct": null,
+      "cloud_direction_vs_current": "UNKNOWN",
+      "native_direction_vs_current": "UP",
+      "final_direction_vs_current": "UP",
+      "source_agreement": "unknown",
+      "conflict_adjustment_factor": 1.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false,
+      "alpha_research_score": 0.375,
+      "alpha_research_band": "neutral_research_prior",
+      "alpha_research_disposition": "observe_only",
+      "ranking_evidence": {
+        "available": true,
+        "best_rank": 10,
+        "best_ranking_status": "observe_only",
+        "best_ranking_score": 0.054,
+        "matched_adjustments": [
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_riskfolio_risk_parity_mv",
+            "rank": 8,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.309,
+            "delta_pct": -0.883,
+            "direction": "DOWN",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "no_explicit_risk_reduction_score",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_inverse_vol_baseline",
+            "rank": 9,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.289,
+            "delta_pct": -0.61,
+            "direction": "DOWN",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "no_explicit_risk_reduction_score",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_riskfolio_hrp_mv",
+            "rank": 10,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.054,
+            "delta_pct": -1.471,
+            "direction": "DOWN",
+            "reason_codes": [
+              "turnover_too_high_review_only",
+              "turnover_moderate",
+              "no_explicit_risk_reduction_score",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_high_turnover",
+              "governance_warning_flag"
+            ]
+          }
+        ],
+        "matched_alpha_contributors": [
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_riskfolio_risk_parity_mv",
+            "rank": 8,
+            "delta_pct": -0.887,
+            "alpha_research_score": 0.375,
+            "alignment_contribution": -0.333
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_riskfolio_hrp_mv",
+            "rank": 10,
+            "delta_pct": -1.475,
+            "alpha_research_score": 0.375,
+            "alignment_contribution": -0.553
+          }
+        ]
+      },
+      "price_quality_status": "holdings_snapshot",
+      "trade_sizing_allowed": true,
+      "evidence_sources": {
+        "v5_1_alpha_research": true,
+        "v5_2_rebalance_ranking": true,
+        "v3_0_regime": true,
+        "v3_3_walk_forward": true,
+        "v3_4_governance": true,
+        "v10_5_daily_quant_mc": true,
+        "v8_1_trading_constraints": true
+      },
+      "reason_codes": [
+        "cloud_target_missing",
+        "v105_native_target_available",
+        "alpha_score:0.375",
+        "alpha:observe_only",
+        "v5_2_ranking_evidence_available",
+        "risk_mode:high_tail_pressure",
+        "price_quality:holdings_snapshot"
+      ],
+      "thesis_summary": "最終建議權重高於現有權重，形成加碼草案依據。 雲端目標缺失；主要依 v10.5 原生目標 9.5238% 形成研究草案。 v5.1 alpha research score 約 0.375，研究分層為 neutral_research_prior。 v5.2 candidate ranking 或 alpha alignment 中有該標的相關調整證據。 交易 sizing 價格來源為 holdings_snapshot，provider=holdings_current_price_snapshot。"
+    },
+    {
+      "ticker": "QQQ",
+      "current_weight_pct": 10.4009,
+      "cloud_target_weight_pct": null,
+      "v105_native_target_weight_pct": 10.9163,
+      "final_suggested_weight_pct": 10.9163,
+      "delta_weight_pct": 0.5154,
+      "direction": "UP",
+      "cloud_vs_native_gap_pct": null,
+      "cloud_direction_vs_current": "UNKNOWN",
+      "native_direction_vs_current": "UP",
+      "final_direction_vs_current": "UP",
+      "source_agreement": "unknown",
+      "conflict_adjustment_factor": 1.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false,
+      "alpha_research_score": 0.635,
+      "alpha_research_band": "neutral_research_prior",
+      "alpha_research_disposition": "observe_only",
+      "ranking_evidence": {
+        "available": true,
+        "best_rank": 11,
+        "best_ranking_status": "observe_only",
+        "best_ranking_score": -0.388,
+        "matched_adjustments": [
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX",
+            "rank": 1,
+            "ranking_status": "further_research",
+            "ranking_score": 1.036,
+            "delta_pct": -1.0,
+            "direction": "DOWN",
+            "reason_codes": [
+              "turnover_too_high_review_only",
+              "turnover_moderate",
+              "risk_reduction_detected",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX",
+            "rank": 2,
+            "ranking_status": "further_research",
+            "ranking_score": 1.029,
+            "delta_pct": -1.0,
+            "direction": "DOWN",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "risk_reduction_detected",
+              "alpha_alignment_positive",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX",
+            "rank": 3,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.712,
+            "delta_pct": -1.0,
+            "direction": "DOWN",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "risk_reduction_detected",
+              "alpha_alignment_positive",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          }
+        ],
+        "matched_alpha_contributors": [
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX",
+            "rank": 1,
+            "delta_pct": -0.994,
+            "alpha_research_score": 0.635,
+            "alignment_contribution": -0.631
+          },
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX",
+            "rank": 2,
+            "delta_pct": -0.994,
+            "alpha_research_score": 0.635,
+            "alignment_contribution": -0.631
+          },
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX",
+            "rank": 3,
+            "delta_pct": -0.994,
+            "alpha_research_score": 0.635,
+            "alignment_contribution": -0.631
+          }
+        ]
+      },
+      "price_quality_status": "holdings_snapshot",
+      "trade_sizing_allowed": true,
+      "evidence_sources": {
+        "v5_1_alpha_research": true,
+        "v5_2_rebalance_ranking": true,
+        "v3_0_regime": true,
+        "v3_3_walk_forward": true,
+        "v3_4_governance": true,
+        "v10_5_daily_quant_mc": true,
+        "v8_1_trading_constraints": true
+      },
+      "reason_codes": [
+        "cloud_target_missing",
+        "v105_native_target_available",
+        "alpha_score:0.635",
+        "alpha:observe_only",
+        "v5_2_ranking_evidence_available",
+        "risk_mode:high_tail_pressure",
+        "price_quality:holdings_snapshot"
+      ],
+      "thesis_summary": "最終建議權重高於現有權重，形成加碼草案依據。 雲端目標缺失；主要依 v10.5 原生目標 10.9163% 形成研究草案。 v5.1 alpha research score 約 0.635，研究分層為 neutral_research_prior。 v5.2 candidate ranking 或 alpha alignment 中有該標的相關調整證據。 交易 sizing 價格來源為 holdings_snapshot，provider=holdings_current_price_snapshot。"
+    },
+    {
+      "ticker": "USMV",
+      "current_weight_pct": 6.463,
+      "cloud_target_weight_pct": null,
+      "v105_native_target_weight_pct": 6.8492,
+      "final_suggested_weight_pct": 6.8492,
+      "delta_weight_pct": 0.3862,
+      "direction": "UP",
+      "cloud_vs_native_gap_pct": null,
+      "cloud_direction_vs_current": "UNKNOWN",
+      "native_direction_vs_current": "UP",
+      "final_direction_vs_current": "UP",
+      "source_agreement": "unknown",
+      "conflict_adjustment_factor": 1.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false,
+      "alpha_research_score": -0.008,
+      "alpha_research_band": "neutral_research_prior",
+      "alpha_research_disposition": "observe_only",
+      "ranking_evidence": {
+        "available": true,
+        "best_rank": 10,
+        "best_ranking_status": "observe_only",
+        "best_ranking_score": 0.054,
+        "matched_adjustments": [
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_riskfolio_risk_parity_mv",
+            "rank": 8,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.309,
+            "delta_pct": 0.983,
+            "direction": "UP",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "no_explicit_risk_reduction_score",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_inverse_vol_baseline",
+            "rank": 9,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.289,
+            "delta_pct": 1.147,
+            "direction": "UP",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "no_explicit_risk_reduction_score",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_riskfolio_hrp_mv",
+            "rank": 10,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.054,
+            "delta_pct": 2.0,
+            "direction": "UP",
+            "reason_codes": [
+              "turnover_too_high_review_only",
+              "turnover_moderate",
+              "no_explicit_risk_reduction_score",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_high_turnover",
+              "governance_warning_flag"
+            ]
+          }
+        ],
+        "matched_alpha_contributors": []
+      },
+      "price_quality_status": "holdings_snapshot",
+      "trade_sizing_allowed": true,
+      "evidence_sources": {
+        "v5_1_alpha_research": true,
+        "v5_2_rebalance_ranking": true,
+        "v3_0_regime": true,
+        "v3_3_walk_forward": true,
+        "v3_4_governance": true,
+        "v10_5_daily_quant_mc": true,
+        "v8_1_trading_constraints": true
+      },
+      "reason_codes": [
+        "cloud_target_missing",
+        "v105_native_target_available",
+        "alpha_score:-0.008",
+        "alpha:observe_only",
+        "v5_2_ranking_evidence_available",
+        "risk_mode:high_tail_pressure",
+        "price_quality:holdings_snapshot"
+      ],
+      "thesis_summary": "最終建議權重高於現有權重，形成加碼草案依據。 雲端目標缺失；主要依 v10.5 原生目標 6.8492% 形成研究草案。 v5.1 alpha research score 約 -0.008，研究分層為 neutral_research_prior。 v5.2 candidate ranking 或 alpha alignment 中有該標的相關調整證據。 交易 sizing 價格來源為 holdings_snapshot，provider=holdings_current_price_snapshot。"
+    },
+    {
+      "ticker": "GLDM",
+      "current_weight_pct": 2.0023,
+      "cloud_target_weight_pct": null,
+      "v105_native_target_weight_pct": 2.3745,
+      "final_suggested_weight_pct": 2.3745,
+      "delta_weight_pct": 0.3722,
+      "direction": "UP",
+      "cloud_vs_native_gap_pct": null,
+      "cloud_direction_vs_current": "UNKNOWN",
+      "native_direction_vs_current": "UP",
+      "final_direction_vs_current": "UP",
+      "source_agreement": "unknown",
+      "conflict_adjustment_factor": 1.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false,
+      "alpha_research_score": -1.506,
+      "alpha_research_band": "negative_research_prior",
+      "alpha_research_disposition": "observe_only_risk_penalty",
+      "ranking_evidence": {
+        "available": true,
+        "best_rank": 8,
+        "best_ranking_status": "observe_only",
+        "best_ranking_score": 0.309,
+        "matched_adjustments": [
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX",
+            "rank": 1,
+            "ranking_status": "further_research",
+            "ranking_score": 1.036,
+            "delta_pct": 1.0,
+            "direction": "UP",
+            "reason_codes": [
+              "turnover_too_high_review_only",
+              "turnover_moderate",
+              "risk_reduction_detected",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX",
+            "rank": 2,
+            "ranking_status": "further_research",
+            "ranking_score": 1.029,
+            "delta_pct": 1.0,
+            "direction": "UP",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "risk_reduction_detected",
+              "alpha_alignment_positive",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX",
+            "rank": 3,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.712,
+            "delta_pct": 1.0,
+            "direction": "UP",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "risk_reduction_detected",
+              "alpha_alignment_positive",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          }
+        ],
+        "matched_alpha_contributors": [
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX",
+            "rank": 1,
+            "delta_pct": 1.0,
+            "alpha_research_score": -1.506,
+            "alignment_contribution": -1.506
+          },
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX",
+            "rank": 2,
+            "delta_pct": 1.0,
+            "alpha_research_score": -1.506,
+            "alignment_contribution": -1.506
+          },
+          {
+            "ranking_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX",
+            "rank": 3,
+            "delta_pct": 1.0,
+            "alpha_research_score": -1.506,
+            "alignment_contribution": -1.506
+          }
+        ]
+      },
+      "price_quality_status": "holdings_snapshot",
+      "trade_sizing_allowed": true,
+      "evidence_sources": {
+        "v5_1_alpha_research": true,
+        "v5_2_rebalance_ranking": true,
+        "v3_0_regime": true,
+        "v3_3_walk_forward": true,
+        "v3_4_governance": true,
+        "v10_5_daily_quant_mc": true,
+        "v8_1_trading_constraints": true
+      },
+      "reason_codes": [
+        "cloud_target_missing",
+        "v105_native_target_available",
+        "alpha_score:-1.506",
+        "alpha:observe_only_risk_penalty",
+        "v5_2_ranking_evidence_available",
+        "risk_mode:high_tail_pressure",
+        "price_quality:holdings_snapshot"
+      ],
+      "thesis_summary": "最終建議權重高於現有權重，形成加碼草案依據。 雲端目標缺失；主要依 v10.5 原生目標 2.3745% 形成研究草案。 v5.1 alpha research score 約 -1.506，研究分層為 negative_research_prior。 v5.2 candidate ranking 或 alpha alignment 中有該標的相關調整證據。 交易 sizing 價格來源為 holdings_snapshot，provider=holdings_current_price_snapshot。"
+    },
+    {
+      "ticker": "IFRA",
+      "current_weight_pct": 5.6664,
+      "cloud_target_weight_pct": null,
+      "v105_native_target_weight_pct": 6.0376,
+      "final_suggested_weight_pct": 6.0376,
+      "delta_weight_pct": 0.3712,
+      "direction": "UP",
+      "cloud_vs_native_gap_pct": null,
+      "cloud_direction_vs_current": "UNKNOWN",
+      "native_direction_vs_current": "UP",
+      "final_direction_vs_current": "UP",
+      "source_agreement": "unknown",
+      "conflict_adjustment_factor": 1.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false,
+      "alpha_research_score": 0.192,
+      "alpha_research_band": "neutral_research_prior",
+      "alpha_research_disposition": "observe_only",
+      "ranking_evidence": {
+        "available": true,
+        "best_rank": 10,
+        "best_ranking_status": "observe_only",
+        "best_ranking_score": 0.054,
+        "matched_adjustments": [
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_inverse_vol_baseline",
+            "rank": 9,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.289,
+            "delta_pct": 0.458,
+            "direction": "UP",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "no_explicit_risk_reduction_score",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_riskfolio_hrp_mv",
+            "rank": 10,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.054,
+            "delta_pct": -0.47,
+            "direction": "DOWN",
+            "reason_codes": [
+              "turnover_too_high_review_only",
+              "turnover_moderate",
+              "no_explicit_risk_reduction_score",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_high_turnover",
+              "governance_warning_flag"
+            ]
+          }
+        ],
+        "matched_alpha_contributors": []
+      },
+      "price_quality_status": "holdings_snapshot",
+      "trade_sizing_allowed": true,
+      "evidence_sources": {
+        "v5_1_alpha_research": true,
+        "v5_2_rebalance_ranking": true,
+        "v3_0_regime": true,
+        "v3_3_walk_forward": true,
+        "v3_4_governance": true,
+        "v10_5_daily_quant_mc": true,
+        "v8_1_trading_constraints": true
+      },
+      "reason_codes": [
+        "cloud_target_missing",
+        "v105_native_target_available",
+        "alpha_score:0.192",
+        "alpha:observe_only",
+        "v5_2_ranking_evidence_available",
+        "risk_mode:high_tail_pressure",
+        "price_quality:holdings_snapshot"
+      ],
+      "thesis_summary": "最終建議權重高於現有權重，形成加碼草案依據。 雲端目標缺失；主要依 v10.5 原生目標 6.0376% 形成研究草案。 v5.1 alpha research score 約 0.192，研究分層為 neutral_research_prior。 v5.2 candidate ranking 或 alpha alignment 中有該標的相關調整證據。 交易 sizing 價格來源為 holdings_snapshot，provider=holdings_current_price_snapshot。"
+    },
+    {
+      "ticker": "PICK",
+      "current_weight_pct": 4.3791,
+      "cloud_target_weight_pct": null,
+      "v105_native_target_weight_pct": 4.6642,
+      "final_suggested_weight_pct": 4.6642,
+      "delta_weight_pct": 0.2851,
+      "direction": "UP",
+      "cloud_vs_native_gap_pct": null,
+      "cloud_direction_vs_current": "UNKNOWN",
+      "native_direction_vs_current": "UP",
+      "final_direction_vs_current": "UP",
+      "source_agreement": "unknown",
+      "conflict_adjustment_factor": 1.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false,
+      "alpha_research_score": 0.131,
+      "alpha_research_band": "neutral_research_prior",
+      "alpha_research_disposition": "observe_only",
+      "ranking_evidence": {
+        "available": true,
+        "best_rank": 10,
+        "best_ranking_status": "observe_only",
+        "best_ranking_score": 0.054,
+        "matched_adjustments": [
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_riskfolio_risk_parity_mv",
+            "rank": 8,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.309,
+            "delta_pct": -0.295,
+            "direction": "DOWN",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "no_explicit_risk_reduction_score",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_riskfolio_hrp_mv",
+            "rank": 10,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.054,
+            "delta_pct": -0.675,
+            "direction": "DOWN",
+            "reason_codes": [
+              "turnover_too_high_review_only",
+              "turnover_moderate",
+              "no_explicit_risk_reduction_score",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_high_turnover",
+              "governance_warning_flag"
+            ]
+          }
+        ],
+        "matched_alpha_contributors": []
+      },
+      "price_quality_status": "holdings_snapshot",
+      "trade_sizing_allowed": true,
+      "evidence_sources": {
+        "v5_1_alpha_research": true,
+        "v5_2_rebalance_ranking": true,
+        "v3_0_regime": true,
+        "v3_3_walk_forward": true,
+        "v3_4_governance": true,
+        "v10_5_daily_quant_mc": true,
+        "v8_1_trading_constraints": true
+      },
+      "reason_codes": [
+        "cloud_target_missing",
+        "v105_native_target_available",
+        "alpha_score:0.131",
+        "alpha:observe_only",
+        "v5_2_ranking_evidence_available",
+        "risk_mode:high_tail_pressure",
+        "price_quality:holdings_snapshot"
+      ],
+      "thesis_summary": "最終建議權重高於現有權重，形成加碼草案依據。 雲端目標缺失；主要依 v10.5 原生目標 4.6642% 形成研究草案。 v5.1 alpha research score 約 0.131，研究分層為 neutral_research_prior。 v5.2 candidate ranking 或 alpha alignment 中有該標的相關調整證據。 交易 sizing 價格來源為 holdings_snapshot，provider=holdings_current_price_snapshot。"
+    },
+    {
+      "ticker": "SRVR",
+      "current_weight_pct": 2.7503,
+      "cloud_target_weight_pct": null,
+      "v105_native_target_weight_pct": 2.9121,
+      "final_suggested_weight_pct": 2.9121,
+      "delta_weight_pct": 0.1618,
+      "direction": "UP",
+      "cloud_vs_native_gap_pct": null,
+      "cloud_direction_vs_current": "UNKNOWN",
+      "native_direction_vs_current": "UP",
+      "final_direction_vs_current": "UP",
+      "source_agreement": "unknown",
+      "conflict_adjustment_factor": 1.0,
+      "daily_quant_mc_multiplier": 1.0,
+      "mc_fragile_node": false,
+      "alpha_research_score": -0.316,
+      "alpha_research_band": "neutral_research_prior",
+      "alpha_research_disposition": "observe_only",
+      "ranking_evidence": {
+        "available": true,
+        "best_rank": 9,
+        "best_ranking_status": "observe_only",
+        "best_ranking_score": 0.289,
+        "matched_adjustments": [
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_riskfolio_risk_parity_mv",
+            "rank": 8,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.309,
+            "delta_pct": 0.682,
+            "direction": "UP",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "no_explicit_risk_reduction_score",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          },
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_inverse_vol_baseline",
+            "rank": 9,
+            "ranking_status": "observe_only",
+            "ranking_score": 0.289,
+            "delta_pct": 1.047,
+            "direction": "UP",
+            "reason_codes": [
+              "constraint_pass",
+              "turnover_low",
+              "no_explicit_risk_reduction_score",
+              "alpha_alignment_neutral",
+              "regime_status:regime_watch_review_required",
+              "governance_warning_flag"
+            ]
+          }
+        ],
+        "matched_alpha_contributors": [
+          {
+            "ranking_id": "v5_2_v2_3_v2_1_inverse_vol_baseline",
+            "rank": 9,
+            "delta_pct": 1.047,
+            "alpha_research_score": -0.316,
+            "alignment_contribution": -0.331
+          }
+        ]
+      },
+      "price_quality_status": "holdings_snapshot",
+      "trade_sizing_allowed": true,
+      "evidence_sources": {
+        "v5_1_alpha_research": true,
+        "v5_2_rebalance_ranking": true,
+        "v3_0_regime": true,
+        "v3_3_walk_forward": true,
+        "v3_4_governance": true,
+        "v10_5_daily_quant_mc": true,
+        "v8_1_trading_constraints": true
+      },
+      "reason_codes": [
+        "cloud_target_missing",
+        "v105_native_target_available",
+        "alpha_score:-0.316",
+        "alpha:observe_only",
+        "v5_2_ranking_evidence_available",
+        "risk_mode:high_tail_pressure",
+        "price_quality:holdings_snapshot"
+      ],
+      "thesis_summary": "最終建議權重高於現有權重，形成加碼草案依據。 雲端目標缺失；主要依 v10.5 原生目標 2.9121% 形成研究草案。 v5.1 alpha research score 約 -0.316，研究分層為 neutral_research_prior。 v5.2 candidate ranking 或 alpha alignment 中有該標的相關調整證據。 交易 sizing 價格來源為 holdings_snapshot，provider=holdings_current_price_snapshot。"
+    }
+  ],
+  "safety_boundary": [
+    "This layer explains v10.5 delegated target weights; it does not create orders.",
+    "It does not enable execution_permission, trade_signal_enabled, broker_submission_enabled, or Supabase writes.",
+    "Thesis text is explanatory and not investment advice."
+  ]
+}

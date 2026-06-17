@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Native Target Thesis Aggregator",
+  "type": "object",
+  "required": [
+    "version",
+    "status",
+    "generated_at",
+    "safe_mode",
+    "research_only",
+    "execution_permission",
+    "not_trade_order",
+    "summary",
+    "thesis_rows"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "safe_mode": {
+      "type": "boolean"
+    },
+    "research_only": {
+      "type": "boolean"
+    },
+    "review_only": {
+      "type": "boolean"
+    },
+    "trade_signal_enabled": {
+      "type": "boolean"
+    },
+    "execution_permission": {
+      "type": "boolean"
+    },
+    "broker_submission_enabled": {
+      "type": "boolean"
+    },
+    "official_rebalance_enabled": {
+      "type": "boolean"
+    },
+    "auto_trade_enabled": {
+      "type": "boolean"
+    },
+    "supabase_write_enabled": {
+      "type": "boolean"
+    },
+    "not_trade_order": {
+      "type": "boolean"
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "status",
+        "row_count",
+        "execution_permission"
+      ],
+      "properties": {
+        "status": {
+          "type": "string"
+        },
+        "row_count": {
+          "type": "number"
+        },
+        "execution_permission": {
+          "type": "boolean"
+        }
+      }
+    },
+    "thesis_rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "ticker",
+          "thesis_summary"
+        ],
+        "properties": {
+          "ticker": {
+            "type": "string"
+          },
+          "source_agreement": {
+            "type": "string"
+          },
+          "thesis_summary": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
