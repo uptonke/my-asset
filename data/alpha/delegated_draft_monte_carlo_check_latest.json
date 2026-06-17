@@ -1,7 +1,7 @@
 {
   "version": "v10.5",
   "status": "OK",
-  "generated_at": "2026-06-16T15:12:15+00:00",
+  "generated_at": "2026-06-17T13:26:32+00:00",
   "mode": "delegated_draft_monte_carlo_reference_check",
   "safe_mode": true,
   "research_only": true,
@@ -20,13 +20,13 @@
     "synthetic_risk_available": true,
     "monte_carlo_reference_available": true,
     "delegated_draft_status": "machine_delegated_draft_available",
-    "delegated_draft_line_count": 7,
-    "target_asset_weight_sum_pct": 100.0,
+    "delegated_draft_line_count": 12,
+    "target_asset_weight_sum_pct": 99.9998,
     "cash_target_weight_pct": 0.0,
     "stressed_var95_pct": 7.08,
     "stressed_es95_pct": 9.5,
     "liquidity_run_probability_pct": 20.75,
-    "risk_note_count": 2,
+    "risk_note_count": 3,
     "check_count": 4,
     "trade_signal_enabled": false,
     "execution_permission": false,
@@ -98,15 +98,15 @@
     "generated_at": null,
     "method": "current_weight_synthetic_daily_returns",
     "metrics": {
-      "sample_count": 384,
-      "ann_vol_pct": 11.55,
-      "var95_pct": 1.03,
-      "es95_pct": 1.64,
-      "max_drawdown_pct": -5.64
+      "sample_count": 385,
+      "ann_vol_pct": 11.45,
+      "var95_pct": 1.02,
+      "es95_pct": 1.63,
+      "max_drawdown_pct": -5.59
     },
     "coverage": {
-      "strict_sample": 384,
-      "flexible_sample": 728,
+      "strict_sample": 385,
+      "flexible_sample": 729,
       "usable_weight_pct": 100.0
     },
     "quantstats_status": "OK",
@@ -115,31 +115,35 @@
     "risk_budgeting_status": "OK"
   },
   "delegated_draft_reference": {
-    "generated_at": "2026-06-16T15:12:15+00:00",
+    "generated_at": "2026-06-17T13:26:32+00:00",
     "status": "machine_delegated_draft_available",
     "summary": {
       "delegated_draft_status": "machine_delegated_draft_available",
       "pool_asset_count": 15,
-      "selected_asset_count": 15,
-      "target_asset_weight_sum_pct": 100.0,
+      "selected_asset_count": 13,
+      "target_asset_weight_sum_pct": 99.9998,
       "liquidity_buffer_pct": 0.0,
       "cash_target_weight_pct": 0.0,
       "liquidity_buffer_source": "portfolio_settings.liquidity_buffer_ratio_pct",
       "zero_liquidity_buffer_is_valid": true,
       "included_asset_min_weight_pct": 2.0,
       "single_asset_max_weight_pct": 40.0,
-      "draft_line_count": 7,
+      "draft_line_count": 12,
       "price_quality_excluded_line_count": 0,
       "trade_sizing_requires_real_world_price": false,
       "holdings_snapshot_price_allowed": true,
       "blocker_count": 0,
-      "warning_count": 19,
+      "warning_count": 17,
       "cash_balance_available": false,
       "internal_rebalance_can_fund_buys": true,
       "cash_balance_twd": null,
       "cash_balance_missing_but_internal_rebalance_allowed": true,
-      "nav_twd": 655391.65,
-      "source_candidate_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX",
+      "nav_twd": 656890.02,
+      "cloud_target_weight_available_count": 14,
+      "cloud_target_weight_missing_count": 1,
+      "base_target_weight_source": "stock_meta[ticker].target_weight",
+      "frontend_mc_percent_target_used": false,
+      "source_candidate_id": null,
       "daily_quant_reference_available": true,
       "daily_quant_reference_source": "supabase_live",
       "synthetic_risk_available": true,
@@ -152,11 +156,11 @@
       "broker_submission_enabled": false
     },
     "concentration_delta": {
-      "current_max_weight_pct": 11.247672,
+      "current_max_weight_pct": 11.251941,
       "current_max_weight_ticker": "BOXX",
-      "target_max_weight_pct": 14.5872,
-      "target_max_weight_ticker": "BOXX",
-      "target_minus_current_max_weight_pct": 3.339528
+      "target_max_weight_pct": 31.0849,
+      "target_max_weight_ticker": "安聯台灣科技",
+      "target_minus_current_max_weight_pct": 19.832959
     }
   },
   "risk_notes": [
@@ -169,6 +173,11 @@
       "code": "liquidity_run_probability_watch",
       "severity": "warning",
       "message": "流動性擠兌機率參考值約 20.75%，v10.x 草案應避免增加不可流動部位。"
+    },
+    {
+      "code": "target_concentration_increase_watch",
+      "severity": "warning",
+      "message": "v10.x 目標權重最大單檔集中度較目前提高超過 5 個百分點。"
     }
   ],
   "safety_boundary": [

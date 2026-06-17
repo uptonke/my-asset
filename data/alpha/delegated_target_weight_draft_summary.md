@@ -1,6 +1,6 @@
 # v10.5 Supabase Cloud Target Weight + Daily Quant Risk-Adjusted Delegated Engine
 
-- Generated: `2026-06-16T15:56:24+00:00`
+- Generated: `2026-06-17T13:26:32+00:00`
 - Delegated draft status: **machine_delegated_draft_available**
 - Pool asset count: `15`
 - Selected asset count: `13`

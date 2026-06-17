@@ -1,6 +1,6 @@
 # Model Governance Dashboard v3.4
 
-Generated: `2026-06-16T15:12:05+00:00`
+Generated: `2026-06-17T13:26:22+00:00`
 
 ## Safety boundary
 
