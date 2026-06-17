@@ -1,7 +1,7 @@
 # v5.0 Forecast Feature Store
 
 - Status: **OK**
-- Generated at: `2026-06-17T13:26:27+00:00`
+- Generated at: `2026-06-17T13:54:04+00:00`
 - Asset count: `14`
 - Feature-ready count: `14`
 - Fallback count: `0`
@@ -10,9 +10,9 @@
 ## Top feature assets
 - `00981A`
 - `QQQ`
+- `VEA`
 - `AVUV`
 - `VOO`
-- `VEA`
 
 ## Safety boundary
 - Research-only feature layer.

@@ -5,12 +5,12 @@
 
 | Candidate | Source | Worst scenario | Average scenario | Turnover vs current |
 |---|---:|---:|---:|---:|
-| current_weight | skfolio/baseline | -25.027% | -17.366% | 0.0% |
-| inverse_vol_baseline | skfolio/baseline | -19.9% | -13.55% | 22.3% |
-| riskfolio_risk_parity_mv | Riskfolio-Lib | -18.445% | -12.687% | 25.33% |
-| riskfolio_hrp_mv | Riskfolio-Lib | -12.701% | -8.436% | 43.69% |
-| skfolio_cvar_minimize | skfolio/baseline | -4.727% | -3.374% | 68.83% |
-| riskfolio_cvar_minimize | Riskfolio-Lib | -4.727% | -3.374% | 68.83% |
-| scipy_min_variance_fallback | skfolio/baseline | -3.341% | -2.524% | 75.91% |
-| skfolio_min_variance | skfolio/baseline | -3.24% | -2.499% | 76.17% |
-| riskfolio_min_variance | Riskfolio-Lib | -3.237% | -2.496% | 76.15% |
+| current_weight | skfolio/baseline | -25.043% | -17.375% | 0.0% |
+| inverse_vol_baseline | skfolio/baseline | -19.901% | -13.55% | 22.29% |
+| riskfolio_risk_parity_mv | Riskfolio-Lib | -18.449% | -12.69% | 25.34% |
+| riskfolio_hrp_mv | Riskfolio-Lib | -12.704% | -8.438% | 43.72% |
+| skfolio_cvar_minimize | skfolio/baseline | -4.727% | -3.374% | 68.85% |
+| riskfolio_cvar_minimize | Riskfolio-Lib | -4.727% | -3.374% | 68.85% |
+| scipy_min_variance_fallback | skfolio/baseline | -3.324% | -2.518% | 75.81% |
+| skfolio_min_variance | skfolio/baseline | -3.231% | -2.496% | 76.04% |
+| riskfolio_min_variance | Riskfolio-Lib | -3.227% | -2.492% | 76.01% |
