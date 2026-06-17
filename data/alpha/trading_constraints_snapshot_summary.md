@@ -1,6 +1,6 @@
 # v8.1 Trading Constraints Snapshot
 
-- Generated: `2026-06-17T13:54:07+00:00`
+- Generated: `2026-06-17T14:47:20+00:00`
 - Portfolio source: `supabase_live`
 - Assets: `15`
 - Real-world price success: `14`

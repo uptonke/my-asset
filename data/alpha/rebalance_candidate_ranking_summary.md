@@ -1,7 +1,7 @@
 # v5.2 Rebalance Candidate Ranking
 
 - Status: **OK**
-- Generated at: `2026-06-17T13:54:04+00:00`
+- Generated at: `2026-06-17T14:47:17+00:00`
 - Candidate count: `11`
 - Further research count: `2`
 - Observe-only count: `9`
@@ -13,15 +13,15 @@
 
 ## Top ranked candidates
 - Rank 1: `v5_2_v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX` — `further_research` — score `1.042`
-- Rank 2: `v5_2_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX` — `further_research` — score `1.032`
-- Rank 3: `v5_2_v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX` — `observe_only` — score `0.719`
-- Rank 4: `v5_2_v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX` — `observe_only` — score `0.673`
-- Rank 5: `v5_2_v2_3_from_v2_2_trim_00981A_100pct_to_BOXX` — `observe_only` — score `0.477`
-- Rank 6: `v5_2_v2_3_from_v2_2_trim_QQQ_50pct_to_BOXX` — `observe_only` — score `0.399`
-- Rank 7: `v5_2_v2_3_from_v2_2_trim_00981A_50pct_to_BOXX` — `observe_only` — score `0.355`
-- Rank 8: `v5_2_v2_3_v2_1_riskfolio_risk_parity_mv` — `observe_only` — score `0.317`
-- Rank 9: `v5_2_v2_3_v2_1_inverse_vol_baseline` — `observe_only` — score `0.296`
-- Rank 10: `v5_2_v2_3_v2_1_riskfolio_hrp_mv` — `observe_only` — score `0.06`
+- Rank 2: `v5_2_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX` — `further_research` — score `1.036`
+- Rank 3: `v5_2_v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX` — `observe_only` — score `0.723`
+- Rank 4: `v5_2_v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX` — `observe_only` — score `0.674`
+- Rank 5: `v5_2_v2_3_from_v2_2_trim_00981A_100pct_to_BOXX` — `observe_only` — score `0.479`
+- Rank 6: `v5_2_v2_3_from_v2_2_trim_QQQ_50pct_to_BOXX` — `observe_only` — score `0.403`
+- Rank 7: `v5_2_v2_3_from_v2_2_trim_00981A_50pct_to_BOXX` — `observe_only` — score `0.356`
+- Rank 8: `v5_2_v2_3_v2_1_riskfolio_risk_parity_mv` — `observe_only` — score `0.32`
+- Rank 9: `v5_2_v2_3_v2_1_inverse_vol_baseline` — `observe_only` — score `0.3`
+- Rank 10: `v5_2_v2_3_v2_1_riskfolio_hrp_mv` — `observe_only` — score `0.061`
 
 ## Safety boundary
 - Research candidate ranking only.

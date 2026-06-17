@@ -1,6 +1,6 @@
 # v10.5.1 Dual Target Blend Engine
 
-- Generated: `2026-06-17T13:54:09+00:00`
+- Generated: `2026-06-17T14:47:22+00:00`
 - Delegated draft status: **machine_delegated_draft_available**
 - Pool asset count: `15`
 - Selected asset count: `15`
@@ -16,7 +16,7 @@
 - Synthetic risk available: `True`
 - Monte Carlo reference available: `True`
 - MC fragile nodes: `3`
-- Target asset weight sum: `99.9999`%
+- Target asset weight sum: `100.0`%
 - Draft line count: `4`
 - Price-quality excluded lines: `0 `
 - Blockers: `0`

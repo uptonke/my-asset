@@ -19,12 +19,12 @@
 
 | Method | Verdict | Available windows | Avg pairwise turnover | Max weight range | ES95 range | Ann vol range |
 |---|---:|---:|---:|---:|---:|---:|
-| current_weight | 穩定 | 4 | 0.0% | 0.0% | 0.29% | 1.33% |
-| inverse_vol_baseline | 穩定 | 4 | 5.4% | 6.74% | 0.131% | 0.52% |
+| current_weight | 穩定 | 4 | 0.0% | 0.0% | 0.29% | 1.34% |
+| inverse_vol_baseline | 穩定 | 4 | 5.4% | 6.75% | 0.131% | 0.52% |
 | riskfolio_cvar_minimize | 可觀察 | 4 | 10.89% | 12.11% | 0.251% | 1.15% |
-| riskfolio_hrp_mv | 可觀察 | 4 | 12.51% | 20.72% | 0.28% | 1.76% |
-| riskfolio_min_variance | 穩定 | 4 | 5.65% | 4.08% | 0.239% | 1.17% |
-| riskfolio_risk_parity_mv | 可觀察 | 4 | 8.79% | 14.63% | 0.124% | 0.71% |
-| scipy_min_variance_fallback | 穩定 | 4 | 5.9% | 4.4% | 0.229% | 1.16% |
+| riskfolio_hrp_mv | 可觀察 | 4 | 12.52% | 20.73% | 0.28% | 1.76% |
+| riskfolio_min_variance | 穩定 | 4 | 5.56% | 3.94% | 0.237% | 1.17% |
+| riskfolio_risk_parity_mv | 可觀察 | 4 | 8.79% | 14.62% | 0.124% | 0.71% |
+| scipy_min_variance_fallback | 穩定 | 4 | 5.91% | 4.43% | 0.228% | 1.16% |
 | skfolio_cvar_minimize | 可觀察 | 4 | 10.89% | 12.11% | 0.251% | 1.15% |
-| skfolio_min_variance | 穩定 | 4 | 5.68% | 4.12% | 0.239% | 1.17% |
+| skfolio_min_variance | 穩定 | 4 | 5.59% | 3.99% | 0.237% | 1.17% |
