@@ -2122,9 +2122,9 @@
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-wand-magic-sparkles text-cyan-300"></i>
-                                            v10.5 整合式機器委任草案｜Daily Quant / Monte Carlo 已加入目標權重
+                                            v10.5 整合式機器委任草案｜雲端% + Daily Quant / Monte Carlo 風險調整
                                         </div>
-                                        <div class="text-[11px] text-cyan-100/70 mt-1">單一卡片整合目標權重、交易草案與 Daily Quant / Monte Carlo；Daily Quant / MC 會先影響目標權重 scoring，再產生草案，不重跑 MC、不取代 daily_update、不啟用交易。</div>
+                                        <div class="text-[11px] text-cyan-100/70 mt-1">以 Supabase stock_meta[ticker].target_weight（庫存表雲端%）作為 base target；Daily Quant / Monte Carlo 只做風險調整與警示，不使用前端手動 MC%。</div>
                                     </div>
                                     <div class="flex flex-wrap items-center gap-2 text-[11px]">
                                         <span class="px-2 py-1 rounded-lg border" :class="delegatedTargetWeightDraftSummary?.delegated_draft_status === 'machine_delegated_draft_available' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-red-500/30 bg-red-500/10 text-red-200'">
@@ -2133,7 +2133,7 @@
                                         <span class="px-2 py-1 rounded-lg border" :class="delegatedDraftMonteCarloSummary?.reference_check_status === 'reference_available' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-amber-500/30 bg-amber-500/10 text-amber-200'">
                                             {{ zhText(delegatedDraftMonteCarloSummary?.reference_check_status || 'MC 尚未讀取') }}
                                         </span>
-                                        <span class="px-2 py-1 rounded-lg border border-cyan-500/20 bg-cyan-500/10 text-cyan-100">machine target + daily quant reference</span>
+                                        <span class="px-2 py-1 rounded-lg border border-cyan-500/20 bg-cyan-500/10 text-cyan-100">cloud target + risk adjustment</span>
                                         <span class="px-2 py-1 rounded-lg border border-yellow-500/20 bg-yellow-500/10 text-yellow-100">execution_permission: false</span>
                                         <a href="data/alpha/delegated_target_weight_draft_latest.json" target="_blank" rel="noopener" class="px-2 py-1 rounded-lg border border-white/10 bg-white/[0.04] text-gray-200 hover:bg-white/[0.08]">開啟草案 JSON</a>
                                         <a href="data/alpha/delegated_draft_monte_carlo_check_latest.json" target="_blank" rel="noopener" class="px-2 py-1 rounded-lg border border-white/10 bg-white/[0.04] text-gray-200 hover:bg-white/[0.08]">開啟 MC 檢查 JSON</a>
@@ -2214,14 +2214,15 @@
 
                                     <div class="grid xl:grid-cols-2 gap-4">
                                         <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
-                                            <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] text-xs font-bold text-white">Machine target weights Top 12</div>
+                                            <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] text-xs font-bold text-white">目標權重 Top 12（雲端% → v10.5 風險調整目標）</div>
                                             <div class="overflow-x-auto">
                                                 <table class="w-full text-[11px]">
                                                     <thead class="text-gray-500 border-b border-white/10">
                                                         <tr>
                                                             <th class="text-left px-3 py-2">標的</th>
                                                             <th class="text-right px-3 py-2">目前</th>
-                                                            <th class="text-right px-3 py-2">目標</th>
+                                                            <th class="text-right px-3 py-2">雲端%</th>
+                                                            <th class="text-right px-3 py-2">v10.5 目標</th>
                                                             <th class="text-right px-3 py-2">差異</th>
                                                             <th class="text-left px-3 py-2">方向</th>
                                                         </tr>
@@ -2230,11 +2231,12 @@
                                                         <tr v-for="row in delegatedTargetVisibleRows" :key="row.ticker" class="border-b border-white/5 hover:bg-white/[0.03]">
                                                             <td class="px-3 py-2 font-mono text-white">{{ row.ticker }}</td>
                                                             <td class="px-3 py-2 text-right text-gray-300">{{ row.current_weight_pct ?? '-' }}%</td>
+                                                            <td class="px-3 py-2 text-right text-sky-200">{{ row.cloud_target_weight_pct ?? '-' }}%</td>
                                                             <td class="px-3 py-2 text-right text-cyan-200">{{ row.machine_target_weight_pct ?? '-' }}%</td>
                                                             <td class="px-3 py-2 text-right" :class="(row.delta_weight_pct || 0) >= 0 ? 'text-emerald-300' : 'text-red-300'">{{ row.delta_weight_pct ?? '-' }}%</td>
                                                             <td class="px-3 py-2 text-gray-300">{{ zhText(row.direction) }}</td>
                                                         </tr>
-                                                        <tr v-if="!delegatedTargetVisibleRows.length"><td colspan="5" class="px-3 py-4 text-center text-gray-500">尚未讀到目標權重資料。</td></tr>
+                                                        <tr v-if="!delegatedTargetVisibleRows.length"><td colspan="6" class="px-3 py-4 text-center text-gray-500">尚未讀到目標權重資料。</td></tr>
                                                     </tbody>
                                                 </table>
                                             </div>

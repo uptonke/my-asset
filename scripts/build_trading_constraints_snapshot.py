@@ -317,6 +317,15 @@ def main() -> None:
         market_value_twd = price_twd * shares if price_twd is not None else None
         min_unit = finite_float(rules.get("min_trade_unit"), 1) or 1
         whole_units_available = math.floor(shares / min_unit) * min_unit if min_unit > 0 else shares
+        meta = stock_meta.get(ticker) if isinstance(stock_meta, dict) else {}
+        meta = meta if isinstance(meta, dict) else {}
+        cloud_target_weight = finite_float(meta.get("target_weight"), None)
+        if cloud_target_weight is not None and cloud_target_weight > 1:
+            cloud_target_weight = cloud_target_weight / 100.0
+        if cloud_target_weight is not None:
+            cloud_target_weight = max(0.0, min(1.0, cloud_target_weight))
+        cloud_target_source = "stock_meta.target_weight" if cloud_target_weight is not None else "missing_stock_meta_target_weight"
+
         rows.append({
             "ticker": ticker,
             "category": category,
@@ -328,6 +337,10 @@ def main() -> None:
             "usd_twd_fx": fx,
             "price_twd": round(price_twd, 6) if price_twd is not None else None,
             "market_value_twd": round(market_value_twd, 2) if market_value_twd is not None else None,
+            "cloud_target_weight_pct": round(cloud_target_weight * 100, 6) if cloud_target_weight is not None else None,
+            "stock_meta_target_weight_pct": round(cloud_target_weight * 100, 6) if cloud_target_weight is not None else None,
+            "cloud_target_weight_available": cloud_target_weight is not None,
+            "cloud_target_source": cloud_target_source,
             "max_sellable_amount_twd": round(market_value_twd, 2) if market_value_twd is not None else None,
             "max_buy_amount_twd": cash_balance if cash_balance is not None else None,
             "max_trade_budget_twd": trade_budget_override if trade_budget_override is not None else cash_balance,
@@ -393,6 +406,7 @@ def main() -> None:
             "taiwan_odd_lot_or_fractional_allowed": True,
             "crypto_fractional_trading_allowed": True,
             "minimum_trade_unit_policy": "US=1 share; Taiwan=1 share odd-lot; Crypto=0.00000001 coin; missing cash balance does not block internal rebalance funded by sells.",
+            "cloud_target_weight_source": "Supabase stock_meta[ticker].target_weight when present; used by v10.5 as base target, not front-end MC%.",
         },
         "asset_rows": rows,
         "safety_boundary": [

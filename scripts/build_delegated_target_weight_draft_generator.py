@@ -96,7 +96,7 @@ def load_policy(config: Dict[str, Any], constraints: Dict[str, Any]) -> Dict[str
     liquidity_buffer_pct, liquidity_buffer_source = resolve_liquidity_buffer_pct(config, constraints)
     return {
         "version": "v10.5",
-        "name": "Integrated Delegated Target Weight Generator with Daily Quant and Monte Carlo Inputs",
+        "name": "Cloud Target Weight + Daily Quant Risk-Adjusted Delegated Draft Generator",
         "eligible_pool_policy": {
             "pool_source": "all_current_assets",
             "max_pool_size": int(num(delegated.get("max_pool_size"), MAX_POOL_SIZE)),
@@ -104,8 +104,10 @@ def load_policy(config: Dict[str, Any], constraints: Dict[str, Any]) -> Dict[str
             "allow_all_assets_into_pool": True,
         },
         "target_generation_policy": {
-            "target_weight_source": "machine_generated_this_run_with_daily_quant_monte_carlo_inputs",
-            "use_external_target_weights": False,
+            "target_weight_source": "supabase_stock_meta_target_weight_with_daily_quant_monte_carlo_risk_adjustment",
+            "base_target_weight_source": "stock_meta[ticker].target_weight",
+            "use_external_target_weights": True,
+            "uses_frontend_mc_percent_target": False,
             "daily_quant_monte_carlo_inputs_enabled": True,
             "included_asset_min_weight_pct": MIN_INCLUDED_WEIGHT,
             "single_asset_max_weight_pct": MAX_SINGLE_WEIGHT,
@@ -184,9 +186,9 @@ def load_daily_quant_context() -> Dict[str, Any]:
         "high_tail_pressure": high_tail_pressure,
         "moderate_tail_pressure": moderate_tail_pressure,
         "source_priority_policy": [
-            "Daily Quant / holdings current price is the primary portfolio-state source.",
-            "Monte Carlo / chaos_meta fragile nodes penalize target-weight raw scores before normalization.",
-            "Synthetic portfolio risk and Monte Carlo stress levels adjust the current-weight / ranking / alpha blend before target weights are generated.",
+            "Supabase stock_meta[ticker].target_weight is the base cloud target weight source.",
+            "Front-end manual MC% is not used because it is not materialized for GitHub Actions.",
+            "Monte Carlo / chaos_meta fragile nodes and synthetic risk are used only as risk-adjustment multipliers and warnings, not as MC% target weights.",
         ],
     }
 
@@ -415,8 +417,8 @@ def main() -> None:
     liquidity_buffer_pct = policy["cash_policy"]["liquidity_buffer_pct"]
     liquidity_buffer_source = policy["cash_policy"].get("liquidity_buffer_source", "unknown")
 
-    ranking = as_dict(read_json("data/alpha/rebalance_candidate_ranking_latest.json", {}))
-    alpha = as_dict(read_json("data/alpha/alpha_research_sandbox_latest.json", {}))
+    ranking = as_dict(read_json("data/alpha/rebalance_candidate_ranking_latest.json", {}))  # kept for source context only
+    alpha = as_dict(read_json("data/alpha/alpha_research_sandbox_latest.json", {}))  # kept for diagnostics only
     validation = as_dict(read_json("data/alpha/alpha_validation_gate_latest.json", {}))
     daily_quant_context = load_daily_quant_context()
 
@@ -444,50 +446,56 @@ def main() -> None:
     if nav_twd <= 0:
         blockers.append({"code": "invalid_nav", "severity": "blocker", "message": "NAV 小於等於 0，不能產生機器委任草案。"})
 
-    # Ranking prior: use top-ranked research candidate when available, but do not require it.
+    # v10.5 target source: Supabase stock_meta[ticker].target_weight (front-end label: 雲端%).
+    # Do not use the browser-only manual MC% as a target source because it is not materialized
+    # into Supabase / JSON for GitHub Actions. Daily Quant / Monte Carlo remain risk modifiers.
     ranking_rows = [as_dict(x) for x in as_list(ranking.get("ranking_rows"))]
     ranking_rows = sorted(ranking_rows, key=lambda r: num(r.get("rank"), 999999))
     preferred = [r for r in ranking_rows if str(r.get("ranking_status")) == "further_research"] or ranking_rows[:1]
     source_candidate = preferred[0] if preferred else {}
-    ranking_weights = {str(k): num(v) / 100.0 for k, v in as_dict(source_candidate.get("weights_pct")).items()}
-
-    alpha_rows = {str(r.get("ticker")): as_dict(r) for r in as_list(alpha.get("asset_alpha_research")) if as_dict(r).get("ticker")}
-    alpha_scores = {k: num(v.get("alpha_research_score")) for k, v in alpha_rows.items()}
-    score_min = min(alpha_scores.values()) if alpha_scores else 0.0
-    score_max = max(alpha_scores.values()) if alpha_scores else 1.0
-    denom = score_max - score_min if score_max > score_min else 1.0
 
     raw: Dict[str, float] = {}
     pool_rows: List[Dict[str, Any]] = []
+    cloud_available_count = 0
+    cloud_missing_count = 0
     for row in asset_rows:
         ticker = asset_key(row)
         mv = num(row.get("market_value_twd"))
         current_w = mv / nav_twd if nav_twd > 0 else 0.0
-        rank_w = ranking_weights.get(ticker, 0.0)
-        alpha_score = alpha_scores.get(ticker)
-        alpha_norm = 0.5 if alpha_score is None else (alpha_score - score_min) / denom
+        cloud_target_w = num(row.get("cloud_target_weight_pct"), -1.0)
+        if cloud_target_w >= 0:
+            cloud_target_w = cloud_target_w / 100.0
+        else:
+            # Backward-compatible fallback if trading_constraints_snapshot was generated by an older script.
+            cloud_target_w = num(row.get("stock_meta_target_weight_pct"), -1.0)
+            cloud_target_w = cloud_target_w / 100.0 if cloud_target_w >= 0 else -1.0
+        cloud_target_available = cloud_target_w >= 0
+        if cloud_target_available:
+            cloud_available_count += 1
+            cloud_target_w = max(0.0, min(1.0, cloud_target_w))
+        else:
+            cloud_missing_count += 1
+            cloud_target_w = 0.0
         sizing_allowed = bool(row.get("trade_sizing_allowed")) and num(row.get("price_twd")) > 0
         data_quality_multiplier = 1.0 if sizing_allowed else 0.55
-        coeffs = as_dict(daily_quant_context.get("target_weight_coefficients"))
-        current_coeff = num(coeffs.get("current_weight"), 0.50)
-        rank_coeff = num(coeffs.get("ranking_prior"), 0.35)
-        alpha_coeff = num(coeffs.get("alpha_research"), 0.15)
-        alpha_component = alpha_norm / max(1, len(asset_rows))
         dq_multiplier, dq_reasons = daily_quant_mc_multiplier(ticker, daily_quant_context)
-        raw_before_risk = max(0.0001, (current_coeff * current_w) + (rank_coeff * rank_w) + (alpha_coeff * alpha_component))
+        raw_before_risk = cloud_target_w
         raw_score = raw_before_risk * data_quality_multiplier * dq_multiplier
-        raw[ticker] = raw_score
+        if raw_score > 1e-12:
+            raw[ticker] = raw_score
         pool_rows.append({
             "ticker": ticker,
             "current_weight_pct": round6(current_w * 100),
+            "cloud_target_weight_pct": round6(cloud_target_w * 100) if cloud_target_available else None,
+            "stock_meta_target_weight_pct": round6(cloud_target_w * 100) if cloud_target_available else None,
+            "base_target_weight_source": row.get("cloud_target_source") or ("stock_meta.target_weight" if cloud_target_available else "missing_stock_meta_target_weight"),
+            "frontend_mc_percent_target_used": False,
             "market_value_twd": round(mv, 2),
             "real_world_price_fetched": bool(row.get("real_world_price_fetched")),
             "holdings_snapshot_price_used": bool(row.get("holdings_snapshot_price_used")),
             "price_quality_status": row.get("price_quality_status", "real_world" if bool(row.get("real_world_price_fetched")) else "fallback_or_unavailable"),
             "trade_sizing_allowed": sizing_allowed,
             "price_provider": row.get("price_provider"),
-            "alpha_research_score": None if alpha_score is None else round6(alpha_score),
-            "ranking_prior_weight_pct": round6(rank_w * 100),
             "daily_quant_mc_multiplier": dq_multiplier,
             "daily_quant_mc_reasons": dq_reasons,
             "mc_fragile_node": ticker in set(daily_quant_context.get("fragile_nodes") or []),
@@ -495,10 +503,15 @@ def main() -> None:
             "raw_score_after_daily_quant_mc": round6(raw_score),
             "eligible": True,
         })
+        if not cloud_target_available:
+            warnings.append({"code": "cloud_target_weight_missing", "severity": "warning", "ticker": ticker, "message": "此資產缺少 Supabase stock_meta.target_weight；v10.5 不使用前端 MC%，因此該資產不作為 base target。"})
         if not sizing_allowed:
             warnings.append({"code": "non_sizing_price_in_pool", "severity": "warning", "ticker": ticker, "message": "此資產在 pool 中，但缺少可用的庫存現價 / real-world 價格，不能產生交易草案列。"})
         elif bool(row.get("holdings_snapshot_price_used")) and not bool(row.get("real_world_price_fetched")):
             warnings.append({"code": "holdings_snapshot_price_used", "severity": "info", "ticker": ticker, "message": "此資產使用庫存頁現價(TWD)作為委任草案 sizing 價格。"})
+
+    if cloud_available_count <= 0:
+        blockers.append({"code": "cloud_target_weights_missing", "severity": "blocker", "message": "未讀到任何 Supabase stock_meta[ticker].target_weight；v10.5 不再用 ranking/alpha 或前端 MC% 捏造目標權重。"})
 
     investable_weight = max(0.0, 1.0 - liquidity_buffer_pct)
     target_weights, weight_warnings = normalize_with_bounds(raw, investable_weight, MIN_INCLUDED_WEIGHT, MAX_SINGLE_WEIGHT)
@@ -523,6 +536,7 @@ def main() -> None:
         target_rows.append({
             "ticker": ticker,
             "current_weight_pct": round6(current_w * 100),
+            "cloud_target_weight_pct": next((pr.get("cloud_target_weight_pct") for pr in pool_rows if pr.get("ticker") == ticker), None),
             "machine_target_weight_pct": round6(target_w * 100),
             "delta_weight_pct": round6(delta_w * 100),
             "direction": direction,
@@ -557,12 +571,14 @@ def main() -> None:
         "version": "v10.5",
         "status": "OK",
         "generated_at": now_iso(),
-        "mode": "integrated_delegated_target_weight_daily_quant_monte_carlo_engine",
+        "mode": "supabase_cloud_target_weight_daily_quant_risk_adjusted_engine",
         "safe_mode": True,
         "research_only": True,
         "review_only": True,
         "delegated_draft_mode_enabled": True,
-        "target_weight_source": "machine_generated_this_run_with_daily_quant_monte_carlo_inputs",
+        "target_weight_source": "supabase_stock_meta_target_weight_with_daily_quant_risk_adjustment",
+        "base_target_weight_source": "stock_meta[ticker].target_weight",
+        "frontend_mc_percent_target_used": False,
         "trade_signal_enabled": False,
         "execution_permission": False,
         "broker_submission_enabled": False,
@@ -597,7 +613,11 @@ def main() -> None:
             "cash_balance_twd": None if cash_balance_twd is None else round(cash_balance_twd, 2),
             "cash_balance_missing_but_internal_rebalance_allowed": cash_balance_twd is None and num(sizing_summary.get("sell_proceeds_twd")) > 0,
             "nav_twd": round(nav_twd, 2),
-            "source_candidate_id": source_candidate.get("ranking_id"),
+            "cloud_target_weight_available_count": cloud_available_count,
+            "cloud_target_weight_missing_count": cloud_missing_count,
+            "base_target_weight_source": "stock_meta[ticker].target_weight",
+            "frontend_mc_percent_target_used": False,
+            "source_candidate_id": None,
             "daily_quant_reference_available": bool(daily_quant_context.get("available")),
             "daily_quant_reference_source": daily_quant_context.get("portfolio_source"),
             "synthetic_risk_available": bool(daily_quant_context.get("synthetic_risk_available")),
@@ -617,9 +637,10 @@ def main() -> None:
         "price_quality_guard": price_quality_guard,
         "daily_quant_monte_carlo_context": daily_quant_context,
         "target_weight_generation_notes": [
-            "v10.5 uses Daily Quant / Monte Carlo as target-weight inputs before normalization, not only as a post-hoc card.",
-            "Monte Carlo fragile nodes receive an explicit raw-score penalty before 2%-40% target-weight normalization.",
-            "Global Daily Quant tail-pressure changes the blend among current weight, ranking prior and alpha research score.",
+            "v10.5 uses Supabase stock_meta[ticker].target_weight / 雲端% as the base target weight source.",
+            "Front-end manual MC% is not used because it is not materialized into Supabase or repo JSON for GitHub Actions.",
+            "Daily Quant / Monte Carlo reference remains a risk-adjustment layer: fragile nodes and tail pressure can penalize cloud target raw scores, but do not supply MC% target weights.",
+            "Ranking / alpha research outputs are retained for diagnostics only and are not blended into v10.5 target weights in this mode.",
         ],
         "blockers": blockers,
         "warnings": warnings,
@@ -630,8 +651,8 @@ def main() -> None:
             "trading_constraints_asset_count": len(asset_rows_all),
         },
         "safety_boundary": [
-            "v10.5 may generate Daily-Quant-aware machine target weights and a delegated review draft, but it is not a trade order.",
-            "Daily Quant / Monte Carlo influence target weights before normalization; they are not only a post-hoc reference card.",
+            "v10.5 may generate Supabase-cloud-target-based machine target weights and a delegated review draft, but it is not a trade order.",
+            "Supabase stock_meta[ticker].target_weight / 雲端% is the base target; Daily Quant / Monte Carlo are risk-adjustment references only, and front-end manual MC% is not used.",
             "It cannot enable trade_signal_enabled, execution_permission, official_rebalance_enabled, auto_trade_enabled, or broker_submission_enabled.",
             "All current assets enter the eligible pool; missing prices cannot create delegated BUY/SELL draft lines, but holdings-table current prices are allowed for delegated sizing.",
             "Internal sells can fund buys even when explicit cash balance is missing; cash balance is not fabricated.",
@@ -640,7 +661,7 @@ def main() -> None:
 
     LATEST_JSON.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
     SUMMARY_MD.write_text("\n".join([
-        "# v10.5 Integrated Delegated Target Weight + Daily Quant / Monte Carlo Engine",
+        "# v10.5 Supabase Cloud Target Weight + Daily Quant Risk-Adjusted Delegated Engine",
         "",
         f"- Generated: `{output['generated_at']}`",
         f"- Delegated draft status: **{status}**",
@@ -649,6 +670,10 @@ def main() -> None:
         f"- Liquidity buffer: `{round6(liquidity_buffer_pct * 100)}`%",
         f"- Liquidity buffer source: `{liquidity_buffer_source}`",
         f"- Daily Quant reference source: `{daily_quant_context.get('portfolio_source')}`",
+        f"- Base target source: `stock_meta[ticker].target_weight`",
+        f"- Front-end MC% target used: `False`",
+        f"- Cloud target available count: `{cloud_available_count}`",
+        f"- Cloud target missing count: `{cloud_missing_count}`",
         f"- Daily Quant / MC risk mode: `{daily_quant_context.get('risk_mode')}`",
         f"- Synthetic risk available: `{daily_quant_context.get('synthetic_risk_available')}`",
         f"- Monte Carlo reference available: `{daily_quant_context.get('monte_carlo_reference_available')}`",
@@ -664,8 +689,8 @@ def main() -> None:
         "",
         "## Boundary",
         "- v10.5 is an integrated delegated machine draft, not a broker order and not a human-confirmed ticket.",
-        "- Target weights are generated this run from current assets, ranking priors, alpha research scores, Daily Quant synthetic risk context, Monte Carlo fragile-node penalties, liquidity buffer and unit constraints.",
-        "- Daily Quant / Monte Carlo now influence target weights before normalization; they are not only a post-hoc reference card.",
+        "- Target weights use Supabase stock_meta[ticker].target_weight / 雲端% as base target weights.",
+        "- Daily Quant / Monte Carlo are risk-adjustment references only; this version does not consume the browser-only MC% target column.",
         "- Holdings-table current prices may be used for delegated sizing; missing prices cannot generate BUY/SELL draft lines. Internal sells may fund buys even when explicit cash balance is missing.",
     ]) + "\n", encoding="utf-8")
 
