@@ -1615,6 +1615,27 @@
                         <template v-else>
                             <!-- v1.9 Core analytics wrapper -->
                             <div v-show="analyticsViewMode === 'risk'" class="space-y-5">
+                                <div class="rounded-2xl border border-slate-500/20 bg-slate-500/[0.045] p-4">
+                                    <div class="text-sm font-bold text-white flex items-center gap-2">
+                                        <i class="fas fa-layer-group text-slate-300"></i>
+                                        風控頁閱讀順序
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 text-[11px] text-gray-300 leading-relaxed">
+                                        <div class="rounded-xl border border-emerald-500/15 bg-emerald-500/[0.05] p-3"><span class="font-bold text-emerald-200">① 核心風險</span><br>先看波動、VaR / ES、MDD、樣本與 QuantStats。</div>
+                                        <div class="rounded-xl border border-violet-500/15 bg-violet-500/[0.05] p-3"><span class="font-bold text-violet-200">② 歸因診斷</span><br>再看 benchmark attribution、IR、payoff、drawdown recovery、factor exposure。</div>
+                                        <div class="rounded-xl border border-cyan-500/15 bg-cyan-500/[0.05] p-3"><span class="font-bold text-cyan-200">③ 技術細節</span><br>EWMA、Component ES、HRP-lite 與舊版統計預設收合，需要追查再展開。</div>
+                                    </div>
+                                </div>
+
+                                <details open class="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.025] overflow-hidden group">
+                                    <summary class="cursor-pointer select-none px-4 py-3 border-b border-white/10 bg-emerald-500/[0.06] flex items-center justify-between gap-3 list-none">
+                                        <div>
+                                            <div class="text-sm font-bold text-white flex items-center gap-2"><i class="fas fa-gauge-high text-emerald-400"></i> ① 核心風險總覽</div>
+                                            <div class="text-[11px] text-gray-400 mt-1">保留最常看的投組風險數字：波動、VaR / ES、MDD、樣本品質與 QuantStats。</div>
+                                        </div>
+                                        <span class="text-[11px] text-emerald-200">展開／收合</span>
+                                    </summary>
+                                    <div class="p-4 space-y-5">
                             <!-- 核心風險指標 -->
                             <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
                                 <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
@@ -1860,6 +1881,18 @@
                             </div>
 
 
+                                    </div>
+                                </details>
+
+                                <details open class="rounded-2xl border border-violet-500/20 bg-violet-500/[0.025] overflow-hidden group">
+                                    <summary class="cursor-pointer select-none px-4 py-3 border-b border-white/10 bg-violet-500/[0.06] flex items-center justify-between gap-3 list-none">
+                                        <div>
+                                            <div class="text-sm font-bold text-white flex items-center gap-2"><i class="fas fa-chart-simple text-violet-400"></i> ② 基準相對表現與因子歸因</div>
+                                            <div class="text-[11px] text-gray-400 mt-1">Release Guard、VOO 相對表現、Tracking Error、Information Ratio、盈虧比、回撤修復與多因子曝險。</div>
+                                        </div>
+                                        <span class="text-[11px] text-violet-200">展開／收合</span>
+                                    </summary>
+                                    <div class="p-4 space-y-5">
                             <!-- v1.0 Risk Dashboard Release / Source Guard -->
                             <div class="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.04] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-emerald-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
@@ -2011,6 +2044,18 @@
                             </div>
 
 
+                                    </div>
+                                </details>
+
+                                <details class="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.025] overflow-hidden group">
+                                    <summary class="cursor-pointer select-none px-4 py-3 border-b border-white/10 bg-cyan-500/[0.06] flex items-center justify-between gap-3 list-none">
+                                        <div>
+                                            <div class="text-sm font-bold text-white flex items-center gap-2"><i class="fas fa-microscope text-cyan-400"></i> ③ 技術細節：EWMA、Component ES、HRP-lite</div>
+                                            <div class="text-[11px] text-gray-400 mt-1">預設收合，避免風控頁過長；需要追查風險貢獻、相關性與風險預算時再展開。</div>
+                                        </div>
+                                        <span class="text-[11px] text-cyan-200">點擊展開</span>
+                                    </summary>
+                                    <div class="p-4 space-y-5">
                             <!-- EWMA 共變異數 / 相關性市場狀態 -->
                             <div class="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-cyan-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
@@ -2262,11 +2307,35 @@
                                 </div>
                             </div>
 
+                                    </div>
+                                </details>
+
                             </div>
 
 
 
 
+                            <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-slate-500/20 bg-slate-500/[0.045] p-4">
+                                <div class="text-sm font-bold text-white flex items-center gap-2">
+                                    <i class="fas fa-layer-group text-slate-300"></i>
+                                    最佳化頁閱讀順序
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 text-[11px] text-gray-300 leading-relaxed">
+                                    <div class="rounded-xl border border-cyan-500/15 bg-cyan-500/[0.05] p-3"><span class="font-bold text-cyan-200">① 目標權重與草案</span><br>先看 v10.5.3 thesis、v10.5.1 雙來源目標權重與 v10.0 人工確認票據。</div>
+                                    <div class="rounded-xl border border-emerald-500/15 bg-emerald-500/[0.05] p-3"><span class="font-bold text-emerald-200">② 決策摘要</span><br>再看治理、候選草案、市場狀態與審計事件。</div>
+                                    <div class="rounded-xl border border-slate-500/15 bg-slate-500/[0.05] p-3"><span class="font-bold text-slate-200">③ 診斷鏈路</span><br>依賴、沙盒、v2～v9 歷史鏈路全部收合，需要追查來源才展開。</div>
+                                </div>
+                            </div>
+
+                            <details v-show="analyticsViewMode === 'optimizer'" open class="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.025] overflow-hidden group">
+                                <summary class="cursor-pointer select-none px-4 py-3 border-b border-white/10 bg-cyan-500/[0.06] flex items-center justify-between gap-3 list-none">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2"><i class="fas fa-bullseye text-cyan-400"></i> ① 目標權重、來源依據與人工票據</div>
+                                        <div class="text-[11px] text-gray-400 mt-1">主判讀區：只保留需要人工閱讀的 target thesis、雙來源權重與 human-confirmed ticket。</div>
+                                    </div>
+                                    <span class="text-[11px] text-cyan-200">展開／收合</span>
+                                </summary>
+                                <div class="p-4 space-y-4">
                             <!-- v10.0 Human-Confirmed Trade Ticket pinned at optimizer top -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-yellow-500/25 bg-yellow-500/[0.045] shadow-lg overflow-hidden">
                                 <div class="px-4 py-3 border-b border-yellow-500/20 bg-yellow-500/[0.08] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
@@ -2631,6 +2700,9 @@
                                     </div>
                                 </div>
                             </div>
+
+                                </div>
+                            </details>
 
                             <!-- v4.8.2 Optimizer UI Consolidation Summary -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.035] overflow-hidden">
@@ -4080,6 +4152,15 @@
 
 
 
+                            <details v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-amber-500/20 bg-amber-500/[0.025] overflow-hidden group">
+                                <summary class="cursor-pointer select-none px-4 py-3 border-b border-white/10 bg-amber-500/[0.06] flex flex-col md:flex-row md:items-center md:justify-between gap-2 list-none">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2"><i class="fas fa-clock-rotate-left text-amber-400"></i> ④ 決策審批與歷史鏈路 v2～v9</div>
+                                        <div class="text-[11px] text-gray-400 mt-1">機器預審、審計、regime、BL、walk-forward、alpha gate、formal gate、manual ticket 與 explainability 預設收合。</div>
+                                    </div>
+                                    <div class="text-[11px] text-amber-200">點擊展開／追查歷史鏈路</div>
+                                </summary>
+                                <div class="p-4 space-y-4">
                             <!-- v2.4 + v2.5 Human Approval & Audit Trail -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-amber-500/20 bg-amber-500/[0.035] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-amber-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
@@ -5143,6 +5224,8 @@
                                 </div>
                             </div>
 
+                                </div>
+                            </details>
 
                             <!-- Risk contribution + model assumptions -->
                             <div v-show="analyticsViewMode === 'risk'" class="grid grid-cols-1 xl:grid-cols-3 gap-4">
@@ -5228,7 +5311,15 @@
                 </div>
 
                 <!-- v1.9 Legacy analytics wrapper -->
-                <div v-show="analyticsViewMode === 'risk'" class="space-y-6">
+                <details v-show="analyticsViewMode === 'risk'" class="rounded-2xl border border-slate-600/30 bg-slate-900/35 overflow-hidden group">
+                    <summary class="cursor-pointer select-none px-4 py-3 border-b border-white/10 bg-slate-800/70 flex flex-col md:flex-row md:items-center md:justify-between gap-2 list-none">
+                        <div>
+                            <div class="text-sm font-bold text-white flex items-center gap-2"><i class="fas fa-box-archive text-slate-300"></i> ④ 舊版量化統計與情境沙盒</div>
+                            <div class="text-[11px] text-gray-400 mt-1">Sharpe / PSR、SML / CML、Jump Diffusion、Kelly、條件相關與危機情境預設收合；需要對照舊口徑再展開。</div>
+                        </div>
+                        <div class="text-[11px] text-slate-300">點擊展開／收合</div>
+                    </summary>
+                    <div class="p-4 space-y-6">
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-6 gap-3 mt-4">
                     <div class="quant-card">
                         <div class="quant-label text-blue-400" title="時間加權報酬 (評估選股能力)">年化 TWR</div>
@@ -6232,7 +6323,8 @@
                     </div>
                 </div>
 
-                </div>
+                    </div>
+                </details>
 
                 </section>
 
@@ -6803,7 +6895,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=v1-0-risk-dashboard-1"></script>
+<script src="assets/js/app.bundle.js?v=risk-optimizer-card-org-v1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
