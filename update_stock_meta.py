@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import io
 import json
 import math
 import os
 import sys
 import time
+import zipfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -1163,31 +1165,183 @@ def benchmark_attribution_report(
     }
 
 
-def factor_attribution_snapshot(row: Dict[str, Any]) -> Dict[str, Any]:
-    macro = row.get("macro_meta") if isinstance(row.get("macro_meta"), dict) else {}
-    ff = macro.get("fama_french") if isinstance(macro.get("fama_french"), dict) else {}
-    if not ff:
+def parse_jsonish(value: Any) -> Any:
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except Exception:
+            return value
+    return value
+
+
+def extract_fama_french_payload(row: Dict[str, Any]) -> Tuple[Dict[str, Any], str]:
+    """Find an existing factor exposure payload across known storage locations.
+
+    The dashboard historically writes the 8-factor regression to `macro_meta.fama_french`,
+    while some backup/export flows may place it under `stock_meta.__macro_meta__` or a
+    top-level `fama_french` key. This guard keeps the Risk v1.0 card bound to the
+    existing factor model instead of incorrectly reporting `factor_exposure_not_found`.
+    """
+    candidates: List[Tuple[str, Any]] = []
+
+    macro = parse_jsonish(row.get("macro_meta"))
+    candidates.append(("macro_meta.fama_french", macro.get("fama_french") if isinstance(macro, dict) else None))
+    candidates.append(("macro_meta.factor_attribution", macro.get("factor_attribution") if isinstance(macro, dict) else None))
+
+    direct_ff = parse_jsonish(row.get("fama_french"))
+    candidates.append(("fama_french", direct_ff))
+
+    stock_meta = parse_jsonish(row.get("stock_meta"))
+    if isinstance(stock_meta, dict):
+        stock_macro = parse_jsonish(stock_meta.get("__macro_meta__"))
+        candidates.append(("stock_meta.__macro_meta__.fama_french", stock_macro.get("fama_french") if isinstance(stock_macro, dict) else None))
+        synthetic = parse_jsonish(stock_meta.get(SYNTHETIC_RISK_KEY))
+        if isinstance(synthetic, dict):
+            attr = synthetic.get("attribution_diagnostics") or {}
+            candidates.append(("stock_meta.__synthetic_portfolio_risk__.attribution_diagnostics.factor_attribution", attr.get("factor_attribution") if isinstance(attr, dict) else None))
+
+    for source, payload in candidates:
+        payload = parse_jsonish(payload)
+        if isinstance(payload, dict) and payload:
+            return payload, source
+    return {}, "macro_meta.fama_french"
+
+
+def download_french_daily_factor_data() -> pd.DataFrame:
+    domain = "https://mba.tuck.dartmouth.edu"
+    ff5_url = domain + "/pages/faculty/ken.french/ftp/F-F_Research_Data_5_Factors_2x3_daily_CSV.zip"
+    mom_url = domain + "/pages/faculty/ken.french/ftp/F-F_Momentum_Factor_daily_CSV.zip"
+
+    def parse_french_csv(content: bytes) -> pd.DataFrame:
+        with zipfile.ZipFile(io.BytesIO(content)) as z:
+            name = z.namelist()[0]
+            raw = z.read(name).decode("utf-8", errors="ignore").splitlines()
+            start_idx = 0
+            for i, line in enumerate(raw):
+                stripped = line.strip()
+                if (stripped.startswith("19") or stripped.startswith("20")) and "," in stripped:
+                    start_idx = max(i - 1, 0)
+                    break
+            df = pd.read_csv(io.StringIO("\n".join(raw[start_idx:])), index_col=0)
+            df.index = pd.to_datetime(df.index.astype(str).str.strip(), format="%Y%m%d", errors="coerce")
+            df.columns = df.columns.astype(str).str.strip()
+            df = df[pd.notna(df.index)]
+            return df.apply(pd.to_numeric, errors="coerce").dropna(how="all") / 100.0
+
+    def fetch_zip(url: str) -> bytes:
+        resp = requests.get(url, timeout=20, headers={"User-Agent": "Mozilla/5.0"})
+        resp.raise_for_status()
+        if not resp.content.startswith(b"PK"):
+            raise ValueError("Ken French response is not a zip file")
+        return resp.content
+
+    ff5 = parse_french_csv(fetch_zip(ff5_url))
+    mom = parse_french_csv(fetch_zip(mom_url))
+    return pd.concat([ff5, mom], axis=1).dropna(how="all")
+
+
+def compute_factor_attribution_from_returns(portfolio_returns: pd.Series) -> Dict[str, Any]:
+    """Compute the same risk-tab 8-factor snapshot when macro_meta is unavailable.
+
+    This is a fallback binding fix, not a new trading signal. It uses current-weight
+    synthetic portfolio returns from the risk engine and public factor/market series.
+    """
+    try:
+        import statsmodels.api as sm
+
+        port = pd.to_numeric(portfolio_returns, errors="coerce").dropna()
+        port.index = pd.to_datetime(port.index).tz_localize(None).normalize()
+        if len(port) < 80:
+            return {
+                "version": "v1.0.1",
+                "status": "UNAVAILABLE",
+                "source": "computed_factor_fallback",
+                "reason": "insufficient_portfolio_return_sample",
+                "sample_count": int(len(port)),
+            }
+
+        ff_data = download_french_daily_factor_data()
+
+        tw = clean_price_series(get_benchmark("^TWII")).pct_change().dropna().rename("TW_Mkt")
+        crypto = clean_price_series(get_benchmark("BTC-USD")).pct_change().dropna().rename("Crypto")
+        custom = pd.concat([tw, crypto], axis=1).dropna(how="all")
+
+        weekly_port = port.resample("W-FRI").apply(lambda x: (1.0 + x).prod() - 1.0).rename("Port_Ret")
+        weekly_ff = ff_data.resample("W-FRI").apply(lambda x: (1.0 + x).prod() - 1.0)
+        weekly_custom = custom.resample("W-FRI").apply(lambda x: (1.0 + x).prod() - 1.0)
+
+        aligned = pd.concat([weekly_port, weekly_ff, weekly_custom], axis=1).replace([np.inf, -np.inf], np.nan).dropna()
+        if len(aligned) < 12:
+            return {
+                "version": "v1.0.1",
+                "status": "UNAVAILABLE",
+                "source": "computed_factor_fallback",
+                "reason": "insufficient_aligned_factor_sample",
+                "sample_count": int(len(aligned)),
+            }
+
+        aligned["TW_Mkt_RF"] = aligned.get("TW_Mkt", 0.0) - aligned["RF"]
+        aligned["Crypto_RF"] = aligned.get("Crypto", 0.0) - aligned["RF"]
+        factor_cols = ["Mkt-RF", "SMB", "HML", "RMW", "CMA", "Mom", "TW_Mkt_RF", "Crypto_RF"]
+        y = (aligned["Port_Ret"] - aligned["RF"]).astype(float)
+        x = sm.add_constant(aligned[factor_cols].astype(float))
+        fit = sm.OLS(y, x).fit()
         return {
-            "version": "v1.0",
-            "status": "UNAVAILABLE",
-            "source": "macro_meta.fama_french",
-            "reason": "factor_exposure_not_found",
+            "version": "v1.0.1",
+            "status": "OK",
+            "source": "computed_current_weight_returns_ff5_momentum_tw_crypto",
+            "sample_count": int(len(aligned)),
+            "frequency": "weekly",
+            "alpha": round(float(fit.params.get("const", 0.0) * 52.0 * 100.0), 2),
+            "mkt_beta": round(float(fit.params.get("Mkt-RF", 0.0)), 2),
+            "smb_beta": round(float(fit.params.get("SMB", 0.0)), 2),
+            "hml_beta": round(float(fit.params.get("HML", 0.0)), 2),
+            "rmw_beta": round(float(fit.params.get("RMW", 0.0)), 2),
+            "cma_beta": round(float(fit.params.get("CMA", 0.0)), 2),
+            "momentum_beta": round(float(fit.params.get("Mom", 0.0)), 2),
+            "tw_mkt_beta": round(float(fit.params.get("TW_Mkt_RF", 0.0)), 2),
+            "crypto_beta": round(float(fit.params.get("Crypto_RF", 0.0)), 2),
+            "r_squared": round(float(fit.rsquared), 3),
+            "note": "macro_meta.fama_french 不可用時的後備計算；僅供風控頁歸因展示，不直接產生目標權重。",
         }
+    except Exception as exc:
+        return {
+            "version": "v1.0.1",
+            "status": "UNAVAILABLE",
+            "source": "computed_factor_fallback",
+            "reason": "factor_fallback_failed",
+            "error": str(exc)[:240],
+        }
+
+
+def factor_attribution_snapshot(row: Dict[str, Any], portfolio_returns: Optional[pd.Series] = None) -> Dict[str, Any]:
+    ff, source = extract_fama_french_payload(row)
+    if ff:
+        return {
+            "version": "v1.0.1",
+            "status": "OK",
+            "source": source,
+            "alpha": finite_float(ff.get("alpha")),
+            "mkt_beta": finite_float(ff.get("mkt_beta")),
+            "smb_beta": finite_float(ff.get("smb_beta", ff.get("smb"))),
+            "hml_beta": finite_float(ff.get("hml_beta", ff.get("hml"))),
+            "rmw_beta": finite_float(ff.get("rmw_beta", ff.get("rmw"))),
+            "cma_beta": finite_float(ff.get("cma_beta", ff.get("cma"))),
+            "momentum_beta": finite_float(ff.get("momentum_beta", ff.get("wml", ff.get("mom")))),
+            "tw_mkt_beta": finite_float(ff.get("tw_mkt_beta", ff.get("tw_mkt"))),
+            "crypto_beta": finite_float(ff.get("crypto_beta", ff.get("crypto"))),
+            "r_squared": finite_float(ff.get("r_squared")),
+            "note": "沿用既有多因子迴歸結果；此欄位僅做風控歸因展示，不直接產生目標權重。",
+        }
+
+    if portfolio_returns is not None:
+        return compute_factor_attribution_from_returns(portfolio_returns)
+
     return {
-        "version": "v1.0",
-        "status": "OK",
+        "version": "v1.0.1",
+        "status": "UNAVAILABLE",
         "source": "macro_meta.fama_french",
-        "alpha": finite_float(ff.get("alpha")),
-        "mkt_beta": finite_float(ff.get("mkt_beta")),
-        "smb_beta": finite_float(ff.get("smb")),
-        "hml_beta": finite_float(ff.get("hml")),
-        "rmw_beta": finite_float(ff.get("rmw")),
-        "cma_beta": finite_float(ff.get("cma")),
-        "momentum_beta": finite_float(ff.get("wml")),
-        "tw_mkt_beta": finite_float(ff.get("tw_mkt")),
-        "crypto_beta": finite_float(ff.get("crypto")),
-        "r_squared": finite_float(ff.get("r_squared")),
-        "note": "沿用既有多因子迴歸結果；此欄位僅做風控歸因展示，不直接產生目標權重。",
+        "reason": "factor_exposure_not_found",
     }
 
 
@@ -2214,7 +2368,7 @@ def compute_synthetic_portfolio_risk(
         or "VOO"
     ).strip().upper()
     benchmark_attr = benchmark_attribution_report(port, benchmark_symbol, fx_series, static_fx)
-    factor_attr = factor_attribution_snapshot(row)
+    factor_attr = factor_attribution_snapshot(row, port)
     release_warnings = []
     if benchmark_attr.get("status") != "OK":
         release_warnings.append("benchmark_attribution_not_ok")
