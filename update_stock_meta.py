@@ -1056,7 +1056,7 @@ def benchmark_attribution_report(
 
     if r.empty or bench.empty:
         return {
-            "version": "v0.7",
+            "version": "v1.0",
             "status": "UNAVAILABLE",
             "benchmark_ticker": benchmark_symbol,
             "reason": "portfolio_or_benchmark_return_missing",
@@ -1078,7 +1078,7 @@ def benchmark_attribution_report(
     aligned = pd.concat([r.rename("portfolio"), bret.rename("benchmark")], axis=1).dropna()
     if len(aligned) < 60:
         return {
-            "version": "v0.7",
+            "version": "v1.0",
             "status": "INSUFFICIENT_SAMPLE",
             "benchmark_ticker": benchmark_symbol,
             "sample_count": int(len(aligned)),
@@ -1107,11 +1107,21 @@ def benchmark_attribution_report(
     dd_info = drawdown_details_from_returns(port)
 
     return {
-        "version": "v0.7",
+        "version": "v1.0",
         "status": "OK",
         "benchmark_ticker": benchmark_symbol,
         "currency": "TWD",
         "fx_mode": fx_mode,
+        "source_guard": {
+            "benchmark_ticker": benchmark_symbol,
+            "benchmark_price_source": "get_benchmark",
+            "benchmark_currency": "TWD",
+            "portfolio_return_source": "current_weight_synthetic_daily_returns",
+            "return_alignment": "common_daily_dates",
+            "fx_mode": fx_mode,
+            "minimum_sample_required": 60,
+            "missing_data_policy": "drop_unaligned_dates_no_imputation",
+        },
         "sample_count": int(len(aligned)),
         "start_date": str(aligned.index.min().date()),
         "end_date": str(aligned.index.max().date()),
@@ -1158,13 +1168,13 @@ def factor_attribution_snapshot(row: Dict[str, Any]) -> Dict[str, Any]:
     ff = macro.get("fama_french") if isinstance(macro.get("fama_french"), dict) else {}
     if not ff:
         return {
-            "version": "v0.7",
+            "version": "v1.0",
             "status": "UNAVAILABLE",
             "source": "macro_meta.fama_french",
             "reason": "factor_exposure_not_found",
         }
     return {
-        "version": "v0.7",
+        "version": "v1.0",
         "status": "OK",
         "source": "macro_meta.fama_french",
         "alpha": finite_float(ff.get("alpha")),
@@ -2203,11 +2213,40 @@ def compute_synthetic_portfolio_risk(
         or settings.get("risk_benchmark_ticker")
         or "VOO"
     ).strip().upper()
+    benchmark_attr = benchmark_attribution_report(port, benchmark_symbol, fx_series, static_fx)
+    factor_attr = factor_attribution_snapshot(row)
+    release_warnings = []
+    if benchmark_attr.get("status") != "OK":
+        release_warnings.append("benchmark_attribution_not_ok")
+    if factor_attr.get("status") != "OK":
+        release_warnings.append("factor_attribution_not_ok")
+    if qs.get("status") != "OK":
+        release_warnings.append("quantstats_not_ok")
     attribution_diagnostics = {
-        "version": "v0.7",
+        "version": "v1.0",
         "status": "OK",
-        "benchmark_attribution": benchmark_attribution_report(port, benchmark_symbol, fx_series, static_fx),
-        "factor_attribution": factor_attribution_snapshot(row),
+        "risk_dashboard_release": {
+            "version": "v1.0",
+            "status": "STABLE" if not release_warnings else "STABLE_WITH_WARNINGS",
+            "warnings": release_warnings,
+            "contracts": [
+                "benchmark_relative_performance",
+                "win_rate_payoff",
+                "drawdown_recovery",
+                "factor_attribution_snapshot",
+                "source_guard",
+            ],
+            "scope": "risk_tab_only",
+            "execution_permission": False,
+        },
+        "benchmark_source_guard": benchmark_attr.get("source_guard", {
+            "benchmark_ticker": benchmark_symbol,
+            "portfolio_return_source": "current_weight_synthetic_daily_returns",
+            "return_alignment": "common_daily_dates",
+            "missing_data_policy": "unavailable_not_imputed",
+        }),
+        "benchmark_attribution": benchmark_attr,
+        "factor_attribution": factor_attr,
         "payoff_source": "quantstats_style_report",
         "drawdown_source": "quantstats_style_report",
         "scope": "risk_tab_diagnostics_only",
@@ -2271,7 +2310,7 @@ def compute_synthetic_portfolio_risk(
 
     return {
         "version": "v0.6",
-        "engine_versions": {"synthetic_risk": "v0.2.1", "quantstats": "v0.3", "ewma_regime": "v0.4", "component_tail_risk": "v0.5", "risk_budgeting": "v0.6", "attribution_diagnostics": "v0.7"},
+        "engine_versions": {"synthetic_risk": "v0.2.1", "quantstats": "v0.3", "ewma_regime": "v0.4", "component_tail_risk": "v0.5", "risk_budgeting": "v0.6", "attribution_diagnostics": "v1.0"},
         "status": "OK" if confidence != "INVALID" else "INVALID",
         "confidence": confidence,
         "confidence_reason": confidence_reason,
@@ -2279,7 +2318,7 @@ def compute_synthetic_portfolio_risk(
         "updated_at": str(TODAY_TPE),
         "method": "current_weight_synthetic_daily_returns",
         "primary_mode": "strict",
-        "diagnostic_modes": ["flexible", "ewma_regime", "component_tail_risk", "risk_budgeting", "benchmark_attribution", "factor_attribution"],
+        "diagnostic_modes": ["flexible", "ewma_regime", "component_tail_risk", "risk_budgeting", "benchmark_attribution", "factor_attribution", "source_guard", "risk_dashboard_release"],
         "currency": "TWD",
         "fx_source": fx_source,
         "metrics": metrics,

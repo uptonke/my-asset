@@ -1860,13 +1860,71 @@
                             </div>
 
 
-                            <!-- v0.7 Benchmark Attribution / Factor Evidence -->
+                            <!-- v1.0 Risk Dashboard Release / Source Guard -->
+                            <div class="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.04] overflow-hidden">
+                                <div class="px-4 py-3 border-b border-white/10 bg-emerald-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-shield-halved text-emerald-400"></i>
+                                            v1.0 風控頁穩定版｜Release Guard
+                                        </div>
+                                        <div class="text-[10px] text-gray-500 mt-1">
+                                            收斂 benchmark attribution、勝率盈虧比、回撤修復、多因子曝險與資料來源檢查；僅作風控診斷，不影響交易草案。
+                                        </div>
+                                    </div>
+                                    <div class="text-[11px] text-gray-400">
+                                        {{ syntheticRiskMeta?.attribution_diagnostics?.risk_dashboard_release?.status ?? '等待更新' }}
+                                    </div>
+                                </div>
+                                <div class="p-4 grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
+                                    <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
+                                        <div class="quant-label text-emerald-300">Release</div>
+                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.risk_dashboard_release?.version ?? 'v1.0' }}</div>
+                                    </div>
+                                    <div class="quant-card border-sky-500/20 bg-sky-500/10">
+                                        <div class="quant-label text-sky-300">Benchmark</div>
+                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.benchmark_ticker ?? 'VOO' }}</div>
+                                    </div>
+                                    <div class="quant-card border-sky-500/20 bg-sky-500/10">
+                                        <div class="quant-label text-sky-300">基準狀態</div>
+                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.status ?? '-' }}</div>
+                                    </div>
+                                    <div class="quant-card border-purple-500/20 bg-purple-500/10">
+                                        <div class="quant-label text-purple-300">多因子狀態</div>
+                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.status ?? '-' }}</div>
+                                    </div>
+                                    <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                        <div class="quant-label text-cyan-300">樣本日數</div>
+                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.sample_count ?? syntheticRiskMeta?.quantstats?.sample_count ?? '-' }}</div>
+                                    </div>
+                                    <div class="quant-card border-indigo-500/20 bg-indigo-500/10">
+                                        <div class="quant-label text-indigo-300">日期對齊</div>
+                                        <div class="quant-value text-white text-sm">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_source_guard?.return_alignment ?? '-' }}</div>
+                                    </div>
+                                    <div class="quant-card border-yellow-500/20 bg-yellow-500/10">
+                                        <div class="quant-label text-yellow-300">FX 口徑</div>
+                                        <div class="quant-value text-white text-sm">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_source_guard?.fx_mode ?? syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.fx_mode ?? '-' }}</div>
+                                    </div>
+                                    <div class="quant-card border-red-500/20 bg-red-500/10">
+                                        <div class="quant-label text-red-300">交易權限</div>
+                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.execution_permission ? 'True' : 'False' }}</div>
+                                    </div>
+                                </div>
+                                <div v-if="(syntheticRiskMeta?.attribution_diagnostics?.risk_dashboard_release?.warnings || []).length" class="px-4 pb-4">
+                                    <div class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-100">
+                                        <span class="font-bold">風控頁警示：</span>
+                                        {{ (syntheticRiskMeta?.attribution_diagnostics?.risk_dashboard_release?.warnings || []).join('、') }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- v1.0 Benchmark Attribution / Factor Evidence -->
                             <div class="rounded-2xl border border-sky-500/20 bg-sky-500/[0.04] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-sky-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-scale-balanced text-sky-400"></i>
-                                            v0.7 基準相對表現與因子歸因
+                                            v1.0 基準相對表現與因子歸因
                                         </div>
                                         <div class="text-[10px] text-gray-500 mt-1">
                                             放在風控層：用目前持倉合成日報酬相對基準衡量主動風險，並接入既有多因子曝險；不影響 v10.x 目標權重或交易草案。
@@ -1878,7 +1936,7 @@
                                 </div>
 
                                 <div v-if="!syntheticRiskMeta?.attribution_diagnostics" class="p-4 text-sm text-amber-100 bg-amber-500/10 border-t border-amber-500/10">
-                                    尚未產生 v0.7 attribution diagnostics。請跑 Update Stock Quant Meta 後重新載入。
+                                    尚未產生 v1.0 attribution diagnostics。請跑 Update Stock Quant Meta 後重新載入。
                                 </div>
 
                                 <div v-else class="p-4 space-y-4">
@@ -6745,7 +6803,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=v0-7-risk-attribution-1"></script>
+<script src="assets/js/app.bundle.js?v=v1-0-risk-dashboard-1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
