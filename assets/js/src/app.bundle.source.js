@@ -4864,7 +4864,7 @@ chartCML.data.datasets = [
             const response = await fetch('data/alpha/native_target_thesis_latest.json?_=' + Date.now(), { cache: 'no-store' });
             if (!response.ok) {
                 nativeTargetThesis.value = null;
-                nativeTargetThesisError.value = `尚未讀到 v10.5.2 原生目標權重依據 (${response.status})`;
+                nativeTargetThesisError.value = `尚未讀到 v10.5.3 目標權重來源依據 (${response.status})`;
                 return;
             }
             const data = await response.json();

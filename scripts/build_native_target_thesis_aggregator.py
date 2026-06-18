@@ -130,6 +130,133 @@ def direction_label(delta: Optional[float]) -> str:
     return "NEUTRAL"
 
 
+
+def fmt_pct(v: Optional[float]) -> str:
+    if v is None:
+        return "缺值"
+    return f"{v:.4f}%".rstrip("0").rstrip(".") + "%" if False else f"{v:.4f}%"
+
+
+def signed_pp(v: Optional[float]) -> str:
+    if v is None:
+        return "缺值"
+    sign = "+" if v > 0 else ""
+    return f"{sign}{v:.4f}pp"
+
+
+def classify_target_pressure(target: Optional[float], current: Optional[float]) -> str:
+    if target is None or current is None:
+        return "missing"
+    diff = target - current
+    if diff > 0.75:
+        return "increase"
+    if diff < -0.75:
+        return "decrease"
+    return "near_current"
+
+
+def native_driver_summary(row: Dict[str, Any], alpha: Dict[str, Any], ranking: Dict[str, Any], context: Dict[str, Any]) -> List[str]:
+    drivers: List[str] = []
+    alpha_score = maybe_num(alpha.get("alpha_research_score"))
+    alpha_disp = alpha.get("research_disposition") or alpha.get("alpha_research_band")
+    if alpha_score is not None:
+        if alpha_score >= 0.75:
+            drivers.append(f"v5.1 alpha 分數偏正向（{alpha_score:.3f}），支持 v10.5 原生權重提高")
+        elif alpha_score <= -0.75:
+            drivers.append(f"v5.1 alpha 分數偏負向（{alpha_score:.3f}），壓低 v10.5 原生權重")
+        else:
+            drivers.append(f"v5.1 alpha 分數中性附近（{alpha_score:.3f}，{alpha_disp or 'N/A'}）")
+    elif alpha_disp:
+        drivers.append(f"v5.1 研究分層為 {alpha_disp}")
+
+    matched = as_list(ranking.get("matched_adjustments"))
+    if matched:
+        ups = [m for m in matched if str(m.get("direction")).upper() == "UP"]
+        downs = [m for m in matched if str(m.get("direction")).upper() == "DOWN"]
+        top = as_dict(matched[0])
+        if len(ups) > len(downs):
+            drivers.append(f"v5.2 候選排序多數指向加碼；代表案例 rank {top.get('rank')}、delta {top.get('delta_pct')}pp")
+        elif len(downs) > len(ups):
+            drivers.append(f"v5.2 候選排序多數指向減碼；代表案例 rank {top.get('rank')}、delta {top.get('delta_pct')}pp")
+        else:
+            drivers.append(f"v5.2 候選排序有相關證據但方向不單一；代表案例 rank {top.get('rank')}")
+    elif ranking.get("available"):
+        drivers.append("v5.2 ranking / alpha alignment 有相關證據，但不是主要調整來源")
+    else:
+        drivers.append("v5.2 ranking 未提供明確單檔調整證據")
+
+    risk_mode = context.get("risk_mode")
+    if risk_mode:
+        drivers.append(f"Daily Quant / Monte Carlo 風險模式：{risk_mode}")
+    if row.get("mc_fragile_node"):
+        drivers.append("該標的被 Monte Carlo / Daily Quant 標示為 fragile node，原生權重已受風險懲罰")
+    mult = maybe_num(row.get("daily_quant_mc_multiplier"))
+    if mult is not None and abs(mult - 1.0) > 1e-6:
+        drivers.append(f"Daily Quant / MC multiplier={mult:.3f}，代表風險調整已作用於 v10.5 原生權重")
+    return drivers[:5]
+
+
+def build_target_origin_thesis(row: Dict[str, Any], alpha: Dict[str, Any], ranking: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
+    current = round4(row.get("current_weight_pct"))
+    cloud = round4(row.get("cloud_target_weight_pct"))
+    native = round4(row.get("v105_native_target_weight_pct"))
+    final = round4(row.get("final_suggested_weight_pct", row.get("machine_target_weight_pct")))
+    delta = round4(row.get("delta_weight_pct"))
+    cloud_pressure = classify_target_pressure(cloud, current)
+    native_pressure = classify_target_pressure(native, current)
+    final_pressure = classify_target_pressure(final, current)
+    final_blend = None if cloud is None or native is None else round((cloud + native) / 2.0, 4)
+    conflict_factor = round4(row.get("conflict_adjustment_factor"))
+    cloud_delta = None if cloud is None or current is None else round(cloud - current, 4)
+    native_delta = None if native is None or current is None else round(native - current, 4)
+    final_delta = None if final is None or current is None else round(final - current, 4)
+    parts: List[str] = []
+    cloud_line = "雲端%缺值，因此沒有採用 Supabase stock_meta 目標權重。"
+    if cloud is not None:
+        if cloud_pressure == "increase":
+            cloud_line = f"雲端%={cloud:.4f}% 高於目前 {current:.4f}%（{signed_pp(cloud_delta)}），雲端 Daily Quant / stock_meta 來源支持加碼。"
+        elif cloud_pressure == "decrease":
+            cloud_line = f"雲端%={cloud:.4f}% 低於目前 {current:.4f}%（{signed_pp(cloud_delta)}），雲端 Daily Quant / stock_meta 來源支持減碼。"
+        else:
+            cloud_line = f"雲端%={cloud:.4f}% 接近目前 {current:.4f}%，雲端來源不支持大幅調整。"
+    native_line = "v10.5 原生權重缺值，因此沒有 Optimizer Lab 原生目標可比較。"
+    if native is not None:
+        if native_pressure == "increase":
+            native_line = f"v10.5 原生權重={native:.4f}% 高於目前 {current:.4f}%（{signed_pp(native_delta)}），Optimizer Lab 原生引擎支持加碼。"
+        elif native_pressure == "decrease":
+            native_line = f"v10.5 原生權重={native:.4f}% 低於目前 {current:.4f}%（{signed_pp(native_delta)}），Optimizer Lab 原生引擎支持減碼。"
+        else:
+            native_line = f"v10.5 原生權重={native:.4f}% 接近目前 {current:.4f}%，Optimizer Lab 原生引擎偏向維持。"
+    parts.append(cloud_line)
+    parts.append(native_line)
+    if final_blend is not None:
+        parts.append(f"雙來源初始混合=50%×雲端%+50%×v10.5%={final_blend:.4f}%。")
+    if conflict_factor is not None and abs(conflict_factor - 1.0) > 1e-6:
+        parts.append(f"因雲端%與 v10.5%分歧，套用衝突縮放係數 {conflict_factor:.4f}，只採納部分 drift。")
+    if final is not None and current is not None:
+        if final_pressure == "increase":
+            parts.append(f"最終建議%={final:.4f}% 高於目前，形成加碼目標；差異 {signed_pp(final_delta)}。")
+        elif final_pressure == "decrease":
+            parts.append(f"最終建議%={final:.4f}% 低於目前，形成減碼目標；差異 {signed_pp(final_delta)}。")
+        else:
+            parts.append(f"最終建議%={final:.4f}% 接近目前，目標權重依據偏向觀察或小幅調整。")
+    drivers = native_driver_summary(row, alpha, ranking, context)
+    if drivers:
+        parts.append("v10.5% 原生來源：" + "；".join(drivers) + "。")
+    return {
+        "cloud_target_pressure": cloud_pressure,
+        "v105_native_target_pressure": native_pressure,
+        "final_target_pressure": final_pressure,
+        "dual_blend_pre_conflict_pct": final_blend,
+        "cloud_delta_vs_current_pct": cloud_delta,
+        "native_delta_vs_current_pct": native_delta,
+        "final_delta_vs_current_pct": final_delta,
+        "target_origin_thesis": " ".join(parts),
+        "target_origin_bullets": parts,
+        "v105_native_driver_bullets": drivers,
+    }
+
+
 def build_thesis(row: Dict[str, Any], alpha: Dict[str, Any], ranking: Dict[str, Any], constraints: Dict[str, Any], context: Dict[str, Any], governance: Dict[str, Any], walk_forward: Dict[str, Any]) -> Dict[str, Any]:
     ticker = ticker_of(row)
     current = round4(row.get("current_weight_pct"))
@@ -206,6 +333,8 @@ def build_thesis(row: Dict[str, Any], alpha: Dict[str, Any], ranking: Dict[str, 
     if price_status:
         thesis_parts.append(f"交易 sizing 價格來源為 {price_status}，provider={price_provider or 'N/A'}。")
 
+    origin = build_target_origin_thesis(row, alpha, ranking, context)
+
     return {
         "ticker": ticker,
         "current_weight_pct": current,
@@ -214,6 +343,16 @@ def build_thesis(row: Dict[str, Any], alpha: Dict[str, Any], ranking: Dict[str, 
         "final_suggested_weight_pct": final,
         "delta_weight_pct": delta,
         "direction": direction,
+        "target_origin_thesis": origin.get("target_origin_thesis"),
+        "target_origin_bullets": origin.get("target_origin_bullets", []),
+        "v105_native_driver_bullets": origin.get("v105_native_driver_bullets", []),
+        "dual_blend_pre_conflict_pct": origin.get("dual_blend_pre_conflict_pct"),
+        "cloud_delta_vs_current_pct": origin.get("cloud_delta_vs_current_pct"),
+        "native_delta_vs_current_pct": origin.get("native_delta_vs_current_pct"),
+        "final_delta_vs_current_pct": origin.get("final_delta_vs_current_pct"),
+        "cloud_target_pressure": origin.get("cloud_target_pressure"),
+        "v105_native_target_pressure": origin.get("v105_native_target_pressure"),
+        "final_target_pressure": origin.get("final_target_pressure"),
         "cloud_vs_native_gap_pct": cloud_gap,
         "cloud_direction_vs_current": cloud_dir,
         "native_direction_vs_current": native_dir,
@@ -292,10 +431,10 @@ def main() -> None:
     }
 
     output = {
-        "version": "v10.5.2",
+        "version": "v10.5.3",
         "status": summary["status"],
         "generated_at": now_iso(),
-        "mode": "native_target_thesis_aggregation",
+        "mode": "target_weight_origin_thesis_aggregation",
         "safe_mode": True,
         "research_only": True,
         "review_only": True,
@@ -321,14 +460,14 @@ def main() -> None:
             "trading_constraints_snapshot": "data/alpha/trading_constraints_snapshot_latest.json",
         },
         "thesis_policy": {
-            "purpose": "Explain why each v10.5 native target and final delegated target exists by aggregating evidence already produced by earlier optimizer stages.",
+            "purpose": "Explain where each target weight comes from: cloud target, v10.5 native target, 50/50 blend, conflict scaling, and earlier optimizer evidence.",
             "does_not_recalculate_target_weights": True,
             "does_not_use_frontend_manual_mc_percent": True,
             "display_position": "between_v10_0_human_confirmed_ticket_and_v10_5_1_delegated_draft",
         },
         "thesis_rows": thesis_rows,
         "safety_boundary": [
-            "This layer explains v10.5 delegated target weights; it does not create orders.",
+            "This layer explains target-weight origin and v10.5 delegated target weights; it does not create orders.",
             "It does not enable execution_permission, trade_signal_enabled, broker_submission_enabled, or Supabase writes.",
             "Thesis text is explanatory and not investment advice.",
         ],
@@ -336,14 +475,14 @@ def main() -> None:
 
     LATEST_JSON.write_text(json.dumps(output, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     lines = [
-        "# v10.5.2 Native Target Thesis Aggregator",
+        "# v10.5.3 Target Weight Origin Thesis Aggregator",
         "",
         f"Generated at: {output['generated_at']}",
         f"Status: {output['status']}",
         f"Rows: {len(thesis_rows)}",
         f"Draft-line related rows: {summary['draft_line_related_count']}",
         "",
-        "This layer aggregates evidence for v10.5 native target weights and final delegated targets. It does not create trade orders.",
+        "This layer explains where the target weights come from: cloud%, v10.5 native%, blend, conflict scaling, and optimizer evidence. It does not create trade orders.",
     ]
     SUMMARY_MD.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"Wrote {LATEST_JSON}")

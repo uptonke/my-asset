@@ -2202,15 +2202,15 @@
 
 
 
-                            <!-- v10.5.2 Native Target Thesis Aggregator -->
+                            <!-- v10.5.3 Target Weight Origin Thesis Aggregator -->
                             <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-violet-500/25 bg-violet-500/[0.045] shadow-lg overflow-hidden">
                                 <div class="px-4 py-3 border-b border-violet-500/20 bg-violet-500/[0.08] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-magnifying-glass-chart text-violet-300"></i>
-                                            v10.5.2 原生目標權重依據｜Thesis Aggregator
+                                            v10.5.3 目標權重來源依據｜Target Thesis
                                         </div>
-                                        <div class="text-[11px] text-violet-100/70 mt-1">集中解釋 v10.5% 背後參考的 v5.1 / v5.2 / v3.0 / v3.3 / v3.4 / Daily Quant / Monte Carlo / sizing 資訊；只解釋，不重新算權重，不產生交易指令。</div>
+                                        <div class="text-[11px] text-violet-100/70 mt-1">集中解釋「目標權重哪來的」：雲端%來源、v10.5%原生來源、50/50雙源混合、衝突縮放，以及 v5.1 / v5.2 / Daily Quant / Monte Carlo / sizing 證據；只解釋，不重新算權重，不產生交易指令。</div>
                                     </div>
                                     <div class="flex flex-wrap items-center gap-2 text-[11px]">
                                         <span class="px-2 py-1 rounded-lg border" :class="nativeTargetThesisSummary?.status === 'thesis_available' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200' : 'border-amber-500/30 bg-amber-500/10 text-amber-200'">
@@ -2251,7 +2251,7 @@
                                     </div>
 
                                     <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
-                                        <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] text-xs font-bold text-white">v10.5% 原生權重依據 Top 8</div>
+                                        <div class="px-3 py-2 border-b border-white/10 bg-white/[0.03] text-xs font-bold text-white">目標權重來源依據 Top 8</div>
                                         <div class="overflow-x-auto">
                                             <table class="w-full text-[11px]">
                                                 <thead class="text-gray-500 border-b border-white/10">
@@ -2262,7 +2262,7 @@
                                                         <th class="text-right px-3 py-2">v10.5%</th>
                                                         <th class="text-right px-3 py-2">最終建議%</th>
                                                         <th class="text-left px-3 py-2">來源狀態</th>
-                                                        <th class="text-left px-3 py-2">摘要</th>
+                                                        <th class="text-left px-3 py-2">目標權重來源依據</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -2278,7 +2278,7 @@
                                                                 <span class="text-gray-500">gap {{ row.cloud_vs_native_gap_pct ?? '-' }}pp｜alpha {{ row.alpha_research_score ?? '-' }}</span>
                                                             </div>
                                                         </td>
-                                                        <td class="px-3 py-2 text-gray-300 min-w-[360px] leading-relaxed">{{ row.thesis_summary }}</td>
+                                                        <td class="px-3 py-2 text-gray-300 min-w-[420px] leading-relaxed">{{ row.target_origin_thesis || row.thesis_summary }}</td>
                                                     </tr>
                                                     <tr v-if="!nativeTargetThesisVisibleRows.length"><td colspan="7" class="px-3 py-4 text-center text-gray-500">尚未產生 thesis rows。</td></tr>
                                                 </tbody>

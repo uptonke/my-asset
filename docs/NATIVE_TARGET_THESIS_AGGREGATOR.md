@@ -1,21 +1,15 @@
-# v10.5.2 Native Target Thesis Aggregator
+# v10.5.3 Target Weight Origin Thesis Aggregator
 
-This layer explains the evidence behind v10.5.1 delegated target weights.
+Purpose: explain **where each target weight comes from**, not why a trade ticket was emitted.
 
-It reads existing optimizer outputs, including v5.1 alpha research, v5.2 rebalance ranking, v3.0 regime-aware optimizer, v3.3 walk-forward backtest, v3.4 governance, v10.5 Daily Quant / Monte Carlo reference, and trading constraints.
+For each asset this layer reports:
 
-It does not recalculate target weights, does not use front-end manual MC%, does not create orders, and does not enable execution.
+- current weight
+- cloud target from `stock_meta[ticker].target_weight`
+- v10.5 native target from the Optimizer Lab native engine
+- 50/50 dual-source blend before conflict scaling
+- conflict scaling / drift reduction when cloud% and v10.5% diverge
+- final suggested target
+- target-origin thesis in Chinese, for example: why a target implies add / trim / hold.
 
-Output files:
-
-- `data/alpha/native_target_thesis_latest.json`
-- `data/alpha/native_target_thesis_summary.md`
-
-Safety flags remain false:
-
-- `trade_signal_enabled`
-- `execution_permission`
-- `broker_submission_enabled`
-- `official_rebalance_enabled`
-- `auto_trade_enabled`
-- `supabase_write_enabled`
+This layer reads previous outputs only. It does not recalculate weights, create orders, enable execution, or write Supabase.
