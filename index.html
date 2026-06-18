@@ -1624,445 +1624,211 @@
                         </div>
 
                         <template v-else>
-                            <!-- v1.9 Core analytics wrapper -->
+                            <!-- v1.2 Deep integrated risk dashboard: core risk + benchmark attribution + factor evidence in one reading surface -->
                             <div v-show="analyticsViewMode === 'risk'" class="space-y-5">
-                                <div class="rounded-2xl border border-slate-500/20 bg-slate-500/[0.045] p-4">
-                                    <div class="text-sm font-bold text-white flex items-center gap-2">
-                                        <i class="fas fa-layer-group text-slate-300"></i>
-                                        風控頁閱讀順序
-                                    </div>
-                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 text-[11px] text-gray-300 leading-relaxed">
-                                        <div class="rounded-xl border border-emerald-500/15 bg-emerald-500/[0.05] p-3"><span class="font-bold text-emerald-200">① 核心風險</span><br>先看波動、VaR / ES、MDD、樣本與 QuantStats。</div>
-                                        <div class="rounded-xl border border-violet-500/15 bg-violet-500/[0.05] p-3"><span class="font-bold text-violet-200">② 歸因診斷</span><br>再看 benchmark attribution、IR、payoff、drawdown recovery、factor exposure。</div>
-                                        <div class="rounded-xl border border-cyan-500/15 bg-cyan-500/[0.05] p-3"><span class="font-bold text-cyan-200">③ 技術細節</span><br>EWMA、Component ES、HRP-lite 與舊版統計預設收合，需要追查再展開。</div>
-                                    </div>
-                                </div>
-
-                                <details open class="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.025] overflow-hidden group">
-                                    <summary class="cursor-pointer select-none px-4 py-3 border-b border-white/10 bg-emerald-500/[0.06] flex items-center justify-between gap-3 list-none">
-                                        <div>
-                                            <div class="text-sm font-bold text-white flex items-center gap-2"><i class="fas fa-gauge-high text-emerald-400"></i> ① 核心風險總覽</div>
-                                            <div class="text-[11px] text-gray-400 mt-1">保留最常看的投組風險數字：波動、VaR / ES、MDD、樣本品質與 QuantStats。</div>
-                                        </div>
-                                        <span class="text-[11px] text-emerald-200">展開／收合</span>
-                                    </summary>
-                                    <div class="p-4 space-y-5">
-                            <!-- 核心風險指標 -->
-                            <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
-                                <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
-                                    <div class="quant-label text-emerald-300">年化波動</div>
-                                    <div class="quant-value text-white">{{ syntheticRiskMeta?.metrics?.ann_vol_pct ?? '-' }}%</div>
-                                </div>
-                                <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
-                                    <div class="quant-label text-cyan-300">EWMA 波動</div>
-                                    <div class="quant-value text-white">{{ syntheticRiskMeta?.metrics?.ewma_vol_pct ?? '-' }}%</div>
-                                </div>
-                                <div class="quant-card border-red-500/20 bg-red-500/10">
-                                    <div class="quant-label text-red-300">VaR 95</div>
-                                    <div class="quant-value text-white">{{ syntheticRiskMeta?.metrics?.var95_pct ?? '-' }}%</div>
-                                </div>
-                                <div class="quant-card border-red-500/20 bg-red-500/10">
-                                    <div class="quant-label text-red-300">ES 95</div>
-                                    <div class="quant-value text-white">{{ syntheticRiskMeta?.metrics?.es95_pct ?? '-' }}%</div>
-                                </div>
-                                <div class="quant-card border-orange-500/20 bg-orange-500/10">
-                                    <div class="quant-label text-orange-300">最大回撤</div>
-                                    <div class="quant-value text-white">{{ syntheticRiskMeta?.metrics?.max_drawdown_pct ?? '-' }}%</div>
-                                </div>
-                                <div class="quant-card border-slate-500/20 bg-slate-500/10">
-                                    <div class="quant-label text-slate-300">嚴格樣本</div>
-                                    <div class="quant-value text-white">{{ syntheticRiskMeta?.coverage?.strict_sample ?? syntheticRiskMeta?.metrics?.sample_count ?? '-' }}</div>
-                                </div>
-                                <div class="quant-card border-slate-500/20 bg-slate-500/10">
-                                    <div class="quant-label text-slate-300">彈性樣本</div>
-                                    <div class="quant-value text-white">{{ syntheticRiskMeta?.coverage?.flexible_sample ?? syntheticRiskMeta?.metrics?.flexible_sample_count ?? '-' }}</div>
-                                </div>
-                                <div class="quant-card border-purple-500/20 bg-purple-500/10">
-                                    <div class="quant-label text-purple-300">報告狀態</div>
-                                    <div class="quant-value text-white">{{ syntheticRiskMeta?.quantstats?.status ?? '-' }}</div>
-                                </div>
-                            </div>
-
-                            <!-- 覆蓋率與信心分級 -->
-                            <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                                <div class="rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
-                                    <div class="px-4 py-3 border-b border-white/10 bg-white/[0.03]">
-                                        <div class="text-sm font-bold text-white flex items-center gap-2">
-                                            <i class="fas fa-database text-cyan-400"></i>
-                                            樣本覆蓋口徑
-                                        </div>
-                                        <div class="text-[10px] text-gray-500 mt-1">嚴格樣本 / 彈性樣本覆蓋檢查</div>
-                                    </div>
-                                    <div class="p-4 grid grid-cols-2 gap-3 text-xs">
-                                        <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                                            <div class="text-gray-500 mb-1">嚴格樣本期間</div>
-                                            <div class="font-mono text-white">{{ syntheticRiskMeta?.coverage?.strict_start_date ?? syntheticRiskMeta?.metrics?.start_date ?? '-' }}</div>
-                                            <div class="font-mono text-white">→ {{ syntheticRiskMeta?.coverage?.strict_end_date ?? syntheticRiskMeta?.metrics?.end_date ?? '-' }}</div>
-                                        </div>
-                                        <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                                            <div class="text-gray-500 mb-1">彈性樣本期間</div>
-                                            <div class="font-mono text-white">{{ syntheticRiskMeta?.coverage?.flexible_start_date ?? syntheticRiskMeta?.metrics?.flexible_start_date ?? '-' }}</div>
-                                            <div class="font-mono text-white">→ {{ syntheticRiskMeta?.coverage?.flexible_end_date ?? syntheticRiskMeta?.metrics?.flexible_end_date ?? '-' }}</div>
-                                        </div>
-                                        <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                                            <div class="text-gray-500 mb-1">可用權重</div>
-                                            <div class="font-mono text-emerald-300">{{ syntheticRiskMeta?.coverage?.usable_weight_pct ?? syntheticRiskMeta?.metrics?.included_weight_pct ?? '-' }}%</div>
-                                            <div class="text-[10px] text-gray-500 mt-1">
-                                                {{ syntheticRiskMeta?.coverage?.usable_asset_count ?? syntheticRiskMeta?.metrics?.usable_asset_count ?? '-' }} / {{ syntheticRiskMeta?.coverage?.active_asset_count ?? syntheticRiskMeta?.metrics?.active_asset_count ?? '-' }} 檔
+                                <div class="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.08] via-slate-900/70 to-violet-500/[0.06] overflow-hidden shadow-xl">
+                                    <div class="px-5 py-4 border-b border-white/10 bg-black/20">
+                                        <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
+                                            <div>
+                                                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border border-emerald-500/25 bg-emerald-500/10 text-emerald-200 w-max mb-3">
+                                                    <i class="fas fa-shield-heart"></i>
+                                                    v1.2 深度整合風控台
+                                                </div>
+                                                <h3 class="text-white font-bold text-lg md:text-xl flex items-center gap-2">
+                                                    <i class="fas fa-gauge-high text-emerald-300"></i>
+                                                    風控指揮台｜現況風險 × 基準歸因 × 因子曝險
+                                                </h3>
+                                                <p class="text-xs md:text-sm text-gray-400 mt-2 leading-relaxed max-w-4xl">
+                                                    把原本分散的核心風險、Release Guard、VOO 相對表現、勝率盈虧比、回撤修復與多因子曝險整合成同一張判讀台；這裡只回答「目前投組風險如何」，不產生候選調倉、不影響最佳化草案。
+                                                </p>
                                             </div>
-                                        </div>
-                                        <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                                            <div class="text-gray-500 mb-1">彈性平均覆蓋</div>
-                                            <div class="font-mono text-cyan-300">{{ syntheticRiskMeta?.coverage?.flexible_avg_coverage_pct ?? '-' }}%</div>
-                                            <div class="text-[10px] text-gray-500 mt-1">門檻 {{ syntheticRiskMeta?.coverage?.flexible_min_coverage_pct ?? '-' }}%</div>
-                                        </div>
-                                        <div class="col-span-2 rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                                            <div class="text-gray-500 mb-1">FX / 資料說明</div>
-                                            <div class="text-gray-300 leading-relaxed">{{ syntheticRiskMeta?.coverage?.fx_note ?? syntheticRiskMeta?.fx_source ?? '-' }}</div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
-                                    <div class="px-4 py-3 border-b border-white/10 bg-white/[0.03]">
-                                        <div class="text-sm font-bold text-white flex items-center gap-2">
-                                            <i class="fas fa-signal text-yellow-400"></i>
-                                            信心分級拆解
-                                        </div>
-                                        <div class="text-[10px] text-gray-500 mt-1">目前信心分級： {{ syntheticRiskMeta?.confidence ?? 'N/A' }}</div>
-                                    </div>
-                                    <div class="p-4 space-y-3 text-xs">
-                                        <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                                            <div class="flex items-center justify-between">
-                                                <span class="text-gray-400">樣本長度</span>
-                                                <span class="font-mono text-white">{{ syntheticRiskMeta?.confidence_detail?.breakdown?.sample_length?.level ?? '-' }}</span>
-                                            </div>
-                                            <div class="text-[10px] text-gray-500 mt-1">
-                                                嚴格樣本 {{ syntheticRiskMeta?.confidence_detail?.breakdown?.sample_length?.strict_days ?? '-' }} / 彈性樣本 {{ syntheticRiskMeta?.confidence_detail?.breakdown?.sample_length?.flexible_days ?? '-' }} 日
-                                            </div>
-                                        </div>
-                                        <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                                            <div class="flex items-center justify-between">
-                                                <span class="text-gray-400">資產覆蓋</span>
-                                                <span class="font-mono text-white">{{ syntheticRiskMeta?.confidence_detail?.breakdown?.asset_coverage?.level ?? '-' }}</span>
-                                            </div>
-                                            <div class="text-[10px] text-gray-500 mt-1">
-                                                可用權重 {{ syntheticRiskMeta?.confidence_detail?.breakdown?.asset_coverage?.usable_weight_pct ?? '-' }}%
-                                            </div>
-                                        </div>
-                                        <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                                            <div class="flex items-center justify-between">
-                                                <span class="text-gray-400">日期覆蓋</span>
-                                                <span class="font-mono text-white">{{ syntheticRiskMeta?.confidence_detail?.breakdown?.date_coverage?.level ?? '-' }}</span>
-                                            </div>
-                                            <div class="text-[10px] text-gray-500 mt-1">
-                                                平均 {{ syntheticRiskMeta?.confidence_detail?.breakdown?.date_coverage?.strict_weight_coverage_avg_pct ?? '-' }}%
-                                            </div>
-                                        </div>
-                                        <div class="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
-                                            <div class="text-amber-300 font-bold mb-1">方法限制</div>
-                                            <div class="text-[11px] text-gray-300 leading-relaxed">
-                                                {{ syntheticRiskMeta?.confidence_detail?.breakdown?.method_limitation?.description ?? '使用目前權重回套歷史，不能代表真實歷史持倉。' }}
+                                            <div class="flex flex-wrap xl:justify-end gap-2 text-[11px] font-bold">
+                                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border"
+                                                      :class="syntheticRiskMeta?.attribution_diagnostics?.risk_dashboard_release?.status === 'STABLE' ? 'border-emerald-500/35 bg-emerald-500/10 text-emerald-200' : 'border-amber-500/35 bg-amber-500/10 text-amber-100'">
+                                                    <i class="fas fa-certificate"></i>
+                                                    {{ syntheticRiskMeta?.attribution_diagnostics?.risk_dashboard_release?.status ?? syntheticRiskMeta?.status ?? '等待更新' }}
+                                                </span>
+                                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-sky-500/30 bg-sky-500/10 text-sky-200">
+                                                    <i class="fas fa-scale-balanced"></i>
+                                                    Benchmark {{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.benchmark_ticker ?? 'VOO' }}｜{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.status ?? 'N/A' }}
+                                                </span>
+                                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-200">
+                                                    <i class="fas fa-diagram-project"></i>
+                                                    因子 {{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.status ?? 'N/A' }}
+                                                </span>
+                                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-500/30 bg-slate-500/10 text-slate-200">
+                                                    <i class="fas fa-lock"></i>
+                                                    交易權限 {{ syntheticRiskMeta?.attribution_diagnostics?.execution_permission ? 'True' : 'False' }}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div class="rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
-                                    <div class="px-4 py-3 border-b border-white/10 bg-white/[0.03]">
-                                        <div class="text-sm font-bold text-white flex items-center gap-2">
-                                            <i class="fas fa-list-check text-emerald-400"></i>
-                                            資產覆蓋 Top 12
+                                    <div class="p-5 space-y-5">
+                                        <div v-if="!syntheticRiskMeta?.attribution_diagnostics" class="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-100 leading-relaxed">
+                                            <i class="fas fa-triangle-exclamation mr-2"></i>
+                                            尚未產生 v1.0+ attribution diagnostics。請跑 <span class="font-mono">Update Stock Quant Meta</span> 後重新載入；核心 VaR / ES 仍可讀，但相對基準與因子整合尚未完成。
                                         </div>
-                                        <div class="text-[10px] text-gray-500 mt-1">依目前權重排序</div>
-                                    </div>
-                                    <div class="overflow-x-auto max-h-[310px]">
-                                        <table class="w-full text-[11px]">
-                                            <thead class="text-gray-500 border-b border-white/10 sticky top-0 bg-slate-950/90 backdrop-blur">
-                                                <tr>
-                                                    <th class="text-left px-3 py-2">代號</th>
-                                                    <th class="text-right px-3 py-2">權重</th>
-                                                    <th class="text-right px-3 py-2">樣本</th>
-                                                    <th class="text-right px-3 py-2">Strict</th>
-                                                    <th class="text-left px-3 py-2">來源</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <tr v-for="row in ((syntheticRiskMeta?.coverage?.by_asset || []).slice(0, 12))" :key="row.ticker" class="border-b border-white/5 hover:bg-white/[0.03]">
-                                                    <td class="px-3 py-2 font-mono text-white">{{ row.ticker }}</td>
-                                                    <td class="px-3 py-2 text-right text-gray-300">{{ row.current_weight_pct ?? '-' }}%</td>
-                                                    <td class="px-3 py-2 text-right text-gray-300">{{ row.return_days ?? row.sample_days ?? '-' }}</td>
-                                                    <td class="px-3 py-2 text-right">
-                                                        <span class="px-1.5 py-0.5 rounded border text-[10px]"
-                                                              :class="row.strict_included ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-red-500/30 bg-red-500/10 text-red-300'">
-                                                            {{ row.strict_included ? '是' : '否' }}
-                                                        </span>
-                                                    </td>
-                                                    <td class="px-3 py-2 text-gray-500">{{ row.source ?? row.skip_reason ?? '-' }}</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
 
-                            <!-- 類 QuantStats 報告 -->
-                            <div class="rounded-2xl border border-purple-500/20 bg-purple-500/[0.04] overflow-hidden">
-                                <div class="px-4 py-3 border-b border-white/10 bg-purple-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                                    <div>
-                                        <div class="text-sm font-bold text-white flex items-center gap-2">
-                                            <i class="fas fa-chart-area text-purple-400"></i>
-                                            類 QuantStats 風險報告
-                                        </div>
-                                        <div class="text-[10px] text-gray-500 mt-1">
-                                            主口徑為嚴格樣本；彈性樣本報告另存於 quantstats_flexible
-                                        </div>
-                                    </div>
-                                    <div class="text-[11px] text-gray-400">
-                                        {{ syntheticRiskMeta?.quantstats?.start_date ?? '-' }} → {{ syntheticRiskMeta?.quantstats?.end_date ?? '-' }}
-                                    </div>
-                                </div>
-
-                                <div class="p-4 grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
-                                    <div class="quant-card border-purple-500/20 bg-purple-500/10">
-                                        <div class="quant-label text-purple-300">年化複合報酬 CAGR</div>
-                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.quantstats?.cagr_pct ?? '-' }}%</div>
-                                    </div>
-                                    <div class="quant-card border-purple-500/20 bg-purple-500/10">
-                                        <div class="quant-label text-purple-300">年化波動</div>
-                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.quantstats?.annual_vol_pct ?? '-' }}%</div>
-                                    </div>
-                                    <div class="quant-card border-yellow-500/20 bg-yellow-500/10">
-                                        <div class="quant-label text-yellow-300">夏普比率</div>
-                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.quantstats?.sharpe ?? '-' }}</div>
-                                    </div>
-                                    <div class="quant-card border-yellow-500/20 bg-yellow-500/10">
-                                        <div class="quant-label text-yellow-300">索提諾比率</div>
-                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.quantstats?.sortino ?? '-' }}</div>
-                                    </div>
-                                    <div class="quant-card border-yellow-500/20 bg-yellow-500/10">
-                                        <div class="quant-label text-yellow-300">卡瑪比率</div>
-                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.quantstats?.calmar ?? '-' }}</div>
-                                    </div>
-                                    <div class="quant-card border-red-500/20 bg-red-500/10">
-                                        <div class="quant-label text-red-300">目前回撤</div>
-                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.quantstats?.current_drawdown_pct ?? '-' }}%</div>
-                                    </div>
-                                    <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
-                                        <div class="quant-label text-cyan-300">勝率</div>
-                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.quantstats?.win_rate_pct ?? '-' }}%</div>
-                                    </div>
-                                    <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
-                                        <div class="quant-label text-cyan-300">尾部比率</div>
-                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.quantstats?.tail_ratio ?? '-' }}</div>
-                                    </div>
-                                </div>
-
-                                <div class="px-4 pb-4 grid grid-cols-1 lg:grid-cols-3 gap-3 text-xs">
-                                    <div class="rounded-xl border border-white/10 bg-black/20 p-3">
-                                        <div class="text-gray-500 mb-2">最大回撤區間</div>
-                                        <div class="font-mono text-white">{{ syntheticRiskMeta?.quantstats?.max_drawdown_pct ?? '-' }}%</div>
-                                        <div class="text-gray-400 mt-1">
-                                            {{ syntheticRiskMeta?.quantstats?.max_drawdown_start ?? '-' }}
-                                            → {{ syntheticRiskMeta?.quantstats?.max_drawdown_end ?? '-' }}
-                                        </div>
-                                        <div class="text-[10px] text-gray-500 mt-1">
-                                            修復日：{{ syntheticRiskMeta?.quantstats?.max_drawdown_recovery_date ?? '尚未或無資料' }}
-                                        </div>
-                                    </div>
-                                    <div class="rounded-xl border border-white/10 bg-black/20 p-3">
-                                        <div class="text-gray-500 mb-2">尾部與極端日</div>
-                                        <div class="grid grid-cols-2 gap-2">
-                                            <div>最差日 <span class="font-mono text-red-300">{{ syntheticRiskMeta?.quantstats?.worst_day_pct ?? '-' }}%</span></div>
-                                            <div>最佳日 <span class="font-mono text-emerald-300">{{ syntheticRiskMeta?.quantstats?.best_day_pct ?? '-' }}%</span></div>
-                                            <div>VaR99 <span class="font-mono text-red-300">{{ syntheticRiskMeta?.quantstats?.var99_pct ?? '-' }}%</span></div>
-                                            <div>ES99 <span class="font-mono text-red-300">{{ syntheticRiskMeta?.quantstats?.es99_pct ?? '-' }}%</span></div>
-                                        </div>
-                                    </div>
-                                    <div class="rounded-xl border border-white/10 bg-black/20 p-3">
-                                        <div class="text-gray-500 mb-2">滾動市場狀態</div>
-                                        <div class="grid grid-cols-2 gap-2">
-                                            <div>21D 波動 <span class="font-mono text-cyan-300">{{ syntheticRiskMeta?.quantstats?.rolling_vol_21d_pct ?? '-' }}%</span></div>
-                                            <div>63D 波動 <span class="font-mono text-cyan-300">{{ syntheticRiskMeta?.quantstats?.rolling_vol_63d_pct ?? '-' }}%</span></div>
-                                            <div>63D 夏普 <span class="font-mono text-yellow-300">{{ syntheticRiskMeta?.quantstats?.rolling_sharpe_63d ?? '-' }}</span></div>
-                                            <div>Skew <span class="font-mono text-slate-300">{{ syntheticRiskMeta?.quantstats?.skew ?? '-' }}</span></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-
-                                    </div>
-                                </details>
-
-                                <details open class="rounded-2xl border border-violet-500/20 bg-violet-500/[0.025] overflow-hidden group">
-                                    <summary class="cursor-pointer select-none px-4 py-3 border-b border-white/10 bg-violet-500/[0.06] flex items-center justify-between gap-3 list-none">
-                                        <div>
-                                            <div class="text-sm font-bold text-white flex items-center gap-2"><i class="fas fa-chart-simple text-violet-400"></i> ② 基準相對表現與因子歸因</div>
-                                            <div class="text-[11px] text-gray-400 mt-1">Release Guard、VOO 相對表現、Tracking Error、Information Ratio、盈虧比、回撤修復與多因子曝險。</div>
-                                        </div>
-                                        <span class="text-[11px] text-violet-200">展開／收合</span>
-                                    </summary>
-                                    <div class="p-4 space-y-5">
-                            <!-- v1.0 Risk Dashboard Release / Source Guard -->
-                            <div class="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.04] overflow-hidden">
-                                <div class="px-4 py-3 border-b border-white/10 bg-emerald-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                                    <div>
-                                        <div class="text-sm font-bold text-white flex items-center gap-2">
-                                            <i class="fas fa-shield-halved text-emerald-400"></i>
-                                            v1.0 風控頁穩定版｜Release Guard
-                                        </div>
-                                        <div class="text-[10px] text-gray-500 mt-1">
-                                            收斂 benchmark attribution、勝率盈虧比、回撤修復、多因子曝險與資料來源檢查；僅作風控診斷，不影響交易草案。
-                                        </div>
-                                    </div>
-                                    <div class="text-[11px] text-gray-400">
-                                        {{ syntheticRiskMeta?.attribution_diagnostics?.risk_dashboard_release?.status ?? '等待更新' }}
-                                    </div>
-                                </div>
-                                <div class="p-4 grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
-                                    <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
-                                        <div class="quant-label text-emerald-300">Release</div>
-                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.risk_dashboard_release?.version ?? 'v1.0' }}</div>
-                                    </div>
-                                    <div class="quant-card border-sky-500/20 bg-sky-500/10">
-                                        <div class="quant-label text-sky-300">Benchmark</div>
-                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.benchmark_ticker ?? 'VOO' }}</div>
-                                    </div>
-                                    <div class="quant-card border-sky-500/20 bg-sky-500/10">
-                                        <div class="quant-label text-sky-300">基準狀態</div>
-                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.status ?? '-' }}</div>
-                                    </div>
-                                    <div class="quant-card border-purple-500/20 bg-purple-500/10">
-                                        <div class="quant-label text-purple-300">多因子狀態</div>
-                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.status ?? '-' }}</div>
-                                    </div>
-                                    <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
-                                        <div class="quant-label text-cyan-300">樣本日數</div>
-                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.sample_count ?? syntheticRiskMeta?.quantstats?.sample_count ?? '-' }}</div>
-                                    </div>
-                                    <div class="quant-card border-indigo-500/20 bg-indigo-500/10">
-                                        <div class="quant-label text-indigo-300">日期對齊</div>
-                                        <div class="quant-value text-white text-sm">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_source_guard?.return_alignment ?? '-' }}</div>
-                                    </div>
-                                    <div class="quant-card border-yellow-500/20 bg-yellow-500/10">
-                                        <div class="quant-label text-yellow-300">FX 口徑</div>
-                                        <div class="quant-value text-white text-sm">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_source_guard?.fx_mode ?? syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.fx_mode ?? '-' }}</div>
-                                    </div>
-                                    <div class="quant-card border-red-500/20 bg-red-500/10">
-                                        <div class="quant-label text-red-300">交易權限</div>
-                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.execution_permission ? 'True' : 'False' }}</div>
-                                    </div>
-                                </div>
-                                <div v-if="(syntheticRiskMeta?.attribution_diagnostics?.risk_dashboard_release?.warnings || []).length" class="px-4 pb-4">
-                                    <div class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-100">
-                                        <span class="font-bold">風控頁警示：</span>
-                                        {{ (syntheticRiskMeta?.attribution_diagnostics?.risk_dashboard_release?.warnings || []).join('、') }}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- v1.0 Benchmark Attribution / Factor Evidence -->
-                            <div class="rounded-2xl border border-sky-500/20 bg-sky-500/[0.04] overflow-hidden">
-                                <div class="px-4 py-3 border-b border-white/10 bg-sky-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                                    <div>
-                                        <div class="text-sm font-bold text-white flex items-center gap-2">
-                                            <i class="fas fa-scale-balanced text-sky-400"></i>
-                                            v1.0 基準相對表現與因子歸因
-                                        </div>
-                                        <div class="text-[10px] text-gray-500 mt-1">
-                                            放在風控層：用目前持倉合成日報酬相對基準衡量主動風險，並接入既有多因子曝險；不影響 v10.x 目標權重或交易草案。
-                                        </div>
-                                    </div>
-                                    <div class="text-[11px] text-gray-400">
-                                        Benchmark：{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.benchmark_ticker ?? 'VOO' }} ｜ 狀態：{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.status ?? '等待更新' }}
-                                    </div>
-                                </div>
-
-                                <div v-if="!syntheticRiskMeta?.attribution_diagnostics" class="p-4 text-sm text-amber-100 bg-amber-500/10 border-t border-amber-500/10">
-                                    尚未產生 v1.0 attribution diagnostics。請跑 Update Stock Quant Meta 後重新載入。
-                                </div>
-
-                                <div v-else class="p-4 space-y-4">
-                                    <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
-                                        <div class="quant-card border-sky-500/20 bg-sky-500/10">
-                                            <div class="quant-label text-sky-300">主動年化報酬</div>
-                                            <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.active_return_annualized_pct ?? '-' }}%</div>
-                                        </div>
-                                        <div class="quant-card border-sky-500/20 bg-sky-500/10">
-                                            <div class="quant-label text-sky-300">Tracking Error</div>
-                                            <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.tracking_error_pct ?? '-' }}%</div>
-                                        </div>
-                                        <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
-                                            <div class="quant-label text-cyan-300">Information Ratio</div>
-                                            <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.information_ratio ?? '-' }}</div>
-                                        </div>
-                                        <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
-                                            <div class="quant-label text-cyan-300">Benchmark R²</div>
-                                            <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.benchmark_r_squared ?? '-' }}</div>
-                                        </div>
-                                        <div class="quant-card border-indigo-500/20 bg-indigo-500/10">
-                                            <div class="quant-label text-indigo-300">Benchmark β</div>
-                                            <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.benchmark_beta ?? '-' }}</div>
-                                        </div>
-                                        <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
-                                            <div class="quant-label text-emerald-300">Payoff Ratio</div>
-                                            <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.win_rate_payoff?.payoff_ratio ?? syntheticRiskMeta?.quantstats?.payoff_ratio ?? '-' }}</div>
-                                        </div>
-                                        <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
-                                            <div class="quant-label text-emerald-300">平均勝 / 敗</div>
-                                            <div class="quant-value text-white text-sm">{{ syntheticRiskMeta?.quantstats?.average_win_pct ?? '-' }}% / {{ syntheticRiskMeta?.quantstats?.average_loss_pct ?? '-' }}%</div>
-                                        </div>
-                                        <div class="quant-card border-red-500/20 bg-red-500/10">
-                                            <div class="quant-label text-red-300">回撤修復日</div>
-                                            <div class="quant-value text-white">{{ syntheticRiskMeta?.quantstats?.drawdown_recovery_days ?? syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.drawdown_recovery?.drawdown_recovery_days ?? '-' }}</div>
-                                        </div>
-                                    </div>
-
-                                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
-                                            <div class="px-3 py-2 bg-white/[0.03] text-xs font-bold text-sky-200">基準相對表現</div>
-                                            <div class="p-3 grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
-                                                <div>投組 CAGR <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.portfolio_cagr_pct ?? '-' }}%</span></div>
-                                                <div>基準 CAGR <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.benchmark_cagr_pct ?? '-' }}%</span></div>
-                                                <div>相關係數 <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.correlation_to_benchmark ?? '-' }}</span></div>
-                                                <div>樣本 <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.sample_count ?? '-' }}</span></div>
-                                                <div>期間 <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.start_date ?? '-' }} → {{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.end_date ?? '-' }}</span></div>
-                                                <div>FX <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.fx_mode ?? '-' }}</span></div>
+                                        <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-12 gap-3">
+                                            <div class="quant-card border-emerald-500/20 bg-emerald-500/10 xl:col-span-2">
+                                                <div class="quant-label text-emerald-300">年化波動</div>
+                                                <div class="quant-value text-white">{{ syntheticRiskMeta?.metrics?.ann_vol_pct ?? '-' }}%</div>
+                                            </div>
+                                            <div class="quant-card border-red-500/20 bg-red-500/10 xl:col-span-2">
+                                                <div class="quant-label text-red-300">VaR / ES 95</div>
+                                                <div class="quant-value text-white text-sm">{{ syntheticRiskMeta?.metrics?.var95_pct ?? '-' }}% / {{ syntheticRiskMeta?.metrics?.es95_pct ?? '-' }}%</div>
+                                            </div>
+                                            <div class="quant-card border-orange-500/20 bg-orange-500/10 xl:col-span-2">
+                                                <div class="quant-label text-orange-300">最大回撤</div>
+                                                <div class="quant-value text-white">{{ syntheticRiskMeta?.metrics?.max_drawdown_pct ?? '-' }}%</div>
+                                            </div>
+                                            <div class="quant-card border-sky-500/20 bg-sky-500/10 xl:col-span-2">
+                                                <div class="quant-label text-sky-300">主動年化報酬</div>
+                                                <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.active_return_annualized_pct ?? '-' }}%</div>
+                                            </div>
+                                            <div class="quant-card border-cyan-500/20 bg-cyan-500/10 xl:col-span-2">
+                                                <div class="quant-label text-cyan-300">IR / TE</div>
+                                                <div class="quant-value text-white text-sm">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.information_ratio ?? '-' }} / {{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.tracking_error_pct ?? '-' }}%</div>
+                                            </div>
+                                            <div class="quant-card border-violet-500/20 bg-violet-500/10 xl:col-span-2">
+                                                <div class="quant-label text-violet-300">因子 R²</div>
+                                                <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.r_squared ?? '-' }}</div>
                                             </div>
                                         </div>
 
-                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
-                                            <div class="px-3 py-2 bg-white/[0.03] text-xs font-bold text-purple-200">多因子曝險快照</div>
-                                            <div v-if="syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.status === 'OK'" class="p-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                                                <div>Alpha <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.alpha ?? '-' }}</span></div>
-                                                <div>Mkt β <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.mkt_beta ?? '-' }}</span></div>
-                                                <div>SMB <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.smb_beta ?? '-' }}</span></div>
-                                                <div>HML <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.hml_beta ?? '-' }}</span></div>
-                                                <div>RMW <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.rmw_beta ?? '-' }}</span></div>
-                                                <div>CMA <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.cma_beta ?? '-' }}</span></div>
-                                                <div>WML <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.momentum_beta ?? '-' }}</span></div>
-                                                <div>R² <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.r_squared ?? '-' }}</span></div>
-                                                <div>TW Mkt <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.tw_mkt_beta ?? '-' }}</span></div>
-                                                <div>Crypto <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.crypto_beta ?? '-' }}</span></div>
+                                        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                                            <div class="rounded-2xl border border-emerald-500/15 bg-black/25 p-4">
+                                                <div class="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                                                    <i class="fas fa-heart-pulse text-emerald-300"></i>
+                                                    現況風險
+                                                </div>
+                                                <div class="grid grid-cols-2 gap-2 text-xs">
+                                                    <div class="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+                                                        <div class="text-gray-500 mb-1">EWMA 波動</div>
+                                                        <div class="font-mono text-white">{{ syntheticRiskMeta?.metrics?.ewma_vol_pct ?? '-' }}%</div>
+                                                    </div>
+                                                    <div class="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+                                                        <div class="text-gray-500 mb-1">回撤修復日</div>
+                                                        <div class="font-mono text-white">{{ syntheticRiskMeta?.quantstats?.drawdown_recovery_days ?? syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.drawdown_recovery?.drawdown_recovery_days ?? '-' }}</div>
+                                                    </div>
+                                                    <div class="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+                                                        <div class="text-gray-500 mb-1">Payoff Ratio</div>
+                                                        <div class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.win_rate_payoff?.payoff_ratio ?? syntheticRiskMeta?.quantstats?.payoff_ratio ?? '-' }}</div>
+                                                    </div>
+                                                    <div class="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+                                                        <div class="text-gray-500 mb-1">平均勝 / 敗</div>
+                                                        <div class="font-mono text-white text-[11px]">{{ syntheticRiskMeta?.quantstats?.average_win_pct ?? '-' }}% / {{ syntheticRiskMeta?.quantstats?.average_loss_pct ?? '-' }}%</div>
+                                                    </div>
+                                                </div>
+                                                <div class="mt-3 text-[11px] text-gray-400 leading-relaxed">
+                                                    樣本信心 {{ syntheticRiskMeta?.confidence ?? 'N/A' }}；嚴格樣本 {{ syntheticRiskMeta?.coverage?.strict_sample ?? syntheticRiskMeta?.metrics?.sample_count ?? '-' }}，可用權重 {{ syntheticRiskMeta?.coverage?.usable_weight_pct ?? syntheticRiskMeta?.metrics?.included_weight_pct ?? '-' }}%。
+                                                </div>
                                             </div>
-                                            <div v-else class="p-3 text-xs text-gray-400">
-                                                {{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.reason || '多因子資料尚未產生。' }}
+
+                                            <div class="rounded-2xl border border-sky-500/15 bg-black/25 p-4">
+                                                <div class="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                                                    <i class="fas fa-chart-line text-sky-300"></i>
+                                                    相對基準
+                                                </div>
+                                                <div class="grid grid-cols-2 gap-2 text-xs">
+                                                    <div class="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+                                                        <div class="text-gray-500 mb-1">投組 CAGR</div>
+                                                        <div class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.portfolio_cagr_pct ?? '-' }}%</div>
+                                                    </div>
+                                                    <div class="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+                                                        <div class="text-gray-500 mb-1">基準 CAGR</div>
+                                                        <div class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.benchmark_cagr_pct ?? '-' }}%</div>
+                                                    </div>
+                                                    <div class="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+                                                        <div class="text-gray-500 mb-1">Benchmark β</div>
+                                                        <div class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.benchmark_beta ?? '-' }}</div>
+                                                    </div>
+                                                    <div class="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+                                                        <div class="text-gray-500 mb-1">Benchmark R²</div>
+                                                        <div class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.benchmark_r_squared ?? '-' }}</div>
+                                                    </div>
+                                                    <div class="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+                                                        <div class="text-gray-500 mb-1">相關係數</div>
+                                                        <div class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.correlation_to_benchmark ?? '-' }}</div>
+                                                    </div>
+                                                    <div class="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+                                                        <div class="text-gray-500 mb-1">樣本日</div>
+                                                        <div class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.sample_count ?? '-' }}</div>
+                                                    </div>
+                                                </div>
+                                                <div class="mt-3 text-[11px] text-gray-400 leading-relaxed">
+                                                    期間 {{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.start_date ?? '-' }} → {{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.end_date ?? '-' }}；FX {{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.fx_mode ?? syntheticRiskMeta?.attribution_diagnostics?.benchmark_source_guard?.fx_mode ?? '-' }}。
+                                                </div>
+                                            </div>
+
+                                            <div class="rounded-2xl border border-violet-500/15 bg-black/25 p-4">
+                                                <div class="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                                                    <i class="fas fa-network-wired text-violet-300"></i>
+                                                    因子曝險
+                                                </div>
+                                                <div v-if="syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.status === 'OK'" class="grid grid-cols-2 gap-2 text-xs">
+                                                    <div class="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+                                                        <div class="text-gray-500 mb-1">Alpha</div>
+                                                        <div class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.alpha ?? '-' }}</div>
+                                                    </div>
+                                                    <div class="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+                                                        <div class="text-gray-500 mb-1">Mkt β</div>
+                                                        <div class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.mkt_beta ?? '-' }}</div>
+                                                    </div>
+                                                    <div class="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+                                                        <div class="text-gray-500 mb-1">SMB / HML</div>
+                                                        <div class="font-mono text-white text-[11px]">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.smb_beta ?? '-' }} / {{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.hml_beta ?? '-' }}</div>
+                                                    </div>
+                                                    <div class="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+                                                        <div class="text-gray-500 mb-1">RMW / CMA</div>
+                                                        <div class="font-mono text-white text-[11px]">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.rmw_beta ?? '-' }} / {{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.cma_beta ?? '-' }}</div>
+                                                    </div>
+                                                    <div class="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+                                                        <div class="text-gray-500 mb-1">WML</div>
+                                                        <div class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.momentum_beta ?? '-' }}</div>
+                                                    </div>
+                                                    <div class="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+                                                        <div class="text-gray-500 mb-1">TW / Crypto</div>
+                                                        <div class="font-mono text-white text-[11px]">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.tw_mkt_beta ?? '-' }} / {{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.crypto_beta ?? '-' }}</div>
+                                                    </div>
+                                                </div>
+                                                <div v-else class="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-100 leading-relaxed">
+                                                    {{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.reason || '多因子資料尚未產生。' }}
+                                                </div>
+                                                <div class="mt-3 text-[11px] text-gray-400 leading-relaxed">
+                                                    多因子模型僅作曝險拆解；Beta / R² 不直接轉成買賣訊號。
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                            <div class="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                                                <i class="fas fa-database text-cyan-300"></i>
+                                                資料來源 Guard
+                                            </div>
+                                            <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-2 text-[11px]">
+                                                <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3"><div class="text-gray-500">Release</div><div class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.risk_dashboard_release?.version ?? 'v1.0' }}</div></div>
+                                                <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3"><div class="text-gray-500">Benchmark</div><div class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.benchmark_ticker ?? 'VOO' }}</div></div>
+                                                <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3"><div class="text-gray-500">基準狀態</div><div class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.status ?? '-' }}</div></div>
+                                                <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3"><div class="text-gray-500">多因子狀態</div><div class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.status ?? '-' }}</div></div>
+                                                <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3"><div class="text-gray-500">日期對齊</div><div class="font-mono text-white text-[10px]">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_source_guard?.return_alignment ?? '-' }}</div></div>
+                                                <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3"><div class="text-gray-500">FX 口徑</div><div class="font-mono text-white text-[10px]">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_source_guard?.fx_mode ?? syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.fx_mode ?? '-' }}</div></div>
+                                                <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3"><div class="text-gray-500">QuantStats</div><div class="font-mono text-white">{{ syntheticRiskMeta?.quantstats?.status ?? '-' }}</div></div>
+                                                <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3"><div class="text-gray-500">Execution</div><div class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.execution_permission ? 'True' : 'False' }}</div></div>
+                                            </div>
+                                            <div v-if="(syntheticRiskMeta?.attribution_diagnostics?.risk_dashboard_release?.warnings || []).length" class="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-[11px] text-amber-100 leading-relaxed">
+                                                <span class="font-bold">風控頁警示：</span>
+                                                {{ (syntheticRiskMeta?.attribution_diagnostics?.risk_dashboard_release?.warnings || []).join('、') }}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-
-
-                                    </div>
-                                </details>
-
                                 <details class="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.025] overflow-hidden group">
                                     <summary class="cursor-pointer select-none px-4 py-3 border-b border-white/10 bg-cyan-500/[0.06] flex items-center justify-between gap-3 list-none">
                                         <div>
-                                            <div class="text-sm font-bold text-white flex items-center gap-2"><i class="fas fa-microscope text-cyan-400"></i> ③ 技術細節：EWMA、Component ES、HRP-lite</div>
-                                            <div class="text-[11px] text-gray-400 mt-1">預設收合，避免風控頁過長；需要追查風險貢獻、相關性與風險預算時再展開。</div>
+                                            <div class="text-sm font-bold text-white flex items-center gap-2"><i class="fas fa-microscope text-cyan-400"></i> 診斷附件｜EWMA、Component ES、HRP-lite</div>
+                                            <div class="text-[11px] text-gray-400 mt-1">主判讀已整合在上方風控指揮台；這裡保留底層矩陣、尾部貢獻與 HRP-lite 明細供追查。</div>
                                         </div>
                                         <span class="text-[11px] text-cyan-200">點擊展開</span>
                                     </summary>
