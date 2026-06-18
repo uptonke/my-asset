@@ -1253,7 +1253,7 @@ def compute_factor_attribution_from_returns(portfolio_returns: pd.Series) -> Dic
         port.index = pd.to_datetime(port.index).tz_localize(None).normalize()
         if len(port) < 80:
             return {
-                "version": "v1.0.1",
+                "version": "v1.0.2",
                 "status": "UNAVAILABLE",
                 "source": "computed_factor_fallback",
                 "reason": "insufficient_portfolio_return_sample",
@@ -1273,7 +1273,7 @@ def compute_factor_attribution_from_returns(portfolio_returns: pd.Series) -> Dic
         aligned = pd.concat([weekly_port, weekly_ff, weekly_custom], axis=1).replace([np.inf, -np.inf], np.nan).dropna()
         if len(aligned) < 12:
             return {
-                "version": "v1.0.1",
+                "version": "v1.0.2",
                 "status": "UNAVAILABLE",
                 "source": "computed_factor_fallback",
                 "reason": "insufficient_aligned_factor_sample",
@@ -1287,7 +1287,7 @@ def compute_factor_attribution_from_returns(portfolio_returns: pd.Series) -> Dic
         x = sm.add_constant(aligned[factor_cols].astype(float))
         fit = sm.OLS(y, x).fit()
         return {
-            "version": "v1.0.1",
+            "version": "v1.0.2",
             "status": "OK",
             "source": "computed_current_weight_returns_ff5_momentum_tw_crypto",
             "sample_count": int(len(aligned)),
@@ -1306,7 +1306,7 @@ def compute_factor_attribution_from_returns(portfolio_returns: pd.Series) -> Dic
         }
     except Exception as exc:
         return {
-            "version": "v1.0.1",
+            "version": "v1.0.2",
             "status": "UNAVAILABLE",
             "source": "computed_factor_fallback",
             "reason": "factor_fallback_failed",
@@ -1314,31 +1314,115 @@ def compute_factor_attribution_from_returns(portfolio_returns: pd.Series) -> Dic
         }
 
 
+def normalize_factor_key(key: Any) -> str:
+    """Normalize factor payload keys from multiple historical shapes.
+
+    Examples:
+    - "Mkt-RF" / "beta_mkt_rf" / "Market Beta" -> comparable lookup keys
+    - "R^2" / "rsquared" -> comparable lookup keys
+    """
+    raw = str(key or "").strip().lower()
+    raw = raw.replace("β", "beta")
+    raw = raw.replace("α", "alpha")
+    for ch in ["-", " ", ".", "/", "^", "%", "(", ")", "[", "]"]:
+        raw = raw.replace(ch, "_")
+    while "__" in raw:
+        raw = raw.replace("__", "_")
+    return raw.strip("_")
+
+
+def flatten_factor_payload(payload: Any, prefix: str = "") -> Dict[str, Any]:
+    """Flatten nested factor payloads so value mapping is not tied to one schema.
+
+    Earlier risk-tab factor objects may store values under `coefficients`, `betas`,
+    `factor_loadings`, `regression`, or top-level keys. The v1.0.1 guard only checked
+    a small set of top-level names, so it could mark the source as OK while rendering all
+    fields as `-`. v1.0.2 normalizes both top-level and nested forms.
+    """
+    out: Dict[str, Any] = {}
+    if not isinstance(payload, dict):
+        return out
+    for key, value in payload.items():
+        nk = normalize_factor_key(key)
+        full = f"{prefix}_{nk}" if prefix else nk
+        out[full] = value
+        out.setdefault(nk, value)
+        if isinstance(value, dict):
+            out.update(flatten_factor_payload(value, full))
+            # Also flatten nested groups without their prefix for common groups.
+            if nk in {"coefficients", "coefs", "betas", "exposures", "factor_exposures", "factor_loadings", "loadings", "regression", "params", "metrics"}:
+                out.update(flatten_factor_payload(value, ""))
+    return out
+
+
+def first_factor_float(flat: Dict[str, Any], aliases: List[str]) -> Optional[float]:
+    for alias in aliases:
+        nk = normalize_factor_key(alias)
+        if nk in flat:
+            val = finite_float(flat.get(nk))
+            if val is not None:
+                return val
+        # Try a few common prefixed variants produced by flatten_factor_payload.
+        for prefix in ["coefficients", "coefs", "betas", "exposures", "factor_exposures", "factor_loadings", "loadings", "regression", "params", "metrics"]:
+            pk = f"{prefix}_{nk}"
+            if pk in flat:
+                val = finite_float(flat.get(pk))
+                if val is not None:
+                    return val
+    return None
+
+
+def normalize_factor_attribution_payload(payload: Dict[str, Any], source: str) -> Dict[str, Any]:
+    flat = flatten_factor_payload(parse_jsonish(payload))
+    normalized = {
+        "version": "v1.0.2",
+        "source": source,
+        "alpha": first_factor_float(flat, ["alpha", "annualized_alpha", "alpha_annualized", "alpha_annualized_pct", "jensen_alpha", "portfolio_alpha", "pure_alpha", "const", "intercept"]),
+        "mkt_beta": first_factor_float(flat, ["mkt_beta", "beta_mkt", "market_beta", "mkt_rf_beta", "beta_mkt_rf", "Mkt-RF", "mkt_rf", "mktrf", "beta_market", "beta"]),
+        "smb_beta": first_factor_float(flat, ["smb_beta", "beta_smb", "SMB", "smb"]),
+        "hml_beta": first_factor_float(flat, ["hml_beta", "beta_hml", "HML", "hml"]),
+        "rmw_beta": first_factor_float(flat, ["rmw_beta", "beta_rmw", "RMW", "rmw"]),
+        "cma_beta": first_factor_float(flat, ["cma_beta", "beta_cma", "CMA", "cma"]),
+        "momentum_beta": first_factor_float(flat, ["momentum_beta", "beta_momentum", "wml_beta", "beta_wml", "mom_beta", "beta_mom", "Momentum", "WML", "Mom", "mom"]),
+        "tw_mkt_beta": first_factor_float(flat, ["tw_mkt_beta", "beta_tw_mkt", "tw_market_beta", "TW_Mkt", "tw_mkt", "TW_Mkt_RF", "tw_mkt_rf", "taiwan_beta"]),
+        "crypto_beta": first_factor_float(flat, ["crypto_beta", "beta_crypto", "Crypto", "crypto", "Crypto_RF", "crypto_rf", "btc_beta"]),
+        "r_squared": first_factor_float(flat, ["r_squared", "rsquared", "r2", "r_sq", "R2", "adj_r_squared", "adjusted_r_squared"]),
+    }
+    numeric_fields = [
+        "alpha", "mkt_beta", "smb_beta", "hml_beta", "rmw_beta", "cma_beta",
+        "momentum_beta", "tw_mkt_beta", "crypto_beta", "r_squared"
+    ]
+    mapped_count = sum(1 for key in numeric_fields if normalized.get(key) is not None)
+    has_core = any(normalized.get(key) is not None for key in ["alpha", "mkt_beta", "r_squared"])
+    normalized["mapped_numeric_count"] = int(mapped_count)
+    normalized["status"] = "OK" if mapped_count >= 3 and has_core else "PARTIAL"
+    normalized["reason"] = None if normalized["status"] == "OK" else "factor_object_found_but_values_not_mapped"
+    normalized["note"] = "沿用既有多因子迴歸結果；此欄位僅做風控歸因展示，不直接產生目標權重。"
+    return normalized
+
+
 def factor_attribution_snapshot(row: Dict[str, Any], portfolio_returns: Optional[pd.Series] = None) -> Dict[str, Any]:
     ff, source = extract_fama_french_payload(row)
     if ff:
-        return {
-            "version": "v1.0.1",
-            "status": "OK",
-            "source": source,
-            "alpha": finite_float(ff.get("alpha")),
-            "mkt_beta": finite_float(ff.get("mkt_beta")),
-            "smb_beta": finite_float(ff.get("smb_beta", ff.get("smb"))),
-            "hml_beta": finite_float(ff.get("hml_beta", ff.get("hml"))),
-            "rmw_beta": finite_float(ff.get("rmw_beta", ff.get("rmw"))),
-            "cma_beta": finite_float(ff.get("cma_beta", ff.get("cma"))),
-            "momentum_beta": finite_float(ff.get("momentum_beta", ff.get("wml", ff.get("mom")))),
-            "tw_mkt_beta": finite_float(ff.get("tw_mkt_beta", ff.get("tw_mkt"))),
-            "crypto_beta": finite_float(ff.get("crypto_beta", ff.get("crypto"))),
-            "r_squared": finite_float(ff.get("r_squared")),
-            "note": "沿用既有多因子迴歸結果；此欄位僅做風控歸因展示，不直接產生目標權重。",
-        }
+        normalized = normalize_factor_attribution_payload(ff, source)
+        if normalized.get("status") == "OK":
+            return normalized
+        # If an object exists but has no displayable numeric values, do not mark OK.
+        # Try the current-weight return fallback before downgrading the dashboard.
+        if portfolio_returns is not None:
+            fallback = compute_factor_attribution_from_returns(portfolio_returns)
+            if fallback.get("status") == "OK":
+                fallback["source_preference_note"] = f"{source} existed but factor values were not mapped; used computed fallback instead."
+                fallback["original_source"] = source
+                fallback["original_mapped_numeric_count"] = normalized.get("mapped_numeric_count", 0)
+                return fallback
+        return normalized
 
     if portfolio_returns is not None:
         return compute_factor_attribution_from_returns(portfolio_returns)
 
     return {
-        "version": "v1.0.1",
+        "version": "v1.0.2",
         "status": "UNAVAILABLE",
         "source": "macro_meta.fama_french",
         "reason": "factor_exposure_not_found",
@@ -2369,6 +2453,13 @@ def compute_synthetic_portfolio_risk(
     ).strip().upper()
     benchmark_attr = benchmark_attribution_report(port, benchmark_symbol, fx_series, static_fx)
     factor_attr = factor_attribution_snapshot(row, port)
+    print(
+        "OK factor attribution: "
+        f"status={factor_attr.get('status')}, "
+        f"source={factor_attr.get('source')}, "
+        f"mapped={factor_attr.get('mapped_numeric_count', '-')}, "
+        f"reason={factor_attr.get('reason')}"
+    )
     release_warnings = []
     if benchmark_attr.get("status") != "OK":
         release_warnings.append("benchmark_attribution_not_ok")
