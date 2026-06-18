@@ -1,6 +1,6 @@
 # Walk-forward Backtest v3.3
 
-Generated: `2026-06-17T14:47:11+00:00`
+Generated: `2026-06-18T12:01:36+00:00`
 
 ## Safety boundary
 
@@ -20,8 +20,8 @@ Generated: `2026-06-17T14:47:11+00:00`
 
 | Method | Folds | Avg ES95 | Avg Vol | Avg Turnover | Risk win rate | Decision |
 |---|---:|---:|---:|---:|---:|---|
-| `inverse_vol_baseline` | 12 | 0.0 | 0.0 | 22.821 | 0.0 | `watch_only_validation` |
-| `scipy_min_variance_fallback` | 12 | 0.0 | 0.0 | 73.495 | 0.0 | `watch_only_validation` |
+| `inverse_vol_baseline` | 12 | 0.0 | 0.0 | 22.876 | 0.0 | `watch_only_validation` |
+| `scipy_min_variance_fallback` | 12 | 0.0 | 0.0 | 73.242 | 0.0 | `watch_only_validation` |
 | `current_weight` | 12 | 0.0 | 0.0 | 0.0 | None | `baseline` |
 
 ## Warnings

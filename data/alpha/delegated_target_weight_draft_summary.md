@@ -1,6 +1,6 @@
 # v10.5.1 Dual Target Blend Engine
 
-- Generated: `2026-06-17T14:47:22+00:00`
+- Generated: `2026-06-18T12:01:47+00:00`
 - Delegated draft status: **machine_delegated_draft_available**
 - Pool asset count: `15`
 - Selected asset count: `15`
@@ -8,7 +8,7 @@
 - Liquidity buffer source: `portfolio_settings.liquidity_buffer_ratio_pct`
 - Daily Quant reference source: `supabase_live`
 - Target source: `50% stock_meta[ticker].target_weight + 50% v10.5 native target`
-- v10.5 native candidate: `v5_2_v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX`
+- v10.5 native candidate: `v5_2_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX`
 - Front-end MC% target used: `False`
 - Cloud target available count: `14`
 - Cloud target missing count: `1`
@@ -16,7 +16,7 @@
 - Synthetic risk available: `True`
 - Monte Carlo reference available: `True`
 - MC fragile nodes: `3`
-- Target asset weight sum: `100.0`%
+- Target asset weight sum: `100.0001`%
 - Draft line count: `4`
 - Price-quality excluded lines: `0 `
 - Blockers: `0`

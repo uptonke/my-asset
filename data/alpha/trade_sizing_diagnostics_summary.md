@@ -1,6 +1,6 @@
 # v9.3 Gate Failure & Trade Sizing Diagnostics
 
-- Generated: `2026-06-17T14:47:21+00:00`
+- Generated: `2026-06-18T12:01:46+00:00`
 - Diagnostic status: **blocked**
 - Blockers: `9`
 - Watch items: `2`
