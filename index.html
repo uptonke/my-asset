@@ -1531,14 +1531,25 @@
                 <div class="p-4 rounded-xl flex flex-wrap items-center justify-between gap-4 border transition-colors duration-500 glass border-white/5 analytics-command-toolbar">
                     <div class="flex flex-col md:flex-row gap-6 w-full md:w-auto">
                         <div>
-                             <h3 class="font-bold text-white text-lg flex items-center gap-2 mb-2 md:mb-0">
+                             <h3 class="font-bold text-white text-lg flex items-center gap-2 mb-1 md:mb-1">
                                 <i class="fas" :class="analyticsViewMode === 'optimizer' ? 'fa-diagram-project text-blue-400' : 'fa-shield-halved text-yellow-500'"></i>
-                                {{ analyticsViewMode === 'optimizer' ? '最佳化實驗室｜模型候選與壓力測試' : '風控｜量化風險核心' }}
+                                {{ analyticsViewMode === 'optimizer' ? '最佳化實驗室｜候選方案與交易邊界' : '風控｜投組風險診斷' }}
                              </h3>
-                             <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold border"
-                                  :class="allocationGovernance?.badgeClass || 'border-slate-500/40 bg-slate-500/10 text-slate-300'">
-                                <i class="fas" :class="allocationGovernance?.icon || 'fa-hourglass-half'"></i>
-                                {{ allocationGovernance?.badgeText || '等待風控資料' }}
+                             <div class="text-[11px] text-gray-400 mb-2 leading-relaxed max-w-[520px]">
+                                <span v-if="analyticsViewMode === 'optimizer'">判讀候選調倉、正式草案、交易票據與阻擋原因；不重複擔任投組現況風控。</span>
+                                <span v-else>判讀目前投組風險、基準相對表現、樣本信心與多因子曝險；不產生調倉候選。</span>
+                             </div>
+                             <div v-if="analyticsViewMode === 'optimizer'"
+                                  class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold border border-blue-500/40 bg-blue-500/10 text-blue-200">
+                                <i class="fas fa-flask-vial"></i>
+                                候選方案｜草案 {{ delegatedTargetWeightDraftSummary?.draft_line_count ?? 0 }} 筆｜僅供觀察，不產生交易訊號
+                             </div>
+                             <div v-else
+                                  class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-bold border"
+                                  :class="syntheticRiskMeta?.status === 'OK' ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : (allocationGovernance?.badgeClass || 'border-slate-500/40 bg-slate-500/10 text-slate-300')">
+                                <i class="fas" :class="syntheticRiskMeta?.status === 'OK' ? 'fa-shield-heart' : (allocationGovernance?.icon || 'fa-hourglass-half')"></i>
+                                <span v-if="syntheticRiskMeta?.status === 'OK'">資料可用｜樣本信心 {{ syntheticRiskMeta?.confidence ?? 'N/A' }}</span>
+                                <span v-else>{{ allocationGovernance?.badgeText || '等待風控資料' }}</span>
                              </div>
                         </div>
                         <div class="flex gap-4 items-end flex-wrap">
@@ -2322,9 +2333,14 @@
                                 </div>
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 text-[11px] text-gray-300 leading-relaxed">
                                     <div class="rounded-xl border border-cyan-500/15 bg-cyan-500/[0.05] p-3"><span class="font-bold text-cyan-200">① 目標權重與草案</span><br>先看 v10.5.3 thesis、v10.5.1 雙來源目標權重與 v10.0 人工確認票據。</div>
-                                    <div class="rounded-xl border border-emerald-500/15 bg-emerald-500/[0.05] p-3"><span class="font-bold text-emerald-200">② 決策摘要</span><br>再看治理、候選草案、市場狀態與審計事件。</div>
-                                    <div class="rounded-xl border border-slate-500/15 bg-slate-500/[0.05] p-3"><span class="font-bold text-slate-200">③ 診斷鏈路</span><br>依賴、沙盒、v2～v9 歷史鏈路全部收合，需要追查來源才展開。</div>
+                                    <div class="rounded-xl border border-emerald-500/15 bg-emerald-500/[0.05] p-3"><span class="font-bold text-emerald-200">② 候選方案邊界</span><br>再看候選數、正式草案是否被封鎖、交易票據是否僅供觀察，以及 alpha / constraint 阻擋原因。</div>
+                                    <div class="rounded-xl border border-slate-500/15 bg-slate-500/[0.05] p-3"><span class="font-bold text-slate-200">③ 診斷鏈路</span><br>依賴、沙盒、v2～v9 歷史鏈路全部收合，需要追查模型來源才展開。</div>
                                 </div>
+                            </div>
+
+                            <div v-show="analyticsViewMode === 'optimizer'" class="rounded-2xl border border-blue-500/20 bg-blue-500/[0.045] p-4 text-[11px] text-blue-100/80 leading-relaxed">
+                                <div class="font-bold text-white flex items-center gap-2 mb-1"><i class="fas fa-arrows-split-up-and-left text-blue-300"></i> 風控 / 最佳化分工</div>
+                                <div>風控頁回答「目前投組風險如何」；最佳化頁回答「候選調倉是否可審閱、為何被擋、是否仍是 watch-only」。樣本信心只作為候選可靠度背景，不再當最佳化主狀態。</div>
                             </div>
 
                             <details v-show="analyticsViewMode === 'optimizer'" open class="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.025] overflow-hidden group">
