@@ -138,16 +138,41 @@ def load_json(path: Path) -> Tuple[Any, str | None]:
         return None, str(exc)
 
 
+def _schema_type_matches(data: Any, expected_type: str) -> bool:
+    """Return whether data matches one JSON Schema primitive type.
+
+    This validator intentionally implements only the small JSON Schema subset used
+    by this repository, but it must support the common nullable pattern
+    {"type": ["number", "null"]}. Keep bool strict because Python treats bool
+    as an int subclass.
+    """
+    if expected_type == "number":
+        return isinstance(data, (int, float)) and not isinstance(data, bool)
+    if expected_type == "integer":
+        return isinstance(data, int) and not isinstance(data, bool)
+    py_type = JSON_TYPE_MAP.get(expected_type)
+    if py_type is None:
+        # Unknown JSON Schema keywords/types are ignored by this lightweight gate.
+        return True
+    return isinstance(data, py_type)
+
+
+def _format_expected_type(expected_type: Any) -> str:
+    if isinstance(expected_type, list):
+        return " or ".join(str(item) for item in expected_type)
+    return str(expected_type)
+
+
 def validate_schema_subset(data: Any, schema: Dict[str, Any], path: str) -> List[str]:
     problems: List[str] = []
     expected_type = schema.get("type")
-    if expected_type:
-        py_type = JSON_TYPE_MAP.get(expected_type)
-        if py_type and not isinstance(data, py_type):
-            # bool is a subclass of int in Python; keep integers strict.
-            if not (expected_type == "number" and isinstance(data, (int, float)) and not isinstance(data, bool)):
-                problems.append(f"{path}: expected {expected_type}, got {type(data).__name__}")
-                return problems
+    if expected_type is not None:
+        expected_types = expected_type if isinstance(expected_type, list) else [expected_type]
+        if not any(_schema_type_matches(data, t) for t in expected_types):
+            problems.append(
+                f"{path}: expected {_format_expected_type(expected_type)}, got {type(data).__name__}"
+            )
+            return problems
     if isinstance(data, dict):
         for key in schema.get("required", []):
             if key not in data:
