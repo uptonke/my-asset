@@ -903,12 +903,18 @@ def drawdown_details_from_returns(returns: pd.Series) -> Dict[str, Any]:
     current_peak_date = curve.idxmax() if curve.iloc[-1] >= peak.iloc[-1] else curve.loc[:curve.index[-1]].idxmax()
     current_drawdown_days = int((curve.index[-1] - current_peak_date).days) if hasattr(curve.index[-1], "to_pydatetime") else None
 
+    recovery_anchor = pd.to_datetime(recovery_date if recovery_date is not None else r.index[-1])
+    trough_anchor = pd.to_datetime(end) if end is not None else None
+    peak_anchor = pd.to_datetime(start) if start is not None else None
+
     return {
         "max_drawdown": float(dd.min()),
         "max_drawdown_start": str(pd.to_datetime(start).date()) if start is not None else None,
         "max_drawdown_end": str(pd.to_datetime(end).date()) if end is not None else None,
         "max_drawdown_recovery_date": str(pd.to_datetime(recovery_date).date()) if recovery_date is not None else None,
-        "max_drawdown_days": int((pd.to_datetime(recovery_date if recovery_date is not None else r.index[-1]) - pd.to_datetime(start)).days) if start is not None else None,
+        "max_drawdown_days": int((recovery_anchor - peak_anchor).days) if peak_anchor is not None else None,
+        "drawdown_recovery_days": int((recovery_anchor - trough_anchor).days) if trough_anchor is not None else None,
+        "is_unrecovered_drawdown": recovery_date is None,
         "current_drawdown": float(dd.iloc[-1]),
         "current_drawdown_days": current_drawdown_days,
     }
@@ -953,6 +959,13 @@ def quantstats_style_report(returns: pd.Series) -> Dict[str, Any]:
     rolling_mean_63 = r.rolling(63).mean()
     rolling_sharpe_63 = (rolling_mean_63 * 252) / rolling_vol_63.replace(0, np.nan)
 
+    wins = r[r > 0]
+    losses = r[r < 0]
+    avg_win = float(wins.mean()) if not wins.empty else None
+    avg_loss = float(losses.mean()) if not losses.empty else None
+    payoff_ratio = (avg_win / abs(avg_loss)) if avg_win is not None and avg_loss is not None and avg_loss < 0 else None
+    expectancy = float(r.mean()) if len(r) else None
+
     return {
         "status": "OK",
         "sample_count": int(len(r)),
@@ -979,8 +992,15 @@ def quantstats_style_report(returns: pd.Series) -> Dict[str, Any]:
         "worst_month_pct": round(float(worst_month) * 100.0, 2) if worst_month is not None and math.isfinite(float(worst_month)) else None,
         "worst_month": worst_month_label,
         "win_rate_pct": round(float((r > 0).mean()) * 100.0, 2),
+        "loss_rate_pct": round(float((r < 0).mean()) * 100.0, 2),
         "positive_days": int((r > 0).sum()),
         "negative_days": int((r < 0).sum()),
+        "average_win_pct": round(avg_win * 100.0, 3) if avg_win is not None and math.isfinite(avg_win) else None,
+        "average_loss_pct": round(avg_loss * 100.0, 3) if avg_loss is not None and math.isfinite(avg_loss) else None,
+        "payoff_ratio": round(float(payoff_ratio), 3) if payoff_ratio is not None and math.isfinite(float(payoff_ratio)) else None,
+        "expectancy_pct": round(expectancy * 100.0, 4) if expectancy is not None and math.isfinite(expectancy) else None,
+        "drawdown_recovery_days": dd_info.get("drawdown_recovery_days"),
+        "is_unrecovered_drawdown": dd_info.get("is_unrecovered_drawdown"),
         "tail_ratio": round(float(q95 / abs(q05)), 3) if q05 < 0 and math.isfinite(q95 / abs(q05)) else None,
         "var95_pct": round(max(0.0, -q05) * 100.0, 2),
         "es95_pct": round(max(0.0, -float(tail95.mean())) * 100.0, 2) if not tail95.empty else None,
@@ -991,6 +1011,173 @@ def quantstats_style_report(returns: pd.Series) -> Dict[str, Any]:
         "rolling_sharpe_63d": round(float(rolling_sharpe_63.dropna().iloc[-1]), 3) if len(rolling_sharpe_63.dropna()) and math.isfinite(float(rolling_sharpe_63.dropna().iloc[-1])) else None,
         "skew": round(float(r.skew()), 3) if len(r) >= 3 else None,
         "kurtosis": round(float(r.kurtosis()), 3) if len(r) >= 4 else None,
+    }
+
+
+def benchmark_needs_fx(symbol: str) -> bool:
+    """Return True when benchmark prices should be converted from USD to TWD."""
+    t = str(symbol or "").upper().strip()
+    if not t:
+        return False
+    if t in {"^TWII", "0050.TW", "006208.TW", "CASH", "TWD"}:
+        return False
+    if t.endswith(".TW") or t.endswith(".TWO"):
+        return False
+    if t.replace(".TW", "").replace(".TWO", "").isdigit():
+        return False
+    return True
+
+
+def series_cagr(returns: pd.Series) -> Optional[float]:
+    r = pd.to_numeric(returns, errors="coerce").dropna()
+    if len(r) < 2:
+        return None
+    curve = (1.0 + r).cumprod()
+    if curve.empty or curve.iloc[-1] <= 0:
+        return None
+    years = max(len(r) / 252.0, 1e-9)
+    value = float(curve.iloc[-1] ** (1.0 / years) - 1.0)
+    return value if math.isfinite(value) else None
+
+
+def benchmark_attribution_report(
+    portfolio_returns: pd.Series,
+    benchmark_symbol: str,
+    fx_series: pd.Series,
+    static_fx: float,
+) -> Dict[str, Any]:
+    """
+    Portfolio-level benchmark attribution for the Risk tab.
+    This is a diagnostic layer only; it does not generate target weights or trades.
+    """
+    bench = clean_price_series(get_benchmark(benchmark_symbol))
+    r = pd.to_numeric(portfolio_returns, errors="coerce").dropna()
+    r.index = pd.to_datetime(r.index).tz_localize(None).normalize()
+
+    if r.empty or bench.empty:
+        return {
+            "version": "v0.7",
+            "status": "UNAVAILABLE",
+            "benchmark_ticker": benchmark_symbol,
+            "reason": "portfolio_or_benchmark_return_missing",
+        }
+
+    fx_mode = "none"
+    if benchmark_needs_fx(benchmark_symbol):
+        if fx_series is not None and not fx_series.empty:
+            fx = pd.to_numeric(fx_series, errors="coerce").dropna()
+            fx.index = pd.to_datetime(fx.index).tz_localize(None).normalize()
+            aligned_fx = fx.reindex(bench.index).ffill().bfill()
+            bench = bench * aligned_fx
+            fx_mode = "historical_usdtwd"
+        else:
+            bench = bench * static_fx
+            fx_mode = f"static_usdtwd:{static_fx}"
+
+    bret = bench.pct_change().dropna()
+    aligned = pd.concat([r.rename("portfolio"), bret.rename("benchmark")], axis=1).dropna()
+    if len(aligned) < 60:
+        return {
+            "version": "v0.7",
+            "status": "INSUFFICIENT_SAMPLE",
+            "benchmark_ticker": benchmark_symbol,
+            "sample_count": int(len(aligned)),
+            "fx_mode": fx_mode,
+        }
+
+    port = aligned["portfolio"]
+    bench_r = aligned["benchmark"]
+    active = port - bench_r
+    tracking_error = float(active.std(ddof=1) * math.sqrt(252)) if len(active) > 1 else None
+    port_cagr = series_cagr(port)
+    bench_cagr = series_cagr(bench_r)
+    active_return = (port_cagr - bench_cagr) if port_cagr is not None and bench_cagr is not None else None
+    info_ratio = (active_return / tracking_error) if active_return is not None and tracking_error and tracking_error > 0 else None
+    var_b = float(np.var(bench_r, ddof=1))
+    beta = float(np.cov(port, bench_r, ddof=1)[0, 1] / var_b) if var_b > 0 and math.isfinite(var_b) else None
+    corr = float(port.corr(bench_r)) if len(aligned) >= 2 else None
+    r2 = float(corr * corr) if corr is not None and math.isfinite(corr) else None
+
+    wins = port[port > 0]
+    losses = port[port < 0]
+    avg_win = float(wins.mean()) if not wins.empty else None
+    avg_loss = float(losses.mean()) if not losses.empty else None
+    payoff_ratio = (avg_win / abs(avg_loss)) if avg_win is not None and avg_loss is not None and avg_loss < 0 else None
+
+    dd_info = drawdown_details_from_returns(port)
+
+    return {
+        "version": "v0.7",
+        "status": "OK",
+        "benchmark_ticker": benchmark_symbol,
+        "currency": "TWD",
+        "fx_mode": fx_mode,
+        "sample_count": int(len(aligned)),
+        "start_date": str(aligned.index.min().date()),
+        "end_date": str(aligned.index.max().date()),
+        "relative_performance": {
+            "portfolio_cagr_pct": round(port_cagr * 100.0, 2) if port_cagr is not None and math.isfinite(port_cagr) else None,
+            "benchmark_cagr_pct": round(bench_cagr * 100.0, 2) if bench_cagr is not None and math.isfinite(bench_cagr) else None,
+            "active_return_annualized_pct": round(active_return * 100.0, 2) if active_return is not None and math.isfinite(active_return) else None,
+            "tracking_error_pct": round(tracking_error * 100.0, 2) if tracking_error is not None and math.isfinite(tracking_error) else None,
+            "information_ratio": round(float(info_ratio), 3) if info_ratio is not None and math.isfinite(float(info_ratio)) else None,
+            "benchmark_beta": round(float(beta), 3) if beta is not None and math.isfinite(float(beta)) else None,
+            "benchmark_r_squared": round(float(r2), 3) if r2 is not None and math.isfinite(float(r2)) else None,
+            "correlation_to_benchmark": round(float(corr), 3) if corr is not None and math.isfinite(float(corr)) else None,
+        },
+        "win_rate_payoff": {
+            "win_rate_pct": round(float((port > 0).mean()) * 100.0, 2),
+            "loss_rate_pct": round(float((port < 0).mean()) * 100.0, 2),
+            "average_win_pct": round(avg_win * 100.0, 3) if avg_win is not None and math.isfinite(avg_win) else None,
+            "average_loss_pct": round(avg_loss * 100.0, 3) if avg_loss is not None and math.isfinite(avg_loss) else None,
+            "payoff_ratio": round(float(payoff_ratio), 3) if payoff_ratio is not None and math.isfinite(float(payoff_ratio)) else None,
+            "expectancy_daily_pct": round(float(port.mean()) * 100.0, 4),
+            "positive_days": int((port > 0).sum()),
+            "negative_days": int((port < 0).sum()),
+        },
+        "drawdown_recovery": {
+            "max_drawdown_pct": round(float(dd_info.get("max_drawdown")) * 100.0, 2) if dd_info.get("max_drawdown") is not None else None,
+            "max_drawdown_start_date": dd_info.get("max_drawdown_start"),
+            "max_drawdown_trough_date": dd_info.get("max_drawdown_end"),
+            "max_drawdown_recovery_date": dd_info.get("max_drawdown_recovery_date"),
+            "drawdown_recovery_days": dd_info.get("drawdown_recovery_days"),
+            "is_unrecovered_drawdown": dd_info.get("is_unrecovered_drawdown"),
+            "current_drawdown_pct": round(float(dd_info.get("current_drawdown")) * 100.0, 2) if dd_info.get("current_drawdown") is not None else None,
+            "current_drawdown_days": dd_info.get("current_drawdown_days"),
+        },
+        "notes": [
+            "此層用目前持倉合成日報酬相對基準衡量主動風險，不代表真實歷史績效。",
+            "基準預設可由 settings.benchmarkTicker / settings.riskBenchmarkTicker 指定；未指定時使用 VOO。",
+            "Fama-French / 多因子曝險沿用既有 macro_meta.fama_french，不在此重建因子資料源。",
+        ],
+    }
+
+
+def factor_attribution_snapshot(row: Dict[str, Any]) -> Dict[str, Any]:
+    macro = row.get("macro_meta") if isinstance(row.get("macro_meta"), dict) else {}
+    ff = macro.get("fama_french") if isinstance(macro.get("fama_french"), dict) else {}
+    if not ff:
+        return {
+            "version": "v0.7",
+            "status": "UNAVAILABLE",
+            "source": "macro_meta.fama_french",
+            "reason": "factor_exposure_not_found",
+        }
+    return {
+        "version": "v0.7",
+        "status": "OK",
+        "source": "macro_meta.fama_french",
+        "alpha": finite_float(ff.get("alpha")),
+        "mkt_beta": finite_float(ff.get("mkt_beta")),
+        "smb_beta": finite_float(ff.get("smb")),
+        "hml_beta": finite_float(ff.get("hml")),
+        "rmw_beta": finite_float(ff.get("rmw")),
+        "cma_beta": finite_float(ff.get("cma")),
+        "momentum_beta": finite_float(ff.get("wml")),
+        "tw_mkt_beta": finite_float(ff.get("tw_mkt")),
+        "crypto_beta": finite_float(ff.get("crypto")),
+        "r_squared": finite_float(ff.get("r_squared")),
+        "note": "沿用既有多因子迴歸結果；此欄位僅做風控歸因展示，不直接產生目標權重。",
     }
 
 
@@ -2010,6 +2197,22 @@ def compute_synthetic_portfolio_risk(
     tail_ratio = q95_pos / abs(q05) if q05 < 0 else None
     qs = quantstats_style_report(port)
     flexible_qs = quantstats_style_report(flexible_port) if len(flexible_port) >= 40 else {"status": "INSUFFICIENT_SAMPLE", "sample_count": int(len(flexible_port))}
+    benchmark_symbol = str(
+        settings.get("benchmarkTicker")
+        or settings.get("riskBenchmarkTicker")
+        or settings.get("risk_benchmark_ticker")
+        or "VOO"
+    ).strip().upper()
+    attribution_diagnostics = {
+        "version": "v0.7",
+        "status": "OK",
+        "benchmark_attribution": benchmark_attribution_report(port, benchmark_symbol, fx_series, static_fx),
+        "factor_attribution": factor_attribution_snapshot(row),
+        "payoff_source": "quantstats_style_report",
+        "drawdown_source": "quantstats_style_report",
+        "scope": "risk_tab_diagnostics_only",
+        "execution_permission": False,
+    }
 
     ewma_regime = compute_ewma_regime_report(strict_returns[tickers], weights, asset_meta, lam=SYNTHETIC_EWMA_LAMBDA)
     component_tail_risk = {
@@ -2068,7 +2271,7 @@ def compute_synthetic_portfolio_risk(
 
     return {
         "version": "v0.6",
-        "engine_versions": {"synthetic_risk": "v0.2.1", "quantstats": "v0.3", "ewma_regime": "v0.4", "component_tail_risk": "v0.5", "risk_budgeting": "v0.6"},
+        "engine_versions": {"synthetic_risk": "v0.2.1", "quantstats": "v0.3", "ewma_regime": "v0.4", "component_tail_risk": "v0.5", "risk_budgeting": "v0.6", "attribution_diagnostics": "v0.7"},
         "status": "OK" if confidence != "INVALID" else "INVALID",
         "confidence": confidence,
         "confidence_reason": confidence_reason,
@@ -2076,12 +2279,13 @@ def compute_synthetic_portfolio_risk(
         "updated_at": str(TODAY_TPE),
         "method": "current_weight_synthetic_daily_returns",
         "primary_mode": "strict",
-        "diagnostic_modes": ["flexible", "ewma_regime", "component_tail_risk", "risk_budgeting"],
+        "diagnostic_modes": ["flexible", "ewma_regime", "component_tail_risk", "risk_budgeting", "benchmark_attribution", "factor_attribution"],
         "currency": "TWD",
         "fx_source": fx_source,
         "metrics": metrics,
         "quantstats": qs,
         "quantstats_flexible": flexible_qs,
+        "attribution_diagnostics": attribution_diagnostics,
         "ewma_regime": ewma_regime,
         "component_tail_risk": component_tail_risk,
         "risk_budgeting": risk_budgeting,
@@ -2097,6 +2301,7 @@ def compute_synthetic_portfolio_risk(
             "v0.4 EWMA covariance / correlation regime 用於監控風險聚集，不是預測模型。",
             "v0.5 Component VaR / ES 為歷史尾部歸因，並非精確 marginal VaR。",
             "v0.6 HRP-lite 為無外部套件風險預算初版，不代表最適投組。",
+            "v0.7 Benchmark attribution / factor attribution 僅用於風控歸因，不是交易訊號。",
         ],
     }
 

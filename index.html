@@ -1860,6 +1860,99 @@
                             </div>
 
 
+                            <!-- v0.7 Benchmark Attribution / Factor Evidence -->
+                            <div class="rounded-2xl border border-sky-500/20 bg-sky-500/[0.04] overflow-hidden">
+                                <div class="px-4 py-3 border-b border-white/10 bg-sky-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                    <div>
+                                        <div class="text-sm font-bold text-white flex items-center gap-2">
+                                            <i class="fas fa-scale-balanced text-sky-400"></i>
+                                            v0.7 基準相對表現與因子歸因
+                                        </div>
+                                        <div class="text-[10px] text-gray-500 mt-1">
+                                            放在風控層：用目前持倉合成日報酬相對基準衡量主動風險，並接入既有多因子曝險；不影響 v10.x 目標權重或交易草案。
+                                        </div>
+                                    </div>
+                                    <div class="text-[11px] text-gray-400">
+                                        Benchmark：{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.benchmark_ticker ?? 'VOO' }} ｜ 狀態：{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.status ?? '等待更新' }}
+                                    </div>
+                                </div>
+
+                                <div v-if="!syntheticRiskMeta?.attribution_diagnostics" class="p-4 text-sm text-amber-100 bg-amber-500/10 border-t border-amber-500/10">
+                                    尚未產生 v0.7 attribution diagnostics。請跑 Update Stock Quant Meta 後重新載入。
+                                </div>
+
+                                <div v-else class="p-4 space-y-4">
+                                    <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
+                                        <div class="quant-card border-sky-500/20 bg-sky-500/10">
+                                            <div class="quant-label text-sky-300">主動年化報酬</div>
+                                            <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.active_return_annualized_pct ?? '-' }}%</div>
+                                        </div>
+                                        <div class="quant-card border-sky-500/20 bg-sky-500/10">
+                                            <div class="quant-label text-sky-300">Tracking Error</div>
+                                            <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.tracking_error_pct ?? '-' }}%</div>
+                                        </div>
+                                        <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                            <div class="quant-label text-cyan-300">Information Ratio</div>
+                                            <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.information_ratio ?? '-' }}</div>
+                                        </div>
+                                        <div class="quant-card border-cyan-500/20 bg-cyan-500/10">
+                                            <div class="quant-label text-cyan-300">Benchmark R²</div>
+                                            <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.benchmark_r_squared ?? '-' }}</div>
+                                        </div>
+                                        <div class="quant-card border-indigo-500/20 bg-indigo-500/10">
+                                            <div class="quant-label text-indigo-300">Benchmark β</div>
+                                            <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.benchmark_beta ?? '-' }}</div>
+                                        </div>
+                                        <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
+                                            <div class="quant-label text-emerald-300">Payoff Ratio</div>
+                                            <div class="quant-value text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.win_rate_payoff?.payoff_ratio ?? syntheticRiskMeta?.quantstats?.payoff_ratio ?? '-' }}</div>
+                                        </div>
+                                        <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
+                                            <div class="quant-label text-emerald-300">平均勝 / 敗</div>
+                                            <div class="quant-value text-white text-sm">{{ syntheticRiskMeta?.quantstats?.average_win_pct ?? '-' }}% / {{ syntheticRiskMeta?.quantstats?.average_loss_pct ?? '-' }}%</div>
+                                        </div>
+                                        <div class="quant-card border-red-500/20 bg-red-500/10">
+                                            <div class="quant-label text-red-300">回撤修復日</div>
+                                            <div class="quant-value text-white">{{ syntheticRiskMeta?.quantstats?.drawdown_recovery_days ?? syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.drawdown_recovery?.drawdown_recovery_days ?? '-' }}</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2 bg-white/[0.03] text-xs font-bold text-sky-200">基準相對表現</div>
+                                            <div class="p-3 grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                                                <div>投組 CAGR <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.portfolio_cagr_pct ?? '-' }}%</span></div>
+                                                <div>基準 CAGR <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.benchmark_cagr_pct ?? '-' }}%</span></div>
+                                                <div>相關係數 <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.relative_performance?.correlation_to_benchmark ?? '-' }}</span></div>
+                                                <div>樣本 <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.sample_count ?? '-' }}</span></div>
+                                                <div>期間 <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.start_date ?? '-' }} → {{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.end_date ?? '-' }}</span></div>
+                                                <div>FX <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.benchmark_attribution?.fx_mode ?? '-' }}</span></div>
+                                            </div>
+                                        </div>
+
+                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2 bg-white/[0.03] text-xs font-bold text-purple-200">多因子曝險快照</div>
+                                            <div v-if="syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.status === 'OK'" class="p-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                                                <div>Alpha <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.alpha ?? '-' }}</span></div>
+                                                <div>Mkt β <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.mkt_beta ?? '-' }}</span></div>
+                                                <div>SMB <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.smb_beta ?? '-' }}</span></div>
+                                                <div>HML <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.hml_beta ?? '-' }}</span></div>
+                                                <div>RMW <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.rmw_beta ?? '-' }}</span></div>
+                                                <div>CMA <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.cma_beta ?? '-' }}</span></div>
+                                                <div>WML <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.momentum_beta ?? '-' }}</span></div>
+                                                <div>R² <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.r_squared ?? '-' }}</span></div>
+                                                <div>TW Mkt <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.tw_mkt_beta ?? '-' }}</span></div>
+                                                <div>Crypto <span class="font-mono text-white">{{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.crypto_beta ?? '-' }}</span></div>
+                                            </div>
+                                            <div v-else class="p-3 text-xs text-gray-400">
+                                                {{ syntheticRiskMeta?.attribution_diagnostics?.factor_attribution?.reason || '多因子資料尚未產生。' }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+
                             <!-- EWMA 共變異數 / 相關性市場狀態 -->
                             <div class="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-cyan-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
@@ -6652,7 +6745,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=v10-5-integrated-delegated-daily-mc-1"></script>
+<script src="assets/js/app.bundle.js?v=v0-7-risk-attribution-1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
