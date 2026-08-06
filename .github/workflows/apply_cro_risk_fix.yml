@@ -28,16 +28,17 @@ jobs:
           import zlib
           from pathlib import Path
           payload = Path('/tmp/patch.b64').read_text().strip()
-          Path('/tmp/apply_cro_risk_fix.py').write_bytes(zlib.decompress(base64.b64decode(payload)))
+          Path('scripts/_apply_cro_risk_fix.py').write_bytes(zlib.decompress(base64.b64decode(payload)))
           PY
-          python -m py_compile /tmp/apply_cro_risk_fix.py
+          python -m py_compile scripts/_apply_cro_risk_fix.py
 
       - name: Apply comprehensive CRO fixes
-        run: python /tmp/apply_cro_risk_fix.py
+        run: python scripts/_apply_cro_risk_fix.py
 
       - name: Validate Python and frontend bundle
         shell: bash
         run: |
+          rm -f scripts/_apply_cro_risk_fix.py
           python -m py_compile main.py scripts/build_daily_quant_monte_carlo_reference.py
           python scripts/build_frontend_bundle.py
           python scripts/build_frontend_bundle.py --check
@@ -48,6 +49,7 @@ jobs:
         shell: bash
         run: |
           git checkout -- data/repo_architecture/frontend_build_status_latest.json data/repo_architecture/frontend_build_status_summary.md 2>/dev/null || true
+          rm -f scripts/_apply_cro_risk_fix.py
           rm -rf .github/cro-fix
           rm -f .github/workflows/apply_cro_risk_fix.yml
           git config user.name "github-actions[bot]"
