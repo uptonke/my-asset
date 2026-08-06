@@ -1,0 +1,36 @@
+name: Package CRO fix
+
+on:
+  push:
+    branches:
+      - fix/cro-risk-consistency-20260806
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/cro-risk-consistency-20260806
+
+      - name: Build upload ZIP
+        shell: bash
+        run: |
+          rm -rf /tmp/my-asset-cro-risk-fix
+          mkdir -p /tmp/my-asset-cro-risk-fix
+          rsync -a --exclude='.git' --exclude='.github/workflows/package_cro_fix.yml' ./ /tmp/my-asset-cro-risk-fix/
+          cd /tmp
+          zip -qr "$GITHUB_WORKSPACE/my-asset-cro-risk-fix.zip" my-asset-cro-risk-fix
+          unzip -tq "$GITHUB_WORKSPACE/my-asset-cro-risk-fix.zip"
+
+      - name: Upload ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: my-asset-cro-risk-fix
+          path: my-asset-cro-risk-fix.zip
+          if-no-files-found: error
+          retention-days: 7
