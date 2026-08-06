@@ -5616,14 +5616,14 @@
         <div class="flex flex-col gap-2">
             <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border border-orange-500/20 bg-orange-500/10 text-orange-300 w-max mb-1">
                 <i class="fas fa-meteor"></i>
-                跳躍風險模型 (Jump Risk Model)
+                跳躍壓力情境 (Jump Stress Scenario)
             </div>
             <h4 class="text-white font-bold text-lg md:text-xl flex items-center gap-2">
                 <i class="fas fa-burst text-orange-400"></i>
-                跳躍擴散風險模型 (Jump-Diffusion Risk Model)
+                資產級跳躍壓力模型 (Asset-Level Jump Stress Model)
             </h4>
             <p class="text-[11px] md:text-xs text-gray-400 mt-1 leading-relaxed">
-                以跳躍擴散模型估計短期崩跌、跳躍頻率與尾部損失；EVT / POT-GPD 因週資料尾部樣本不足，改為指標解釋區。
+                以資產類別的政策假設模擬 13 週跳躍壓力情境；這不是由歷史資料擬合出的崩盤機率。下方以相同 13 週期間的歷史結果作比較，EVT 則維持單週診斷。
             </p>
         </div>
     </div>
@@ -5631,49 +5631,49 @@
     <div class="p-5 md:p-6 flex-1 bg-black/20">
         <div class="grid grid-cols-2 gap-3 text-xs">
             <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">跳躍擴散 VaR 95 (JD VaR 95)</div>
+                <div class="text-gray-500 mb-1">13週跳躍壓力 VaR 95</div>
                 <div class="text-white font-mono font-bold">
                     {{ tailStatsLite.jdVar95 === '-' ? '-' : tailStatsLite.jdVar95 + '%' }}
                 </div>
             </div>
 
             <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">跳躍擴散 ES 95 (JD ES 95)</div>
+                <div class="text-gray-500 mb-1">13週跳躍壓力 ES 95</div>
                 <div class="text-white font-mono font-bold">
                     {{ tailStatsLite.jdEs95 === '-' ? '-' : tailStatsLite.jdEs95 + '%' }}
                 </div>
             </div>
 
             <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">崩盤機率 (Crash Prob)</div>
+                <div class="text-gray-500 mb-1">13週跌逾10%機率</div>
                 <div class="text-white font-mono font-bold">
                     {{ tailStatsLite.jdCrashProb === '-' ? '-' : tailStatsLite.jdCrashProb + '%' }}
                 </div>
             </div>
 
             <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">尾部損失 (Tail Loss)</div>
+                <div class="text-gray-500 mb-1">歷史13週 ES 95</div>
                 <div class="text-white font-mono font-bold">
-                    {{ tailStatsLite.jdTailLoss === '-' ? '-' : tailStatsLite.jdTailLoss + '%' }}
+                    {{ tailStatsLite.historicalHorizonEs95 === '-' ? '-' : tailStatsLite.historicalHorizonEs95 + '%' }}
                 </div>
             </div>
 
             <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">年化跳躍頻率 λ (Annual Freq)</div>
+                <div class="text-gray-500 mb-1">加權年化跳躍頻率 λ（情境）</div>
                 <div class="text-white font-mono font-bold">
                     {{ tailStatsLite.jdEffectiveLambda }}
                 </div>
             </div>
 
             <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">估計期間 (Horizon)</div>
+                <div class="text-gray-500 mb-1">比較期間（週）</div>
                 <div class="text-white font-mono font-bold">
                     {{ tailStatsLite.jdHorizonWeeks }}
                 </div>
             </div>
 
             <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10 col-span-2">
-                <div class="text-gray-500 mb-1">跳躍特徵 (Jump Signature)</div>
+                <div class="text-gray-500 mb-1">情境參數摘要</div>
                 <div class="text-white font-mono font-bold">
                     μj {{ tailStatsLite.jdEffectiveJumpMean }} / σj {{ tailStatsLite.jdEffectiveJumpStd }}
                 </div>
@@ -5690,31 +5690,31 @@
 
                 <div class="grid grid-cols-1 gap-2 text-[11px] leading-relaxed">
                     <div>
-                        <span class="text-gray-200 font-bold">跳躍擴散 VaR 95 (JD VaR 95)：</span>
+                        <span class="text-gray-200 font-bold">13週跳躍壓力 VaR 95：</span>
                         <span class="text-gray-400">在跳躍擴散模型下，95% 信心水準的一期虧損門檻；數值越高，代表短期左尾風險越重。</span>
                     </div>
                     <div>
-                        <span class="text-gray-200 font-bold">跳躍擴散 ES 95 (JD ES 95)：</span>
+                        <span class="text-gray-200 font-bold">13週跳躍壓力 ES 95：</span>
                         <span class="text-gray-400">跌破 VaR 95 門檻後，最壞 5% 情境的平均虧損；通常比 VaR 更能反映真正尾部損失。</span>
                     </div>
                     <div>
-                        <span class="text-gray-200 font-bold">崩盤機率 (Crash Prob)：</span>
+                        <span class="text-gray-200 font-bold">13週跌逾10%機率：</span>
                         <span class="text-gray-400">模型估計發生跳躍式大跌的機率；不是預測明天會崩盤，而是衡量斷崖式下跌風險強弱。</span>
                     </div>
                     <div>
-                        <span class="text-gray-200 font-bold">尾部損失 (Tail Loss)：</span>
+                        <span class="text-gray-200 font-bold">歷史13週 ES 95：</span>
                         <span class="text-gray-400">跳躍事件發生時的估計損失幅度；可視為「一旦出事，可能掉多少」的壓力 proxy。</span>
                     </div>
                     <div>
-                        <span class="text-gray-200 font-bold">年化跳躍頻率 λ (Annual Freq)：</span>
+                        <span class="text-gray-200 font-bold">加權年化跳躍頻率 λ（情境）：</span>
                         <span class="text-gray-400">一年中預期跳躍事件次數；λ=0.5 約等於平均兩年一次，λ=2 約等於一年兩次。</span>
                     </div>
                     <div>
-                        <span class="text-gray-200 font-bold">估計期間 (Horizon)：</span>
+                        <span class="text-gray-200 font-bold">比較期間（週）：</span>
                         <span class="text-gray-400">這組風險估計對應的觀察或預測期間；期間越長，尾部風險通常越容易放大。</span>
                     </div>
                     <div>
-                        <span class="text-gray-200 font-bold">跳躍特徵 (Jump Signature)：</span>
+                        <span class="text-gray-200 font-bold">情境參數摘要：</span>
                         <span class="text-gray-400">μj 是平均跳幅，σj 是跳幅波動；μj 越負代表跳躍偏向下跌，σj 越大代表跳躍事件更不穩定。</span>
                     </div>
                 </div>

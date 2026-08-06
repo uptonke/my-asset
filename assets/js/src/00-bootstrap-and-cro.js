@@ -42,150 +42,187 @@ createApp({
             isCroThinking.value = true;
             croInsight.value = null;
 
+            const twrNum = Number(stats.value.annRet);
+            const mwrNum = Number(stats.value.mwr);
             const payload = {
+    report_metadata: {
+        purpose: 'diagnostic_and_rebalance_review_only',
+        not_an_execution_order: true,
+        data_frequency: dataFrequency.value,
+        tail_comparison_horizon_weeks: tailStatsLite.value.jdHorizonWeeks
+    },
     return_metrics: {
-        time_weighted_return_twr: stats.value.annRet + '%',
-        money_weighted_return_mwr: stats.value.mwr === '-' ? 'N/A' : stats.value.mwr + '%',
-        log_return: stats.value.annLogRet + '%',
-        alpha_jensen: stats.value.alpha + '%'
+        time_weighted_return_twr_annualized: stats.value.annRet + '%',
+        money_weighted_return_mwr_xirr_annualized: stats.value.mwr === '-' ? 'N/A' : stats.value.mwr + '%',
+        mwr_minus_twr_percentage_points: Number.isFinite(twrNum) && Number.isFinite(mwrNum)
+            ? (mwrNum - twrNum).toFixed(2) + 'pp'
+            : 'N/A',
+        capm_alpha_proxy: stats.value.alpha + '%',
+        capm_alpha_method: 'annualized_TWR_minus_[rf_plus_current_metadata_beta_times_market_risk_premium]',
+        alpha_regression_t_stat: 'N/A',
+        alpha_selection_attribution: 'N/A'
     },
     risk_efficiency: {
-    portfolio_beta: riskParams.value.beta,
-    portfolio_volatility: stats.value.annVol + '%',
-    historical_sharpe: stats.value.sharpe,
-    historical_psr: stats.value.psr === '-' ? 'N/A' : stats.value.psr + '%',
-    mc_sharpe_raw: mcOptimal.value?.sharpeRaw ?? 'N/A',
-    mc_psr: mcOptimal.value?.psr ? mcOptimal.value.psr + '%' : 'N/A',
-    mc_dsr: mcOptimal.value?.dsr ? mcOptimal.value.dsr + '%' : 'N/A',
-    mc_dsr_trials: mcOptimal.value?.dsrTrials ?? 'N/A',
-    mc_dsr_sample_n: mcOptimal.value?.dsrSampleN ?? 'N/A',
-    sortino_ratio: stats.value.sortino,
-    treynor_ratio: stats.value.treynor
-},
-kelly_sizing: {
+        portfolio_beta: riskParams.value.beta,
+        portfolio_volatility: stats.value.annVol + '%',
+        historical_sharpe: stats.value.sharpe,
+        historical_psr: stats.value.psr === '-' ? 'N/A' : stats.value.psr + '%',
+        historical_psr_benchmark_sharpe: 0,
+        historical_psr_method_note: 'Approximate probability that period Sharpe exceeds 0; below 95% means insufficient high-confidence evidence, not proof of randomness.',
+        mc_sharpe_raw: mcOptimal.value?.sharpeRaw ?? 'N/A',
+        mc_psr: mcOptimal.value?.psr ? mcOptimal.value.psr + '%' : 'N/A',
+        mc_dsr: mcOptimal.value?.dsr ? mcOptimal.value.dsr + '%' : 'N/A',
+        mc_dsr_trials: mcOptimal.value?.dsrTrials ?? 'N/A',
+        mc_dsr_sample_n: mcOptimal.value?.dsrSampleN ?? 'N/A',
+        sortino_ratio: stats.value.sortino,
+        treynor_ratio: stats.value.treynor
+    },
+    kelly_sizing: {
         full_kelly: mcOptimal.value?.fullKelly ? mcOptimal.value.fullKelly + '%' : 'N/A',
         half_kelly: mcOptimal.value?.halfKelly ? mcOptimal.value.halfKelly + '%' : 'N/A',
-        recommended_buffer: mcOptimal.value?.recommendedBuffer ? mcOptimal.value.recommendedBuffer + '%' : 'N/A'
+        recommended_buffer: mcOptimal.value?.recommendedBuffer ? mcOptimal.value.recommendedBuffer + '%' : 'N/A',
+        method_note: 'Sizing reference only; it does not override tail-risk, liquidity, or policy constraints.'
     },
     asymmetry_and_win_rate: {
         omega_ratio: stats.value.omega,
         profit_factor_pf: stats.value.profitFactor,
         skewness: stats.value.skew,
-        kurtosis: stats.value.kurt
+        excess_kurtosis: stats.value.kurt
     },
-    catastrophic_risk: {
+    catastrophic_risk_from_nav_history: {
         max_drawdown_mdd: stats.value.mdd + '%',
         ulcer_index_ui: stats.value.ulcer,
         time_under_water_tuw_days: stats.value.tuw,
         calmar_ratio: stats.value.calmar,
-        value_at_risk_var_95: stats.value.var95 + '%',
-        cvar_95: stats.value.cvar95 + '%'
+        single_period_var95: stats.value.var95 + '%',
+        single_period_cvar95: stats.value.cvar95 + '%',
+        note: 'These are based on actual NAV snapshot periods and are not automatically comparable with a 13-week simulation.'
     },
     systemic_correlation: sysCorr.value.toFixed(2),
 
     regime_rebalance_monitor: {
-    trim_candidates: rebalanceMonitor.value.trimCount,
-    high_priority_alerts: rebalanceMonitor.value.alertCount,
-    leverage_vol_drag_30d: rebalanceMonitor.value.volDrag30d + '%',
-    leverage_vol_drag_90d: rebalanceMonitor.value.volDrag90d + '%',
-
-    buffer_floor_pct: rebalanceMonitor.value.bufferFloorPct + '%',
-    current_buffer_pct: rebalanceMonitor.value.currentBufferPct + '%',
-    buffer_gap_pct: rebalanceMonitor.value.bufferGapPct + '%',
-    buffer_blocking_risk_buys: rebalanceMonitor.value.bufferBlockingRiskBuys ? 'YES' : 'NO',
-    hard_buffer_tickers: (rebalanceMonitor.value.hardBufferTickers || []).join(' + '),
-
-    rebalance_alerts: rebalanceMonitor.value.alerts.slice(0, 5)
-},
-
-    portfolio_xray: {
-        pc1_explained: xrayStats.value.pca.pc1Explained + '%',
-        pc1_to_pc3_cumulative: xrayStats.value.pca.pc3CumExplained + '%',
-        usd_exposure_pct: xrayStats.value.fx.netFxExposurePct + '%',
-        fx_1pct_nav_impact_twd: xrayStats.value.fx.usdNavImpact1pct,
-        top_risk_contributors: xrayStats.value.mrcTable.slice(0, 5)
+        overweight_trim_candidates: rebalanceMonitor.value.trimCount,
+        underweight_add_candidates: rebalanceMonitor.value.addCount,
+        total_target_drift_candidates: rebalanceMonitor.value.driftCount,
+        concentration_candidates_over_20pct: rebalanceMonitor.value.concentrationCount,
+        high_priority_alerts: rebalanceMonitor.value.alertCount,
+        leverage_vol_drag_30d: rebalanceMonitor.value.volDrag30d + '%',
+        leverage_vol_drag_90d: rebalanceMonitor.value.volDrag90d + '%',
+        buffer_floor_pct: rebalanceMonitor.value.bufferFloorPct + '%',
+        current_buffer_pct: rebalanceMonitor.value.currentBufferPct + '%',
+        buffer_gap_pct: rebalanceMonitor.value.bufferGapPct + '%',
+        buffer_blocking_risk_buys: rebalanceMonitor.value.bufferBlockingRiskBuys ? 'YES' : 'NO',
+        buffer_floor_status: Number(rebalanceMonitor.value.bufferFloorPct) <= 0
+            ? 'DISABLED_ZERO_FLOOR'
+            : 'ACTIVE',
+        hard_buffer_tickers: (rebalanceMonitor.value.hardBufferTickers || []).join(' + '),
+        rebalance_alerts_with_direction: rebalanceMonitor.value.alerts.slice(0, 8)
     },
 
-    tail_crash_radar: {
-    conditional_correlation: tailStatsLite.value.conditionalCorr,
-    crisis_correlation: tailStatsLite.value.crisisCorr,
-    downside_beta: tailStatsLite.value.downsideBeta,
-    stressed_cvar: tailStatsLite.value.stressedCvar + '%',
-    joint_downside_hit_rate: tailStatsLite.value.jointDownsideHitRate + '%',
-    co_drawdown_frequency: tailStatsLite.value.coDrawdownFrequency + '%',
-    tail_dependence_lite: tailStatsLite.value.tailDependenceLite,
-    rolling_cvar_26w: tailStatsLite.value.rollingCvar26w + '%',
-    rolling_cvar_52w: tailStatsLite.value.rollingCvar52w + '%',
-    crisis_window_label: tailStatsLite.value.crisisWindowLabel,
-    tail_sample_count: tailStatsLite.value.tailSampleCount,
-    crisis_sample_count: tailStatsLite.value.crisisSampleCount,
-    co_drawdown_threshold: tailStatsLite.value.coDrawdownThreshold + '%',
-    tail_threshold_quantile: 'P' + tailStatsLite.value.tailThresholdQuantile
-},
+    portfolio_xray: {
+        pc1_explained: xrayStats.value.pca.pc1Explained === '-' ? 'N/A' : xrayStats.value.pca.pc1Explained + '%',
+        pc1_to_pc3_cumulative: xrayStats.value.pca.pc3CumExplained === '-' ? 'N/A' : xrayStats.value.pca.pc3CumExplained + '%',
+        usd_exposure_pct: xrayStats.value.fx.netFxExposurePct === '-' ? 'N/A' : xrayStats.value.fx.netFxExposurePct + '%',
+        fx_1pct_nav_impact_twd: xrayStats.value.fx.usdNavImpact1pct,
+        top_risk_contributors: xrayStats.value.mrcTable.slice(0, 5),
+        etf_lookthrough_status: xrayStats.value.lookthrough?.status || 'unknown',
+        etf_lookthrough_note: xrayStats.value.lookthrough?.note || ''
+    },
 
-jump_diffusion: {
-    jd_var95: tailStatsLite.value.jdVar95 === '-' ? 'N/A' : tailStatsLite.value.jdVar95 + '%',
-    jd_es95: tailStatsLite.value.jdEs95 === '-' ? 'N/A' : tailStatsLite.value.jdEs95 + '%',
-    jd_crash_prob: tailStatsLite.value.jdCrashProb === '-' ? 'N/A' : tailStatsLite.value.jdCrashProb + '%',
-    jd_tail_loss: tailStatsLite.value.jdTailLoss === '-' ? 'N/A' : tailStatsLite.value.jdTailLoss + '%',
-    jd_horizon_weeks: tailStatsLite.value.jdHorizonWeeks,
-    jd_effective_lambda: tailStatsLite.value.jdEffectiveLambda,
-    jd_effective_jump_mean: tailStatsLite.value.jdEffectiveJumpMean,
-    jd_effective_jump_std: tailStatsLite.value.jdEffectiveJumpStd
-},
+    tail_crash_radar_1w: {
+        conditional_correlation: tailStatsLite.value.conditionalCorr,
+        crisis_correlation: tailStatsLite.value.crisisCorr,
+        downside_beta: tailStatsLite.value.downsideBeta,
+        stressed_cvar: tailStatsLite.value.stressedCvar + '%',
+        joint_downside_hit_rate: tailStatsLite.value.jointDownsideHitRate + '%',
+        co_drawdown_frequency: tailStatsLite.value.coDrawdownFrequency + '%',
+        tail_dependence_lite: tailStatsLite.value.tailDependenceLite,
+        rolling_cvar_26w: tailStatsLite.value.rollingCvar26w + '%',
+        rolling_cvar_52w: tailStatsLite.value.rollingCvar52w + '%',
+        crisis_window_label: tailStatsLite.value.crisisWindowLabel,
+        tail_sample_count: tailStatsLite.value.tailSampleCount,
+        crisis_sample_count: tailStatsLite.value.crisisSampleCount,
+        co_drawdown_threshold: tailStatsLite.value.coDrawdownThreshold + '%',
+        tail_threshold_quantile: 'P' + tailStatsLite.value.tailThresholdQuantile
+    },
 
-evt_tail: {
-    evt_var95: tailStatsLite.value.evtVar95 === '-' ? 'N/A' : tailStatsLite.value.evtVar95 + '%',
-    evt_es95: tailStatsLite.value.evtEs95 === '-' ? 'N/A' : tailStatsLite.value.evtEs95 + '%',
-    evt_shape_xi: tailStatsLite.value.evtShapeXi,
-    evt_scale_beta: tailStatsLite.value.evtScaleBeta,
-    evt_threshold: tailStatsLite.value.evtThreshold === '-' ? 'N/A' : tailStatsLite.value.evtThreshold + '%',
-    evt_exceedance_count: tailStatsLite.value.evtExceedanceCount,
-    evt_alpha_conf: tailStatsLite.value.evtAlphaConf === '-' ? 'N/A' : 'P' + tailStatsLite.value.evtAlphaConf
-}
+    same_horizon_tail_comparison: {
+        horizon_weeks: tailStatsLite.value.jdHorizonWeeks,
+        historical_current_weight_var95: tailStatsLite.value.historicalHorizonVar95 === '-' ? 'N/A' : tailStatsLite.value.historicalHorizonVar95 + '%',
+        historical_current_weight_es95: tailStatsLite.value.historicalHorizonEs95 === '-' ? 'N/A' : tailStatsLite.value.historicalHorizonEs95 + '%',
+        historical_sample_count: tailStatsLite.value.historicalHorizonSampleCount,
+        historical_method: tailStatsLite.value.historicalHorizonMethod,
+        jump_stress_var95: tailStatsLite.value.jdVar95 === '-' ? 'N/A' : tailStatsLite.value.jdVar95 + '%',
+        jump_stress_es95: tailStatsLite.value.jdEs95 === '-' ? 'N/A' : tailStatsLite.value.jdEs95 + '%',
+        jump_stress_probability_below_threshold: tailStatsLite.value.jdCrashProb === '-' ? 'N/A' : tailStatsLite.value.jdCrashProb + '%',
+        jump_stress_threshold: tailStatsLite.value.jdCrashThresholdPct === '-' ? 'N/A' : tailStatsLite.value.jdCrashThresholdPct + '%',
+        note: 'Historical and jump-stress metrics in this object use the same horizon and current-weight synthetic portfolio. Historical observations are overlapping and therefore not independent.'
+    },
+
+    jump_stress_scenario: {
+        model_type: tailStatsLite.value.jdModelType,
+        parameter_source: tailStatsLite.value.jdParameterSource,
+        jump_aggregation: tailStatsLite.value.jdJumpAggregation,
+        drift_compensated: tailStatsLite.value.jdDriftCompensated,
+        simulation_count: tailStatsLite.value.jdSimulationCount,
+        effective_annual_jump_frequency: tailStatsLite.value.jdEffectiveLambda,
+        weighted_jump_mean_assumption: tailStatsLite.value.jdEffectiveJumpMean,
+        weighted_jump_std_assumption: tailStatsLite.value.jdEffectiveJumpStd,
+        expected_jump_drag_weekly_pct: tailStatsLite.value.jdExpectedJumpDragWeeklyPct,
+        es_absolute_value_duplicate: tailStatsLite.value.jdTailLoss === '-' ? 'N/A' : tailStatsLite.value.jdTailLoss + '%'
+    },
+
+    evt_tail_1w: {
+        evt_var95: tailStatsLite.value.evtVar95 === '-' ? 'N/A' : tailStatsLite.value.evtVar95 + '%',
+        evt_es95: tailStatsLite.value.evtEs95 === '-' ? 'N/A' : tailStatsLite.value.evtEs95 + '%',
+        evt_shape_xi: tailStatsLite.value.evtShapeXi,
+        evt_scale_beta: tailStatsLite.value.evtScaleBeta,
+        evt_threshold: tailStatsLite.value.evtThreshold === '-' ? 'N/A' : tailStatsLite.value.evtThreshold + '%',
+        evt_exceedance_count: tailStatsLite.value.evtExceedanceCount,
+        evt_alpha_conf: tailStatsLite.value.evtAlphaConf === '-' ? 'N/A' : 'P' + tailStatsLite.value.evtAlphaConf,
+        horizon_weeks: tailStatsLite.value.evtHorizonWeeks,
+        directly_comparable_to_jump_stress: tailStatsLite.value.evtComparableToJd,
+        comparison_note: tailStatsLite.value.evtComparisonNote
+    }
 };
 
             const promptText = `
 [SYSTEM_DIRECTIVE]
-Task: Act as a coldly rational, highly analytical Quant Chief Risk Officer (CRO) for a family office.
-Tone: Brutally honest, strictly data-driven, and logically flawless. Zero tolerance for financial contradictions.
-Constraint: Output strictly in Traditional Chinese. Max 8 bullet points. No pleasantries.
+Task: Act as an evidence-disciplined Quant Chief Risk Officer for a family office.
+Tone: Direct, analytical, and proportionate to the evidence. Avoid dramatic language, certainty inflation, and moral judgments about the investor.
+Constraint: Output strictly in Traditional Chinese. Maximum 8 bullets. No pleasantries.
 
-[LOGICAL_GUARDRAILS]
-- DO NOT confuse "Diversification/Rotation" with "Hedging".
-- TRUE HEDGING means moving to cash, bonds, or negative-beta assets.
-- DO NOT suggest buying high-beta, risk-on assets as a hedge.
-- If Portfolio X-Ray, Rebalance Monitor, and Tail / Crash Radar are present, you MUST use them explicitly.
-- If jump_diffusion is present, you MUST explicitly judge discontinuous crash risk using jd_var95, jd_es95, jd_crash_prob, and jd_tail_loss. Do not ignore it just because historical CVaR exists.
-- If evt_tail is present, you MUST explicitly judge whether historical tail risk is being understated using evt_var95, evt_es95, evt_shape_xi, evt_threshold, and evt_exceedance_count.
-- Treat tail metrics with low sample counts cautiously. If tail_sample_count, crisis_sample_count, or evt_exceedance_count is small, explicitly mention that the signal direction matters more than the exact magnitude.
-- If regime_rebalance_monitor shows buffer_blocking_risk_buys = YES, you MUST treat Buffer Floor as a hard constraint, not a soft suggestion.
-- When buffer_gap_pct > 0, DO NOT recommend buying high-beta or risk-on assets first. The portfolio must replenish hard buffer assets before any discretionary risk-on add.
-- If risk_efficiency contains historical_psr, mc_psr, or mc_dsr, you MUST explicitly discuss whether the portfolio's apparent Sharpe is statistically credible.
-- Do not treat a high raw Sharpe as strong evidence if DSR is materially lower.
-- If PSR or DSR is N/A, say so explicitly rather than inferring significance.
-- [KELLY INTEGRATION RULE]: If kelly_sizing.recommended_buffer is near 0%, it means the macro environment strongly favors risk-on. If the portfolio concurrently shows severe structural risks (e.g., False Diversification, high Downside Beta), your final tactical instruction MUST BE "強勢輪動 (Aggressive Rotation)". You must explicitly command the user to Trim toxic/overweight assets to release cash, and IMMEDIATELY REINVEST that cash into the optimal risky assets to maintain full exposure. DO NOT suggest holding cash if Kelly says 0%.
+[EVIDENCE RULES]
+- Separate measured historical results, model estimates, heuristic stress assumptions, and policy thresholds. Never present one category as another.
+- Compare VaR/ES values only when horizon, portfolio construction, confidence level, and return definition are aligned.
+- The object same_horizon_tail_comparison is the valid comparison for historical versus jump-stress tail risk.
+- evt_tail_1w is a one-week POT-GPD diagnostic. Do not compare its magnitude directly with a 13-week jump-stress result.
+- jump_stress_scenario uses asset-class policy assumptions and independent asset-level Poisson jumps. It is a stress scenario, not a historically fitted crash probability model.
+- jd_tail_loss is the absolute value of jd_es95 and is not independent corroborating evidence.
+- Interpret jd_crash_prob only as the probability that the simulated horizon return breaches the stated jump_stress_threshold.
+- If EVT xi < 0, describe the fitted tail as bounded under the sample estimate; do not call it heavy-tailed. If exceedance count is small, state that xi and ES are unstable.
+- Small tail/crisis samples are preliminary evidence, not an "extremely clear" signal. Do not claim statistical certainty without confidence intervals.
+- Historical PSR uses benchmark Sharpe 0. A value below 95% means evidence is not strong enough for a high-confidence claim; it does not prove returns are random or imply survivor bias.
+- MWR > TWR may indicate favorable cash-flow timing. It does not prove security selection skill.
+- capm_alpha_proxy is not regression-estimated Jensen alpha and has no t-stat. Do not claim persistent selection alpha.
+- Rebalance alerts include current weight, target weight, signed drift, and candidate action. Never infer Trim from an underweight alert.
+- If buffer_floor_status is DISABLED_ZERO_FLOOR, say the hard floor is inactive; do not praise compliance with a zero constraint.
+- BOXX and SHY may reduce risk-asset exposure but retain USD and instrument-specific risk for a TWD investor. Do not call them literally risk-free.
+- If ETF look-through is unavailable, state that PCA/MRC cannot detect constituent overlap and avoid claiming complete diversification analysis.
+- Do not infer "discipline failure" from a single snapshot. Describe observed drift and the rule that triggered it.
 
-[ANALYSIS_RULES]
-You MUST analyze the portfolio holistically using all modules below:
-
-1. 【資金效率與選股】Compare TWR vs MWR and Jensen's Alpha. Judge whether timing and selection are adding value or destroying value.
-2. 【風險報酬定價】Use historical_sharpe, historical_psr, mc_sharpe_raw, mc_psr, mc_dsr, Sortino, Treynor, Beta, and Volatility.
-State whether the portfolio is being paid enough for the risk it is taking.
-If PSR or DSR is present, explicitly judge whether the observed Sharpe is statistically credible or likely inflated by selection / optimization.
-Treat DSR as more important than raw Sharpe when Monte Carlo optimization has tested many candidate portfolios.
-3. 【Portfolio X-Ray】Use PC1 explained, PC1-3 cumulative explained, USD exposure, FX impact, and top risk contributors. Judge whether the portfolio is truly diversified or only appears diversified.
-4. 【Regime / Rebalance Monitor】Use trim candidates, high-priority alerts, leverage volatility drag, buffer_floor_pct, current_buffer_pct, buffer_gap_pct, buffer_blocking_risk_buys, hard_buffer_tickers, and rebalance alerts. Judge whether risk is drifting because the user failed to rebalance, and whether the portfolio is currently constrained by a Buffer Floor shortfall.
-5. 【Tail / Crash Radar】Use conditional correlation, crisis correlation, downside beta, stressed CVaR, joint downside hit rate, co-drawdown frequency, tail dependence lite, and rolling CVaR. Judge how fragile the portfolio becomes in bad states.
-6. 【Jump-Diffusion / EVT】If jump_diffusion or evt_tail is present, you MUST explicitly compare historical tail metrics vs jump-adjusted tail metrics vs EVT-implied tail metrics. State whether historical CVaR is understating discontinuous crash risk or fat-tail risk. Use jd_var95, jd_es95, jd_crash_prob, jd_tail_loss, evt_var95, evt_es95, evt_shape_xi, evt_threshold, and evt_exceedance_count.
-7. 【肥尾與痛苦結構】Use Kurtosis, Skewness, MDD, UI, TUW, and Calmar. Judge whether the portfolio is psychologically and statistically survivable.
-8. 【真正的風險來源排序】Name the top 3 real risks now. Prioritize concentration, rebalance drift, tail fragility, leverage drag, false diversification, and jump/EVT tail underestimation where applicable.
-9. 【CRO 最終指令】Give ONE definitive tactical instruction using Buy / Hold / Trim / Cut / Hedge / Raise Cash. The instruction must be logically consistent with the data.
-If buffer_blocking_risk_buys = YES, the final tactical instruction must prioritize Raise Cash / Hold / Trim / add hard buffer assets, and must not recommend risk-on accumulation first.
-
+[ANALYSIS TASKS]
+1. 【資金效率】Compare TWR, MWR, and the CAPM alpha proxy with the methodological limits above.
+2. 【風險報酬可信度】Assess Sharpe, PSR/DSR, volatility, Sortino and Treynor without converting lack of significance into proof of randomness.
+3. 【Portfolio X-Ray】Assess concentration, risk contribution, PCA, USD exposure and look-through coverage. Use "risk concentration" rather than "leverage" unless actual leverage exists.
+4. 【再平衡監控】Distinguish Trim, Add, general drift and concentration candidates. State the exact direction of major alerts.
+5. 【Tail / Crash Radar】Assess crisis correlation and downside behavior while explicitly qualifying small samples.
+6. 【同期間尾部比較】Use same_horizon_tail_comparison. Quantify the gap, but call it a stress-model gap rather than proof that history is wrong.
+7. 【EVT】Discuss the one-week EVT result separately, including xi sign, threshold, exceedance count and lack of direct 13-week comparability.
+8. 【CRO 最終指令】Choose one of Review / Hold / Conditional Trim / Trim / Raise Cash. Use Trim or Raise Cash only when an explicit target band, concentration cap, buffer constraint, or risk-budget breach is shown. Otherwise use Review or Conditional Trim and state the trigger.
 
 [OUTPUT_FORMAT]
-- **[維度名稱]**: [一針見血的解讀與具體調整建議]
+- **[維度名稱]**: [結論、證據限制、具體下一步]
 
 [INPUT_DATA]
 ${JSON.stringify(payload, null, 2)}

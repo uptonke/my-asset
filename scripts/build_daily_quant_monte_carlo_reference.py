@@ -149,21 +149,48 @@ def compact_monte_carlo_reference(chaos_meta: Dict[str, Any]) -> Dict[str, Any]:
     tail = as_dict(chaos_meta.get("tail_meta"))
     jd = as_dict(chaos_meta.get("jump_diffusion"))
     evt = as_dict(chaos_meta.get("evt_tail"))
+    jump_stress = {
+        "jd_var95": jd.get("jd_var95", tail.get("jd_var95")),
+        "jd_es95": jd.get("jd_es95", tail.get("jd_es95")),
+        "jd_tail_loss": jd.get("jd_tail_loss", tail.get("jd_tail_loss")),
+        "jd_crash_prob": jd.get("jd_crash_prob", tail.get("jd_crash_prob")),
+        "jd_crash_threshold_pct": tail.get("jd_crash_threshold_pct"),
+        "jd_horizon_weeks": jd.get("jd_horizon_weeks", tail.get("jd_horizon_weeks")),
+        "model_type": tail.get("jd_model_type"),
+        "parameter_source": tail.get("jd_parameter_source"),
+        "jump_aggregation": tail.get("jd_jump_aggregation"),
+        "drift_compensated": tail.get("jd_drift_compensated"),
+        "simulation_count": tail.get("jd_simulation_count"),
+    }
     return {
         "available": bool(chaos_meta),
-        "source": "Supabase chaos_meta produced by Daily Quant Pipeline / dashboard Monte Carlo layer",
+        "source": "Supabase chaos_meta produced by Daily Quant Pipeline / dashboard risk layer",
         "stressed_var95_pct": chaos_meta.get("stressed_var95"),
         "stressed_es95_pct": chaos_meta.get("stressed_es95"),
         "contagion_loss_pct": chaos_meta.get("contagion_loss_pct"),
         "fire_sale_loss_pct": chaos_meta.get("fire_sale_loss_pct"),
         "liquidity_run_probability_pct": chaos_meta.get("liquidity_run_probability"),
         "fragile_nodes": as_list(chaos_meta.get("fragile_nodes"))[:10],
-        "jump_diffusion": {
-            "jd_var95": jd.get("jd_var95", tail.get("jd_var95")),
-            "jd_es95": jd.get("jd_es95", tail.get("jd_es95")),
-            "jd_tail_loss": jd.get("jd_tail_loss", tail.get("jd_tail_loss")),
-            "jd_crash_prob": jd.get("jd_crash_prob", tail.get("jd_crash_prob")),
-            "jd_horizon_weeks": jd.get("jd_horizon_weeks", tail.get("jd_horizon_weeks")),
+        "same_horizon_tail_comparison": {
+            "horizon_weeks": tail.get("jd_horizon_weeks"),
+            "historical_var95": tail.get("historical_var95_horizon"),
+            "historical_es95": tail.get("historical_es95_horizon"),
+            "historical_sample_count": tail.get("historical_horizon_sample_count"),
+            "historical_method": tail.get("historical_horizon_method"),
+            "jump_stress_var95": jump_stress.get("jd_var95"),
+            "jump_stress_es95": jump_stress.get("jd_es95"),
+        },
+        "jump_stress_scenario": jump_stress,
+        # Backward-compatible key for downstream readers; interpret as stress scenario.
+        "jump_diffusion": jump_stress,
+        "evt_tail_1w": {
+            "evt_var95": evt.get("evt_var95", tail.get("evt_var95")),
+            "evt_es95": evt.get("evt_es95", tail.get("evt_es95")),
+            "evt_shape_xi": evt.get("evt_shape_xi", tail.get("evt_shape_xi")),
+            "evt_exceedance_count": evt.get("evt_exceedance_count", tail.get("evt_exceedance_count")),
+            "horizon_weeks": tail.get("evt_horizon_weeks", 1),
+            "comparable_to_jump_stress": tail.get("evt_comparable_to_jd", False),
+            "comparison_note": tail.get("evt_comparison_note"),
         },
         "evt_tail": {
             "evt_var95": evt.get("evt_var95", tail.get("evt_var95")),
@@ -178,6 +205,7 @@ def compact_monte_carlo_reference(chaos_meta: Dict[str, Any]) -> Dict[str, Any]:
             "crisis_window_label": tail.get("crisis_window_label"),
         },
     }
+
 
 
 def status_badge(checks: List[Dict[str, Any]]) -> str:
