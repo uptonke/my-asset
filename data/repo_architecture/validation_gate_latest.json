@@ -1,7 +1,7 @@
 {
   "version": "v4.6",
   "status": "OK",
-  "generated_at": "2026-06-18T15:39:57.452499+00:00",
+  "generated_at": "2026-08-06T12:47:25.399970+00:00",
   "mode": "validation_gate",
   "safe_mode": true,
   "summary": {
@@ -76,6 +76,7 @@
       ],
       "missing": [],
       "workflow_files": [
+        ".github/workflows/apply_cro_risk_fix.yml",
         ".github/workflows/daily_update.yml",
         ".github/workflows/dead-file-cleanup.yml.yml",
         ".github/workflows/optimizer-lab.yml.yml",
@@ -87,7 +88,7 @@
       ]
     },
     "json_parse": {
-      "parsed_count": 105,
+      "parsed_count": 112,
       "failed": []
     },
     "schema_registry": {
@@ -323,8 +324,14 @@
       "command_output": "Wrote data/repo_architecture/frontend_build_status_latest.json\nWrote data/repo_architecture/frontend_build_status_summary.md\nStatus: OK\nRuntime matches source: True"
     },
     "workflows": {
-      "workflow_count": 8,
+      "workflow_count": 9,
       "workflows": [
+        {
+          "path": ".github/workflows/apply_cro_risk_fix.yml",
+          "has_name": true,
+          "has_on": true,
+          "has_jobs": true
+        },
         {
           "path": ".github/workflows/daily_update.yml",
           "has_name": true,
@@ -376,14 +383,8 @@
       ]
     },
     "node_check": {
-      "status": "OK",
-      "checked": [
-        "assets/js/app.bundle.js",
-        "assets/js/quant-main-display.js",
-        "assets/js/terminal-ui-polish.js",
-        "assets/js/terminal-ia-phase2.js"
-      ],
-      "failed": []
+      "status": "SKIPPED",
+      "reason": "--no-node"
     }
   },
   "errors": [],

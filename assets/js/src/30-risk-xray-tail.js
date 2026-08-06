@@ -26,12 +26,16 @@
         // ==========================================
         const xrayStats = ref({
             mrcTable: [],
-            pca: { pc1Explained: '0.0', pc3CumExplained: '0.0' },
-            fx: { netFxExposurePct: '0.0', usdNavImpact1pct: '0.0' }
+            pca: { pc1Explained: '-', pc3CumExplained: '-' },
+            fx: { netFxExposurePct: '-', usdNavImpact1pct: '-' },
+            lookthrough: { status: 'unknown', note: '' }
         });
 
        const rebalanceMonitor = ref({
     trimCount: 0,
+    addCount: 0,
+    driftCount: 0,
+    concentrationCount: 0,
     alertCount: 0,
     volDrag30d: '0.00',
     volDrag90d: '0.00',
@@ -64,7 +68,17 @@
     coDrawdownThreshold: '-',
     tailThresholdQuantile: '-',
 
-    // Jump-Diffusion
+    // Horizon-aligned empirical comparison
+    historicalVar95_1w: '-',
+    historicalEs95_1w: '-',
+    historicalSampleCount1w: '-',
+    historicalHorizonVar95: '-',
+    historicalHorizonEs95: '-',
+    historicalHorizonWeeks: '-',
+    historicalHorizonSampleCount: '-',
+    historicalHorizonMethod: '-',
+
+    // Jump stress scenario
     jdVar95: '-',
     jdEs95: '-',
     jdCrashProb: '-',
@@ -73,15 +87,25 @@
     jdEffectiveLambda: '-',
     jdEffectiveJumpMean: '-',
     jdEffectiveJumpStd: '-',
+    jdCrashThresholdPct: '-',
+    jdModelType: '-',
+    jdParameterSource: '-',
+    jdJumpAggregation: '-',
+    jdDriftCompensated: '-',
+    jdExpectedJumpDragWeeklyPct: '-',
+    jdSimulationCount: '-',
 
-    // EVT
+    // EVT (one-week diagnostic)
     evtVar95: '-',
     evtEs95: '-',
     evtShapeXi: '-',
     evtScaleBeta: '-',
     evtThreshold: '-',
     evtExceedanceCount: '-',
-    evtAlphaConf: '-'
+    evtAlphaConf: '-',
+    evtHorizonWeeks: '-',
+    evtComparableToJd: '-',
+    evtComparisonNote: '-'
 });
 function fmtNum(val, digits = 2) {
     if (val === null || val === undefined || val === '') return '-';
@@ -97,6 +121,9 @@ function fmtPctMaybe(val, digits = 2) {
 
 watch([groupedHoldings, portfolioStats, stats, sysCorr, chaosMeta, cloudRebalanceMeta, liquidityBufferRatio], () => {
     let trims = 0;
+    let adds = 0;
+    let drifts = 0;
+    let concentrations = 0;
     let alertCount = 0;
     let fxExposure = 0;
     const mrcTemp = [];
@@ -110,13 +137,33 @@ watch([groupedHoldings, portfolioStats, stats, sysCorr, chaosMeta, cloudRebalanc
         groupedHoldings.value[cat].items.forEach(item => {
             if (item.isUSD) fxExposure += item.totalWeight;
 
-            const drift = Math.abs((item.totalWeight * 100) - item.blendedWeight);
-            if (item.totalWeight > 0.20 || drift > 5) trims++;
+            const currentWeightPct = item.totalWeight * 100;
+            const targetWeightRaw = Number(item.blendedWeight);
+            const hasTargetWeight =
+                Number.isFinite(targetWeightRaw) &&
+                ((Number(item.targetWeight) || 0) > 0 || (Number(item.mcWeight) || 0) > 0);
+            const signedDrift = hasTargetWeight ? currentWeightPct - targetWeightRaw : null;
+            const drift = signedDrift === null ? null : Math.abs(signedDrift);
 
-            if (drift > 10 || item.totalWeight > 0.30) {
+            if (signedDrift !== null && signedDrift > 5) trims++;
+            if (signedDrift !== null && signedDrift < -5) adds++;
+            if (drift !== null && drift > 5) drifts++;
+            if (currentWeightPct > 20) concentrations++;
+
+            const isHighDrift = drift !== null && drift > 10;
+            const isHighConcentration = currentWeightPct > 30;
+            if (isHighDrift || isHighConcentration) {
                 alertCount++;
+                let candidateAction = 'REVIEW';
+                if (isHighConcentration || (signedDrift !== null && signedDrift > 10)) candidateAction = 'TRIM';
+                else if (signedDrift !== null && signedDrift < -10) candidateAction = 'ADD / REVIEW TARGET';
+
+                const targetText = hasTargetWeight ? `${targetWeightRaw.toFixed(1)}%` : 'N/A';
+                const driftText = signedDrift === null
+                    ? 'N/A'
+                    : `${signedDrift >= 0 ? '+' : ''}${signedDrift.toFixed(1)}pp`;
                 alertList.push(
-                    `[${item.ticker}] 權重 ${(item.totalWeight * 100).toFixed(1)}% 嚴重偏離綜合目標，或單一佔比過高 (>30%)。`
+                    `[${item.ticker}] 目前 ${currentWeightPct.toFixed(1)}% / 目標 ${targetText} / drift ${driftText} / 候選動作 ${candidateAction}。`
                 );
             }
 
@@ -156,19 +203,26 @@ watch([groupedHoldings, portfolioStats, stats, sysCorr, chaosMeta, cloudRebalanc
             fx: {
                 netFxExposurePct: fmtNum(backendXray?.fx?.net_fx_exposure_pct, 1),
                 usdNavImpact1pct: fmtNum(backendXray?.fx?.usd_nav_impact_1pct_twd, 0)
+            },
+            lookthrough: {
+                status: backendXray?.lookthrough_overlap?.status || 'unknown',
+                note: backendXray?.lookthrough_overlap?.note || ''
             }
         };
     } else {
-        const pc1Proxy = (sysCorr.value * 100) || 65.0;
         xrayStats.value = {
             mrcTable: mrcTemp,
             pca: {
-                pc1Explained: pc1Proxy.toFixed(1),
-                pc3CumExplained: Math.min((pc1Proxy + 15), 98).toFixed(1)
+                pc1Explained: '-',
+                pc3CumExplained: '-'
             },
             fx: {
                 netFxExposurePct: (fxExposure * 100).toFixed(1),
-                usdNavImpact1pct: (fxExposure * 1).toFixed(2)
+                usdNavImpact1pct: '-'
+            },
+            lookthrough: {
+                status: 'backend_xray_unavailable',
+                note: 'PCA、TWD FX impact 與 ETF look-through 未由後端提供；不得使用代理值冒充實測值。'
             }
         };
     }
@@ -213,6 +267,9 @@ if (resolvedBufferBlocking) {
 
 rebalanceMonitor.value = {
     trimCount: trims,
+    addCount: adds,
+    driftCount: drifts,
+    concentrationCount: concentrations,
     alertCount: alertCount,
     volDrag30d: ((0.5 * Math.pow(portVol, 2) * (30 / 365)) * 100).toFixed(2),
     volDrag90d: ((0.5 * Math.pow(portVol, 2) * (90 / 365)) * 100).toFixed(2),
@@ -251,7 +308,16 @@ if (backendTail && (
         coDrawdownThreshold: fmtNum(backendTail.co_drawdown_threshold, 1),
         tailThresholdQuantile: fmtNum((backendTail.tail_threshold_quantile ?? 0) * 100, 0),
 
-        // Jump-Diffusion
+        historicalVar95_1w: fmtPctMaybe(backendTail.historical_var95_1w, 2),
+        historicalEs95_1w: fmtPctMaybe(backendTail.historical_es95_1w, 2),
+        historicalSampleCount1w: backendTail.historical_sample_count_1w ?? '-',
+        historicalHorizonVar95: fmtPctMaybe(backendTail.historical_var95_horizon, 2),
+        historicalHorizonEs95: fmtPctMaybe(backendTail.historical_es95_horizon, 2),
+        historicalHorizonWeeks: backendTail.historical_horizon_weeks ?? '-',
+        historicalHorizonSampleCount: backendTail.historical_horizon_sample_count ?? '-',
+        historicalHorizonMethod: backendTail.historical_horizon_method || '-',
+
+        // Jump stress scenario
         jdVar95: fmtPctMaybe(backendTail.jd_var95, 2),
         jdEs95: fmtPctMaybe(backendTail.jd_es95, 2),
         jdCrashProb: fmtPctMaybe(backendTail.jd_crash_prob, 2),
@@ -260,15 +326,25 @@ if (backendTail && (
         jdEffectiveLambda: fmtNum(backendTail.jd_effective_lambda, 2),
         jdEffectiveJumpMean: fmtNum(backendTail.jd_effective_jump_mean, 4),
         jdEffectiveJumpStd: fmtNum(backendTail.jd_effective_jump_std, 4),
+        jdCrashThresholdPct: fmtPctMaybe(backendTail.jd_crash_threshold_pct, 1),
+        jdModelType: backendTail.jd_model_type || '-',
+        jdParameterSource: backendTail.jd_parameter_source || '-',
+        jdJumpAggregation: backendTail.jd_jump_aggregation || '-',
+        jdDriftCompensated: backendTail.jd_drift_compensated ?? '-',
+        jdExpectedJumpDragWeeklyPct: fmtPctMaybe(backendTail.jd_expected_jump_drag_weekly_pct, 4),
+        jdSimulationCount: backendTail.jd_simulation_count ?? '-',
 
-        // EVT
+        // EVT (one-week diagnostic)
         evtVar95: fmtPctMaybe(backendTail.evt_var95, 2),
         evtEs95: fmtPctMaybe(backendTail.evt_es95, 2),
         evtShapeXi: fmtNum(backendTail.evt_shape_xi, 4),
         evtScaleBeta: fmtNum(backendTail.evt_scale_beta, 6),
         evtThreshold: fmtPctMaybe(backendTail.evt_threshold, 2),
         evtExceedanceCount: backendTail.evt_exceedance_count ?? '-',
-        evtAlphaConf: fmtNum((backendTail.evt_alpha_conf ?? 0) * 100, 0)
+        evtAlphaConf: fmtNum((backendTail.evt_alpha_conf ?? 0) * 100, 0),
+        evtHorizonWeeks: backendTail.evt_horizon_weeks ?? 1,
+        evtComparableToJd: backendTail.evt_comparable_to_jd ?? false,
+        evtComparisonNote: backendTail.evt_comparison_note || '-'
     };
 } else {
     tailStatsLite.value = {
@@ -287,7 +363,16 @@ if (backendTail && (
         coDrawdownThreshold: '-10.0',
         tailThresholdQuantile: '5',
 
-        // Jump-Diffusion fallback
+        historicalVar95_1w: '-',
+        historicalEs95_1w: '-',
+        historicalSampleCount1w: '-',
+        historicalHorizonVar95: '-',
+        historicalHorizonEs95: '-',
+        historicalHorizonWeeks: '-',
+        historicalHorizonSampleCount: '-',
+        historicalHorizonMethod: '-',
+
+        // Jump stress fallback
         jdVar95: '-',
         jdEs95: '-',
         jdCrashProb: '-',
@@ -296,6 +381,13 @@ if (backendTail && (
         jdEffectiveLambda: '-',
         jdEffectiveJumpMean: '-',
         jdEffectiveJumpStd: '-',
+        jdCrashThresholdPct: '-',
+        jdModelType: '-',
+        jdParameterSource: '-',
+        jdJumpAggregation: '-',
+        jdDriftCompensated: '-',
+        jdExpectedJumpDragWeeklyPct: '-',
+        jdSimulationCount: '-',
 
         // EVT fallback
         evtVar95: '-',
@@ -304,7 +396,10 @@ if (backendTail && (
         evtScaleBeta: '-',
         evtThreshold: '-',
         evtExceedanceCount: '-',
-        evtAlphaConf: '-'
+        evtAlphaConf: '-',
+        evtHorizonWeeks: '-',
+        evtComparableToJd: '-',
+        evtComparisonNote: '-'
     };
 }
 }, { deep: true, immediate: true });

@@ -649,6 +649,33 @@ def compute_cvar(series, q=0.05):
         return None
 
 
+def compute_var_es(series, alpha=0.95):
+    """Empirical lower-tail VaR/ES for a return series."""
+    try:
+        s = pd.Series(series).dropna().astype(float)
+        if len(s) == 0:
+            return {"var": None, "es": None, "sample_count": 0}
+        q = max(0.0, min(1.0, 1.0 - float(alpha)))
+        var_value = float(s.quantile(q))
+        tail = s[s <= var_value]
+        es_value = float(tail.mean()) if len(tail) else var_value
+        return {"var": var_value, "es": es_value, "sample_count": int(len(s))}
+    except Exception:
+        return {"var": None, "es": None, "sample_count": 0}
+
+
+def rolling_compounded_returns(series, window):
+    """Overlapping compounded returns over a fixed number of periods."""
+    try:
+        s = pd.Series(series).dropna().astype(float)
+        window = int(window)
+        if window <= 0 or len(s) < window:
+            return pd.Series(dtype=float)
+        return (1.0 + s).rolling(window).apply(np.prod, raw=True).dropna() - 1.0
+    except Exception:
+        return pd.Series(dtype=float)
+
+
 def compute_drawdown_series(return_series):
     try:
         s = pd.Series(return_series).dropna().astype(float)
@@ -681,16 +708,34 @@ def get_jump_params_for_ticker(ticker, meta):
     return {"lambda": 1.2, "mean": -0.10, "std": 0.05}
 
 
-def simulate_jump_diffusion_tail(port_returns, active_tickers, asset_values, stock_meta, horizon_weeks=13, n_sims=4000, seed=42):
+def simulate_jump_diffusion_tail(port_returns, active_tickers, asset_values, stock_meta, horizon_weeks=13, n_sims=20000, seed=42):
+    """
+    Asset-level heuristic jump stress scenario.
+
+    Jump parameters are policy assumptions by asset class, not parameters fitted
+    from the portfolio's historical return series. Each asset receives its own
+    Poisson jump process and its weighted jump is aggregated at portfolio level.
+    The diffusion drift is compensated for the assumed expected jump drag so the
+    historical weekly mean is not counted once in the diffusion and again in the
+    jump overlay.
+    """
+    crash_threshold = -0.10
     base = {
         "jd_var95": None,
         "jd_es95": None,
         "jd_crash_prob": None,
         "jd_tail_loss": None,
-        "jd_horizon_weeks": horizon_weeks,
+        "jd_horizon_weeks": int(horizon_weeks),
         "jd_effective_lambda": None,
         "jd_effective_jump_mean": None,
-        "jd_effective_jump_std": None
+        "jd_effective_jump_std": None,
+        "jd_crash_threshold_pct": round(crash_threshold * 100, 2),
+        "jd_model_type": "asset_level_heuristic_jump_stress",
+        "jd_parameter_source": "asset_class_policy_assumptions_not_historically_fitted",
+        "jd_jump_aggregation": "independent_asset_level_poisson_weighted_to_portfolio",
+        "jd_drift_compensated": True,
+        "jd_expected_jump_drag_weekly_pct": None,
+        "jd_simulation_count": int(n_sims)
     }
 
     try:
@@ -702,63 +747,90 @@ def simulate_jump_diffusion_tail(port_returns, active_tickers, asset_values, sto
         if total_value <= 0:
             return base
 
+        jump_specs = []
         eff_lambda = 0.0
         eff_jump_mean = 0.0
-        eff_jump_std = 0.0
+        eff_jump_var = 0.0
+        expected_jump_drag_weekly = 0.0
 
         for t in active_tickers:
             w = float(asset_values.get(t, 0.0) or 0.0) / total_value
+            if w <= 0:
+                continue
             jp = get_jump_params_for_ticker(t, stock_meta.get(t, {}))
-            eff_lambda += w * float(jp["lambda"])
-            eff_jump_mean += w * float(jp["mean"])
-            eff_jump_std += w * float(jp["std"])
+            lambda_annual = max(0.0, float(jp["lambda"]))
+            jump_mean = float(jp["mean"])
+            jump_std = max(0.0, float(jp["std"]))
+            lambda_week = lambda_annual / 52.0
+
+            jump_specs.append({
+                "weight": w,
+                "lambda_week": lambda_week,
+                "mean": jump_mean,
+                "std": jump_std
+            })
+            eff_lambda += w * lambda_annual
+            eff_jump_mean += w * jump_mean
+            eff_jump_var += (w * jump_std) ** 2
+            expected_jump_drag_weekly += w * lambda_week * jump_mean
+
+        if not jump_specs:
+            return base
 
         mu_w = float(s.mean())
         sigma_w = float(s.std())
         if not np.isfinite(sigma_w) or sigma_w <= 0:
             sigma_w = 0.01
 
+        # Preserve the observed unconditional weekly mean after adding the
+        # negative jump overlay. This avoids counting historical crash drag twice.
+        diffusion_mu_w = mu_w - expected_jump_drag_weekly
+
         rng = np.random.default_rng(seed)
-        lambda_week = max(0.0, eff_lambda / 52.0)
+        wealth = np.ones(int(n_sims), dtype=float)
 
-        wealth = np.ones(n_sims, dtype=float)
+        for _ in range(int(horizon_weeks)):
+            jump_component = np.zeros(int(n_sims), dtype=float)
 
-        for _ in range(horizon_weeks):
-            z = rng.normal(0.0, 1.0, n_sims)
-            jump_counts = rng.poisson(lambda_week, n_sims)
-
-            jump_component = np.zeros(n_sims, dtype=float)
-            has_jump = jump_counts > 0
-            if np.any(has_jump):
+            for spec in jump_specs:
+                jump_counts = rng.poisson(spec["lambda_week"], int(n_sims))
+                has_jump = jump_counts > 0
+                if not np.any(has_jump):
+                    continue
                 k = jump_counts[has_jump].astype(float)
-                jump_component[has_jump] = (
-                    k * eff_jump_mean +
-                    np.sqrt(k) * eff_jump_std * rng.normal(0.0, 1.0, has_jump.sum())
+                asset_jump = (
+                    k * spec["mean"]
+                    + np.sqrt(k) * spec["std"] * rng.normal(0.0, 1.0, has_jump.sum())
                 )
+                jump_component[has_jump] += spec["weight"] * asset_jump
 
-            step_ret = mu_w + sigma_w * z + jump_component
+            z = rng.normal(0.0, 1.0, int(n_sims))
+            step_ret = diffusion_mu_w + sigma_w * z + jump_component
             step_ret = np.clip(step_ret, -0.95, 3.0)
             wealth *= (1.0 + step_ret)
 
         horizon_ret = wealth - 1.0
         q05 = float(np.quantile(horizon_ret, 0.05))
-        es05 = float(np.mean(horizon_ret[horizon_ret <= q05])) if np.any(horizon_ret <= q05) else q05
-        crash_prob = float(np.mean(horizon_ret <= -0.10) * 100)
+        tail = horizon_ret[horizon_ret <= q05]
+        es05 = float(np.mean(tail)) if len(tail) else q05
+        crash_prob = float(np.mean(horizon_ret <= crash_threshold) * 100)
 
         base.update({
             "jd_var95": round(q05 * 100, 2),
             "jd_es95": round(es05 * 100, 2),
-            "jd_crash_prob": round(crash_prob, 2),
+            # Backward-compatible absolute ES field; not an independent metric.
             "jd_tail_loss": round(abs(es05) * 100, 2),
-            "jd_horizon_weeks": int(horizon_weeks),
+            "jd_crash_prob": round(crash_prob, 2),
             "jd_effective_lambda": round(eff_lambda, 4),
             "jd_effective_jump_mean": round(eff_jump_mean, 4),
-            "jd_effective_jump_std": round(eff_jump_std, 4)
+            "jd_effective_jump_std": round(math.sqrt(max(0.0, eff_jump_var)), 4),
+            "jd_expected_jump_drag_weekly_pct": round(expected_jump_drag_weekly * 100, 4)
         })
         return base
     except Exception as e:
         print(f"⚠️ simulate_jump_diffusion_tail 失敗: {e}", flush=True)
         return base
+
 
 
 def compute_evt_tail(port_returns, threshold_q=0.10, alpha=0.95):
@@ -935,6 +1007,7 @@ def compute_xray_meta(active_tickers, asset_values, stock_meta, returns_df, tick
 
 def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticker_to_yf=None, tw_bench="^TWII", us_bench="SPY"):
     ticker_to_yf = ticker_to_yf or {}
+    horizon_weeks = 13
     base = {
         "benchmark": None,
         "sample_weeks": 0,
@@ -953,22 +1026,45 @@ def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticke
         "co_drawdown_threshold": -10.0,
         "tail_threshold_quantile": 0.05,
 
+        # Same fixed-current-weight portfolio, empirical history.
+        "historical_var95_1w": None,
+        "historical_es95_1w": None,
+        "historical_sample_count_1w": 0,
+        "historical_var95_horizon": None,
+        "historical_es95_horizon": None,
+        "historical_horizon_weeks": horizon_weeks,
+        "historical_horizon_sample_count": 0,
+        "historical_horizon_method": "overlapping_compounded_current_weight_returns",
+
+        # Asset-level jump stress scenario.
         "jd_var95": None,
         "jd_es95": None,
         "jd_crash_prob": None,
         "jd_tail_loss": None,
-        "jd_horizon_weeks": 13,
+        "jd_horizon_weeks": horizon_weeks,
         "jd_effective_lambda": None,
         "jd_effective_jump_mean": None,
         "jd_effective_jump_std": None,
+        "jd_crash_threshold_pct": -10.0,
+        "jd_model_type": "asset_level_heuristic_jump_stress",
+        "jd_parameter_source": "asset_class_policy_assumptions_not_historically_fitted",
+        "jd_jump_aggregation": "independent_asset_level_poisson_weighted_to_portfolio",
+        "jd_drift_compensated": True,
+        "jd_expected_jump_drag_weekly_pct": None,
+        "jd_simulation_count": 20000,
 
+        # EVT remains a one-week POT-GPD diagnostic. It is not directly
+        # comparable with the 13-week jump stress result.
         "evt_var95": None,
         "evt_es95": None,
         "evt_shape_xi": None,
         "evt_scale_beta": None,
         "evt_threshold": None,
         "evt_exceedance_count": 0,
-        "evt_alpha_conf": 0.95
+        "evt_alpha_conf": 0.95,
+        "evt_horizon_weeks": 1,
+        "evt_comparable_to_jd": False,
+        "evt_comparison_note": "one_week_evt_not_directly_comparable_to_13_week_jump_stress"
     }
 
     try:
@@ -1019,12 +1115,16 @@ def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticke
         bench_s = weekly_returns[bench]
 
         aligned = pd.concat([port.rename("port"), bench_s.rename("bench")], axis=1).dropna()
-        print(f"DEBUG: 對齊後的有效樣本天數為 {len(aligned)} 天")
+        print(f"DEBUG: 對齊後的有效週資料為 {len(aligned)} 週")
         if len(aligned) < 8:
             return base
 
         port = aligned["port"]
         bench_s = aligned["bench"]
+
+        historical_1w = compute_var_es(port, alpha=0.95)
+        port_horizon = rolling_compounded_returns(port, horizon_weeks)
+        historical_horizon = compute_var_es(port_horizon, alpha=0.95)
 
         q20_b = float(bench_s.quantile(0.20))
         q10_b = float(bench_s.quantile(0.10))
@@ -1083,7 +1183,13 @@ def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticke
             "tail_sample_count": tail_sample_count,
             "crisis_sample_count": crisis_sample_count,
             "co_drawdown_threshold": co_drawdown_threshold,
-            "tail_threshold_quantile": tail_threshold_quantile
+            "tail_threshold_quantile": tail_threshold_quantile,
+            "historical_var95_1w": round(historical_1w["var"] * 100, 2) if historical_1w["var"] is not None else None,
+            "historical_es95_1w": round(historical_1w["es"] * 100, 2) if historical_1w["es"] is not None else None,
+            "historical_sample_count_1w": historical_1w["sample_count"],
+            "historical_var95_horizon": round(historical_horizon["var"] * 100, 2) if historical_horizon["var"] is not None else None,
+            "historical_es95_horizon": round(historical_horizon["es"] * 100, 2) if historical_horizon["es"] is not None else None,
+            "historical_horizon_sample_count": historical_horizon["sample_count"]
         })
 
         jd_meta = simulate_jump_diffusion_tail(
@@ -1091,8 +1197,8 @@ def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticke
             active_tickers=active_tickers,
             asset_values=asset_values,
             stock_meta=stock_meta,
-            horizon_weeks=13,
-            n_sims=4000,
+            horizon_weeks=horizon_weeks,
+            n_sims=20000,
             seed=42
         )
         base.update(jd_meta)
@@ -1108,6 +1214,7 @@ def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticke
     except Exception as e:
         print(f"⚠️ compute_tail_meta 失敗: {e}", flush=True)
         return base
+
 
 try:
     print("   ⏳ 正在抓取公債殖利率...", flush=True)
