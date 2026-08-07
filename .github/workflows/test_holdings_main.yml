@@ -1,0 +1,41 @@
+name: Test Holdings Main
+
+on:
+  push:
+    branches:
+      - test/holdings-main-20260807
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install holdings dependencies
+        run: pip install 'requests>=2.31,<3' 'openpyxl>=3.1,<4' 'beautifulsoup4>=4.12,<5'
+
+      - name: Syntax check
+        run: python -m py_compile scripts/fetch_portfolio_holdings.py
+
+      - name: Fetch holdings
+        run: python scripts/fetch_portfolio_holdings.py --output-dir holdings_artifact --strict
+
+      - name: Validate summary
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          summary = json.loads(Path('holdings_artifact/summary.json').read_text(encoding='utf-8'))
+          assert summary['fresh_count'] == 6, summary
+          assert summary['failed_count'] == 0, summary
+          print(json.dumps(summary, ensure_ascii=False, indent=2))
+          PY
