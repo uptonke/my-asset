@@ -1,0 +1,57 @@
+name: Validate Holdings Ingestion
+
+on:
+  push:
+    branches:
+      - feature/holdings-ingestion-20260807
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Syntax check
+        run: python -m py_compile scripts/fetch_portfolio_holdings.py
+
+      - name: Fetch and validate all look-through funds
+        run: python scripts/fetch_portfolio_holdings.py --output-dir holdings_artifact --strict
+
+      - name: Inspect normalized summary
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('holdings_artifact/summary.json')
+          data = json.loads(p.read_text(encoding='utf-8'))
+          assert data['fresh_count'] == 6, data
+          assert data['failed_count'] == 0, data
+          for fund in ['QQQ', 'IFRA', 'GRID', 'COPX', 'VNM', 'SRVR']:
+              fp = Path('holdings_artifact') / f'{fund}.json'
+              payload = json.loads(fp.read_text(encoding='utf-8'))
+              assert payload['holdings_count'] >= 10, (fund, payload['holdings_count'])
+              assert 80 <= payload['coverage_pct'] <= 120, (fund, payload['coverage_pct'])
+              assert payload['as_of'], fund
+          print(json.dumps(data, ensure_ascii=False, indent=2))
+          PY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: normalized-holdings
+          path: holdings_artifact/
+          if-no-files-found: error
