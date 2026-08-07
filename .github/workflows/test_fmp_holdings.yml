@@ -1,0 +1,77 @@
+name: Test FMP holdings coverage
+
+on:
+  push:
+    branches:
+      - test/fmp-lookthrough-20260807
+
+permissions:
+  contents: read
+
+jobs:
+  test-fmp:
+    runs-on: ubuntu-latest
+    env:
+      FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Probe FMP ETF holdings endpoint
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.parse
+          import urllib.request
+          from pathlib import Path
+
+          key = os.environ.get("FMP_API_KEY", "").strip()
+          if not key:
+              raise SystemExit("FMP_API_KEY secret is missing or empty")
+
+          symbols = ["QQQ", "GRID", "IFRA", "SRVR", "COPX", "VNM", "BOXX"]
+          base = "https://financialmodelingprep.com/stable/etf/holdings"
+          results = {}
+
+          for symbol in symbols:
+              params = urllib.parse.urlencode({"symbol": symbol, "apikey": key})
+              req = urllib.request.Request(
+                  f"{base}?{params}",
+                  headers={"User-Agent": "my-asset-holdings-probe/1.0"},
+              )
+              item = {"symbol": symbol}
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as resp:
+                      body = resp.read().decode("utf-8", errors="replace")
+                      item["http_status"] = resp.status
+                  data = json.loads(body)
+                  item["response_type"] = type(data).__name__
+                  if isinstance(data, list):
+                      item["rows"] = len(data)
+                      item["sample_fields"] = sorted(data[0].keys()) if data and isinstance(data[0], dict) else []
+                      item["sample"] = data[:2]
+                  elif isinstance(data, dict):
+                      item["rows"] = None
+                      item["sample_fields"] = sorted(data.keys())
+                      # Keep only sanitized API error/info text, never request URL/key.
+                      item["sample"] = data
+                  else:
+                      item["rows"] = None
+                      item["sample_fields"] = []
+                      item["sample"] = str(data)[:500]
+              except Exception as exc:
+                  item["error_type"] = type(exc).__name__
+                  item["error"] = str(exc).replace(key, "***")
+              results[symbol] = item
+              print(symbol, "status=", item.get("http_status"), "rows=", item.get("rows"), "error=", item.get("error"))
+
+          Path("fmp_probe.json").write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
+          PY
+
+      - name: Upload sanitized probe result
+        uses: actions/upload-artifact@v4
+        with:
+          name: fmp-holdings-probe
+          path: fmp_probe.json
+          if-no-files-found: error
