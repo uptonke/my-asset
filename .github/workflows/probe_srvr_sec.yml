@@ -23,13 +23,19 @@ jobs:
           import xml.etree.ElementTree as ET
           from pathlib import Path
 
-          USER_AGENT = "my-asset holdings research contact@example.com"
+          USER_AGENT = "my-asset/1.0 https://github.com/uptonke/my-asset"
           # Latest public SRVR NPORT-P identified by SEC EDGAR series S000061573.
           accession = "0000894189-26-020691"
           accession_compact = accession.replace("-", "")
           cik = "1616668"
           url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{accession_compact}/primary_doc.xml"
-          req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept-Encoding": "gzip, deflate", "Host": "www.sec.gov"})
+          req = urllib.request.Request(
+              url,
+              headers={
+                  "User-Agent": USER_AGENT,
+                  "Accept": "application/xml,text/xml,*/*",
+              },
+          )
           with urllib.request.urlopen(req, timeout=30) as resp:
               raw = resp.read()
               status = resp.status
@@ -39,7 +45,6 @@ jobs:
           def lname(tag):
               return tag.split("}")[-1]
 
-          # Extract series/report metadata independent of namespace.
           values = {}
           for elem in root.iter():
               key = lname(elem.tag)
@@ -48,9 +53,6 @@ jobs:
 
           investments = []
           for elem in root.iter():
-              if lname(elem.tag) not in {"invstOrSec", "invstOrSecs"}:
-                  continue
-              # invstOrSecs is normally the container, invstOrSec individual investment.
               if lname(elem.tag) != "invstOrSec":
                   continue
               rec = {}
