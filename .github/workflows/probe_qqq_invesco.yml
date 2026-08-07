@@ -12,108 +12,83 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install Playwright
-        run: |
-          python -m pip install --upgrade pip
-          pip install playwright
-          python -m playwright install --with-deps chromium
-
-      - name: Discover QQQ holdings network calls
+      - name: Probe direct official QQQ holdings endpoint
         run: |
           python - <<'PY'
-          import asyncio
           import json
+          import urllib.request
           from pathlib import Path
-          from playwright.async_api import async_playwright
 
-          TARGET = "https://www.invesco.com/qqq-etf/en/about.html"
-          keywords = ("holding", "holdings", "portfolio", "fund", "product", "qqq")
-          seen = []
-          bodies = []
+          url = (
+              "https://dng-api.invesco.com/cache/v1/accounts/en_US/shareclasses/QQQ/"
+              "holdings/fund?idType=ticker&interval=monthly&productType=ETF&loadType=initial"
+          )
+          req = urllib.request.Request(
+              url,
+              headers={
+                  "User-Agent": "Mozilla/5.0 my-asset-holdings/1.0",
+                  "Accept": "application/json,text/plain,*/*",
+                  "Referer": "https://www.invesco.com/qqq-etf/en/about.html",
+              },
+          )
+          with urllib.request.urlopen(req, timeout=30) as resp:
+              raw = resp.read()
+              status = resp.status
+              content_type = resp.headers.get("content-type")
 
-          async def main():
-              async with async_playwright() as p:
-                  browser = await p.chromium.launch(headless=True)
-                  context = await browser.new_context(
-                      user_agent=(
-                          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                          "AppleWebKit/537.36 (KHTML, like Gecko) "
-                          "Chrome/150.0.0.0 Safari/537.36"
-                      ),
-                      locale="en-US",
-                  )
-                  page = await context.new_page()
+          text = raw.decode("utf-8", errors="replace")
+          print("HTTP status:", status)
+          print("Content-Type:", content_type)
+          print("Bytes:", len(raw))
+          print("Body prefix:", text[:300].replace("\n", " "))
 
-                  async def capture(response):
-                      url = response.url
-                      low = url.lower()
-                      if not any(k in low for k in keywords):
-                          return
-                      ct = (response.headers.get("content-type") or "").lower()
-                      rec = {
-                          "url": url,
-                          "status": response.status,
-                          "content_type": ct,
-                          "resource_type": response.request.resource_type,
-                      }
-                      seen.append(rec)
-                      if ("json" in ct or response.request.resource_type in {"xhr", "fetch"}) and len(bodies) < 30:
-                          try:
-                              text = await response.text()
-                          except Exception as exc:
-                              text = f"<read error: {type(exc).__name__}>"
-                          if len(text) <= 200000:
-                              bodies.append({**rec, "body": text})
+          result = {
+              "source": "Invesco official DNG API",
+              "url": url,
+              "http_status": status,
+              "content_type": content_type,
+              "bytes": len(raw),
+          }
 
-                  page.on("response", capture)
-                  await page.goto(TARGET, wait_until="domcontentloaded", timeout=90000)
-                  await page.wait_for_timeout(15000)
+          try:
+              data = json.loads(text)
+              result["json_type"] = type(data).__name__
+              if isinstance(data, dict):
+                  result["top_level_keys"] = sorted(data.keys())
+                  # Describe likely list-valued fields without dumping the full response to logs.
+                  lists = {}
+                  for k, v in data.items():
+                      if isinstance(v, list):
+                          lists[k] = {
+                              "rows": len(v),
+                              "sample": v[:3],
+                              "sample_keys": sorted(v[0].keys()) if v and isinstance(v[0], dict) else [],
+                          }
+                  result["list_fields"] = lists
+                  result["sample"] = {k: v for k, v in data.items() if not isinstance(v, list)}
+              elif isinstance(data, list):
+                  result["rows"] = len(data)
+                  result["sample"] = data[:3]
+                  result["sample_keys"] = sorted(data[0].keys()) if data and isinstance(data[0], dict) else []
+              else:
+                  result["sample"] = data
+          except Exception as exc:
+              result["json_error"] = f"{type(exc).__name__}: {exc}"
+              result["body_prefix"] = text[:2000]
 
-                  # Trigger lazy-loaded holdings area if present.
-                  for selector in [
-                      "text=See all holdings",
-                      "text=View all Holdings",
-                      "text=All QQQ holdings",
-                  ]:
-                      try:
-                          loc = page.locator(selector).first
-                          if await loc.count():
-                              await loc.scroll_into_view_if_needed()
-                              try:
-                                  await loc.click(timeout=3000)
-                              except Exception:
-                                  pass
-                              await page.wait_for_timeout(4000)
-                      except Exception:
-                          pass
-
-                  await page.screenshot(path="qqq_page.png", full_page=True)
-                  Path("qqq_network.json").write_text(
-                      json.dumps({"target": TARGET, "requests": seen, "captured_bodies": bodies}, indent=2),
-                      encoding="utf-8",
-                  )
-                  print(f"captured candidate responses: {len(seen)}")
-                  for rec in seen:
-                      print(rec["status"], rec["resource_type"], rec["content_type"], rec["url"])
-                  await browser.close()
-
-          asyncio.run(main())
+          Path("qqq_direct_probe.json").write_text(
+              json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+          )
+          print(json.dumps(result, ensure_ascii=False, indent=2)[:12000])
           PY
 
       - name: Upload probe artifact
         uses: actions/upload-artifact@v4
         with:
-          name: qqq-invesco-probe
-          path: |
-            qqq_network.json
-            qqq_page.png
+          name: qqq-direct-probe
+          path: qqq_direct_probe.json
           if-no-files-found: error
