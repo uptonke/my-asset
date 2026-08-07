@@ -1,0 +1,119 @@
+name: Probe QQQ Invesco holdings
+
+on:
+  push:
+    branches:
+      - test/qqq-holdings-20260807
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Playwright
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Discover QQQ holdings network calls
+        run: |
+          python - <<'PY'
+          import asyncio
+          import json
+          from pathlib import Path
+          from playwright.async_api import async_playwright
+
+          TARGET = "https://www.invesco.com/qqq-etf/en/about.html"
+          keywords = ("holding", "holdings", "portfolio", "fund", "product", "qqq")
+          seen = []
+          bodies = []
+
+          async def main():
+              async with async_playwright() as p:
+                  browser = await p.chromium.launch(headless=True)
+                  context = await browser.new_context(
+                      user_agent=(
+                          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                          "AppleWebKit/537.36 (KHTML, like Gecko) "
+                          "Chrome/150.0.0.0 Safari/537.36"
+                      ),
+                      locale="en-US",
+                  )
+                  page = await context.new_page()
+
+                  async def capture(response):
+                      url = response.url
+                      low = url.lower()
+                      if not any(k in low for k in keywords):
+                          return
+                      ct = (response.headers.get("content-type") or "").lower()
+                      rec = {
+                          "url": url,
+                          "status": response.status,
+                          "content_type": ct,
+                          "resource_type": response.request.resource_type,
+                      }
+                      seen.append(rec)
+                      if ("json" in ct or response.request.resource_type in {"xhr", "fetch"}) and len(bodies) < 30:
+                          try:
+                              text = await response.text()
+                          except Exception as exc:
+                              text = f"<read error: {type(exc).__name__}>"
+                          if len(text) <= 200000:
+                              bodies.append({**rec, "body": text})
+
+                  page.on("response", capture)
+                  await page.goto(TARGET, wait_until="domcontentloaded", timeout=90000)
+                  await page.wait_for_timeout(15000)
+
+                  # Trigger lazy-loaded holdings area if present.
+                  for selector in [
+                      "text=See all holdings",
+                      "text=View all Holdings",
+                      "text=All QQQ holdings",
+                  ]:
+                      try:
+                          loc = page.locator(selector).first
+                          if await loc.count():
+                              await loc.scroll_into_view_if_needed()
+                              try:
+                                  await loc.click(timeout=3000)
+                              except Exception:
+                                  pass
+                              await page.wait_for_timeout(4000)
+                      except Exception:
+                          pass
+
+                  await page.screenshot(path="qqq_page.png", full_page=True)
+                  Path("qqq_network.json").write_text(
+                      json.dumps({"target": TARGET, "requests": seen, "captured_bodies": bodies}, indent=2),
+                      encoding="utf-8",
+                  )
+                  print(f"captured candidate responses: {len(seen)}")
+                  for rec in seen:
+                      print(rec["status"], rec["resource_type"], rec["content_type"], rec["url"])
+                  await browser.close()
+
+          asyncio.run(main())
+          PY
+
+      - name: Upload probe artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: qqq-invesco-probe
+          path: |
+            qqq_network.json
+            qqq_page.png
+          if-no-files-found: error
