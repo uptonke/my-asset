@@ -200,25 +200,25 @@ Constraint: Output strictly in Traditional Chinese. Maximum 8 bullets. No pleasa
 - jump_stress_scenario uses asset-class policy assumptions and independent asset-level Poisson jumps. It is a stress scenario, not a historically fitted crash probability model.
 - jd_tail_loss is the absolute value of jd_es95 and is not independent corroborating evidence.
 - Interpret jd_crash_prob only as the probability that the simulated horizon return breaches the stated jump_stress_threshold.
-- If EVT xi < 0, describe the fitted tail as bounded under the sample estimate; do not call it heavy-tailed. If exceedance count is small, state that xi and ES are unstable.
+- If EVT xi < 0, say only that the fitted POT-GPD tail is bounded under the current threshold/sample and does not provide evidence for an xi > 0 heavy-tail regime. Do NOT conclude that the true return distribution 'is not heavy-tailed' or rule out heavy tails. If exceedance count is small, state that xi and ES are unstable and tail-classification evidence is weak.
 - Small tail/crisis samples are preliminary evidence, not an "extremely clear" signal. Do not claim statistical certainty without confidence intervals.
-- Historical PSR uses benchmark Sharpe 0. A value below 95% means evidence is not strong enough for a high-confidence claim; it does not prove returns are random or imply survivor bias.
+- Historical PSR uses benchmark Sharpe 0. Interpret PSR as the estimated probability/confidence that the true Sharpe exceeds 0 under the PSR model. A value below 95% means it has not met a strict 95% credibility threshold. Never describe PSR as a test of whether returns are random, and do not infer survivor bias from it.
 - MWR > TWR may indicate favorable cash-flow timing. It does not prove security selection skill.
 - capm_alpha_proxy is not regression-estimated Jensen alpha and has no t-stat. Do not claim persistent selection alpha.
 - Rebalance alerts include current weight, target weight, signed drift, and candidate action. Never infer Trim from an underweight alert.
 - If buffer_floor_status is DISABLED_ZERO_FLOOR, say the hard floor is inactive; do not praise compliance with a zero constraint.
 - BOXX and SHY may reduce risk-asset exposure but retain USD and instrument-specific risk for a TWD investor. Do not call them literally risk-free.
-- If ETF look-through is unavailable, state that PCA/MRC cannot detect constituent overlap and avoid claiming complete diversification analysis.
+- If ETF look-through is unavailable, state that constituent overlap cannot be directly quantified. PCA and MRC reflect price covariance / risk contribution only; they may reveal correlated concentration indirectly but do not measure shared constituent holdings.
 - Do not infer "discipline failure" from a single snapshot. Describe observed drift and the rule that triggered it.
 
 [ANALYSIS TASKS]
 1. 【資金效率】Compare TWR, MWR, and the CAPM alpha proxy with the methodological limits above.
-2. 【風險報酬可信度】Assess Sharpe, PSR/DSR, volatility, Sortino and Treynor without converting lack of significance into proof of randomness.
-3. 【Portfolio X-Ray】Assess concentration, risk contribution, PCA, USD exposure and look-through coverage. Use "risk concentration" rather than "leverage" unless actual leverage exists.
+2. 【風險報酬可信度】Assess Sharpe, PSR/DSR, volatility, Sortino and Treynor. State PSR as confidence/probability that the true Sharpe exceeds its benchmark; never phrase it as confirming that returns are non-random.
+3. 【Portfolio X-Ray】Assess concentration, risk contribution, PCA, USD exposure and look-through coverage. Explicitly distinguish covariance-based concentration from constituent overlap: PCA/MRC do not directly measure shared ETF holdings. Use "risk concentration" rather than "leverage" unless actual leverage exists.
 4. 【再平衡監控】Distinguish Trim, Add, general drift and concentration candidates. State the exact direction of major alerts.
 5. 【Tail / Crash Radar】Assess crisis correlation and downside behavior while explicitly qualifying small samples.
-6. 【同期間尾部比較】Use same_horizon_tail_comparison. Quantify the gap, but call it a stress-model gap rather than proof that history is wrong.
-7. 【EVT】Discuss the one-week EVT result separately, including xi sign, threshold, exceedance count and lack of direct 13-week comparability.
+6. 【13週尾部風險】Inspect same_horizon_tail_comparison. If historical_current_weight_var95 and historical_current_weight_es95 are both available, title the bullet 【13週同期間尾部比較】 and compare them with jump-stress on the same horizon. If either historical metric is N/A, title the bullet 【13週跳躍壓力測試】, report the jump-stress scenario only, and state that a same-horizon historical comparison is unavailable. Never label a jump-only paragraph as a same-horizon comparison.
+7. 【EVT】Discuss the one-week EVT result separately, including xi sign, threshold, exceedance count and lack of direct 13-week comparability. A negative xi with a small exceedance sample must not be used to classify the true return distribution as non-heavy-tailed.
 8. 【CRO 最終指令】Choose one of Review / Hold / Conditional Trim / Trim / Raise Cash. Use Trim or Raise Cash only when an explicit target band, concentration cap, buffer constraint, or risk-budget breach is shown. Otherwise use Review or Conditional Trim and state the trigger.
 
 [OUTPUT_FORMAT]
