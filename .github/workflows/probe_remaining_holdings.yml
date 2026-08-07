@@ -1,0 +1,160 @@
+name: Probe remaining official ETF holdings
+
+on:
+  push:
+    branches:
+      - test/remaining-holdings-20260807
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install parsers
+        run: pip install requests beautifulsoup4 openpyxl
+      - name: Probe official sources
+        run: |
+          python - <<'PY'
+          import io, json, re
+          from pathlib import Path
+          import requests
+          from bs4 import BeautifulSoup
+          from openpyxl import load_workbook
+
+          H = {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/150 Safari/537.36",
+              "Accept": "*/*",
+          }
+          out = {}
+
+          # GRID — First Trust official holdings HTML.
+          url = "https://www.ftportfolios.com/Retail/Etf/EtfHoldings.aspx?Ticker=GRID"
+          try:
+              r = requests.get(url, headers=H, timeout=30)
+              r.raise_for_status()
+              soup = BeautifulSoup(r.text, "html.parser")
+              text = soup.get_text(" ", strip=True)
+              date_m = re.search(r"Holdings of the Fund as of\s+([0-9/]+)", text, re.I)
+              total_m = re.search(r"Total Number of Holdings \(excluding cash\):\s*(\d+)", text, re.I)
+              # Count rows with a percentage-looking final cell in all HTML tables.
+              candidate_rows = []
+              for tr in soup.find_all("tr"):
+                  cells = [c.get_text(" ", strip=True) for c in tr.find_all(["td", "th"])]
+                  if len(cells) >= 6 and any(re.fullmatch(r"\d+(?:\.\d+)?%", c) for c in cells):
+                      candidate_rows.append(cells)
+              out["GRID"] = {
+                  "source": "First Trust official holdings page",
+                  "http_status": r.status_code,
+                  "bytes": len(r.content),
+                  "as_of": date_m.group(1) if date_m else None,
+                  "reported_holdings_ex_cash": int(total_m.group(1)) if total_m else None,
+                  "parsed_candidate_rows": len(candidate_rows),
+                  "sample": candidate_rows[:3],
+              }
+          except Exception as e:
+              out["GRID"] = {"error": f"{type(e).__name__}: {e}"}
+
+          # COPX — Global X official page; discover current full-holdings CSV dynamically.
+          page_url = "https://www.globalxetfs.com/funds/COPX"
+          try:
+              p = requests.get(page_url, headers=H, timeout=30)
+              p.raise_for_status()
+              soup = BeautifulSoup(p.text, "html.parser")
+              csv_links = []
+              for a in soup.find_all("a", href=True):
+                  href = a["href"]
+                  if "full-holdings" in href.lower() and href.lower().endswith(".csv"):
+                      csv_links.append(requests.compat.urljoin(page_url, href))
+              if not csv_links:
+                  # Fallback: discover URL-like strings embedded in scripts.
+                  csv_links = re.findall(r'https?://[^"\']*copx[^"\']*full-holdings[^"\']*\.csv', p.text, re.I)
+              rec = {
+                  "source": "Global X official full holdings CSV",
+                  "page_http_status": p.status_code,
+                  "discovered_links": csv_links[:3],
+              }
+              if csv_links:
+                  c = requests.get(csv_links[0], headers=H, timeout=30)
+                  c.raise_for_status()
+                  lines = c.text.splitlines()
+                  rec.update({
+                      "csv_http_status": c.status_code,
+                      "csv_bytes": len(c.content),
+                      "line_count": len(lines),
+                      "header": lines[0] if lines else None,
+                      "sample": lines[1:4],
+                  })
+              out["COPX"] = rec
+          except Exception as e:
+              out["COPX"] = {"error": f"{type(e).__name__}: {e}"}
+
+          # VNM — VanEck official static XLS download endpoint.
+          url = "https://www.vaneck.com/us/en/investments/vietnam-etf-vnm/downloads/holdings/"
+          try:
+              r = requests.get(url, headers=H, timeout=30, allow_redirects=True)
+              r.raise_for_status()
+              wb = load_workbook(io.BytesIO(r.content), read_only=True, data_only=True)
+              ws = wb[wb.sheetnames[0]]
+              rows = list(ws.iter_rows(values_only=True))
+              nonempty = [list(row) for row in rows if any(v not in (None, "") for v in row)]
+              out["VNM"] = {
+                  "source": "VanEck official holdings XLS",
+                  "http_status": r.status_code,
+                  "final_url": r.url,
+                  "content_type": r.headers.get("content-type"),
+                  "bytes": len(r.content),
+                  "sheet_names": wb.sheetnames,
+                  "nonempty_rows": len(nonempty),
+                  "sample": nonempty[:12],
+              }
+          except Exception as e:
+              out["VNM"] = {"error": f"{type(e).__name__}: {e}"}
+
+          # SRVR — Pacer official product page; probe static HTML/embedded data first.
+          url = "https://www.paceretfs.com/products/srvr"
+          try:
+              r = requests.get(url, headers=H, timeout=30)
+              r.raise_for_status()
+              soup = BeautifulSoup(r.text, "html.parser")
+              text = soup.get_text(" ", strip=True)
+              marker = "Daily Holdings" in text
+              eqix = "EQIX" in text
+              # Collect likely holdings rows if rendered server-side.
+              rows = []
+              for tr in soup.find_all("tr"):
+                  cells = [c.get_text(" ", strip=True) for c in tr.find_all(["td", "th"])]
+                  if len(cells) >= 3 and re.fullmatch(r"-?\d+(?:\.\d+)?", cells[-1].replace("%", "").strip()):
+                      rows.append(cells)
+              # Search scripts for likely API paths / JSON snippets.
+              api_candidates = sorted(set(re.findall(r'https?://[^"\']+|/[^"\']*(?:holding|portfolio)[^"\']*', r.text, re.I)))
+              api_candidates = [x for x in api_candidates if "holding" in x.lower() or "portfolio" in x.lower()]
+              out["SRVR"] = {
+                  "source": "Pacer official product page",
+                  "http_status": r.status_code,
+                  "bytes": len(r.content),
+                  "daily_holdings_marker": marker,
+                  "contains_EQIX": eqix,
+                  "parsed_candidate_rows": len(rows),
+                  "sample_rows": rows[:5],
+                  "api_candidates": api_candidates[:20],
+              }
+          except Exception as e:
+              out["SRVR"] = {"error": f"{type(e).__name__}: {e}"}
+
+          Path("remaining_holdings_probe.json").write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+          print(json.dumps(out, ensure_ascii=False, indent=2)[:30000])
+          PY
+      - name: Upload probe artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: remaining-holdings-probe
+          path: remaining_holdings_probe.json
+          if-no-files-found: error
