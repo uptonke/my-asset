@@ -1,0 +1,68 @@
+name: Probe IFRA iShares holdings
+
+on:
+  push:
+    branches:
+      - test/ifra-holdings-20260807
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Probe official IFRA holdings CSV
+        run: |
+          python - <<'PY'
+          import csv
+          import io
+          import json
+          import urllib.request
+          from pathlib import Path
+
+          url = "https://www.ishares.com/us/products/294315/ishares-u-s-infrastructure-etf/latest-holdings.csv"
+          req = urllib.request.Request(
+              url,
+              headers={
+                  "User-Agent": "Mozilla/5.0 my-asset-holdings/1.0",
+                  "Accept": "text/csv,text/plain,*/*",
+              },
+          )
+          with urllib.request.urlopen(req, timeout=30) as resp:
+              raw = resp.read()
+              status = resp.status
+              content_type = resp.headers.get("content-type")
+
+          text = raw.decode("utf-8-sig", errors="replace")
+          lines = text.splitlines()
+          header_idx = next(i for i, line in enumerate(lines) if line.startswith("Ticker,"))
+          metadata = lines[:header_idx]
+          rows = list(csv.DictReader(io.StringIO("\n".join(lines[header_idx:]))))
+          rows = [r for r in rows if any((v or "").strip() for v in r.values())]
+
+          result = {
+              "source": "iShares official holdings CSV",
+              "url": url,
+              "http_status": status,
+              "content_type": content_type,
+              "bytes": len(raw),
+              "metadata": metadata[:8],
+              "returned_rows": len(rows),
+              "columns": list(rows[0].keys()) if rows else [],
+              "sample": rows[:3],
+          }
+          print(json.dumps(result, ensure_ascii=False, indent=2)[:12000])
+          Path("ifra_probe.json").write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+          PY
+
+      - name: Upload probe artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ifra-official-probe
+          path: ifra_probe.json
+          if-no-files-found: error
