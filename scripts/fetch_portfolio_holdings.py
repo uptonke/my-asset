@@ -227,7 +227,15 @@ def fetch_qqq(session: requests.Session) -> dict[str, Any]:
         "https://dng-api.invesco.com/cache/v1/accounts/en_US/shareclasses/QQQ/"
         "holdings/fund?idType=ticker&interval=monthly&productType=ETF"
     )
-    r = session.get(url, timeout=HTTP_TIMEOUT, headers={"Referer": "https://www.invesco.com/qqq-etf/en/about.html"})
+    r = session.get(
+        url,
+        timeout=HTTP_TIMEOUT,
+        headers={
+            "User-Agent": "Mozilla/5.0 my-asset-holdings/1.0",
+            "Accept": "application/json,text/plain,*/*",
+            "Referer": "https://www.invesco.com/qqq-etf/en/about.html",
+        },
+    )
     r.raise_for_status()
     data = r.json()
     raw_rows = data.get("holdings") or []
