@@ -1,0 +1,36 @@
+name: Package Holdings Ingestion
+
+on:
+  push:
+    branches:
+      - feature/holdings-ingestion-20260807
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build manual-upload ZIP
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/my-asset-holdings-ingestion
+          rsync -a ./ /tmp/my-asset-holdings-ingestion/ \
+            --exclude '.git/' \
+            --exclude '.github/workflows/package_holdings_ingestion.yml' \
+            --exclude '.github/workflows/validate_holdings_ingestion.yml'
+          cd /tmp
+          zip -qr my-asset-holdings-ingestion.zip my-asset-holdings-ingestion
+          unzip -tq my-asset-holdings-ingestion.zip
+          ls -lh my-asset-holdings-ingestion.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: my-asset-holdings-ingestion
+          path: /tmp/my-asset-holdings-ingestion.zip
+          if-no-files-found: error
