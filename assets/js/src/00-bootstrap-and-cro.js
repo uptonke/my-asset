@@ -126,7 +126,17 @@ createApp({
         fx_1pct_nav_impact_twd: xrayStats.value.fx.usdNavImpact1pct,
         top_risk_contributors: xrayStats.value.mrcTable.slice(0, 5),
         etf_lookthrough_status: xrayStats.value.lookthrough?.status || 'unknown',
-        etf_lookthrough_note: xrayStats.value.lookthrough?.note || ''
+        etf_lookthrough_note: xrayStats.value.lookthrough?.note || '',
+        etf_supported_sleeve_pct_of_portfolio: xrayStats.value.lookthrough?.heldSupportedEtfSleevePct,
+        etf_mapped_underlying_pct_of_portfolio: xrayStats.value.lookthrough?.mappedEquityPortfolioPct,
+        etf_supported_sleeve_equity_coverage_pct: xrayStats.value.lookthrough?.heldSupportedSleeveCoveragePct,
+        etf_top5_underlying_pct_of_portfolio: xrayStats.value.lookthrough?.top5UnderlyingPortfolioPct,
+        etf_top_underlying: (xrayStats.value.lookthrough?.topUnderlying || []).slice(0, 10),
+        etf_pairwise_constituent_overlap: (xrayStats.value.lookthrough?.pairwiseOverlap || []).slice(0, 10),
+        etf_loaded_funds: xrayStats.value.lookthrough?.loadedFunds || [],
+        etf_missing_funds: xrayStats.value.lookthrough?.missingFunds || [],
+        etf_nonofficial_source_funds: xrayStats.value.lookthrough?.nonofficialFunds || [],
+        etf_stale_funds: xrayStats.value.lookthrough?.staleFunds || []
     },
 
     tail_crash_radar_1w: {
@@ -208,7 +218,7 @@ Constraint: Output strictly in Traditional Chinese. Maximum 8 bullets. No pleasa
 - Rebalance alerts include current weight, target weight, signed drift, and candidate action. Never infer Trim from an underweight alert.
 - If buffer_floor_status is DISABLED_ZERO_FLOOR, say the hard floor is inactive; do not praise compliance with a zero constraint.
 - BOXX and SHY may reduce risk-asset exposure but retain USD and instrument-specific risk for a TWD investor. Do not call them literally risk-free.
-- If ETF look-through is unavailable, state that constituent overlap cannot be directly quantified. PCA and MRC reflect price covariance / risk contribution only; they may reveal correlated concentration indirectly but do not measure shared constituent holdings.
+- If ETF look-through is unavailable, state that constituent overlap cannot be directly quantified. PCA and MRC reflect price covariance / risk contribution only; they may reveal correlated concentration indirectly but do not measure shared constituent holdings. If look-through is available, use the reported top underlying and pairwise constituent overlap directly, state coverage/source limits, and do not extrapolate uncovered assets.
 - Do not infer "discipline failure" from a single snapshot. Describe observed drift and the rule that triggered it.
 
 [ANALYSIS TASKS]

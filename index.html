@@ -1834,7 +1834,7 @@
                                     </summary>
                                     <div class="p-4 space-y-5">
                             <!-- EWMA 共變異數 / 相關性市場狀態 -->
-                            <div class="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.04] overflow-hidden">
+                            <div class="rounded-2xl border border-cyan-500/20 bg-black/20 overflow-hidden">
                                 <div class="px-4 py-3 border-b border-white/10 bg-cyan-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                                     <div>
                                         <div class="text-sm font-bold text-white flex items-center gap-2">
@@ -1896,7 +1896,7 @@
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    <tr v-for="row in (syntheticRiskMeta?.ewma_regime?.correlation_pairs || [])" :key="row.code" class="border-b border-white/5 hover:bg-white/[0.03]">
+                                                    <tr v-for="row in (syntheticRiskMeta?.ewma_regime?.correlation_pairs || [])" :key="row.code" class="border-b border-white/5 hover:bg-white/5">
                                                         <td class="px-3 py-2 text-white">{{ zhText(row.label) }}</td>
                                                         <td class="px-3 py-2 text-right font-mono text-gray-300">{{ row.corr_63d ?? '-' }}</td>
                                                         <td class="px-3 py-2 text-right font-mono text-gray-300">{{ row.corr_126d ?? '-' }}</td>
@@ -2098,7 +2098,7 @@
                                     最佳化頁閱讀順序
                                 </div>
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 text-[11px] text-gray-300 leading-relaxed">
-                                    <div class="rounded-xl border border-cyan-500/15 bg-cyan-500/[0.05] p-3"><span class="font-bold text-cyan-200">① 目標權重與草案</span><br>先看 v10.5.3 thesis、v10.5.1 雙來源目標權重與 v10.0 人工確認票據。</div>
+                                    <div class="rounded-xl border border-cyan-500/15 bg-cyan-500/5 p-3"><span class="font-bold text-cyan-200">① 目標權重與草案</span><br>先看 v10.5.3 thesis、v10.5.1 雙來源目標權重與 v10.0 人工確認票據。</div>
                                     <div class="rounded-xl border border-emerald-500/15 bg-emerald-500/[0.05] p-3"><span class="font-bold text-emerald-200">② 候選方案邊界</span><br>再看候選數、正式草案是否被封鎖、交易票據是否僅供觀察，以及 alpha / constraint 阻擋原因。</div>
                                     <div class="rounded-xl border border-slate-500/15 bg-slate-500/[0.05] p-3"><span class="font-bold text-slate-200">③ 診斷鏈路</span><br>依賴、沙盒、v2～v9 歷史鏈路全部收合，需要追查模型來源才展開。</div>
                                 </div>
@@ -4160,7 +4160,7 @@
                                                     </thead>
                                                     <tbody>
                                                         <tr v-for="draft in regimeAwareVisibleDrafts" :key="draft.draft_id" class="border-b border-white/5 hover:bg-white/[0.03]">
-                                                            <td class="px-3 py-2 font-mono text-white max-w-[220px] truncate" :title="draft.draft_id">{{ draft.draft_id }}</td>
+                                                            <td class="px-3 py-2 font-mono text-white truncate" :title="draft.draft_id">{{ draft.draft_id }}</td>
                                                             <td class="px-3 py-2 text-gray-300 max-w-[180px] truncate" :title="draft.model_status">{{ zhText(draft.model_status) }}</td>
                                                             <td class="px-3 py-2 text-right text-gray-300">{{ draft.turnover_vs_current_pct ?? '-' }}%</td>
                                                             <td class="px-3 py-2 text-right text-emerald-300">{{ draft.exposure?.cash_pct ?? '-' }}%</td>
@@ -5540,11 +5540,11 @@
                                         投資組合 X 光機
                                     </h4>
                                     <p class="text-xs md:text-sm text-gray-400 mt-2 leading-relaxed">
-                                        拆解資金權重、風險貢獻、主成分集中度與匯率曝險，先抓出假分散與隱性風險源。
+                                        拆解資金權重、風險貢獻、主成分集中度、匯率曝險與 ETF 底層持股重疊，先抓出假分散與隱性風險源。
                                     </p>
                                 </div>
                                 <div class="text-xs text-gray-500">
-                                    V1: MRC / PCA / Net FX
+                                    V2: MRC / PCA / FX / Look-through
                                 </div>
                             </div>
                         </div>
@@ -5606,6 +5606,165 @@
                                             </tr>
                                         </tbody>
                                     </table>
+                                </div>
+                            </div>
+
+
+                            <div class="rounded-2xl border border-cyan-500/20 bg-black/20 overflow-hidden">
+                                <div class="px-4 py-3 border-b border-white/10 bg-cyan-500/5 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                                    <div class="text-sm font-bold text-white flex items-center gap-2">
+                                        <i class="fas fa-layer-group text-cyan-400"></i>
+                                        ETF 底層持股穿透 / 重疊
+                                    </div>
+                                    <div class="flex items-center gap-2 text-[11px]">
+                                        <span
+                                            class="px-2 py-1 rounded-full border"
+                                            :class="xrayStats?.lookthrough?.available
+                                                ? (xrayStats?.lookthrough?.warning
+                                                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
+                                                    : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300')
+                                                : 'border-white/10 bg-white/[0.03] text-gray-400'"
+                                        >
+                                            {{ xrayStats?.lookthrough?.statusLabel || '等待資料' }}
+                                        </span>
+                                        <span v-if="xrayStats?.lookthrough?.generatedAt" class="text-gray-500">
+                                            更新 {{ xrayStats.lookthrough.generatedAtLabel }}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="p-4 space-y-4">
+                                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                        <div class="bg-black/20 rounded-xl border border-white/10 p-3">
+                                            <div class="text-[10px] text-gray-500 uppercase tracking-wide">支援 ETF 部位</div>
+                                            <div class="text-lg font-mono font-bold text-white mt-1">
+                                                {{ xrayStats?.lookthrough?.heldSupportedEtfSleevePct === null ? '-' : xrayStats.lookthrough.heldSupportedEtfSleevePct.toFixed(1) + '%' }}
+                                            </div>
+                                            <div class="text-[10px] text-gray-500 mt-1">占整體投資組合</div>
+                                        </div>
+                                        <div class="bg-black/20 rounded-xl border border-white/10 p-3">
+                                            <div class="text-[10px] text-gray-500 uppercase tracking-wide">已映射底層股票</div>
+                                            <div class="text-lg font-mono font-bold text-cyan-300 mt-1">
+                                                {{ xrayStats?.lookthrough?.mappedEquityPortfolioPct === null ? '-' : xrayStats.lookthrough.mappedEquityPortfolioPct.toFixed(1) + '%' }}
+                                            </div>
+                                            <div class="text-[10px] text-gray-500 mt-1">占整體投資組合</div>
+                                        </div>
+                                        <div class="bg-black/20 rounded-xl border border-white/10 p-3">
+                                            <div class="text-[10px] text-gray-500 uppercase tracking-wide">ETF 穿透覆蓋率</div>
+                                            <div class="text-lg font-mono font-bold text-emerald-300 mt-1">
+                                                {{ xrayStats?.lookthrough?.heldSupportedSleeveCoveragePct === null ? '-' : xrayStats.lookthrough.heldSupportedSleeveCoveragePct.toFixed(1) + '%' }}
+                                            </div>
+                                            <div class="text-[10px] text-gray-500 mt-1">已支援 ETF 的股票穿透覆蓋</div>
+                                        </div>
+                                        <div class="bg-black/20 rounded-xl border border-white/10 p-3">
+                                            <div class="text-[10px] text-gray-500 uppercase tracking-wide">ETF 底層 Top 5</div>
+                                            <div class="text-lg font-mono font-bold text-yellow-300 mt-1">
+                                                {{ xrayStats?.lookthrough?.top5UnderlyingPortfolioPct === null ? '-' : xrayStats.lookthrough.top5UnderlyingPortfolioPct.toFixed(2) + '%' }}
+                                            </div>
+                                            <div class="text-[10px] text-gray-500 mt-1">底層前五大合計 / 整體投資組合</div>
+                                        </div>
+                                    </div>
+
+                                    <div v-if="xrayStats?.lookthrough?.displayNote" class="text-xs text-gray-300 leading-relaxed rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                                        {{ xrayStats.lookthrough.displayNote }}
+                                    </div>
+
+                                    <div v-if="xrayStats?.lookthrough?.available" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2.5 border-b border-white/10 flex items-center justify-between">
+                                                <div class="text-xs font-bold text-white">底層持股排行</div>
+                                                <div class="text-[10px] text-gray-500">ETF 穿透後，占整體投資組合</div>
+                                            </div>
+                                            <div class="overflow-x-auto max-h-80">
+                                                <table class="w-full text-left whitespace-nowrap">
+                                                    <thead class="sticky top-0 bg-[#0f172a] text-[10px] text-gray-500 uppercase border-b border-gray-700">
+                                                        <tr>
+                                                            <th class="p-2.5 pl-3">#</th>
+                                                            <th class="p-2.5">底層標的</th>
+                                                            <th class="p-2.5">名稱</th>
+                                                            <th class="p-2.5 text-right">投組 %</th>
+                                                            <th class="p-2.5 text-right">來源 ETF</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody class="text-xs divide-y divide-white/5">
+                                                        <tr v-for="row in (xrayStats?.lookthrough?.topUnderlying || []).slice(0, 15)" :key="row.rank + '-' + row.ticker + '-' + row.name" class="hover:bg-white/5">
+                                                            <td class="p-2.5 pl-3 font-mono text-gray-500">{{ row.rank }}</td>
+                                                            <td class="p-2.5 font-bold text-white">{{ row.ticker || '-' }}</td>
+                                                            <td class="p-2.5 text-gray-400 truncate" :title="row.name">{{ row.name || '-' }}</td>
+                                                            <td class="p-2.5 text-right font-mono text-cyan-300">{{ row.portfolioWeightPct === null ? '-' : row.portfolioWeightPct.toFixed(2) + '%' }}</td>
+                                                            <td class="p-2.5 text-right text-gray-400">{{ (row.sourceFunds || []).join(' / ') || '-' }}</td>
+                                                        </tr>
+                                                        <tr v-if="!((xrayStats?.lookthrough?.topUnderlying || []).length)">
+                                                            <td colspan="5" class="p-5 text-center text-gray-500">沒有可映射的底層股票。</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                            <div class="px-3 py-2.5 border-b border-white/10 flex items-center justify-between">
+                                                <div class="text-xs font-bold text-white">ETF 兩兩重疊</div>
+                                                <div class="text-[10px] text-gray-500">Σ min(成分權重)</div>
+                                            </div>
+                                            <div class="p-3 space-y-2 max-h-80 overflow-y-auto">
+                                                <div v-for="row in (xrayStats?.lookthrough?.pairwiseOverlap || [])" :key="row.fundA + '-' + row.fundB" class="rounded-lg border border-white/10 bg-white/[0.03] p-2.5">
+                                                    <div class="flex items-center justify-between gap-3">
+                                                        <div class="font-bold text-white text-xs">{{ row.fundA }} × {{ row.fundB }}</div>
+                                                        <div class="font-mono text-cyan-300 text-xs">{{ row.overlapPct === null ? '-' : row.overlapPct.toFixed(1) + '%' }}</div>
+                                                    </div>
+                                                    <div class="h-1.5 rounded-full bg-white/10 mt-2 overflow-hidden">
+                                                        <div class="h-full bg-cyan-400/70 rounded-full" :style="{ width: Math.min(Math.max(row.overlapPct || 0, 0), 100) + '%' }"></div>
+                                                    </div>
+                                                </div>
+                                                <div v-if="!((xrayStats?.lookthrough?.pairwiseOverlap || []).length)" class="text-xs text-gray-500 text-center py-5">
+                                                    目前不足兩檔已載入 ETF，無兩兩重疊率可比較。
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div v-if="(xrayStats?.lookthrough?.fundCoverage || []).length" class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+                                        <div class="px-3 py-2.5 border-b border-white/10 flex items-center justify-between">
+                                            <div class="text-xs font-bold text-white">持股資料覆蓋 / 新鮮度</div>
+                                            <div class="text-[10px] text-gray-500">來源品質與資料日期</div>
+                                        </div>
+                                        <div class="overflow-x-auto">
+                                            <table class="w-full text-left whitespace-nowrap">
+                                                <thead class="bg-[#0f172a] text-[10px] text-gray-500 uppercase border-b border-gray-700">
+                                                    <tr>
+                                                        <th class="p-2.5 pl-3">ETF</th>
+                                                        <th class="p-2.5 text-right">Portfolio %</th>
+                                                        <th class="p-2.5 text-right">Equity Coverage</th>
+                                                        <th class="p-2.5">As of</th>
+                                                        <th class="p-2.5">來源</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="text-xs divide-y divide-white/5">
+                                                    <tr v-for="row in xrayStats.lookthrough.fundCoverage" :key="row.fund">
+                                                        <td class="p-2.5 pl-3 font-bold text-white">{{ row.fund }}</td>
+                                                        <td class="p-2.5 text-right font-mono text-gray-300">{{ row.portfolioWeightPct === null ? '-' : row.portfolioWeightPct.toFixed(1) + '%' }}</td>
+                                                        <td class="p-2.5 text-right font-mono text-emerald-300">{{ row.equityCoveragePct === null ? '-' : row.equityCoveragePct.toFixed(1) + '%' }}</td>
+                                                        <td class="p-2.5 text-gray-400">{{ row.asOf || '-' }}<span v-if="row.staleDays !== null" class="text-gray-600"> ({{ row.staleDays }}d)</span></td>
+                                                        <td class="p-2.5">
+                                                            <span v-if="row.isOfficialSource" class="text-emerald-300">{{ row.sourceLabel }}</span>
+                                                            <span v-else class="text-amber-300">{{ row.sourceLabel }}</span>
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div v-if="(xrayStats?.lookthrough?.specialExposures || []).length" class="flex flex-wrap gap-2 text-[10px]">
+                                        <span v-for="row in xrayStats.lookthrough.specialExposures" :key="row.ticker + row.lookthroughMode" class="px-2 py-1 rounded-full border border-white/10 bg-white/[0.03] text-gray-400">
+                                            {{ row.ticker }}：{{ row.modeLabel }}<span v-if="row.portfolioWeightPct !== null"> · {{ row.portfolioWeightPct.toFixed(1) }}%</span>
+                                        </span>
+                                    </div>
+
+                                    <div v-if="xrayStats?.lookthrough?.available" class="text-[10px] text-gray-500 leading-relaxed">
+                                        兩兩重疊率是兩檔 ETF 成分權重的交集，不等於整體投資組合權重；底層持股排行僅涵蓋已載入的股票型 ETF。國際標的跨供應商識別可能低估部分重疊。
+                                    </div>
                                 </div>
                             </div>
                         </div>

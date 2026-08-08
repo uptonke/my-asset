@@ -28,7 +28,7 @@
             mrcTable: [],
             pca: { pc1Explained: '-', pc3CumExplained: '-' },
             fx: { netFxExposurePct: '-', usdNavImpact1pct: '-' },
-            lookthrough: { status: 'unknown', note: '' }
+            lookthrough: normalizeLookthrough(null)
         });
 
        const rebalanceMonitor = ref({
@@ -119,6 +119,158 @@ function fmtPctMaybe(val, digits = 2) {
     return Number.isFinite(n) ? n.toFixed(digits) : '-';
 }
 
+function finiteOrNull(val) {
+    if (val === null || val === undefined || val === '') return null;
+    const n = Number(val);
+    return Number.isFinite(n) ? n : null;
+}
+
+function lookthroughStatusLabel(status) {
+    const labels = {
+        available_official: '官方資料可用',
+        available_mixed_sources: '可用・混合來源',
+        available_stale_or_unknown_freshness: '可用・資料待更新',
+        partial_missing_funds: '部分可用',
+        missing_holdings_snapshot: '等待持股快照',
+        no_supported_equity_etf_in_portfolio: '目前無支援 ETF',
+        backend_xray_unavailable: '後端 X-Ray 未提供',
+        unknown: '等待資料'
+    };
+    return labels[status] || status || '等待資料';
+}
+
+function lookthroughSourceLabel(sourceQuality) {
+    const source = String(sourceQuality || 'UNKNOWN');
+    if (source.startsWith('OFFICIAL')) return '官方每日';
+    if (source === 'THIRD_PARTY_FALLBACK') return '第三方備援';
+    return source;
+}
+
+function lookthroughModeLabel(mode) {
+    const labels = {
+        DERIVATIVE_STRATEGY: '衍生品策略・不做股票穿透',
+        BOND_LOOKTHROUGH: '債券曝險・獨立處理',
+        COMMODITY_PHYSICAL: '實體商品曝險',
+        DIRECT_CRYPTO: '直接加密資產'
+    };
+    return labels[mode] || mode || '其他曝險';
+}
+
+function lookthroughTimestampLabel(value) {
+    if (!value) return '';
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return String(value);
+    return dt.toLocaleString('zh-TW', {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function normalizeLookthrough(meta) {
+    const raw = meta && typeof meta === 'object' ? meta : {};
+    const status = raw.status || 'unknown';
+    const available = status.startsWith('available_') || status === 'partial_missing_funds';
+    const warning = ['available_mixed_sources', 'available_stale_or_unknown_freshness', 'partial_missing_funds'].includes(status);
+    const coverageObject = raw.fund_coverage && typeof raw.fund_coverage === 'object' ? raw.fund_coverage : {};
+
+    const topUnderlying = Array.isArray(raw.top_underlying)
+        ? raw.top_underlying.map((row, idx) => ({
+            rank: idx + 1,
+            ticker: row?.ticker || '',
+            name: row?.name || '',
+            portfolioWeightPct: finiteOrNull(row?.portfolio_weight_pct),
+            sourceFunds: Array.isArray(row?.source_funds) ? row.source_funds : []
+        }))
+        : [];
+
+    const pairwiseOverlap = Array.isArray(raw.pairwise_overlap)
+        ? raw.pairwise_overlap.map(row => ({
+            fundA: row?.fund_a || '',
+            fundB: row?.fund_b || '',
+            overlapPct: finiteOrNull(row?.overlap_pct)
+        }))
+        : [];
+
+    const fundCoverage = Object.entries(coverageObject).map(([fund, row]) => ({
+        fund,
+        portfolioWeightPct: finiteOrNull(row?.portfolio_weight_pct),
+        asOf: row?.as_of || '',
+        staleDays: finiteOrNull(row?.stale_days_recomputed),
+        sourceQuality: row?.source_quality || 'UNKNOWN',
+        sourceLabel: lookthroughSourceLabel(row?.source_quality),
+        isOfficialSource: String(row?.source_quality || '').startsWith('OFFICIAL'),
+        refreshStatus: row?.refresh_status || 'UNKNOWN',
+        equityCoveragePct: finiteOrNull(row?.equity_coverage_pct),
+        holdingsCount: finiteOrNull(row?.holdings_count)
+    })).sort((a, b) => (b.portfolioWeightPct || 0) - (a.portfolioWeightPct || 0));
+
+    const specialExposures = Array.isArray(raw.special_exposures)
+        ? raw.special_exposures.map(row => ({
+            ticker: row?.ticker || '',
+            portfolioWeightPct: finiteOrNull(row?.portfolio_weight_pct),
+            lookthroughMode: row?.lookthrough_mode || '',
+            modeLabel: lookthroughModeLabel(row?.lookthrough_mode)
+        }))
+        : [];
+
+    const loadedFunds = Array.isArray(raw.loaded_funds) ? raw.loaded_funds : [];
+    const missingFunds = Array.isArray(raw.missing_funds) ? raw.missing_funds : [];
+    const nonofficialFunds = Array.isArray(raw.nonofficial_funds) ? raw.nonofficial_funds : [];
+    const staleFunds = Array.isArray(raw.stale_funds) ? raw.stale_funds : [];
+    const mappedPct = finiteOrNull(raw.mapped_equity_portfolio_pct);
+    const topRow = topUnderlying[0] || null;
+    const maxPair = pairwiseOverlap[0] || null;
+    let displayNote = raw.note || '';
+    if (available) {
+        const parts = [];
+        if (loadedFunds.length) parts.push(`已載入 ${loadedFunds.join(' / ')}`);
+        if (mappedPct !== null) parts.push(`已映射底層股票占整體投資組合 ${mappedPct.toFixed(1)}%`);
+        if (topRow?.portfolioWeightPct !== null && topRow) {
+            parts.push(`最大底層部位 ${topRow.ticker || topRow.name || 'N/A'} ${topRow.portfolioWeightPct.toFixed(2)}%`);
+        }
+        if (maxPair?.overlapPct !== null && maxPair) {
+            parts.push(`最高兩兩重疊 ${maxPair.fundA}/${maxPair.fundB} ${maxPair.overlapPct.toFixed(1)}%`);
+        }
+        if (missingFunds.length) parts.push(`缺少 ${missingFunds.join(' / ')}`);
+        if (nonofficialFunds.length) parts.push(`非官方來源 ${nonofficialFunds.join(' / ')}`);
+        if (staleFunds.length) parts.push(`資料待更新 ${staleFunds.join(' / ')}`);
+        displayNote = parts.length ? `${parts.join('；')}。` : displayNote;
+    }
+
+    return {
+        status,
+        statusLabel: lookthroughStatusLabel(status),
+        available,
+        warning,
+        note: raw.note || '',
+        displayNote,
+        method: raw.method || '',
+        overlapMethod: raw.overlap_method || '',
+        identityLimit: raw.identity_limit || '',
+        generatedAt: raw.generated_at || '',
+        generatedAtLabel: lookthroughTimestampLabel(raw.generated_at),
+        heldSupportedEtfSleevePct: finiteOrNull(raw.held_supported_etf_sleeve_pct),
+        loadedEtfSleevePct: finiteOrNull(raw.loaded_etf_sleeve_pct),
+        mappedEquityPortfolioPct: finiteOrNull(raw.mapped_equity_portfolio_pct),
+        loadedSleeveEquityCoveragePct: finiteOrNull(raw.loaded_sleeve_equity_coverage_pct),
+        heldSupportedSleeveCoveragePct: finiteOrNull(raw.held_supported_sleeve_coverage_pct),
+        top5UnderlyingPortfolioPct: finiteOrNull(raw.top5_underlying_portfolio_pct),
+        top10UnderlyingPortfolioPct: finiteOrNull(raw.top10_underlying_portfolio_pct),
+        mappedEquityHhi: finiteOrNull(raw.mapped_equity_hhi),
+        heldSupportedFunds: Array.isArray(raw.held_supported_funds) ? raw.held_supported_funds : [],
+        loadedFunds,
+        missingFunds,
+        nonofficialFunds,
+        staleFunds,
+        topUnderlying,
+        pairwiseOverlap,
+        fundCoverage,
+        specialExposures
+    };
+}
+
 watch([groupedHoldings, portfolioStats, stats, sysCorr, chaosMeta, cloudRebalanceMeta, liquidityBufferRatio], () => {
     let trims = 0;
     let adds = 0;
@@ -204,10 +356,7 @@ watch([groupedHoldings, portfolioStats, stats, sysCorr, chaosMeta, cloudRebalanc
                 netFxExposurePct: fmtNum(backendXray?.fx?.net_fx_exposure_pct, 1),
                 usdNavImpact1pct: fmtNum(backendXray?.fx?.usd_nav_impact_1pct_twd, 0)
             },
-            lookthrough: {
-                status: backendXray?.lookthrough_overlap?.status || 'unknown',
-                note: backendXray?.lookthrough_overlap?.note || ''
-            }
+            lookthrough: normalizeLookthrough(backendXray?.lookthrough_overlap)
         };
     } else {
         xrayStats.value = {
@@ -220,10 +369,12 @@ watch([groupedHoldings, portfolioStats, stats, sysCorr, chaosMeta, cloudRebalanc
                 netFxExposurePct: (fxExposure * 100).toFixed(1),
                 usdNavImpact1pct: '-'
             },
-            lookthrough: {
-                status: 'backend_xray_unavailable',
-                note: 'PCA、TWD FX impact 與 ETF look-through 未由後端提供；不得使用代理值冒充實測值。'
-            }
+            lookthrough: normalizeLookthrough(
+                backendXray?.lookthrough_overlap || {
+                    status: 'backend_xray_unavailable',
+                    note: 'PCA、TWD FX impact 與 ETF look-through 未由後端提供；不得使用代理值冒充實測值。'
+                }
+            )
         };
     }
 
