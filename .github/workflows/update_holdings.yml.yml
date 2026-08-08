@@ -1,0 +1,78 @@
+name: Update Portfolio Holdings
+
+on:
+  schedule:
+    # Tue-Sat 13:30 UTC = 21:30 Asia/Taipei, capturing the prior US trading day.
+    - cron: '30 13 * * 2-6'
+  workflow_dispatch:
+
+concurrency:
+  group: update-portfolio-holdings
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-holdings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install holdings dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install 'requests>=2.31,<3' 'openpyxl>=3.1,<4' 'beautifulsoup4>=4.12,<5'
+
+      - name: Refresh holdings snapshots
+        run: python scripts/fetch_portfolio_holdings.py
+
+      - name: Validate holdings output
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path('data/holdings/latest')
+          summary = json.loads((root / 'summary.json').read_text(encoding='utf-8'))
+          expected = {'QQQ', 'IFRA', 'GRID', 'COPX', 'VNM', 'SRVR'}
+          actual = set(summary.get('funds', {}))
+          missing = expected - actual
+          if missing:
+              raise SystemExit(f'Missing funds in summary: {sorted(missing)}')
+
+          failed = [
+              fund for fund, meta in summary['funds'].items()
+              if meta.get('status') == 'FAILED_NO_CACHE'
+          ]
+          if failed:
+              raise SystemExit(f'Holdings have no usable snapshot: {failed}')
+
+          for fund in expected:
+              path = root / f'{fund}.json'
+              if not path.exists():
+                  raise SystemExit(f'Missing snapshot file: {path}')
+
+          print(json.dumps(summary, ensure_ascii=False, indent=2))
+          PY
+
+      - name: Commit refreshed snapshots
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/holdings/latest/
+          if git diff --cached --quiet; then
+            echo 'No holdings changes to commit.'
+            exit 0
+          fi
+          git commit -m "Auto-update holdings: $(date -u +'%Y-%m-%d')"
+          git push
