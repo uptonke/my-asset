@@ -96,7 +96,21 @@ jobs:
 
       - name: Warn if X-Ray weight refresh failed
         if: steps.xray_weights.outcome == 'failure'
-        run: echo '::warning::X-Ray TWD weight refresh failed; look-through will use the last valid X-Ray capital weights.'
+        run: echo '::warning::X-Ray TWD weight refresh failed; look-through and tail inference will use the last valid X-Ray capital weights.'
+
+      - name: Refresh empirical Tail / Crash inference
+        id: tail_inference
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_TABLE: portfolio_db
+          PORTFOLIO_ROW_ID: '1'
+        run: python scripts/update_tail_inference.py
+
+      - name: Warn if Tail / Crash inference refresh failed
+        if: steps.tail_inference.outcome == 'failure'
+        run: echo '::warning::Tail / Crash inference refresh failed; the last valid tail inference remains in Supabase.'
 
       - name: Enrich ETF Look-through into X-Ray
         env:
