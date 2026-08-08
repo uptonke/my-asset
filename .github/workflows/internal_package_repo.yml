@@ -1,0 +1,22 @@
+name: Internal Package Repo
+
+on:
+  push:
+    branches:
+      - work/ui-lookthrough-20260808
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package repository snapshot
+        run: zip -rq repo-snapshot.zip . -x '.git/*' 'repo-snapshot.zip'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: repo-snapshot
+          path: repo-snapshot.zip
+          retention-days: 1
