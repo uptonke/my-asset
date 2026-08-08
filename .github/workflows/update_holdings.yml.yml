@@ -37,7 +37,8 @@ jobs:
             'beautifulsoup4>=4.12,<5' \
             'numpy>=2,<3' \
             'pandas>=2.2,<3' \
-            'supabase>=2.7,<3'
+            'supabase>=2.7,<3' \
+            'statsmodels>=0.14,<0.15'
 
       - name: Refresh holdings snapshots
         run: python scripts/fetch_portfolio_holdings.py
@@ -104,3 +105,11 @@ jobs:
           SUPABASE_TABLE: portfolio_db
           PORTFOLIO_ROW_ID: '1'
         run: python scripts/enrich_xray_lookthrough.py
+
+      - name: Refresh realized Jensen alpha regression
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_TABLE: portfolio_db
+          PORTFOLIO_ROW_ID: '1'
+        run: python scripts/update_jensen_alpha.py
