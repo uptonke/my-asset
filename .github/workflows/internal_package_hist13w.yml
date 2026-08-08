@@ -1,0 +1,24 @@
+name: Internal Package Hist13W
+
+on:
+  push:
+    branches:
+      - work/historical-13w-20260808
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package repository snapshot
+        run: |
+          tar --exclude='.git' --exclude='.github/workflows/internal_package_hist13w.yml' -czf repo-snapshot.tar.gz .
+      - name: Upload snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: repo-snapshot-hist13w
+          path: repo-snapshot.tar.gz
+          retention-days: 1
