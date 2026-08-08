@@ -174,6 +174,15 @@ createApp({
         crisis_window_label: tailStatsLite.value.crisisWindowLabel,
         tail_sample_count: tailStatsLite.value.tailSampleCount,
         crisis_sample_count: tailStatsLite.value.crisisSampleCount,
+        downside_sample_count: tailStatsLite.value.downsideSampleCount,
+        conditional_correlation_ci95_block_bootstrap: [tailStatsLite.value.conditionalCorrCiLow, tailStatsLite.value.conditionalCorrCiHigh],
+        crisis_correlation_ci95_block_bootstrap: [tailStatsLite.value.crisisCorrCiLow, tailStatsLite.value.crisisCorrCiHigh],
+        downside_beta_ci95_block_bootstrap: [tailStatsLite.value.downsideBetaCiLow, tailStatsLite.value.downsideBetaCiHigh],
+        tail_inference_status: tailStatsLite.value.tailInferenceStatus,
+        tail_inference_method: tailStatsLite.value.tailInferenceMethod,
+        tail_bootstrap_replicates: tailStatsLite.value.tailBootstrapReplicates,
+        tail_bootstrap_block_weeks: tailStatsLite.value.tailBootstrapBlockWeeks,
+        tail_ci_level_pct: tailStatsLite.value.tailCiLevel,
         co_drawdown_threshold: tailStatsLite.value.coDrawdownThreshold + '%',
         tail_threshold_quantile: 'P' + tailStatsLite.value.tailThresholdQuantile
     },
@@ -234,6 +243,8 @@ Constraint: Output strictly in Traditional Chinese. Maximum 8 bullets. No pleasa
 - Interpret jd_crash_prob only as the probability that the simulated horizon return breaches the stated jump_stress_threshold.
 - If EVT xi < 0, say only that the fitted POT-GPD tail is bounded under the current threshold/sample and does not provide evidence for an xi > 0 heavy-tail regime. Do NOT conclude that the true return distribution 'is not heavy-tailed' or rule out heavy tails. If exceedance count is small, state that xi and ES are unstable and tail-classification evidence is weak.
 - Small tail/crisis samples are preliminary evidence, not an "extremely clear" signal. Do not claim statistical certainty without confidence intervals.
+- Tail / Crash Radar confidence intervals use a circular moving-block bootstrap on paired weekly returns, with P20/P10 benchmark thresholds recomputed inside each bootstrap sample. These intervals measure estimation uncertainty, not a predictive range for future returns.
+- If the crisis-correlation 95% bootstrap CI includes 0, do not call positive crisis co-movement statistically robust. If the downside-beta 95% bootstrap CI includes 1, do not claim clear amplification (>1) or dampening (<1) relative to the benchmark.
 - Historical PSR uses benchmark Sharpe 0. Interpret PSR as the estimated probability/confidence that the true Sharpe exceeds 0 under the PSR model. A value below 95% means it has not met a strict 95% credibility threshold. Never describe PSR as a test of whether returns are random, and do not infer survivor bias from it.
 - MWR > TWR may indicate favorable cash-flow timing. It does not prove security selection skill.
 - capm_alpha_proxy is not regression-estimated Jensen alpha and has no t-stat. Do not claim persistent selection alpha from the proxy.
@@ -250,7 +261,7 @@ Constraint: Output strictly in Traditional Chinese. Maximum 8 bullets. No pleasa
 2. 【風險報酬可信度】Assess Sharpe, PSR/DSR, volatility, Sortino and Treynor. State PSR as confidence/probability that the true Sharpe exceeds its benchmark; never phrase it as confirming that returns are non-random.
 3. 【Portfolio X-Ray】Assess concentration, risk contribution, PCA, USD exposure and look-through coverage. Explicitly distinguish covariance-based concentration from constituent overlap: PCA/MRC do not directly measure shared ETF holdings. Use "risk concentration" rather than "leverage" unless actual leverage exists.
 4. 【再平衡監控】Distinguish Trim, Add, general drift and concentration candidates. State the exact direction of major alerts.
-5. 【Tail / Crash Radar】Assess crisis correlation and downside behavior while explicitly qualifying small samples.
+5. 【Tail / Crash Radar】Assess conditional correlation, crisis correlation and downside beta. Report the block-bootstrap 95% CIs when available; use 0 as the key reference for correlation and 1 as the key reference for downside beta, and explicitly qualify small samples.
 6. 【13週尾部風險】Inspect same_horizon_tail_comparison. If historical_current_weight_var95 and historical_current_weight_es95 are both available, title the bullet 【13週同期間尾部比較】 and compare them with jump-stress on the same horizon. If either historical metric is N/A, title the bullet 【13週跳躍壓力測試】, report the jump-stress scenario only, and state that a same-horizon historical comparison is unavailable. Never label a jump-only paragraph as a same-horizon comparison.
 7. 【EVT】Discuss the one-week EVT result separately, including xi sign, threshold, exceedance count and lack of direct 13-week comparability. A negative xi with a small exceedance sample must not be used to classify the true return distribution as non-heavy-tailed.
 8. 【CRO 最終指令】Choose one of Review / Hold / Conditional Trim / Trim / Raise Cash. Use Trim or Raise Cash only when an explicit target band, concentration cap, buffer constraint, or risk-budget breach is shown. Otherwise use Review or Conditional Trim and state the trigger.

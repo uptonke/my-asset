@@ -5829,9 +5829,9 @@
             </div>
 
             <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
-                <div class="text-gray-500 mb-1">13週跌逾10%機率</div>
+                <div class="text-gray-500 mb-1">歷史13週 VaR 95</div>
                 <div class="text-white font-mono font-bold">
-                    {{ tailStatsLite.jdCrashProb === '-' ? '-' : tailStatsLite.jdCrashProb + '%' }}
+                    {{ tailStatsLite.historicalHorizonVar95 === '-' ? '-' : tailStatsLite.historicalHorizonVar95 + '%' }}
                 </div>
             </div>
 
@@ -5839,6 +5839,20 @@
                 <div class="text-gray-500 mb-1">歷史13週 ES 95</div>
                 <div class="text-white font-mono font-bold">
                     {{ tailStatsLite.historicalHorizonEs95 === '-' ? '-' : tailStatsLite.historicalHorizonEs95 + '%' }}
+                </div>
+            </div>
+
+            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                <div class="text-gray-500 mb-1">13週跌逾10%機率</div>
+                <div class="text-white font-mono font-bold">
+                    {{ tailStatsLite.jdCrashProb === '-' ? '-' : tailStatsLite.jdCrashProb + '%' }}
+                </div>
+            </div>
+
+            <div class="bg-white/[0.03] rounded-xl p-3 border border-white/10">
+                <div class="text-gray-500 mb-1">歷史13週樣本（重疊）</div>
+                <div class="text-white font-mono font-bold">
+                    {{ tailStatsLite.historicalHorizonSampleCount }}
                 </div>
             </div>
 
@@ -6077,19 +6091,26 @@
             <div class="quant-card border-red-500/20 bg-red-500/10">
                 <div class="quant-label text-red-300">條件相關 (Cond. Corr)</div>
                 <div class="quant-value text-white">{{ tailStatsLite?.conditionalCorr ?? '-' }}</div>
+                <div class="text-[10px] text-gray-500 mt-1 font-mono" v-if="tailStatsLite?.conditionalCorrCiLow !== '-'">95% CI [{{ tailStatsLite.conditionalCorrCiLow }}, {{ tailStatsLite.conditionalCorrCiHigh }}]</div>
             </div>
             <div class="quant-card border-red-500/20 bg-red-500/10">
                 <div class="quant-label text-red-300">危機相關 (Crisis Corr)</div>
                 <div class="quant-value text-white">{{ tailStatsLite?.crisisCorr ?? '-' }}</div>
+                <div class="text-[10px] text-gray-500 mt-1 font-mono" v-if="tailStatsLite?.crisisCorrCiLow !== '-'">95% CI [{{ tailStatsLite.crisisCorrCiLow }}, {{ tailStatsLite.crisisCorrCiHigh }}]</div>
             </div>
             <div class="quant-card border-red-500/20 bg-red-500/10">
                 <div class="quant-label text-red-300">下檔 Beta (Downside Beta)</div>
                 <div class="quant-value text-white">{{ tailStatsLite?.downsideBeta ?? '-' }}</div>
+                <div class="text-[10px] text-gray-500 mt-1 font-mono" v-if="tailStatsLite?.downsideBetaCiLow !== '-'">95% CI [{{ tailStatsLite.downsideBetaCiLow }}, {{ tailStatsLite.downsideBetaCiHigh }}]</div>
             </div>
             <div class="quant-card border-red-500/20 bg-red-500/10">
                 <div class="quant-label text-red-300">壓力後 CVaR (Stressed CVaR)</div>
                 <div class="quant-value text-white">{{ tailStatsLite?.stressedCvar ?? '-' }}%</div>
             </div>
+        </div>
+
+        <div v-if="tailStatsLite?.tailInferenceStatus === 'available' || tailStatsLite?.tailInferenceStatus === 'partial'" class="rounded-xl border border-red-500/15 bg-red-500/[0.05] px-3 py-2 text-[10px] text-gray-500 leading-relaxed">
+            95% 區間採循環移動區塊 Bootstrap：{{ tailStatsLite.tailBootstrapBlockWeeks }} 週區塊 × {{ tailStatsLite.tailBootstrapReplicates }} 次重抽樣；P20/P10 門檻每次重新估計。此區間反映統計估計不確定性，不是未來報酬預測區間。危機相關以 0、下檔 Beta 以 1 為關鍵參考值。
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -22,6 +22,7 @@ from scipy.stats import genpareto
 from supabase import create_client, Client
 from google import genai
 from scripts.jensen_alpha import compute_jensen_alpha_regression
+from scripts.tail_inference import compute_tail_bootstrap_ci
 
 warnings.filterwarnings('ignore')
 
@@ -1026,6 +1027,25 @@ def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticke
         "crisis_sample_count": 0,
         "co_drawdown_threshold": -10.0,
         "tail_threshold_quantile": 0.05,
+        "tail_inference": {
+            "status": "not_computed",
+            "method": "circular_moving_block_bootstrap_percentile_ci",
+            "ci_level": 0.95,
+            "bootstrap_replicates_requested": 2000,
+            "block_length_weeks": 4,
+            "seed": 42,
+            "sample_count": 0,
+            "downside_sample_count": 0,
+            "conditional_corr_ci95_low": None,
+            "conditional_corr_ci95_high": None,
+            "conditional_corr_valid_reps": 0,
+            "crisis_corr_ci95_low": None,
+            "crisis_corr_ci95_high": None,
+            "crisis_corr_valid_reps": 0,
+            "downside_beta_ci95_low": None,
+            "downside_beta_ci95_high": None,
+            "downside_beta_valid_reps": 0
+        },
 
         # Same fixed-current-weight portfolio, empirical history.
         "historical_var95_1w": None,
@@ -1192,6 +1212,15 @@ def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticke
             "historical_es95_horizon": round(historical_horizon["es"] * 100, 2) if historical_horizon["es"] is not None else None,
             "historical_horizon_sample_count": historical_horizon["sample_count"]
         })
+
+        tail_inference = compute_tail_bootstrap_ci(
+            port_returns=port,
+            benchmark_returns=bench_s,
+            n_boot=2000,
+            block_weeks=4,
+            seed=42
+        )
+        base["tail_inference"] = tail_inference
 
         jd_meta = simulate_jump_diffusion_tail(
             port_returns=port,
@@ -1472,6 +1501,34 @@ try:
             "crisis_sample_count": 0,
             "co_drawdown_threshold": -10.0,
             "tail_threshold_quantile": 0.05,
+            "tail_inference": {
+                "status": "not_computed",
+                "method": "circular_moving_block_bootstrap_percentile_ci",
+                "ci_level": 0.95,
+                "bootstrap_replicates_requested": 2000,
+                "block_length_weeks": 4,
+                "seed": 42,
+                "sample_count": 0,
+                "downside_sample_count": 0,
+                "conditional_corr_ci95_low": None,
+                "conditional_corr_ci95_high": None,
+                "conditional_corr_valid_reps": 0,
+                "crisis_corr_ci95_low": None,
+                "crisis_corr_ci95_high": None,
+                "crisis_corr_valid_reps": 0,
+                "downside_beta_ci95_low": None,
+                "downside_beta_ci95_high": None,
+                "downside_beta_valid_reps": 0
+            },
+
+            "historical_var95_1w": None,
+            "historical_es95_1w": None,
+            "historical_sample_count_1w": 0,
+            "historical_var95_horizon": None,
+            "historical_es95_horizon": None,
+            "historical_horizon_weeks": 13,
+            "historical_horizon_sample_count": 0,
+            "historical_horizon_method": "overlapping_compounded_current_weight_returns",
 
             "jd_var95": None,
             "jd_es95": None,
