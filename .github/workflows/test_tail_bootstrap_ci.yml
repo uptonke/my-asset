@@ -1,0 +1,45 @@
+name: Test Tail Bootstrap CI
+
+on:
+  push:
+    branches:
+      - work/historical-13w-20260808
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install 'numpy>=2,<3' 'pandas>=2.2,<3' 'yfinance>=0.2.40,<2'
+      - name: Compile and test tail inference
+        run: |
+          python -m py_compile scripts/tail_inference.py main.py
+          python - <<'PY'
+          import yfinance as yf
+          import pandas as pd
+          from scripts.tail_inference import compute_tail_bootstrap_ci
+
+          raw = yf.download(['QQQ','SPY'], period='5y', auto_adjust=True, progress=False)
+          close = raw['Close'] if isinstance(raw.columns, pd.MultiIndex) else raw
+          weekly = close[['QQQ','SPY']].resample('W-FRI').last().pct_change().dropna()
+          result = compute_tail_bootstrap_ci(
+              weekly['QQQ'], weekly['SPY'], n_boot=1000, block_weeks=4, seed=42
+          )
+          print(result)
+          assert result['status'] == 'available'
+          assert result['crisis_corr_valid_reps'] >= 900
+          assert result['downside_beta_valid_reps'] >= 900
+          assert result['crisis_corr_ci95_low'] is not None
+          assert result['downside_beta_ci95_low'] is not None
+          PY
