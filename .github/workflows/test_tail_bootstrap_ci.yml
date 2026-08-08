@@ -21,25 +21,34 @@ jobs:
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install 'numpy>=2,<3' 'pandas>=2.2,<3' 'yfinance>=0.2.40,<2'
+          pip install 'numpy>=2,<3' 'pandas>=2.2,<3'
       - name: Compile and test tail inference
         run: |
           python -m py_compile scripts/tail_inference.py main.py
           python - <<'PY'
-          import yfinance as yf
+          import numpy as np
           import pandas as pd
           from scripts.tail_inference import compute_tail_bootstrap_ci
 
-          raw = yf.download(['QQQ','SPY'], period='5y', auto_adjust=True, progress=False)
-          close = raw['Close'] if isinstance(raw.columns, pd.MultiIndex) else raw
-          weekly = close[['QQQ','SPY']].resample('W-FRI').last().pct_change().dropna()
+          rng = np.random.default_rng(123)
+          n = 260
+          bench = rng.normal(0.001, 0.028, n)
+          noise = rng.normal(0.0, 0.016, n)
+          port = np.where(bench < 0, 1.25 * bench + noise, 0.80 * bench + noise)
+
           result = compute_tail_bootstrap_ci(
-              weekly['QQQ'], weekly['SPY'], n_boot=1000, block_weeks=4, seed=42
+              pd.Series(port), pd.Series(bench), n_boot=1000, block_weeks=4, seed=42
           )
           print(result)
           assert result['status'] == 'available'
+          assert result['conditional_corr_valid_reps'] >= 900
           assert result['crisis_corr_valid_reps'] >= 900
           assert result['downside_beta_valid_reps'] >= 900
           assert result['crisis_corr_ci95_low'] is not None
           assert result['downside_beta_ci95_low'] is not None
+
+          short = compute_tail_bootstrap_ci(
+              pd.Series(port[:15]), pd.Series(bench[:15]), n_boot=1000, block_weeks=4, seed=42
+          )
+          assert short['status'] == 'insufficient_sample'
           PY
