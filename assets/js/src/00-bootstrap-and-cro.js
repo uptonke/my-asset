@@ -59,8 +59,30 @@ createApp({
             : 'N/A',
         capm_alpha_proxy: stats.value.alpha + '%',
         capm_alpha_method: 'annualized_TWR_minus_[rf_plus_current_metadata_beta_times_market_risk_premium]',
-        alpha_regression_t_stat: 'N/A',
-        alpha_selection_attribution: 'N/A'
+        realized_jensen_alpha_method: alphaRegressionStats.value.method || 'N/A',
+        realized_jensen_benchmark_policy: alphaRegressionStats.value.benchmarkPolicy || 'N/A',
+        realized_jensen_vs_spy: {
+            alpha_annualized_pct: alphaRegressionStats.value.spy.alphaAnnualPct,
+            hac_t_stat: alphaRegressionStats.value.spy.tStat,
+            hac_p_value: alphaRegressionStats.value.spy.pValue,
+            ci95_annualized_pct: [alphaRegressionStats.value.spy.ciLow, alphaRegressionStats.value.spy.ciHigh],
+            beta: alphaRegressionStats.value.spy.beta,
+            r_squared: alphaRegressionStats.value.spy.rSquared,
+            n: alphaRegressionStats.value.spy.n,
+            evidence_5pct: alphaRegressionStats.value.spy.evidence
+        },
+        realized_jensen_vs_twii: {
+            alpha_annualized_pct: alphaRegressionStats.value.twii.alphaAnnualPct,
+            hac_t_stat: alphaRegressionStats.value.twii.tStat,
+            hac_p_value: alphaRegressionStats.value.twii.pValue,
+            ci95_annualized_pct: [alphaRegressionStats.value.twii.ciLow, alphaRegressionStats.value.twii.ciHigh],
+            beta: alphaRegressionStats.value.twii.beta,
+            r_squared: alphaRegressionStats.value.twii.rSquared,
+            n: alphaRegressionStats.value.twii.n,
+            evidence_5pct: alphaRegressionStats.value.twii.evidence
+        },
+        realized_jensen_benchmark_alpha_spread_pp: alphaRegressionStats.value.benchmarkAlphaSpreadPp,
+        alpha_selection_attribution: 'Not isolated: realized Jensen alpha combines security selection, asset allocation, and timing effects after external cash-flow adjustment.'
     },
     risk_efficiency: {
         portfolio_beta: riskParams.value.beta,
@@ -214,7 +236,9 @@ Constraint: Output strictly in Traditional Chinese. Maximum 8 bullets. No pleasa
 - Small tail/crisis samples are preliminary evidence, not an "extremely clear" signal. Do not claim statistical certainty without confidence intervals.
 - Historical PSR uses benchmark Sharpe 0. Interpret PSR as the estimated probability/confidence that the true Sharpe exceeds 0 under the PSR model. A value below 95% means it has not met a strict 95% credibility threshold. Never describe PSR as a test of whether returns are random, and do not infer survivor bias from it.
 - MWR > TWR may indicate favorable cash-flow timing. It does not prove security selection skill.
-- capm_alpha_proxy is not regression-estimated Jensen alpha and has no t-stat. Do not claim persistent selection alpha.
+- capm_alpha_proxy is not regression-estimated Jensen alpha and has no t-stat. Do not claim persistent selection alpha from the proxy.
+- realized_jensen_vs_spy and realized_jensen_vs_twii are OLS CAPM regressions on realized cash-flow-adjusted NAV snapshot returns with HAC/Newey-West inference. Treat alpha as benchmark-dependent. If the 95% CI includes zero or HAC p-value >= 0.05, say alpha is not statistically distinguishable from zero under that benchmark. Even when significant, do not call it pure security-selection skill because allocation and timing effects remain inside realized portfolio returns.
+- Compare SPY and ^TWII results. A material benchmark alpha spread is evidence of benchmark sensitivity/model specification risk, not a second independent alpha signal.
 - Rebalance alerts include current weight, target weight, signed drift, and candidate action. Never infer Trim from an underweight alert.
 - If buffer_floor_status is DISABLED_ZERO_FLOOR, say the hard floor is inactive; do not praise compliance with a zero constraint.
 - BOXX and SHY may reduce risk-asset exposure but retain USD and instrument-specific risk for a TWD investor. Do not call them literally risk-free.
@@ -222,7 +246,7 @@ Constraint: Output strictly in Traditional Chinese. Maximum 8 bullets. No pleasa
 - Do not infer "discipline failure" from a single snapshot. Describe observed drift and the rule that triggered it.
 
 [ANALYSIS TASKS]
-1. 【資金效率】Compare TWR, MWR, and the CAPM alpha proxy with the methodological limits above.
+1. 【資金效率 / Alpha】Compare TWR, MWR, the CAPM alpha proxy, and realized Jensen alpha vs SPY / ^TWII. Report HAC t-stat, p-value and 95% CI when available; explicitly discuss benchmark sensitivity and do not equate regression alpha with pure selection skill.
 2. 【風險報酬可信度】Assess Sharpe, PSR/DSR, volatility, Sortino and Treynor. State PSR as confidence/probability that the true Sharpe exceeds its benchmark; never phrase it as confirming that returns are non-random.
 3. 【Portfolio X-Ray】Assess concentration, risk contribution, PCA, USD exposure and look-through coverage. Explicitly distinguish covariance-based concentration from constituent overlap: PCA/MRC do not directly measure shared ETF holdings. Use "risk concentration" rather than "leverage" unless actual leverage exists.
 4. 【再平衡監控】Distinguish Trim, Add, general drift and concentration candidates. State the exact direction of major alerts.

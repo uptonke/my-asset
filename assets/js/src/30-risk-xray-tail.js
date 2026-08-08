@@ -119,6 +119,57 @@ function fmtPctMaybe(val, digits = 2) {
     return Number.isFinite(n) ? n.toFixed(digits) : '-';
 }
 
+function normalizeAlphaRegressionResult(row) {
+    const raw = row && typeof row === 'object' ? row : {};
+    const finite = (value) => {
+        if (value === null || value === undefined || value === '') return null;
+        const n = Number(value);
+        return Number.isFinite(n) ? n : null;
+    };
+    return {
+        status: raw.status || 'unavailable',
+        available: raw.status === 'available',
+        benchmark: raw.benchmark || '',
+        alphaAnnualPct: finite(raw.alpha_annualized_pct),
+        alphaPeriodPct: finite(raw.alpha_period_pct),
+        alphaSeAnnualPct: finite(raw.alpha_hac_se_annualized_pct),
+        tStat: finite(raw.alpha_t_stat_hac),
+        pValue: finite(raw.alpha_p_value_hac),
+        ciLow: finite(raw.alpha_ci95_low_annualized_pct),
+        ciHigh: finite(raw.alpha_ci95_high_annualized_pct),
+        beta: finite(raw.beta),
+        betaSe: finite(raw.beta_hac_se),
+        rSquared: finite(raw.r_squared),
+        n: finite(raw.n),
+        sampleStart: raw.sample_start || '',
+        sampleEnd: raw.sample_end || '',
+        medianPeriodDays: finite(raw.median_period_days),
+        hacLags: finite(raw.hac_lags),
+        evidence: raw.evidence_5pct || ''
+    };
+}
+
+const alphaRegressionStats = computed(() => {
+    const raw = chaosMeta.value?.alpha_regression || {};
+    const benchmarks = raw.benchmarks && typeof raw.benchmarks === 'object' ? raw.benchmarks : {};
+    return {
+        status: raw.status || 'unavailable',
+        method: raw.method || '',
+        portfolioReturnSource: raw.portfolio_return_source || '',
+        benchmarkPolicy: raw.benchmark_policy || '',
+        riskFreeSource: raw.risk_free_source || '',
+        riskFreeMethod: raw.risk_free_method || '',
+        generatedAt: raw.generated_at || '',
+        portfolioPeriodCount: Number(raw.portfolio_period_count || 0),
+        benchmarkAlphaSpreadPp: Number.isFinite(Number(raw.benchmark_alpha_spread_pp)) ? Number(raw.benchmark_alpha_spread_pp) : null,
+        spy: normalizeAlphaRegressionResult(benchmarks.SPY),
+        twii: normalizeAlphaRegressionResult(benchmarks['^TWII']),
+        limitations: Array.isArray(raw.limitations) ? raw.limitations : [],
+        refreshStatus: raw.refresh_status || '',
+        refreshError: raw.refresh_error || ''
+    };
+});
+
 function finiteOrNull(val) {
     if (val === null || val === undefined || val === '') return null;
     const n = Number(val);

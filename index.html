@@ -5157,8 +5157,33 @@
                         <div class="quant-value text-white">{{ riskParams.beta }}</div>
                     </div>
                     <div class="quant-card">
-                        <div class="quant-label text-green-400">Alpha (Jensen)</div>
+                        <div class="quant-label text-green-400" title="非迴歸：年化 TWR 減去以目前 metadata beta 推算的 CAPM 預期報酬">CAPM Alpha Proxy</div>
                         <div class="quant-value text-white">{{ stats.alpha }}%</div>
+                        <div class="text-[10px] text-gray-500 mt-1">非 Jensen 迴歸估計</div>
+                    </div>
+                    <div class="quant-card border-emerald-500/20 bg-emerald-500/[0.04]">
+                        <div class="quant-label text-emerald-300" title="實際 NAV 快照現金流調整後報酬；CAPM OLS + HAC/Newey-West">Jensen α vs SPY (HAC)</div>
+                        <div class="quant-value text-white">
+                            {{ alphaRegressionStats.spy.alphaAnnualPct === null ? '-' : (alphaRegressionStats.spy.alphaAnnualPct >= 0 ? '+' : '') + alphaRegressionStats.spy.alphaAnnualPct.toFixed(2) + '%' }}
+                        </div>
+                        <div class="text-[10px] text-gray-500 mt-1 font-mono" v-if="alphaRegressionStats.spy.available">
+                            t={{ alphaRegressionStats.spy.tStat?.toFixed(2) ?? '-' }} · p={{ alphaRegressionStats.spy.pValue?.toFixed(3) ?? '-' }} · n={{ alphaRegressionStats.spy.n ?? '-' }}
+                        </div>
+                        <div class="text-[10px] text-gray-500 font-mono" v-if="alphaRegressionStats.spy.available">
+                            95% CI [{{ alphaRegressionStats.spy.ciLow?.toFixed(2) ?? '-' }}, {{ alphaRegressionStats.spy.ciHigh?.toFixed(2) ?? '-' }}]%
+                        </div>
+                    </div>
+                    <div class="quant-card border-cyan-500/20 bg-cyan-500/[0.04]">
+                        <div class="quant-label text-cyan-300" title="實際 NAV 快照現金流調整後報酬；CAPM OLS + HAC/Newey-West">Jensen α vs ^TWII (HAC)</div>
+                        <div class="quant-value text-white">
+                            {{ alphaRegressionStats.twii.alphaAnnualPct === null ? '-' : (alphaRegressionStats.twii.alphaAnnualPct >= 0 ? '+' : '') + alphaRegressionStats.twii.alphaAnnualPct.toFixed(2) + '%' }}
+                        </div>
+                        <div class="text-[10px] text-gray-500 mt-1 font-mono" v-if="alphaRegressionStats.twii.available">
+                            t={{ alphaRegressionStats.twii.tStat?.toFixed(2) ?? '-' }} · p={{ alphaRegressionStats.twii.pValue?.toFixed(3) ?? '-' }} · n={{ alphaRegressionStats.twii.n ?? '-' }}
+                        </div>
+                        <div class="text-[10px] text-gray-500 font-mono" v-if="alphaRegressionStats.twii.available">
+                            95% CI [{{ alphaRegressionStats.twii.ciLow?.toFixed(2) ?? '-' }}, {{ alphaRegressionStats.twii.ciHigh?.toFixed(2) ?? '-' }}]%
+                        </div>
                     </div>
                     <div class="quant-card bg-red-900/20 border-red-500/30">
                         <div class="quant-label text-red-400">最大回撤 (MDD)</div>

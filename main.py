@@ -21,6 +21,7 @@ import scipy.optimize as sco
 from scipy.stats import genpareto
 from supabase import create_client, Client
 from google import genai
+from scripts.jensen_alpha import compute_jensen_alpha_regression
 
 warnings.filterwarnings('ignore')
 
@@ -1826,6 +1827,54 @@ try:
                 liquidity_buffer_ratio=liquidity_buffer_ratio,
                 ticker_to_yf=ticker_to_yf
             )
+
+            # Realized Jensen alpha: use actual cash-flow-adjusted NAV snapshot returns,
+            # not a current-weight historical reconstruction. Report both SPY and ^TWII
+            # because a mixed cross-asset portfolio has no uniquely correct CAPM benchmark.
+            try:
+                alpha_regression = compute_jensen_alpha_regression(
+                    history_data=db_record.get("history_data") or [],
+                    ledger_data=ledger_data,
+                )
+                previous_alpha = (
+                    db_record.get("chaos_meta", {}).get("alpha_regression")
+                    if isinstance(db_record.get("chaos_meta", {}), dict)
+                    else None
+                )
+                if (
+                    alpha_regression.get("status") not in {"available", "partial"}
+                    and isinstance(previous_alpha, dict)
+                    and previous_alpha.get("status") in {"available", "partial", "stale_cache"}
+                ):
+                    cached_alpha = dict(previous_alpha)
+                    cached_alpha["status"] = "stale_cache"
+                    cached_alpha["refresh_status"] = "FAILED_USING_LAST_VALID"
+                    cached_alpha["refresh_error"] = alpha_regression.get("error") or alpha_regression.get("status")
+                    alpha_regression = cached_alpha
+                chaos_packet["alpha_regression"] = alpha_regression
+                print(
+                    f"✅ Jensen alpha regression: status={alpha_regression.get('status')} "
+                    f"benchmarks={list((alpha_regression.get('benchmarks') or {}).keys())}",
+                    flush=True
+                )
+            except Exception as exc:
+                previous_alpha = (
+                    db_record.get("chaos_meta", {}).get("alpha_regression")
+                    if isinstance(db_record.get("chaos_meta", {}), dict)
+                    else None
+                )
+                if isinstance(previous_alpha, dict):
+                    cached_alpha = dict(previous_alpha)
+                    cached_alpha["status"] = "stale_cache"
+                    cached_alpha["refresh_status"] = "EXCEPTION_USING_LAST_VALID"
+                    cached_alpha["refresh_error"] = f"{type(exc).__name__}: {exc}"
+                    chaos_packet["alpha_regression"] = cached_alpha
+                else:
+                    chaos_packet["alpha_regression"] = {
+                        "status": "unavailable",
+                        "error": f"{type(exc).__name__}: {exc}"
+                    }
+                print(f"⚠️ Jensen alpha regression failed: {exc}", flush=True)
 
             xray_meta = compute_xray_meta(
                 active_tickers=active_tickers,
