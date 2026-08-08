@@ -1,0 +1,92 @@
+name: Test Tail Bootstrap Live Data
+
+on:
+  push:
+    branches:
+      - work/historical-13w-20260808
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install 'requests>=2.31,<3' 'numpy>=2,<3' 'pandas>=2.2,<3' 'supabase>=2.7,<3'
+      - name: Validate current-portfolio tail bootstrap
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python - <<'PY'
+          import time
+          import pandas as pd
+          from supabase import create_client
+          from scripts.fix_xray_twd_weights import fetch_yahoo_chart_close
+          from scripts.tail_inference import compute_tail_bootstrap_ci
+
+          client = create_client(__import__('os').environ['SUPABASE_URL'], __import__('os').environ['SUPABASE_SERVICE_ROLE_KEY'])
+          row = client.table('portfolio_db').select('chaos_meta').eq('id', 1).single().execute().data or {}
+          chaos = row.get('chaos_meta') or {}
+          xray = chaos.get('xray_meta') or {}
+          rows = xray.get('mrc_table') or []
+
+          weights = {}
+          for r in rows:
+              ticker = str(r.get('yf_ticker') or '').strip()
+              try:
+                  weight = float(r.get('weight_pct') or 0) / 100.0
+              except Exception:
+                  weight = 0.0
+              if ticker and weight > 0:
+                  weights[ticker] = weights.get(ticker, 0.0) + weight
+          if not weights:
+              raise SystemExit('no usable X-Ray weights')
+
+          tw = sum(w for t, w in weights.items() if t.upper().endswith('.TW'))
+          non_tw = sum(w for t, w in weights.items() if not t.upper().endswith('.TW'))
+          benchmark = '^TWII' if tw > non_tw else 'SPY'
+
+          prices = {}
+          failures = {}
+          for ticker in list(weights) + [benchmark]:
+              if ticker in prices:
+                  continue
+              try:
+                  prices[ticker] = fetch_yahoo_chart_close(ticker, days=3700)
+                  time.sleep(0.08)
+              except Exception as exc:
+                  failures[ticker] = str(exc)
+
+          if benchmark not in prices:
+              raise SystemExit(f'benchmark unavailable: {benchmark}: {failures.get(benchmark)}')
+          available = {t: w for t, w in weights.items() if t in prices}
+          if not available:
+              raise SystemExit(f'no asset history: {failures}')
+          total = sum(available.values())
+          available = {t: w / total for t, w in available.items()}
+
+          frame = pd.concat([prices[t].rename(t) for t in list(available) + [benchmark]], axis=1).sort_index()
+          weekly = frame.resample('W-FRI').last().pct_change(fill_method=None).dropna(how='any')
+          port = weekly[list(available)].mul(pd.Series(available), axis=1).sum(axis=1)
+          bench = weekly[benchmark]
+          aligned = pd.concat([port.rename('port'), bench.rename('bench')], axis=1).dropna()
+
+          result = compute_tail_bootstrap_ci(aligned['port'], aligned['bench'], n_boot=1000, block_weeks=4, seed=42)
+          print('benchmark=', benchmark)
+          print('weeks=', len(aligned), 'available_weight_pct=', round(total * 100, 2), 'failures=', failures)
+          print(result)
+          if result.get('status') not in {'available', 'partial'}:
+              raise SystemExit(f'tail bootstrap unusable: {result}')
+          if result.get('crisis_corr_ci95_low') is None or result.get('downside_beta_ci95_low') is None:
+              raise SystemExit(f'missing confidence intervals: {result}')
+          PY
