@@ -1,0 +1,56 @@
+name: Test Auto Lookthrough
+
+on:
+  push:
+    branches:
+      - test/auto-lookthrough-20260808
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install minimal dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install \
+            'requests>=2.31,<3' \
+            'openpyxl>=3.1,<4' \
+            'beautifulsoup4>=4.12,<5' \
+            'numpy>=2,<3' \
+            'pandas>=2.2,<3' \
+            'supabase>=2.7,<3'
+      - name: Refresh holdings
+        run: python scripts/fetch_portfolio_holdings.py --strict
+      - name: Refresh X-Ray TWD weights
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_TABLE: portfolio_db
+          PORTFOLIO_ROW_ID: '1'
+        run: python scripts/fix_xray_twd_weights.py
+      - name: Enrich look-through
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_TABLE: portfolio_db
+          PORTFOLIO_ROW_ID: '1'
+        run: python scripts/enrich_xray_lookthrough.py
+      - name: Validate local holdings summary
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          s=json.loads(Path('data/holdings/latest/summary.json').read_text())
+          assert s['failed_count'] == 0, s
+          assert len(s['funds']) == 6, s
+          print(json.dumps(s, indent=2))
+          PY
