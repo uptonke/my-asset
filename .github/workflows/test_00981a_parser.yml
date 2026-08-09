@@ -1,0 +1,45 @@
+name: Test 00981A Parser
+on:
+  push:
+    branches: [work/lookthrough-p2-20260809]
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests beautifulsoup4
+      - name: Validate 00981A Nuxt payload
+        run: |
+          python - <<'PY'
+          import json, requests
+          from bs4 import BeautifulSoup
+          r=requests.get('https://www.etfinfo.tw/etf/00981A/holdings',headers={'User-Agent':'Mozilla/5.0 my-asset-holdings/1.0'},timeout=35);r.raise_for_status()
+          soup=BeautifulSoup(r.text,'html.parser'); payload=None
+          for sc in soup.find_all('script'):
+              txt=sc.string or sc.get_text('',strip=False) or ''
+              if 'etf-detail-base-00981A' not in txt or 'ShallowReactive' not in txt: continue
+              try:c=json.loads(txt)
+              except Exception:continue
+              if isinstance(c,list):payload=c;break
+          assert payload
+          def ref(x): return payload[x] if isinstance(x,int) and not isinstance(x,bool) and 0<=x<len(payload) else x
+          root=ref(payload[0][1]); dt=ref(root['data']); data=ref(dt[1]); detail=ref(data['etf-detail-base-00981A']); raw=ref(detail['holdings'])
+          rows=[]; deriv=0
+          for href in raw:
+              o=ref(href); ticker=str(ref(o.get('code')) or ''); name=str(ref(o.get('name')) or ''); weight=ref(o.get('weight')); shares=ref(o.get('shares'))
+              if ticker=='TX' or '期貨' in name: deriv+=1
+              try:w=float(weight)/100
+              except (TypeError,ValueError):continue
+              rows.append((ticker,name,w,shares))
+          cov=sum(x[2] for x in rows)
+          lm=ref(detail['latestMarket']); asof=ref(lm['date'])
+          print('00981A rows=',len(rows),'coverage=',round(cov*100,4),'date=',asof,'derivatives=',deriv)
+          print('first=',rows[:3]); print('last=',rows[-3:])
+          assert len(rows)==51
+          assert .8 <= cov <= 1.2
+          assert deriv>=1
+          PY
