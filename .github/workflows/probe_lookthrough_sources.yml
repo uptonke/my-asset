@@ -1,0 +1,68 @@
+name: Probe Lookthrough Sources
+
+on:
+  push:
+    branches: [work/lookthrough-p2-20260809]
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install probe deps
+        run: pip install requests beautifulsoup4
+      - name: Probe sources
+        run: |
+          python - <<'PY'
+          import json, re, requests
+          from bs4 import BeautifulSoup
+          H={'User-Agent':'Mozilla/5.0 my-asset-holdings/1.0','Accept':'*/*'}
+          for fund in ['VOO','VEA']:
+              url=f'https://investor.vanguard.com/investment-products/etfs/profile/api/{fund}/portfolio-holding/stock'
+              try:
+                  r=requests.get(url,headers=H,timeout=30)
+                  print('\nVANGUARD',fund,r.status_code,r.headers.get('content-type'),len(r.content))
+                  print(r.text[:1500])
+                  if r.ok:
+                      j=r.json(); print('keys=', list(j) if isinstance(j,dict) else type(j));
+              except Exception as e: print('VANGUARD_ERR',fund,repr(e))
+
+          for fund,pid,slug in [
+              ('USMV','239695','ishares-msci-usa-minimum-volatility-etf'),
+              ('PICK','239655','ishares-msci-global-metals-mining-producers-etf')]:
+              url=f'https://www.ishares.com/us/products/{pid}/{slug}/latest-holdings.csv'
+              try:
+                  r=requests.get(url,headers=H,timeout=30)
+                  print('\nISHARES',fund,r.status_code,r.headers.get('content-type'),len(r.content))
+                  print(r.content[:800].decode('utf-8-sig','replace'))
+              except Exception as e: print('ISHARES_ERR',fund,repr(e))
+
+          url='https://www.avantisinvestors.com/avantis-investments/avantis-us-small-cap-value-etf/'
+          try:
+              r=requests.get(url,headers=H,timeout=30)
+              print('\nAVUV_PAGE',r.status_code,r.url,len(r.content))
+              soup=BeautifulSoup(r.text,'html.parser')
+              for a in soup.find_all('a',href=True):
+                  txt=' '.join(a.stripped_strings)
+                  href=a.get('href','')
+                  if re.search(r'hold|download|csv|xlsx|excel|portfolio', txt+' '+href, re.I):
+                      print('AVUV_LINK',repr(txt[:120]),href)
+              for m in sorted(set(re.findall(r'https?://[^\"\'<> ]+',r.text))):
+                  if re.search(r'hold|csv|xlsx|download|portfolio',m,re.I): print('AVUV_URL',m[:300])
+          except Exception as e: print('AVUV_ERR',repr(e))
+
+          url='https://www.moneydj.com/ETF/X/Basic/Basic0007.xdjhtm?etfid=00981A.TW&topc='
+          try:
+              r=requests.get(url,headers=H,timeout=30)
+              print('\n00981A',r.status_code,r.url,len(r.content),r.encoding)
+              soup=BeautifulSoup(r.text,'html.parser')
+              print('TEXT',soup.get_text(' ',strip=True)[:1200])
+              for i,tr in enumerate(soup.find_all('tr')[:80]):
+                  cells=[' '.join(c.stripped_strings) for c in tr.find_all(['th','td'])]
+                  if cells: print('ROW',i,cells[:8])
+          except Exception as e: print('00981A_ERR',repr(e))
+          PY
