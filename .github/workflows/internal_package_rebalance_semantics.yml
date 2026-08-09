@@ -1,0 +1,23 @@
+name: Internal Package Rebalance Semantics
+
+on:
+  push:
+    branches:
+      - work/rebalance-semantics-20260809
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package repository snapshot
+        run: |
+          zip -qr repo-snapshot-rebalance-semantics.zip . -x '.git/*' 'repo-snapshot-rebalance-semantics.zip'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: repo-snapshot-rebalance-semantics
+          path: repo-snapshot-rebalance-semantics.zip
+          retention-days: 1
