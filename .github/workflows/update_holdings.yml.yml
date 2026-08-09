@@ -16,7 +16,7 @@ permissions:
 jobs:
   refresh-holdings:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
@@ -52,7 +52,7 @@ jobs:
 
           root = Path('data/holdings/latest')
           summary = json.loads((root / 'summary.json').read_text(encoding='utf-8'))
-          expected = {'QQQ', 'IFRA', 'GRID', 'COPX', 'VNM', 'SRVR'}
+          expected = {'QQQ', 'IFRA', 'GRID', 'COPX', 'VNM', 'SRVR', 'VOO', 'VEA', 'AVUV', 'USMV', 'PICK', '00981A'}
           actual = set(summary.get('funds', {}))
           missing = expected - actual
           if missing:
