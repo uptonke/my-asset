@@ -90,7 +90,12 @@ createApp({
         historical_sharpe: stats.value.sharpe,
         historical_psr: stats.value.psr === '-' ? 'N/A' : stats.value.psr + '%',
         historical_psr_benchmark_sharpe: 0,
-        historical_psr_method_note: 'Approximate probability that period Sharpe exceeds 0; below 95% means insufficient high-confidence evidence, not proof of randomness.',
+        historical_psr_sample_n: stats.value.psrSampleN ?? 'N/A',
+        historical_psr_min_track_record_95_obs: stats.value.psrMinTrl95 ?? 'N/A',
+        historical_psr_min_track_record_95_years: stats.value.psrMinTrl95Years === '-' ? 'N/A' : stats.value.psrMinTrl95Years,
+        historical_psr_min_track_record_95_remaining_obs: stats.value.psrMinTrl95Remaining ?? 'N/A',
+        historical_psr_95_threshold_met: Boolean(stats.value.psrMinTrl95Met),
+        historical_psr_method_note: 'PSR estimates the probability/confidence that period Sharpe exceeds benchmark Sharpe 0 under the moment-adjusted model. MinTRL95 is the model-implied minimum observation count needed to reach one-sided 95% PSR at the current estimated Sharpe/skew/kurtosis; it is not a guarantee of persistence or future performance.',
         mc_sharpe_raw: mcOptimal.value?.sharpeRaw ?? 'N/A',
         mc_psr: mcOptimal.value?.psr ? mcOptimal.value.psr + '%' : 'N/A',
         mc_dsr: mcOptimal.value?.dsr ? mcOptimal.value.dsr + '%' : 'N/A',
@@ -245,7 +250,7 @@ Constraint: Output strictly in Traditional Chinese. Maximum 8 bullets. No pleasa
 - Small tail/crisis samples are preliminary evidence, not an "extremely clear" signal. Do not claim statistical certainty without confidence intervals.
 - Tail / Crash Radar confidence intervals use a circular moving-block bootstrap on paired weekly returns, with P20/P10 benchmark thresholds recomputed inside each bootstrap sample. These intervals measure estimation uncertainty, not a predictive range for future returns.
 - If the crisis-correlation 95% bootstrap CI includes 0, do not call positive crisis co-movement statistically robust. If the downside-beta 95% bootstrap CI includes 1, do not claim clear amplification (>1) or dampening (<1) relative to the benchmark.
-- Historical PSR uses benchmark Sharpe 0. Interpret PSR as the estimated probability/confidence that the true Sharpe exceeds 0 under the PSR model. A value below 95% means it has not met a strict 95% credibility threshold. Never describe PSR as a test of whether returns are random, and do not infer survivor bias from it.
+- Historical PSR uses benchmark Sharpe 0. Interpret PSR as the estimated probability/confidence that the true Sharpe exceeds 0 under the PSR model. A value below 95% means it has not met a strict 95% credibility threshold. Use MinTRL95 to state whether the current observation count is long enough under the same moment-adjusted PSR assumptions; if current n < MinTRL95, say the track record is still too short for that 95% threshold. MinTRL95 is model-based and does not guarantee persistence or future performance. Never describe PSR as a test of whether returns are random, and do not infer survivor bias from it.
 - MWR > TWR may indicate favorable cash-flow timing. It does not prove security selection skill.
 - capm_alpha_proxy is not regression-estimated Jensen alpha and has no t-stat. Do not claim persistent selection alpha from the proxy.
 - realized_jensen_vs_spy and realized_jensen_vs_twii are OLS CAPM regressions on realized cash-flow-adjusted NAV snapshot returns with HAC/Newey-West inference. Treat alpha as benchmark-dependent. If the 95% CI includes zero or HAC p-value >= 0.05, say alpha is not statistically distinguishable from zero under that benchmark. Even when significant, do not call it pure security-selection skill because allocation and timing effects remain inside realized portfolio returns.

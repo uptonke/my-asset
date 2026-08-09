@@ -5129,9 +5129,21 @@
                             <span v-if="stats.psr !== '-'" 
                                   class="text-[10px] font-mono px-1.5 py-0.5 rounded border shadow-sm flex items-center"
                                   :class="parseFloat(stats.psr) >= 95 ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800/50' : (parseFloat(stats.psr) >= 80 ? 'bg-blue-900/30 text-blue-400 border-blue-800/50' : 'bg-red-900/30 text-red-400 border-red-800/50')"
-                                  title="Probabilistic Sharpe Ratio (歷史防禦力檢定)">
+                                  title="Probabilistic Sharpe Ratio：估計真實 Sharpe 高於基準 0 的機率／信心水準">
                                 PSR {{ stats.psr }}%
                             </span>
+                        </div>
+                        <div v-if="stats.psrMinTrl95 !== '-'" class="mt-1 text-[10px] font-mono text-gray-400 leading-tight"
+                             title="MinTRL95：在目前 Sharpe、偏態與峰度估計下，PSR 對基準 Sharpe 0 達單尾 95% 所需的最少觀測期數；屬模型門檻，不代表未來績效保證。">
+                            <template v-if="stats.psrMinTrl95 === '∞'">
+                                95% MinTRL：目前 Sharpe ≤ 0，無有限門檻
+                            </template>
+                            <template v-else>
+                                95% MinTRL {{ stats.psrMinTrl95 }} 期 · 現有 {{ stats.psrSampleN }} 期
+                                <span class="ml-1" :class="stats.psrMinTrl95Met ? 'text-emerald-400' : 'text-amber-400'">
+                                    {{ stats.psrMinTrl95Met ? '已達' : '尚差 ' + stats.psrMinTrl95Remaining + ' 期' }}
+                                </span>
+                            </template>
                         </div>
                     </div>
 

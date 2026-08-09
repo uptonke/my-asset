@@ -80,7 +80,9 @@
         const stockMeta = ref({});
 
         const stats = ref({ 
-            annRet:'0.00', annLogRet:'0.00', mwr:'0.00', annVol:'0.00', sharpe:'0.00', psr: '-', sortino:'0.00', treynor:'0.00', 
+            annRet:'0.00', annLogRet:'0.00', mwr:'0.00', annVol:'0.00', sharpe:'0.00', psr: '-',
+            psrSampleN: 0, psrMinTrl95: '-', psrMinTrl95Years: '-', psrMinTrl95Remaining: '-', psrMinTrl95Met: false,
+            sortino:'0.00', treynor:'0.00', 
             alpha:'0.00', var95:'0.00', cvar95:'0.00', mdd:'0.00', calmar:'0.00', skew:'0.00', kurt:'0.00', 
             tuw: '0', ulcer: '0.00', omega: '0.00', profitFactor: '0.00', 
             ff_alpha: '-', ff_mkt_beta: '-', ff_smb: '-', ff_hml: '-', 

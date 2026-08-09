@@ -613,13 +613,30 @@ const psr_hist = computePSR({
     nObs: sampleN
 });
 
+const minTrl95 = computeMinTrackRecordLength95({
+    sr: periodSharpe,
+    srBenchmark: 0,
+    skew: skewVal,
+    exKurt: kurtVal
+});
+const minTrl95Finite = Boolean(minTrl95 && minTrl95.finite && Number.isFinite(minTrl95.observations));
+const minTrl95Obs = minTrl95Finite ? minTrl95.observations : (minTrl95 && minTrl95.finite === false ? Infinity : null);
+const minTrl95Remaining = minTrl95Finite ? Math.max(0, minTrl95Obs - sampleN) : null;
+const minTrl95Met = minTrl95Finite ? sampleN >= minTrl95Obs : false;
+const minTrl95Years = minTrl95Finite && periodsPerYear > 0 ? minTrl95Obs / periodsPerYear : null;
+
              stats.value = { 
                  annRet: (annRet*100).toFixed(2), 
                  annLogRet: (annLogRet*100).toFixed(2), 
                  mwr: mwr === null ? '-' : (mwr * 100).toFixed(2),            
                  annVol: (annVol*100).toFixed(2), 
                  sharpe: sharpe.toFixed(2), 
-                 psr: psr_hist === null ? '-' : (psr_hist * 100).toFixed(2), 
+                 psr: psr_hist === null ? '-' : (psr_hist * 100).toFixed(2),
+                 psrSampleN: sampleN,
+                 psrMinTrl95: minTrl95Obs === Infinity ? '∞' : (minTrl95Finite ? String(minTrl95Obs) : '-'),
+                 psrMinTrl95Years: Number.isFinite(minTrl95Years) ? minTrl95Years.toFixed(2) : '-',
+                 psrMinTrl95Remaining: Number.isFinite(minTrl95Remaining) ? String(minTrl95Remaining) : '-',
+                 psrMinTrl95Met: minTrl95Met,
                  sortino: sortino.toFixed(2), 
                  treynor: treynor.toFixed(4),            
                  alpha: (alpha * 100).toFixed(2),

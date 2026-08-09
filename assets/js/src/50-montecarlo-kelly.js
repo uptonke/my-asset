@@ -249,16 +249,41 @@ function normCdf(x) {
     return x >= 0 ? prob : 1 - prob;
 }
 
-function sharpeStdErrApprox(sr, skew, exKurt, nObs) {
-    if (!Number.isFinite(sr) || !Number.isFinite(nObs) || nObs <= 1) return null;
-
+function sharpeMomentVarianceTerm(sr, skew, exKurt) {
+    if (!Number.isFinite(sr)) return null;
+    const safeSkew = Number.isFinite(skew) ? skew : 0;
     const kurt = (Number.isFinite(exKurt) ? exKurt : 0) + 3; // 轉成常規 kurtosis
-    const denom = Math.max(
-        1e-12,
-        1 - (skew || 0) * sr + ((kurt - 1) / 4) * sr * sr
-    );
+    const term = 1 - safeSkew * sr + ((kurt - 1) / 4) * sr * sr;
+    return Number.isFinite(term) ? Math.max(1e-12, term) : null;
+}
 
-    return Math.sqrt(denom / Math.max(1, nObs - 1));
+function sharpeStdErrApprox(sr, skew, exKurt, nObs) {
+    if (!Number.isFinite(nObs) || nObs <= 1) return null;
+    const varianceTerm = sharpeMomentVarianceTerm(sr, skew, exKurt);
+    if (!Number.isFinite(varianceTerm)) return null;
+    return Math.sqrt(varianceTerm / Math.max(1, nObs - 1));
+}
+
+function computeMinTrackRecordLength95({ sr, srBenchmark = 0, skew = 0, exKurt = 0 }) {
+    if (!Number.isFinite(sr) || !Number.isFinite(srBenchmark)) return null;
+    const varianceTerm = sharpeMomentVarianceTerm(sr, skew, exKurt);
+    if (!Number.isFinite(varianceTerm)) return null;
+
+    const sharpeGap = sr - srBenchmark;
+    if (sharpeGap <= 0) {
+        return { observations: Infinity, rawObservations: Infinity, finite: false };
+    }
+
+    // One-sided 95% normal quantile. Same moment adjustment and benchmark as PSR.
+    const z95 = 1.6448536269514722;
+    const rawObservations = 1 + varianceTerm * Math.pow(z95 / sharpeGap, 2);
+    if (!Number.isFinite(rawObservations)) return null;
+
+    return {
+        observations: Math.max(2, Math.ceil(rawObservations)),
+        rawObservations,
+        finite: true
+    };
 }
 
 function computePSR({ sr, srBenchmark = 0, skew = 0, exKurt = 0, nObs = 0 }) {
