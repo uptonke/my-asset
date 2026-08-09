@@ -1,0 +1,19 @@
+name: Internal Package Lookthrough P2
+
+on:
+  push:
+    branches: [work/lookthrough-p2-20260809]
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Package repository snapshot
+        run: zip -qr repo-snapshot-lookthrough-p2.zip . -x '.git/*' 'repo-snapshot-lookthrough-p2.zip'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: repo-snapshot-lookthrough-p2
+          path: repo-snapshot-lookthrough-p2.zip
+          retention-days: 1
