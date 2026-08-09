@@ -12,7 +12,10 @@ import pandas as pd
 import requests
 from supabase import create_client
 
-from scripts.tail_inference import compute_tail_bootstrap_ci
+try:
+    from scripts.tail_inference import compute_tail_bootstrap_ci
+except ModuleNotFoundError:
+    from tail_inference import compute_tail_bootstrap_ci
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "") or os.getenv("SUPABASE_SECRET_KEY", "")
