@@ -8,6 +8,10 @@ Sources are deliberately source-specific instead of relying on one paid aggregat
 - COPX: Global X official full-holdings CSV discovered from the fund page
 - VNM: VanEck official XLSX
 - SRVR: CompaniesMarketCap fallback because Pacer blocks GitHub-hosted runners
+- VOO / VEA: Vanguard official portfolio-holdings JSON API
+- AVUV: Avantis official product page embedded ETF holdings
+- USMV / PICK: iShares official CSV
+- 00981A: ETFinfo public daily snapshot fallback (issuer PCF not yet directly integrated)
 
 Each fund is fetched independently. A failed refresh does not overwrite an existing
 snapshot. The summary records fresh/stale/failure state so downstream analysis can
@@ -34,7 +38,7 @@ from bs4 import BeautifulSoup
 from openpyxl import load_workbook
 
 
-FUNDS = ("QQQ", "IFRA", "GRID", "COPX", "VNM", "SRVR")
+FUNDS = ("QQQ", "IFRA", "GRID", "COPX", "VNM", "SRVR", "VOO", "VEA", "AVUV", "USMV", "PICK", "00981A")
 DEFAULT_OUTPUT_DIR = Path("data/holdings/latest")
 HTTP_TIMEOUT = 35
 HEADERS = {
@@ -87,6 +91,11 @@ def _iso_date(value: Any) -> str | None:
     text = _clean(value)
     if not text:
         return None
+    # Accept full ISO timestamps used by Vanguard (for example 2026-06-30T00:00:00-04:00).
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00")).date().isoformat()
+    except ValueError:
+        pass
     formats = (
         "%Y-%m-%d",
         "%m/%d/%Y",
@@ -265,8 +274,14 @@ def fetch_qqq(session: requests.Session) -> dict[str, Any]:
     )
 
 
-def fetch_ifra(session: requests.Session) -> dict[str, Any]:
-    url = "https://www.ishares.com/us/products/294315/ishares-u-s-infrastructure-etf/latest-holdings.csv"
+def _fetch_ishares_csv(
+    session: requests.Session,
+    *,
+    fund: str,
+    product_id: str,
+    slug: str,
+) -> dict[str, Any]:
+    url = f"https://www.ishares.com/us/products/{product_id}/{slug}/latest-holdings.csv"
     r = session.get(url, timeout=HTTP_TIMEOUT)
     r.raise_for_status()
     text = r.content.decode("utf-8-sig", errors="replace")
@@ -274,7 +289,7 @@ def fetch_ifra(session: requests.Session) -> dict[str, Any]:
     try:
         header_idx = next(i for i, line in enumerate(lines) if line.startswith("Ticker,"))
     except StopIteration as exc:
-        raise HoldingsError("IFRA: CSV header not found") from exc
+        raise HoldingsError(f"{fund}: iShares CSV header not found") from exc
     as_of = _extract_date(" ".join(lines[:header_idx]))
     rows = csv.DictReader(io.StringIO("\n".join(lines[header_idx:])))
     holdings: list[dict[str, Any]] = []
@@ -300,12 +315,39 @@ def fetch_ifra(session: requests.Session) -> dict[str, Any]:
         if h:
             holdings.append(h)
     return _finalize(
-        fund="IFRA",
+        fund=fund,
         as_of=as_of,
         source="iShares official holdings CSV",
         source_quality="OFFICIAL_DAILY",
         source_url=url,
         holdings=holdings,
+    )
+
+
+def fetch_ifra(session: requests.Session) -> dict[str, Any]:
+    return _fetch_ishares_csv(
+        session,
+        fund="IFRA",
+        product_id="294315",
+        slug="ishares-u-s-infrastructure-etf",
+    )
+
+
+def fetch_usmv(session: requests.Session) -> dict[str, Any]:
+    return _fetch_ishares_csv(
+        session,
+        fund="USMV",
+        product_id="239695",
+        slug="ishares-msci-usa-minimum-volatility-etf",
+    )
+
+
+def fetch_pick(session: requests.Session) -> dict[str, Any]:
+    return _fetch_ishares_csv(
+        session,
+        fund="PICK",
+        product_id="239655",
+        slug="ishares-msci-global-metals-mining-producers-etf",
     )
 
 
@@ -464,6 +506,280 @@ def fetch_vnm(session: requests.Session) -> dict[str, Any]:
     )
 
 
+
+def _fetch_vanguard(session: requests.Session, fund: str) -> dict[str, Any]:
+    base_url = f"https://investor.vanguard.com/investment-products/etfs/profile/api/{fund}/portfolio-holding/stock"
+    start = 1
+    page_size = 500
+    raw_rows: list[dict[str, Any]] = []
+    as_of: str | None = None
+    reported_count: int | None = None
+
+    while True:
+        r = session.get(base_url, params={"start": start, "count": page_size}, timeout=HTTP_TIMEOUT)
+        r.raise_for_status()
+        data = r.json()
+        if as_of is None:
+            as_of = _iso_date(data.get("asOfDate"))
+        try:
+            reported_count = int(data.get("size"))
+        except (TypeError, ValueError):
+            reported_count = None
+        rows = ((data.get("fund") or {}).get("entity") or [])
+        if not isinstance(rows, list) or not rows:
+            break
+        raw_rows.extend(row for row in rows if isinstance(row, dict))
+        if (reported_count is not None and len(raw_rows) >= reported_count) or len(rows) < page_size:
+            break
+        start += len(rows)
+        if start > 10000:
+            raise HoldingsError(f"{fund}: Vanguard pagination exceeded safety limit")
+
+    holdings: list[dict[str, Any]] = []
+    for row in raw_rows:
+        ident = row.get("isin") or row.get("cusip") or row.get("sedol")
+        ident_type = "ISIN" if row.get("isin") else ("CUSIP" if row.get("cusip") else "SEDOL")
+        h = _holding(
+            ticker=row.get("ticker"),
+            name=row.get("longName") or row.get("shortName"),
+            weight=_weight_decimal(row.get("percentWeight")),
+            id_type=ident_type,
+            identifier=ident,
+            asset_class="equity",
+            shares=row.get("sharesHeld"),
+        )
+        if h:
+            holdings.append(h)
+
+    return _finalize(
+        fund=fund,
+        as_of=as_of,
+        source="Vanguard official portfolio holdings API",
+        source_quality="OFFICIAL_MONTHLY",
+        source_url=base_url,
+        holdings=holdings,
+        reported_count=reported_count,
+    )
+
+
+def fetch_voo(session: requests.Session) -> dict[str, Any]:
+    return _fetch_vanguard(session, "VOO")
+
+
+def fetch_vea(session: requests.Session) -> dict[str, Any]:
+    return _fetch_vanguard(session, "VEA")
+
+
+def _extract_balanced_js_array(text: str, marker: str) -> str:
+    marker_idx = text.find(marker)
+    if marker_idx < 0:
+        raise HoldingsError(f"embedded array marker not found: {marker}")
+    start = text.find("[", marker_idx + len(marker) - 1)
+    if start < 0:
+        raise HoldingsError(f"embedded array opening bracket not found: {marker}")
+    depth = 0
+    in_string = False
+    escaped = False
+    for idx in range(start, len(text)):
+        ch = text[idx]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch == "[":
+            depth += 1
+        elif ch == "]":
+            depth -= 1
+            if depth == 0:
+                return text[start : idx + 1]
+    raise HoldingsError(f"unterminated embedded array: {marker}")
+
+
+def _split_js_object_array(array_text: str) -> list[str]:
+    objects: list[str] = []
+    depth = 0
+    start: int | None = None
+    in_string = False
+    escaped = False
+    for idx, ch in enumerate(array_text):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch == "{":
+            if depth == 0:
+                start = idx
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0 and start is not None:
+                objects.append(array_text[start : idx + 1])
+                start = None
+    return objects
+
+
+def _js_string_field(obj: str, key: str) -> str:
+    m = re.search(rf'(?:^|,)\s*{re.escape(key)}:"((?:\\.|[^"\\])*)"', obj)
+    if not m:
+        return ""
+    try:
+        return json.loads('"' + m.group(1) + '"')
+    except Exception:
+        return m.group(1)
+
+
+def fetch_avuv(session: requests.Session) -> dict[str, Any]:
+    url = "https://www.avantisinvestors.com/avantis-investments/avantis-us-small-cap-value-etf/"
+    r = session.get(url, timeout=HTTP_TIMEOUT)
+    r.raise_for_status()
+    html = r.text
+    as_of_match = re.search(r'etfHoldingsAsOfDate:"([^"]+)"', html)
+    as_of = _iso_date(as_of_match.group(1)) if as_of_match else None
+    count_match = re.search(r'numberOfHoldings:"([\d,]+)"', html)
+    reported_count = int(count_match.group(1).replace(",", "")) if count_match else None
+
+    array_text = _extract_balanced_js_array(html, "etfHoldings:[")
+    holdings: list[dict[str, Any]] = []
+    for obj in _split_js_object_array(array_text):
+        ticker = _js_string_field(obj, "ticker")
+        name = _js_string_field(obj, "name")
+        security_type = _js_string_field(obj, "securityType")
+        isin = _js_string_field(obj, "isin")
+        cusip = _js_string_field(obj, "cusip")
+        weight = _weight_decimal(_js_string_field(obj, "weight"))
+        h = _holding(
+            ticker=ticker,
+            name=name,
+            weight=weight,
+            id_type="ISIN" if isin else "CUSIP",
+            identifier=isin or cusip,
+            country=_js_string_field(obj, "country"),
+            asset_class=security_type,
+            sector=_js_string_field(obj, "sector"),
+            shares=_js_string_field(obj, "shareQuantity"),
+        )
+        if h:
+            holdings.append(h)
+
+    return _finalize(
+        fund="AVUV",
+        as_of=as_of,
+        source="Avantis official product page embedded ETF holdings",
+        source_quality="OFFICIAL_DAILY",
+        source_url=url,
+        holdings=holdings,
+        reported_count=reported_count,
+    )
+
+
+def _nuxt_ref(payload: list[Any], ref: Any) -> Any:
+    if isinstance(ref, int) and not isinstance(ref, bool) and 0 <= ref < len(payload):
+        return payload[ref]
+    return ref
+
+
+def fetch_00981a(session: requests.Session) -> dict[str, Any]:
+    # The issuer's machine-readable daily PCF is not yet integrated. ETFinfo exposes a
+    # public server-rendered snapshot sourced from Taiwan market disclosures; keep it
+    # explicitly labelled as a third-party fallback.
+    url = "https://www.etfinfo.tw/etf/00981A/holdings"
+    r = session.get(url, timeout=HTTP_TIMEOUT)
+    r.raise_for_status()
+    soup = BeautifulSoup(r.text, "html.parser")
+    payload: list[Any] | None = None
+    for script in soup.find_all("script"):
+        text = script.string or script.get_text("", strip=False) or ""
+        if "etf-detail-base-00981A" not in text or "ShallowReactive" not in text:
+            continue
+        try:
+            candidate = json.loads(text)
+        except Exception:
+            continue
+        if isinstance(candidate, list):
+            payload = candidate
+            break
+    if not payload:
+        raise HoldingsError("00981A: Nuxt holdings payload not found")
+
+    root_tag = payload[0] if payload else None
+    if not (isinstance(root_tag, list) and len(root_tag) >= 2):
+        raise HoldingsError("00981A: unexpected Nuxt root")
+    root = _nuxt_ref(payload, root_tag[1])
+    data_tag = _nuxt_ref(payload, root.get("data") if isinstance(root, dict) else None)
+    if isinstance(data_tag, list) and len(data_tag) >= 2 and data_tag[0] == "ShallowReactive":
+        data = _nuxt_ref(payload, data_tag[1])
+    else:
+        data = data_tag
+    if not isinstance(data, dict):
+        raise HoldingsError("00981A: Nuxt data object missing")
+    detail = _nuxt_ref(payload, data.get("etf-detail-base-00981A"))
+    if not isinstance(detail, dict):
+        raise HoldingsError("00981A: ETF detail object missing")
+
+    latest_market = _nuxt_ref(payload, detail.get("latestMarket"))
+    as_of = None
+    if isinstance(latest_market, dict):
+        as_of = _iso_date(_nuxt_ref(payload, latest_market.get("date")))
+    holdings_snapshot = _nuxt_ref(payload, detail.get("holdings"))
+    if not isinstance(holdings_snapshot, dict):
+        raise HoldingsError("00981A: holdings snapshot object missing")
+    # Nuxt stores the snapshot object separately from its inner holdings array.
+    # detail["holdings"] -> snapshot dict -> snapshot["holdings"] -> list of row refs.
+    raw_holdings = _nuxt_ref(payload, holdings_snapshot.get("holdings"))
+    if not isinstance(raw_holdings, list):
+        raise HoldingsError("00981A: holdings list missing")
+    if not as_of:
+        as_of = _iso_date(_nuxt_ref(payload, holdings_snapshot.get("snapshotDate")))
+
+    holdings: list[dict[str, Any]] = []
+    for href in raw_holdings:
+        obj = _nuxt_ref(payload, href)
+        if not isinstance(obj, dict):
+            continue
+        ticker = _clean(_nuxt_ref(payload, obj.get("code")))
+        name = _clean(_nuxt_ref(payload, obj.get("name")))
+        weight_raw = _nuxt_ref(payload, obj.get("weight"))
+        shares_raw = _nuxt_ref(payload, obj.get("shares"))
+        industry = _clean(_nuxt_ref(payload, obj.get("industry")))
+        is_derivative = ticker == "TX" or "期貨" in name or "FUTURE" in name.upper()
+        h = _holding(
+            ticker=ticker,
+            name=name,
+            weight=_weight_decimal(weight_raw),
+            id_type="TICKER",
+            identifier=ticker,
+            country="Taiwan",
+            currency="TWD",
+            asset_class="derivative" if is_derivative else "equity",
+            sector=industry,
+            shares=shares_raw,
+        )
+        if h:
+            holdings.append(h)
+
+    return _finalize(
+        fund="00981A",
+        as_of=as_of,
+        source="ETFinfo public holdings snapshot fallback",
+        source_quality="THIRD_PARTY_FALLBACK",
+        source_url=url,
+        holdings=holdings,
+        reported_count=len(raw_holdings),
+        fallback_reason="Issuer daily PCF is not directly integrated; ETFinfo public snapshot is used as a transparent fallback.",
+    )
+
 def fetch_srvr(session: requests.Session) -> dict[str, Any]:
     # Pacer's official site currently returns Cloudflare 403 from GitHub-hosted runners.
     # Keep this fallback explicitly lower-quality rather than pretending it is issuer data.
@@ -515,6 +831,12 @@ FETCHERS = {
     "COPX": fetch_copx,
     "VNM": fetch_vnm,
     "SRVR": fetch_srvr,
+    "VOO": fetch_voo,
+    "VEA": fetch_vea,
+    "AVUV": fetch_avuv,
+    "USMV": fetch_usmv,
+    "PICK": fetch_pick,
+    "00981A": fetch_00981a,
 }
 
 
@@ -523,6 +845,15 @@ def _write_json(path: Path, payload: Any) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     tmp.replace(path)
+
+
+def _snapshot_materially_equal(old: Any, new: Any) -> bool:
+    if not isinstance(old, dict) or not isinstance(new, dict):
+        return False
+    ignored = {"fetched_at", "stale_days"}
+    old_cmp = {k: v for k, v in old.items() if k not in ignored}
+    new_cmp = {k: v for k, v in new.items() if k not in ignored}
+    return old_cmp == new_cmp
 
 
 def run(output_dir: Path, strict: bool = False, funds: tuple[str, ...] = FUNDS) -> int:
@@ -539,7 +870,14 @@ def run(output_dir: Path, strict: bool = False, funds: tuple[str, ...] = FUNDS) 
         path = output_dir / f"{fund}.json"
         try:
             payload = fetcher(session)
-            _write_json(path, payload)
+            cached_before = None
+            if path.exists():
+                try:
+                    cached_before = json.loads(path.read_text(encoding="utf-8"))
+                except Exception:
+                    cached_before = None
+            if not _snapshot_materially_equal(cached_before, payload):
+                _write_json(path, payload)
             summary["funds"][fund] = {
                 "status": "FRESH",
                 "as_of": payload["as_of"],

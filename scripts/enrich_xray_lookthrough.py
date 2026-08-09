@@ -10,7 +10,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Tuple
 
-SUPPORTED_FUNDS: Tuple[str, ...] = ("QQQ", "IFRA", "GRID", "COPX", "VNM", "SRVR")
+SUPPORTED_FUNDS: Tuple[str, ...] = ("QQQ", "IFRA", "GRID", "COPX", "VNM", "SRVR", "VOO", "VEA", "AVUV", "USMV", "PICK", "00981A")
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_HOLDINGS_DIR = REPO_ROOT / "data" / "holdings" / "latest"
 
@@ -140,6 +140,13 @@ def _snapshot_freshness_days(snapshot: Mapping[str, Any]) -> int | None:
     return max(0, (datetime.now(timezone.utc).date() - as_of).days)
 
 
+def _snapshot_stale_limit_days(snapshot: Mapping[str, Any]) -> int:
+    source_quality = str(snapshot.get("source_quality") or "").upper()
+    # Vanguard publishes these portfolio holdings on a month-end cadence; do not
+    # mislabel a valid monthly snapshot as stale under the daily-source rule.
+    return 45 if "MONTHLY" in source_quality else 5
+
+
 def _fund_equity_map(snapshot: Mapping[str, Any]) -> Dict[str, float]:
     out: Dict[str, float] = defaultdict(float)
     for holding in snapshot.get("holdings") or []:
@@ -179,7 +186,7 @@ def build_lookthrough(
     if not held_supported:
         return {
             "status": "no_supported_equity_etf_in_portfolio",
-            "note": "目前資產權重中沒有可用 QQQ/IFRA/GRID/COPX/VNM/SRVR 做 equity look-through 的部位。",
+            "note": "目前資產權重中沒有支援的 equity ETF look-through 部位（" + "/".join(SUPPORTED_FUNDS) + "）。",
             "supported_funds": list(SUPPORTED_FUNDS),
             "generated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         }
@@ -219,7 +226,8 @@ def build_lookthrough(
         stale_days = _snapshot_freshness_days(snapshot)
         if not source_quality.startswith("OFFICIAL"):
             nonofficial_funds.append(fund)
-        if stale_days is None or stale_days > 5:
+        stale_limit_days = _snapshot_stale_limit_days(snapshot)
+        if stale_days is None or stale_days > stale_limit_days:
             stale_funds.append(fund)
 
         summary_status = None
@@ -230,6 +238,7 @@ def build_lookthrough(
             "portfolio_weight_pct": round(portfolio_weight * 100.0, 3),
             "as_of": snapshot.get("as_of"),
             "stale_days_recomputed": stale_days,
+            "stale_limit_days": stale_limit_days,
             "source_quality": source_quality,
             "refresh_status": summary_status or "SNAPSHOT_PRESENT",
             "coverage_pct": _num(snapshot.get("coverage_pct")),
