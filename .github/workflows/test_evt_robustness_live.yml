@@ -1,0 +1,33 @@
+name: Test EVT Robustness Live Data
+
+on:
+  push:
+    branches:
+      - work/evt-robustness-20260809
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install 'requests>=2.31,<3' 'numpy>=2,<3' 'pandas>=2.2,<3' 'scipy>=1.13,<2' 'supabase>=2.7,<3'
+      - name: Compile EVT modules
+        run: python -m py_compile scripts/evt_robustness.py scripts/update_evt_robustness.py
+      - name: Validate current-portfolio EVT robustness
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_TABLE: portfolio_db
+          PORTFOLIO_ROW_ID: '1'
+        run: python scripts/update_evt_robustness.py --dry-run --bootstrap 300
