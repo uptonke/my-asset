@@ -1,0 +1,33 @@
+name: Debug 00981A Nuxt
+on:
+  push:
+    branches: [work/lookthrough-p2-20260809]
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install requests beautifulsoup4
+      - run: |
+          python - <<'PY'
+          import json,requests
+          from bs4 import BeautifulSoup
+          r=requests.get('https://www.etfinfo.tw/etf/00981A/holdings',headers={'User-Agent':'Mozilla/5.0'},timeout=35);r.raise_for_status();soup=BeautifulSoup(r.text,'html.parser')
+          p=None
+          for sc in soup.find_all('script'):
+              t=sc.string or sc.get_text('',strip=False) or ''
+              if 'etf-detail-base-00981A' in t and 'ShallowReactive' in t:
+                  try:c=json.loads(t)
+                  except Exception:continue
+                  if isinstance(c,list):p=c;break
+          print('len',len(p),'0',repr(p[0]),'1',repr(p[1])[:500],'2',repr(p[2])[:500],'3',repr(p[3])[:500],'4',repr(p[4])[:1000])
+          def val(i):
+              x=p[i]; print('IDX',i,'TYPE',type(x).__name__,'VAL',repr(x)[:1200]); return x
+          root=val(p[0][1]); dr=root.get('data'); print('dataref',dr); dtag=val(dr); print('dtag',dtag); data=val(dtag[1]); print('keys',list(data)[:20]); er=data.get('etf-detail-base-00981A');print('etfref',er); detail=val(er); print('detail type',type(detail).__name__)
+          if isinstance(detail,dict):
+              print('detail keys',detail.keys()); print('holdref',detail.get('holdings'),'marketref',detail.get('latestMarket')); val(detail.get('holdings')); val(detail.get('latestMarket'))
+          PY
