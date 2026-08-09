@@ -18,11 +18,11 @@ except ModuleNotFoundError:
     ta = None
 
 import scipy.optimize as sco
-from scipy.stats import genpareto
 from supabase import create_client, Client
 from google import genai
 from scripts.jensen_alpha import compute_jensen_alpha_regression
 from scripts.tail_inference import compute_tail_bootstrap_ci
+from scripts.evt_robustness import compute_evt_robustness
 
 warnings.filterwarnings('ignore')
 
@@ -835,65 +835,6 @@ def simulate_jump_diffusion_tail(port_returns, active_tickers, asset_values, sto
 
 
 
-def compute_evt_tail(port_returns, threshold_q=0.10, alpha=0.95):
-    base = {
-        "evt_var95": None,
-        "evt_es95": None,
-        "evt_shape_xi": None,
-        "evt_scale_beta": None,
-        "evt_threshold": None,
-        "evt_exceedance_count": 0,
-        "evt_alpha_conf": alpha
-    }
-
-    try:
-        s = pd.Series(port_returns).dropna().astype(float)
-        if len(s) < 30:
-            return base
-
-        losses = -s
-        u = float(losses.quantile(1 - threshold_q))   # e.g. top 10% losses
-        exceed = losses[losses > u] - u
-        n = len(losses)
-        nu = len(exceed)
-
-        if nu < 8:
-            return base
-
-        xi, loc, beta = genpareto.fit(exceed, floc=0.0)
-        beta = float(beta)
-        xi = float(xi)
-
-        tail_prob = 1.0 - alpha     # 95% VaR => tail 5%
-        fu = nu / n
-
-        if tail_prob <= 0 or fu <= 0:
-            return base
-
-        if abs(xi) < 1e-6:
-            var_loss = u + beta * math.log(fu / tail_prob)
-        else:
-            var_loss = u + (beta / xi) * (((fu / tail_prob) ** xi) - 1.0)
-
-        es_loss = None
-        if xi < 1:
-            es_loss = (var_loss + beta - xi * u) / (1.0 - xi)
-
-        base.update({
-            "evt_var95": round(-var_loss * 100, 2),
-            "evt_es95": round(-es_loss * 100, 2) if es_loss is not None else None,
-            "evt_shape_xi": round(xi, 4),
-            "evt_scale_beta": round(beta, 6),
-            "evt_threshold": round(-u * 100, 2),
-            "evt_exceedance_count": int(nu),
-            "evt_alpha_conf": alpha
-        })
-        return base
-    except Exception as e:
-        print(f"⚠️ compute_evt_tail 失敗: {e}", flush=True)
-        return base
-
-
 def compute_xray_meta(active_tickers, asset_values, stock_meta, returns_df, ticker_to_yf=None):
     ticker_to_yf = ticker_to_yf or {}
     base = {
@@ -1074,8 +1015,10 @@ def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticke
         "jd_expected_jump_drag_weekly_pct": None,
         "jd_simulation_count": 20000,
 
-        # EVT remains a one-week POT-GPD diagnostic. It is not directly
-        # comparable with the 13-week jump stress result.
+        # EVT is a one-day POT-GPD diagnostic built from a current-weight
+        # daily portfolio proxy. Threshold sensitivity + block-bootstrap CIs
+        # are stored under evt_robustness. It is not directly comparable with
+        # the 13-week jump stress result.
         "evt_var95": None,
         "evt_es95": None,
         "evt_shape_xi": None,
@@ -1083,9 +1026,12 @@ def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticke
         "evt_threshold": None,
         "evt_exceedance_count": 0,
         "evt_alpha_conf": 0.95,
-        "evt_horizon_weeks": 1,
+        "evt_return_frequency": "daily",
+        "evt_horizon_days": 1,
+        "evt_horizon_weeks": None,
         "evt_comparable_to_jd": False,
-        "evt_comparison_note": "one_week_evt_not_directly_comparable_to_13_week_jump_stress"
+        "evt_comparison_note": "one_day_evt_not_directly_comparable_to_13_week_jump_stress",
+        "evt_robustness": None
     }
 
     try:
@@ -1233,12 +1179,43 @@ def compute_tail_meta(active_tickers, asset_values, prices_df, stock_meta, ticke
         )
         base.update(jd_meta)
 
-        evt_meta = compute_evt_tail(
-            port_returns=port,
-            threshold_q=0.10,
-            alpha=0.95
+        # Daily current-weight portfolio proxy for EVT. Use a union calendar
+        # with limited forward-fill so closed markets contribute zero price
+        # movement for short closures while crypto/weekend observations can
+        # still be represented. This is an approximation for mixed markets.
+        daily_prices = prices_df[yf_cols].sort_index().ffill(limit=3)
+        daily_returns = daily_prices.pct_change(fill_method=None).replace([np.inf, -np.inf], np.nan).dropna(how="any")
+        daily_port = daily_returns.mul(weights.reindex(daily_returns.columns).fillna(0.0), axis=1).sum(axis=1)
+
+        evt_robustness = compute_evt_robustness(
+            port_returns=daily_port,
+            alpha=0.95,
+            primary_tail_fraction=0.10,
+            threshold_grid=(0.075, 0.10, 0.125, 0.15),
+            min_exceedances=20,
+            n_boot=500,
+            block_days=5,
+            seed=42
         )
-        base.update(evt_meta)
+        evt_robustness["calendar_alignment_method"] = "outer_join_prices_ffill_limit_3_then_complete_case_daily_returns"
+        evt_robustness["weight_method"] = "current_capital_weights_backcast_not_historical_weights"
+        base["evt_robustness"] = evt_robustness
+
+        if evt_robustness.get("status") in {"available", "partial"}:
+            base.update({
+                "evt_var95": evt_robustness.get("var95_pct"),
+                "evt_es95": evt_robustness.get("es95_pct"),
+                "evt_shape_xi": evt_robustness.get("shape_xi"),
+                "evt_scale_beta": evt_robustness.get("scale_beta"),
+                "evt_threshold": -abs(float(evt_robustness.get("threshold_loss_pct") or 0.0))
+                    if evt_robustness.get("threshold_loss_pct") is not None else None,
+                "evt_exceedance_count": evt_robustness.get("exceedance_count", 0),
+                "evt_alpha_conf": evt_robustness.get("alpha_conf", 0.95),
+                "evt_return_frequency": "daily",
+                "evt_horizon_days": 1,
+                "evt_horizon_weeks": None,
+                "evt_comparison_note": "one_day_evt_not_directly_comparable_to_13_week_jump_stress"
+            })
 
         return base
     except Exception as e:
@@ -1965,9 +1942,15 @@ try:
                 "evt_var95": tail_meta.get("evt_var95"),
                 "evt_es95": tail_meta.get("evt_es95"),
                 "evt_shape_xi": tail_meta.get("evt_shape_xi"),
+                "evt_scale_beta": tail_meta.get("evt_scale_beta"),
                 "evt_threshold": tail_meta.get("evt_threshold"),
-                "evt_exceedance_count": tail_meta.get("evt_exceedance_count")
+                "evt_exceedance_count": tail_meta.get("evt_exceedance_count"),
+                "evt_alpha_conf": tail_meta.get("evt_alpha_conf"),
+                "evt_return_frequency": tail_meta.get("evt_return_frequency"),
+                "evt_horizon_days": tail_meta.get("evt_horizon_days"),
+                "evt_robustness": tail_meta.get("evt_robustness")
             }
+            chaos_packet["evt_robustness"] = tail_meta.get("evt_robustness")
 
             # ==========================================
             # 🌟 [START] 再平衡引擎 & Buffer Floor 斷路器機制

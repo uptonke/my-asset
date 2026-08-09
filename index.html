@@ -595,14 +595,17 @@
             </div>
 
             <div class="px-3 py-2 rounded-xl border border-purple-500/20 bg-purple-500/10">
-                <div class="text-gray-500 mb-1">EVT 形狀參數 ξ</div>
+                <div class="text-gray-500 mb-1">EVT ξ（1D）</div>
                 <div class="font-mono font-bold"
-                     :class="parseFloat(chaosMeta?.evt_tail?.evt_shape_xi ?? chaosMeta?.tail_meta?.evt_shape_xi ?? 0) > 0 ? 'text-red-300' : 'text-white'">
-                    {{ chaosMeta?.evt_tail?.evt_shape_xi ?? chaosMeta?.tail_meta?.evt_shape_xi ?? '-' }}
+                     :class="tailStatsLite.evtEvidenceFlag === 'positive_xi_robust_across_tested_thresholds' ? 'text-red-300' : (tailStatsLite.evtEvidenceFlag === 'threshold_sensitive_tail_shape' ? 'text-amber-300' : 'text-white')">
+                    {{ tailStatsLite.evtShapeXi }}
+                </div>
+                <div v-if="tailStatsLite.evtXiCiLow !== '-' && tailStatsLite.evtXiCiHigh !== '-'" class="text-[10px] text-gray-500 mt-1 font-mono">
+                    95% CI {{ tailStatsLite.evtXiCiLow }} ~ {{ tailStatsLite.evtXiCiHigh }}
                 </div>
             </div>
 
-            <div class="px-3 py-2 rounded-xl border border-white/10 bg-white/[0.03] min-w-[220px]">
+            <div class="px-3 py-2 rounded-xl border border-white/10 bg-white/[0.03] min-w-[260px]">
                 <div class="text-gray-500 mb-1">風險判讀</div>
                 <div class="text-white text-xs leading-relaxed">
                     <template v-if="parseFloat(chaosMeta?.jump_diffusion?.jd_crash_prob ?? chaosMeta?.tail_meta?.jd_crash_prob ?? 0) >= 10">
@@ -612,11 +615,17 @@
                         跳躍崩跌機率尚可；
                     </template>
 
-                    <template v-if="parseFloat(chaosMeta?.evt_tail?.evt_shape_xi ?? chaosMeta?.tail_meta?.evt_shape_xi ?? 0) > 0">
-                        EVT 顯示肥尾，歷史 CVaR 可能偏樂觀。
+                    <template v-if="tailStatsLite.evtEvidenceFlag === 'positive_xi_robust_across_tested_thresholds'">
+                        EVT 正 ξ 在測試門檻與 95% CI 下皆成立，肥尾證據較穩健。
+                    </template>
+                    <template v-else-if="tailStatsLite.evtEvidenceFlag === 'negative_xi_robust_across_tested_thresholds'">
+                        目前 POT-GPD 擬合在測試門檻下穩定為負 ξ，但不能據此排除真實肥尾。
+                    </template>
+                    <template v-else-if="tailStatsLite.evtEvidenceFlag === 'threshold_sensitive_tail_shape'">
+                        EVT 尾形對門檻敏感，暫不做肥尾／有界尾分類。
                     </template>
                     <template v-else>
-                        EVT 未顯示明顯額外肥尾。
+                        EVT 的 ξ 信賴區間或門檻穩定性不足，尾形結論不確定。
                     </template>
                 </div>
             </div>
@@ -5929,8 +5938,29 @@
                     </div>
                 </div>
 
-                <div class="mt-3 pt-2 border-t border-orange-500/20 text-[10px] text-gray-400 leading-relaxed">
-                    EVT / POT-GPD 暫停顯示：目前使用週資料，尾部超額樣本不足；等改成「持倉標的長期日報酬 + 目前權重合成 portfolio return」後再啟用。
+                <div class="mt-3 pt-3 border-t border-orange-500/20">
+                    <div class="text-orange-300 font-bold text-[11px] mb-2">EVT / POT-GPD（1 日・目前權重回推）</div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-[10px] font-mono">
+                        <div class="rounded-lg border border-white/10 bg-black/20 p-2">
+                            <div class="text-gray-500">樣本 / 超額</div>
+                            <div class="text-white mt-1">{{ tailStatsLite.evtDailySampleCount }} / {{ tailStatsLite.evtExceedanceCount }}</div>
+                        </div>
+                        <div class="rounded-lg border border-white/10 bg-black/20 p-2">
+                            <div class="text-gray-500">門檻報酬</div>
+                            <div class="text-white mt-1">{{ tailStatsLite.evtThreshold }}%</div>
+                        </div>
+                        <div class="rounded-lg border border-white/10 bg-black/20 p-2">
+                            <div class="text-gray-500">1D VaR95 / ES95</div>
+                            <div class="text-white mt-1">{{ tailStatsLite.evtVar95 }}% / {{ tailStatsLite.evtEs95 }}%</div>
+                        </div>
+                        <div class="rounded-lg border border-white/10 bg-black/20 p-2">
+                            <div class="text-gray-500">ξ 門檻範圍</div>
+                            <div class="text-white mt-1">{{ tailStatsLite.evtXiMin }} ~ {{ tailStatsLite.evtXiMax }}</div>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-[10px] text-gray-400 leading-relaxed">
+                        主要門檻取最差 10% 日損失；另測試 7.5% / 10% / 12.5% / 15% 尾部門檻。ξ、VaR、ES 的 95% CI 以 {{ tailStatsLite.evtBootstrapBlockDays }} 日 circular moving-block bootstrap（{{ tailStatsLite.evtBootstrapReplicates }} 次）估計。這是「目前權重回推」而非歷史持倉權重重建，且跨市場收盤時間不同；只能作尾部診斷，不能直接與 13 週跳躍壓力數值比較。
+                    </div>
                 </div>
             </div>
         </div>

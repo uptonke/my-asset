@@ -109,7 +109,7 @@
     jdExpectedJumpDragWeeklyPct: '-',
     jdSimulationCount: '-',
 
-    // EVT (one-week diagnostic)
+    // EVT robustness (one-day current-weight diagnostic)
     evtVar95: '-',
     evtEs95: '-',
     evtShapeXi: '-',
@@ -117,9 +117,27 @@
     evtThreshold: '-',
     evtExceedanceCount: '-',
     evtAlphaConf: '-',
-    evtHorizonWeeks: '-',
+    evtReturnFrequency: '-',
+    evtHorizonDays: '-',
     evtComparableToJd: '-',
-    evtComparisonNote: '-'
+    evtComparisonNote: '-',
+    evtRobustStatus: 'not_computed',
+    evtDailySampleCount: '-',
+    evtXiCiLow: '-',
+    evtXiCiHigh: '-',
+    evtVarCiLow: '-',
+    evtVarCiHigh: '-',
+    evtEsCiLow: '-',
+    evtEsCiHigh: '-',
+    evtBootstrapReplicates: '-',
+    evtBootstrapValidReps: '-',
+    evtBootstrapBlockDays: '-',
+    evtThresholdValidCount: '-',
+    evtXiMin: '-',
+    evtXiMax: '-',
+    evtXiSignStability: 'insufficient',
+    evtEvidenceFlag: 'insufficient_sample',
+    evtFiniteEndpointLossPct: '-'
 });
 function fmtNum(val, digits = 2) {
     if (val === null || val === undefined || val === '') return '-';
@@ -403,6 +421,7 @@ watch([groupedHoldings, portfolioStats, stats, sysCorr, chaosMeta, cloudRebalanc
 
     const backendXray = chaosMeta.value?.xray_meta || {};
     const backendTail = chaosMeta.value?.tail_meta || {};
+    const evtRobust = backendTail?.evt_robustness || chaosMeta.value?.evt_robustness || chaosMeta.value?.evt_tail?.evt_robustness || {};
 
     if (backendXray?.mrc_table?.length) {
         xrayStats.value = {
@@ -563,17 +582,40 @@ if (backendTail && (
         jdExpectedJumpDragWeeklyPct: fmtPctMaybe(backendTail.jd_expected_jump_drag_weekly_pct, 4),
         jdSimulationCount: backendTail.jd_simulation_count ?? '-',
 
-        // EVT (one-week diagnostic)
-        evtVar95: fmtPctMaybe(backendTail.evt_var95, 2),
-        evtEs95: fmtPctMaybe(backendTail.evt_es95, 2),
-        evtShapeXi: fmtNum(backendTail.evt_shape_xi, 4),
-        evtScaleBeta: fmtNum(backendTail.evt_scale_beta, 6),
-        evtThreshold: fmtPctMaybe(backendTail.evt_threshold, 2),
-        evtExceedanceCount: backendTail.evt_exceedance_count ?? '-',
-        evtAlphaConf: fmtNum((backendTail.evt_alpha_conf ?? 0) * 100, 0),
-        evtHorizonWeeks: backendTail.evt_horizon_weeks ?? 1,
+        // EVT robustness (one-day current-weight diagnostic)
+        evtVar95: fmtPctMaybe(evtRobust.var95_pct ?? backendTail.evt_var95, 2),
+        evtEs95: fmtPctMaybe(evtRobust.es95_pct ?? backendTail.evt_es95, 2),
+        evtShapeXi: fmtNum(evtRobust.shape_xi ?? backendTail.evt_shape_xi, 4),
+        evtScaleBeta: fmtNum(evtRobust.scale_beta ?? backendTail.evt_scale_beta, 6),
+        evtThreshold: fmtPctMaybe(
+            evtRobust.threshold_loss_pct !== null && evtRobust.threshold_loss_pct !== undefined
+                ? -Math.abs(Number(evtRobust.threshold_loss_pct))
+                : backendTail.evt_threshold,
+            2
+        ),
+        evtExceedanceCount: evtRobust.exceedance_count ?? backendTail.evt_exceedance_count ?? '-',
+        evtAlphaConf: fmtNum((evtRobust.alpha_conf ?? backendTail.evt_alpha_conf ?? 0) * 100, 0),
+        evtReturnFrequency: evtRobust.return_frequency || backendTail.evt_return_frequency || 'daily',
+        evtHorizonDays: evtRobust.horizon_days ?? backendTail.evt_horizon_days ?? 1,
         evtComparableToJd: backendTail.evt_comparable_to_jd ?? false,
-        evtComparisonNote: backendTail.evt_comparison_note || '-'
+        evtComparisonNote: backendTail.evt_comparison_note || 'one_day_evt_not_directly_comparable_to_13_week_jump_stress',
+        evtRobustStatus: evtRobust.status || 'not_computed',
+        evtDailySampleCount: evtRobust.sample_count ?? '-',
+        evtXiCiLow: fmtNum(evtRobust.shape_xi_ci95_low, 4),
+        evtXiCiHigh: fmtNum(evtRobust.shape_xi_ci95_high, 4),
+        evtVarCiLow: fmtPctMaybe(evtRobust.var95_ci95_low_pct, 2),
+        evtVarCiHigh: fmtPctMaybe(evtRobust.var95_ci95_high_pct, 2),
+        evtEsCiLow: fmtPctMaybe(evtRobust.es95_ci95_low_pct, 2),
+        evtEsCiHigh: fmtPctMaybe(evtRobust.es95_ci95_high_pct, 2),
+        evtBootstrapReplicates: evtRobust.bootstrap_replicates_requested ?? '-',
+        evtBootstrapValidReps: evtRobust.bootstrap_valid_reps ?? '-',
+        evtBootstrapBlockDays: evtRobust.bootstrap_block_days ?? '-',
+        evtThresholdValidCount: evtRobust.threshold_valid_count ?? '-',
+        evtXiMin: fmtNum(evtRobust.shape_xi_min, 4),
+        evtXiMax: fmtNum(evtRobust.shape_xi_max, 4),
+        evtXiSignStability: evtRobust.shape_xi_sign_stability || 'insufficient',
+        evtEvidenceFlag: evtRobust.evidence_flag || 'insufficient_sample',
+        evtFiniteEndpointLossPct: fmtPctMaybe(evtRobust.finite_upper_endpoint_loss_pct, 2)
     };
 } else {
     tailStatsLite.value = {
@@ -639,9 +681,27 @@ if (backendTail && (
         evtThreshold: '-',
         evtExceedanceCount: '-',
         evtAlphaConf: '-',
-        evtHorizonWeeks: '-',
+        evtReturnFrequency: '-',
+        evtHorizonDays: '-',
         evtComparableToJd: '-',
-        evtComparisonNote: '-'
+        evtComparisonNote: '-',
+        evtRobustStatus: 'not_computed',
+        evtDailySampleCount: '-',
+        evtXiCiLow: '-',
+        evtXiCiHigh: '-',
+        evtVarCiLow: '-',
+        evtVarCiHigh: '-',
+        evtEsCiLow: '-',
+        evtEsCiHigh: '-',
+        evtBootstrapReplicates: '-',
+        evtBootstrapValidReps: '-',
+        evtBootstrapBlockDays: '-',
+        evtThresholdValidCount: '-',
+        evtXiMin: '-',
+        evtXiMax: '-',
+        evtXiSignStability: 'insufficient',
+        evtEvidenceFlag: 'insufficient_sample',
+        evtFiniteEndpointLossPct: '-'
     };
 }
 }, { deep: true, immediate: true });
@@ -729,12 +789,15 @@ if (backendTail && (
                     detail: `${topDriftList[0].ticker} drift ${topDriftList[0].drift}% ，目前 ${topDriftList[0].currentWeight}% / 目標 ${topDriftList[0].targetWeight}%。`
                 });
             }
-            if ((Number(tailStatsLite.value.jdCrashProb) || 0) >= 8 || (Number(tailStatsLite.value.evtShapeXi) || 0) >= 0.25) {
+            if ((Number(tailStatsLite.value.jdCrashProb) || 0) >= 8 || tailStatsLite.value.evtEvidenceFlag === 'positive_xi_robust_across_tested_thresholds') {
+                const evtCi = tailStatsLite.value.evtXiCiLow !== '-' && tailStatsLite.value.evtXiCiHigh !== '-'
+                    ? `（95% CI ${tailStatsLite.value.evtXiCiLow} ~ ${tailStatsLite.value.evtXiCiHigh}）`
+                    : '';
                 queue.push({
                     level: 'medium',
                     icon: 'fa-burst',
                     title: '尾部風險偏高',
-                    detail: `Crash Prob ${tailStatsLite.value.jdCrashProb}% / EVT ξ ${tailStatsLite.value.evtShapeXi}，不要只看一般波動。`
+                    detail: `Crash Prob ${tailStatsLite.value.jdCrashProb}% / EVT ξ ${tailStatsLite.value.evtShapeXi}${evtCi}，僅在 EVT 正 ξ 同時通過門檻敏感度與 CI 時視為較穩健的肥尾證據。`
                 });
             }
             if (!queue.length) {

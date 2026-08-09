@@ -218,15 +218,29 @@ createApp({
         es_absolute_value_duplicate: tailStatsLite.value.jdTailLoss === '-' ? 'N/A' : tailStatsLite.value.jdTailLoss + '%'
     },
 
-    evt_tail_1w: {
+    evt_tail_1d_robust: {
+        status: tailStatsLite.value.evtRobustStatus,
+        return_frequency: tailStatsLite.value.evtReturnFrequency,
+        horizon_days: tailStatsLite.value.evtHorizonDays,
+        daily_sample_count: tailStatsLite.value.evtDailySampleCount,
         evt_var95: tailStatsLite.value.evtVar95 === '-' ? 'N/A' : tailStatsLite.value.evtVar95 + '%',
+        evt_var95_ci95_block_bootstrap: [tailStatsLite.value.evtVarCiLow, tailStatsLite.value.evtVarCiHigh],
         evt_es95: tailStatsLite.value.evtEs95 === '-' ? 'N/A' : tailStatsLite.value.evtEs95 + '%',
+        evt_es95_ci95_block_bootstrap: [tailStatsLite.value.evtEsCiLow, tailStatsLite.value.evtEsCiHigh],
         evt_shape_xi: tailStatsLite.value.evtShapeXi,
+        evt_shape_xi_ci95_block_bootstrap: [tailStatsLite.value.evtXiCiLow, tailStatsLite.value.evtXiCiHigh],
         evt_scale_beta: tailStatsLite.value.evtScaleBeta,
         evt_threshold: tailStatsLite.value.evtThreshold === '-' ? 'N/A' : tailStatsLite.value.evtThreshold + '%',
         evt_exceedance_count: tailStatsLite.value.evtExceedanceCount,
         evt_alpha_conf: tailStatsLite.value.evtAlphaConf === '-' ? 'N/A' : 'P' + tailStatsLite.value.evtAlphaConf,
-        horizon_weeks: tailStatsLite.value.evtHorizonWeeks,
+        threshold_valid_count: tailStatsLite.value.evtThresholdValidCount,
+        xi_across_tested_thresholds: [tailStatsLite.value.evtXiMin, tailStatsLite.value.evtXiMax],
+        xi_sign_stability: tailStatsLite.value.evtXiSignStability,
+        evidence_flag: tailStatsLite.value.evtEvidenceFlag,
+        finite_upper_endpoint_loss_pct: tailStatsLite.value.evtFiniteEndpointLossPct === '-' ? 'N/A' : tailStatsLite.value.evtFiniteEndpointLossPct + '%',
+        bootstrap_replicates: tailStatsLite.value.evtBootstrapReplicates,
+        bootstrap_valid_reps: tailStatsLite.value.evtBootstrapValidReps,
+        bootstrap_block_days: tailStatsLite.value.evtBootstrapBlockDays,
         directly_comparable_to_jump_stress: tailStatsLite.value.evtComparableToJd,
         comparison_note: tailStatsLite.value.evtComparisonNote
     }
@@ -242,11 +256,11 @@ Constraint: Output strictly in Traditional Chinese. Maximum 8 bullets. No pleasa
 - Separate measured historical results, model estimates, heuristic stress assumptions, and policy thresholds. Never present one category as another.
 - Compare VaR/ES values only when horizon, portfolio construction, confidence level, and return definition are aligned.
 - The object same_horizon_tail_comparison is the valid comparison for historical versus jump-stress tail risk.
-- evt_tail_1w is a one-week POT-GPD diagnostic. Do not compare its magnitude directly with a 13-week jump-stress result.
+- evt_tail_1d_robust is a one-day POT-GPD diagnostic built from a current-weight daily portfolio proxy. Do not compare its magnitude directly with a 13-week jump-stress result. Historical constituent weights are not reconstructed.
 - jump_stress_scenario uses asset-class policy assumptions and independent asset-level Poisson jumps. It is a stress scenario, not a historically fitted crash probability model.
 - jd_tail_loss is the absolute value of jd_es95 and is not independent corroborating evidence.
 - Interpret jd_crash_prob only as the probability that the simulated horizon return breaches the stated jump_stress_threshold.
-- If EVT xi < 0, say only that the fitted POT-GPD tail is bounded under the current threshold/sample and does not provide evidence for an xi > 0 heavy-tail regime. Do NOT conclude that the true return distribution 'is not heavy-tailed' or rule out heavy tails. If exceedance count is small, state that xi and ES are unstable and tail-classification evidence is weak.
+- EVT must be interpreted using BOTH the block-bootstrap 95% CI for xi and threshold sensitivity. A positive point estimate alone is not robust heavy-tail evidence. Call positive-xi evidence robust only when the xi 95% CI is entirely above 0 AND xi_sign_stability is all_positive across tested thresholds. If the xi CI includes 0 or xi_sign_stability is mixed, call the tail shape uncertain / threshold-sensitive. If xi < 0, say only that the fitted POT-GPD tail is bounded under the tested threshold/sample; never conclude that the true distribution cannot be heavy-tailed.
 - Small tail/crisis samples are preliminary evidence, not an "extremely clear" signal. Do not claim statistical certainty without confidence intervals.
 - Tail / Crash Radar confidence intervals use a circular moving-block bootstrap on paired weekly returns, with P20/P10 benchmark thresholds recomputed inside each bootstrap sample. These intervals measure estimation uncertainty, not a predictive range for future returns.
 - If the crisis-correlation 95% bootstrap CI includes 0, do not call positive crisis co-movement statistically robust. If the downside-beta 95% bootstrap CI includes 1, do not claim clear amplification (>1) or dampening (<1) relative to the benchmark.
@@ -268,7 +282,7 @@ Constraint: Output strictly in Traditional Chinese. Maximum 8 bullets. No pleasa
 4. 【再平衡監控】Distinguish Trim, Add, general drift and concentration candidates. State the exact direction of major alerts.
 5. 【Tail / Crash Radar】Assess conditional correlation, crisis correlation and downside beta. Report the block-bootstrap 95% CIs when available; use 0 as the key reference for correlation and 1 as the key reference for downside beta, and explicitly qualify small samples.
 6. 【13週尾部風險】Inspect same_horizon_tail_comparison. If historical_current_weight_var95 and historical_current_weight_es95 are both available, title the bullet 【13週同期間尾部比較】 and compare them with jump-stress on the same horizon. If either historical metric is N/A, title the bullet 【13週跳躍壓力測試】, report the jump-stress scenario only, and state that a same-horizon historical comparison is unavailable. Never label a jump-only paragraph as a same-horizon comparison.
-7. 【EVT】Discuss the one-week EVT result separately, including xi sign, threshold, exceedance count and lack of direct 13-week comparability. A negative xi with a small exceedance sample must not be used to classify the true return distribution as non-heavy-tailed.
+7. 【EVT】Discuss the one-day current-weight POT-GPD result separately. Report xi, its block-bootstrap 95% CI, threshold/exceedance count, threshold-sensitivity sign stability, and the lack of direct 13-week comparability. Treat mixed threshold signs or a CI crossing 0 as inconclusive.
 8. 【CRO 最終指令】Choose one of Review / Hold / Conditional Trim / Trim / Raise Cash. Use Trim or Raise Cash only when an explicit target band, concentration cap, buffer constraint, or risk-budget breach is shown. Otherwise use Review or Conditional Trim and state the trigger.
 
 [OUTPUT_FORMAT]
