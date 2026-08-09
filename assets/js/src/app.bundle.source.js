@@ -90,7 +90,12 @@ createApp({
         historical_sharpe: stats.value.sharpe,
         historical_psr: stats.value.psr === '-' ? 'N/A' : stats.value.psr + '%',
         historical_psr_benchmark_sharpe: 0,
-        historical_psr_method_note: 'Approximate probability that period Sharpe exceeds 0; below 95% means insufficient high-confidence evidence, not proof of randomness.',
+        historical_psr_sample_n: stats.value.psrSampleN ?? 'N/A',
+        historical_psr_min_track_record_95_obs: stats.value.psrMinTrl95 ?? 'N/A',
+        historical_psr_min_track_record_95_years: stats.value.psrMinTrl95Years === '-' ? 'N/A' : stats.value.psrMinTrl95Years,
+        historical_psr_min_track_record_95_remaining_obs: stats.value.psrMinTrl95Remaining ?? 'N/A',
+        historical_psr_95_threshold_met: Boolean(stats.value.psrMinTrl95Met),
+        historical_psr_method_note: 'PSR estimates the probability/confidence that period Sharpe exceeds benchmark Sharpe 0 under the moment-adjusted model. MinTRL95 is the model-implied minimum observation count needed to reach one-sided 95% PSR at the current estimated Sharpe/skew/kurtosis; it is not a guarantee of persistence or future performance.',
         mc_sharpe_raw: mcOptimal.value?.sharpeRaw ?? 'N/A',
         mc_psr: mcOptimal.value?.psr ? mcOptimal.value.psr + '%' : 'N/A',
         mc_dsr: mcOptimal.value?.dsr ? mcOptimal.value.dsr + '%' : 'N/A',
@@ -124,12 +129,14 @@ createApp({
 
     regime_rebalance_monitor: {
         overweight_trim_candidates: rebalanceMonitor.value.trimCount,
-        underweight_add_candidates: rebalanceMonitor.value.addCount,
+        underweight_add_candidates_actionable: rebalanceMonitor.value.addCount,
+        underweight_add_candidates_blocked_by_buffer: rebalanceMonitor.value.blockedAddCount,
         total_target_drift_candidates: rebalanceMonitor.value.driftCount,
         concentration_candidates_over_20pct: rebalanceMonitor.value.concentrationCount,
-        high_priority_alerts: rebalanceMonitor.value.alertCount,
-        leverage_vol_drag_30d: rebalanceMonitor.value.volDrag30d + '%',
-        leverage_vol_drag_90d: rebalanceMonitor.value.volDrag90d + '%',
+        rule_engine_alerts: rebalanceMonitor.value.alertCount,
+        volatility_drag_30d_approx: rebalanceMonitor.value.volDrag30d + '%',
+        volatility_drag_90d_approx: rebalanceMonitor.value.volDrag90d + '%',
+        volatility_drag_note: '0.5*sigma^2*time approximation; this is volatility drag, not evidence that the portfolio is leveraged.',
         buffer_floor_pct: rebalanceMonitor.value.bufferFloorPct + '%',
         current_buffer_pct: rebalanceMonitor.value.currentBufferPct + '%',
         buffer_gap_pct: rebalanceMonitor.value.bufferGapPct + '%',
@@ -138,7 +145,12 @@ createApp({
             ? 'DISABLED_ZERO_FLOOR'
             : 'ACTIVE',
         hard_buffer_tickers: (rebalanceMonitor.value.hardBufferTickers || []).join(' + '),
-        rebalance_alerts_with_direction: rebalanceMonitor.value.alerts.slice(0, 8)
+        universe_policy: rebalanceMonitor.value.universePolicy || 'frontend_fallback',
+        rule_threshold_pp: rebalanceMonitor.value.ruleThresholdPp,
+        economic_dust_tickers_excluded: rebalanceMonitor.value.economicDustTickers || [],
+        sheet_only_tickers_excluded: rebalanceMonitor.value.sheetOnlyTickersExcluded || [],
+        backend_actionable_signal_count: rebalanceMonitor.value.backendSignalCount || 0,
+        rebalance_alerts_with_direction: rebalanceMonitor.value.alerts.slice(0, 10)
     },
 
     portfolio_xray: {
@@ -174,6 +186,15 @@ createApp({
         crisis_window_label: tailStatsLite.value.crisisWindowLabel,
         tail_sample_count: tailStatsLite.value.tailSampleCount,
         crisis_sample_count: tailStatsLite.value.crisisSampleCount,
+        downside_sample_count: tailStatsLite.value.downsideSampleCount,
+        conditional_correlation_ci95_block_bootstrap: [tailStatsLite.value.conditionalCorrCiLow, tailStatsLite.value.conditionalCorrCiHigh],
+        crisis_correlation_ci95_block_bootstrap: [tailStatsLite.value.crisisCorrCiLow, tailStatsLite.value.crisisCorrCiHigh],
+        downside_beta_ci95_block_bootstrap: [tailStatsLite.value.downsideBetaCiLow, tailStatsLite.value.downsideBetaCiHigh],
+        tail_inference_status: tailStatsLite.value.tailInferenceStatus,
+        tail_inference_method: tailStatsLite.value.tailInferenceMethod,
+        tail_bootstrap_replicates: tailStatsLite.value.tailBootstrapReplicates,
+        tail_bootstrap_block_weeks: tailStatsLite.value.tailBootstrapBlockWeeks,
+        tail_ci_level_pct: tailStatsLite.value.tailCiLevel,
         co_drawdown_threshold: tailStatsLite.value.coDrawdownThreshold + '%',
         tail_threshold_quantile: 'P' + tailStatsLite.value.tailThresholdQuantile
     },
@@ -204,15 +225,29 @@ createApp({
         es_absolute_value_duplicate: tailStatsLite.value.jdTailLoss === '-' ? 'N/A' : tailStatsLite.value.jdTailLoss + '%'
     },
 
-    evt_tail_1w: {
+    evt_tail_1d_robust: {
+        status: tailStatsLite.value.evtRobustStatus,
+        return_frequency: tailStatsLite.value.evtReturnFrequency,
+        horizon_days: tailStatsLite.value.evtHorizonDays,
+        daily_sample_count: tailStatsLite.value.evtDailySampleCount,
         evt_var95: tailStatsLite.value.evtVar95 === '-' ? 'N/A' : tailStatsLite.value.evtVar95 + '%',
+        evt_var95_ci95_block_bootstrap: [tailStatsLite.value.evtVarCiLow, tailStatsLite.value.evtVarCiHigh],
         evt_es95: tailStatsLite.value.evtEs95 === '-' ? 'N/A' : tailStatsLite.value.evtEs95 + '%',
+        evt_es95_ci95_block_bootstrap: [tailStatsLite.value.evtEsCiLow, tailStatsLite.value.evtEsCiHigh],
         evt_shape_xi: tailStatsLite.value.evtShapeXi,
+        evt_shape_xi_ci95_block_bootstrap: [tailStatsLite.value.evtXiCiLow, tailStatsLite.value.evtXiCiHigh],
         evt_scale_beta: tailStatsLite.value.evtScaleBeta,
         evt_threshold: tailStatsLite.value.evtThreshold === '-' ? 'N/A' : tailStatsLite.value.evtThreshold + '%',
         evt_exceedance_count: tailStatsLite.value.evtExceedanceCount,
         evt_alpha_conf: tailStatsLite.value.evtAlphaConf === '-' ? 'N/A' : 'P' + tailStatsLite.value.evtAlphaConf,
-        horizon_weeks: tailStatsLite.value.evtHorizonWeeks,
+        threshold_valid_count: tailStatsLite.value.evtThresholdValidCount,
+        xi_across_tested_thresholds: [tailStatsLite.value.evtXiMin, tailStatsLite.value.evtXiMax],
+        xi_sign_stability: tailStatsLite.value.evtXiSignStability,
+        evidence_flag: tailStatsLite.value.evtEvidenceFlag,
+        finite_upper_endpoint_loss_pct: tailStatsLite.value.evtFiniteEndpointLossPct === '-' ? 'N/A' : tailStatsLite.value.evtFiniteEndpointLossPct + '%',
+        bootstrap_replicates: tailStatsLite.value.evtBootstrapReplicates,
+        bootstrap_valid_reps: tailStatsLite.value.evtBootstrapValidReps,
+        bootstrap_block_days: tailStatsLite.value.evtBootstrapBlockDays,
         directly_comparable_to_jump_stress: tailStatsLite.value.evtComparableToJd,
         comparison_note: tailStatsLite.value.evtComparisonNote
     }
@@ -228,13 +263,18 @@ Constraint: Output strictly in Traditional Chinese. Maximum 8 bullets. No pleasa
 - Separate measured historical results, model estimates, heuristic stress assumptions, and policy thresholds. Never present one category as another.
 - Compare VaR/ES values only when horizon, portfolio construction, confidence level, and return definition are aligned.
 - The object same_horizon_tail_comparison is the valid comparison for historical versus jump-stress tail risk.
-- evt_tail_1w is a one-week POT-GPD diagnostic. Do not compare its magnitude directly with a 13-week jump-stress result.
+- evt_tail_1d_robust is a one-day POT-GPD diagnostic built from a current-weight daily portfolio proxy. Do not compare its magnitude directly with a 13-week jump-stress result. Historical constituent weights are not reconstructed.
 - jump_stress_scenario uses asset-class policy assumptions and independent asset-level Poisson jumps. It is a stress scenario, not a historically fitted crash probability model.
 - jd_tail_loss is the absolute value of jd_es95 and is not independent corroborating evidence.
 - Interpret jd_crash_prob only as the probability that the simulated horizon return breaches the stated jump_stress_threshold.
-- If EVT xi < 0, say only that the fitted POT-GPD tail is bounded under the current threshold/sample and does not provide evidence for an xi > 0 heavy-tail regime. Do NOT conclude that the true return distribution 'is not heavy-tailed' or rule out heavy tails. If exceedance count is small, state that xi and ES are unstable and tail-classification evidence is weak.
+- EVT must be interpreted using BOTH the block-bootstrap 95% CI for xi and threshold sensitivity. A positive point estimate alone is not robust heavy-tail evidence. Call positive-xi evidence robust only when the xi 95% CI is entirely above 0 AND xi_sign_stability is all_positive across tested thresholds. If the xi CI includes 0 or xi_sign_stability is mixed, call the tail shape uncertain / threshold-sensitive. If xi < 0, say only that the fitted POT-GPD tail is bounded under the tested threshold/sample; never conclude that the true distribution cannot be heavy-tailed.
 - Small tail/crisis samples are preliminary evidence, not an "extremely clear" signal. Do not claim statistical certainty without confidence intervals.
-- Historical PSR uses benchmark Sharpe 0. Interpret PSR as the estimated probability/confidence that the true Sharpe exceeds 0 under the PSR model. A value below 95% means it has not met a strict 95% credibility threshold. Never describe PSR as a test of whether returns are random, and do not infer survivor bias from it.
+- Tail / Crash Radar confidence intervals use a circular moving-block bootstrap on paired weekly returns, with P20/P10 benchmark thresholds recomputed inside each bootstrap sample. These intervals measure estimation uncertainty, not a predictive range for future returns.
+- If the crisis-correlation 95% bootstrap CI includes 0, do not call positive crisis co-movement statistically robust. If the downside-beta 95% bootstrap CI includes 1, do not claim clear amplification (>1) or dampening (<1) relative to the benchmark.
+- Rebalance semantics: ADD/TRIM direction from the backend rule engine is authoritative when universe_policy is material_ledger_holdings_plus_hard_buffer_only. An ADD marked BLOCKED_BY_BUFFER is NOT executable until the buffer condition clears.
+- Under the material-ledger universe policy, sheet-only research candidates and economic-dust remnants are intentionally excluded. Do not recommend reopening them because of stale target metadata.
+- volatility_drag_30d_approx / 90d use 0.5*sigma^2*time and measure volatility drag. Do not call this leverage drag unless independent evidence of actual leverage is present.
+- Historical PSR uses benchmark Sharpe 0. Interpret PSR as the estimated probability/confidence that the true Sharpe exceeds 0 under the PSR model. A value below 95% means it has not met a strict 95% credibility threshold. Use MinTRL95 to state whether the current observation count is long enough under the same moment-adjusted PSR assumptions; if current n < MinTRL95, say the track record is still too short for that 95% threshold. MinTRL95 is model-based and does not guarantee persistence or future performance. Never describe PSR as a test of whether returns are random, and do not infer survivor bias from it.
 - MWR > TWR may indicate favorable cash-flow timing. It does not prove security selection skill.
 - capm_alpha_proxy is not regression-estimated Jensen alpha and has no t-stat. Do not claim persistent selection alpha from the proxy.
 - realized_jensen_vs_spy and realized_jensen_vs_twii are OLS CAPM regressions on realized cash-flow-adjusted NAV snapshot returns with HAC/Newey-West inference. Treat alpha as benchmark-dependent. If the 95% CI includes zero or HAC p-value >= 0.05, say alpha is not statistically distinguishable from zero under that benchmark. Even when significant, do not call it pure security-selection skill because allocation and timing effects remain inside realized portfolio returns.
@@ -250,9 +290,9 @@ Constraint: Output strictly in Traditional Chinese. Maximum 8 bullets. No pleasa
 2. 【風險報酬可信度】Assess Sharpe, PSR/DSR, volatility, Sortino and Treynor. State PSR as confidence/probability that the true Sharpe exceeds its benchmark; never phrase it as confirming that returns are non-random.
 3. 【Portfolio X-Ray】Assess concentration, risk contribution, PCA, USD exposure and look-through coverage. Explicitly distinguish covariance-based concentration from constituent overlap: PCA/MRC do not directly measure shared ETF holdings. Use "risk concentration" rather than "leverage" unless actual leverage exists.
 4. 【再平衡監控】Distinguish Trim, Add, general drift and concentration candidates. State the exact direction of major alerts.
-5. 【Tail / Crash Radar】Assess crisis correlation and downside behavior while explicitly qualifying small samples.
+5. 【Tail / Crash Radar】Assess conditional correlation, crisis correlation and downside beta. Report the block-bootstrap 95% CIs when available; use 0 as the key reference for correlation and 1 as the key reference for downside beta, and explicitly qualify small samples.
 6. 【13週尾部風險】Inspect same_horizon_tail_comparison. If historical_current_weight_var95 and historical_current_weight_es95 are both available, title the bullet 【13週同期間尾部比較】 and compare them with jump-stress on the same horizon. If either historical metric is N/A, title the bullet 【13週跳躍壓力測試】, report the jump-stress scenario only, and state that a same-horizon historical comparison is unavailable. Never label a jump-only paragraph as a same-horizon comparison.
-7. 【EVT】Discuss the one-week EVT result separately, including xi sign, threshold, exceedance count and lack of direct 13-week comparability. A negative xi with a small exceedance sample must not be used to classify the true return distribution as non-heavy-tailed.
+7. 【EVT】Discuss the one-day current-weight POT-GPD result separately. Report xi, its block-bootstrap 95% CI, threshold/exceedance count, threshold-sensitivity sign stability, and the lack of direct 13-week comparability. Treat mixed threshold signs or a CI crossing 0 as inconclusive.
 8. 【CRO 最終指令】Choose one of Review / Hold / Conditional Trim / Trim / Raise Cash. Use Trim or Raise Cash only when an explicit target band, concentration cap, buffer constraint, or risk-budget breach is shown. Otherwise use Review or Conditional Trim and state the trigger.
 
 [OUTPUT_FORMAT]
@@ -432,7 +472,9 @@ ${JSON.stringify(payload, null, 2)}
         const stockMeta = ref({});
 
         const stats = ref({ 
-            annRet:'0.00', annLogRet:'0.00', mwr:'0.00', annVol:'0.00', sharpe:'0.00', psr: '-', sortino:'0.00', treynor:'0.00', 
+            annRet:'0.00', annLogRet:'0.00', mwr:'0.00', annVol:'0.00', sharpe:'0.00', psr: '-',
+            psrSampleN: 0, psrMinTrl95: '-', psrMinTrl95Years: '-', psrMinTrl95Remaining: '-', psrMinTrl95Met: false,
+            sortino:'0.00', treynor:'0.00', 
             alpha:'0.00', var95:'0.00', cvar95:'0.00', mdd:'0.00', calmar:'0.00', skew:'0.00', kurt:'0.00', 
             tuw: '0', ulcer: '0.00', omega: '0.00', profitFactor: '0.00', 
             ff_alpha: '-', ff_mkt_beta: '-', ff_smb: '-', ff_hml: '-', 
@@ -1280,13 +1322,30 @@ const psr_hist = computePSR({
     nObs: sampleN
 });
 
+const minTrl95 = computeMinTrackRecordLength95({
+    sr: periodSharpe,
+    srBenchmark: 0,
+    skew: skewVal,
+    exKurt: kurtVal
+});
+const minTrl95Finite = Boolean(minTrl95 && minTrl95.finite && Number.isFinite(minTrl95.observations));
+const minTrl95Obs = minTrl95Finite ? minTrl95.observations : (minTrl95 && minTrl95.finite === false ? Infinity : null);
+const minTrl95Remaining = minTrl95Finite ? Math.max(0, minTrl95Obs - sampleN) : null;
+const minTrl95Met = minTrl95Finite ? sampleN >= minTrl95Obs : false;
+const minTrl95Years = minTrl95Finite && periodsPerYear > 0 ? minTrl95Obs / periodsPerYear : null;
+
              stats.value = { 
                  annRet: (annRet*100).toFixed(2), 
                  annLogRet: (annLogRet*100).toFixed(2), 
                  mwr: mwr === null ? '-' : (mwr * 100).toFixed(2),            
                  annVol: (annVol*100).toFixed(2), 
                  sharpe: sharpe.toFixed(2), 
-                 psr: psr_hist === null ? '-' : (psr_hist * 100).toFixed(2), 
+                 psr: psr_hist === null ? '-' : (psr_hist * 100).toFixed(2),
+                 psrSampleN: sampleN,
+                 psrMinTrl95: minTrl95Obs === Infinity ? '∞' : (minTrl95Finite ? String(minTrl95Obs) : '-'),
+                 psrMinTrl95Years: Number.isFinite(minTrl95Years) ? minTrl95Years.toFixed(2) : '-',
+                 psrMinTrl95Remaining: Number.isFinite(minTrl95Remaining) ? String(minTrl95Remaining) : '-',
+                 psrMinTrl95Met: minTrl95Met,
                  sortino: sortino.toFixed(2), 
                  treynor: treynor.toFixed(4),            
                  alpha: (alpha * 100).toFixed(2),
@@ -1349,6 +1408,7 @@ const psr_hist = computePSR({
        const rebalanceMonitor = ref({
     trimCount: 0,
     addCount: 0,
+    blockedAddCount: 0,
     driftCount: 0,
     concentrationCount: 0,
     alertCount: 0,
@@ -1359,6 +1419,11 @@ const psr_hist = computePSR({
     bufferGapPct: '0.0',
     bufferBlockingRiskBuys: false,
     hardBufferTickers: ['SHY', 'BOXX'],
+    universePolicy: '',
+    ruleThresholdPp: 1,
+    economicDustTickers: [],
+    sheetOnlyTickersExcluded: [],
+    backendSignalCount: 0,
     alerts: []
 });
 
@@ -2257,8 +2322,22 @@ const psr_hist = computePSR({
     crisisWindowLabel: '-',
     tailSampleCount: '-',
     crisisSampleCount: '-',
+    downsideSampleCount: '-',
     coDrawdownThreshold: '-',
     tailThresholdQuantile: '-',
+
+    // Block-bootstrap inference for conditional tail statistics
+    tailInferenceStatus: 'not_computed',
+    tailInferenceMethod: '-',
+    tailBootstrapReplicates: '-',
+    tailBootstrapBlockWeeks: '-',
+    tailCiLevel: '-',
+    conditionalCorrCiLow: '-',
+    conditionalCorrCiHigh: '-',
+    crisisCorrCiLow: '-',
+    crisisCorrCiHigh: '-',
+    downsideBetaCiLow: '-',
+    downsideBetaCiHigh: '-',
 
     // Horizon-aligned empirical comparison
     historicalVar95_1w: '-',
@@ -2287,7 +2366,7 @@ const psr_hist = computePSR({
     jdExpectedJumpDragWeeklyPct: '-',
     jdSimulationCount: '-',
 
-    // EVT (one-week diagnostic)
+    // EVT robustness (one-day current-weight diagnostic)
     evtVar95: '-',
     evtEs95: '-',
     evtShapeXi: '-',
@@ -2295,9 +2374,27 @@ const psr_hist = computePSR({
     evtThreshold: '-',
     evtExceedanceCount: '-',
     evtAlphaConf: '-',
-    evtHorizonWeeks: '-',
+    evtReturnFrequency: '-',
+    evtHorizonDays: '-',
     evtComparableToJd: '-',
-    evtComparisonNote: '-'
+    evtComparisonNote: '-',
+    evtRobustStatus: 'not_computed',
+    evtDailySampleCount: '-',
+    evtXiCiLow: '-',
+    evtXiCiHigh: '-',
+    evtVarCiLow: '-',
+    evtVarCiHigh: '-',
+    evtEsCiLow: '-',
+    evtEsCiHigh: '-',
+    evtBootstrapReplicates: '-',
+    evtBootstrapValidReps: '-',
+    evtBootstrapBlockDays: '-',
+    evtThresholdValidCount: '-',
+    evtXiMin: '-',
+    evtXiMax: '-',
+    evtXiSignStability: 'insufficient',
+    evtEvidenceFlag: 'insufficient_sample',
+    evtFiniteEndpointLossPct: '-'
 });
 function fmtNum(val, digits = 2) {
     if (val === null || val === undefined || val === '') return '-';
@@ -2534,7 +2631,10 @@ watch([groupedHoldings, portfolioStats, stats, sysCorr, chaosMeta, cloudRebalanc
 
             const currentWeightPct = item.totalWeight * 100;
             const targetWeightRaw = Number(item.blendedWeight);
+            // A tiny residual should not reopen an economically closed position via stale target metadata.
+            const isEconomicDustForFallback = currentWeightPct > 0 && currentWeightPct < 0.02;
             const hasTargetWeight =
+                !isEconomicDustForFallback &&
                 Number.isFinite(targetWeightRaw) &&
                 ((Number(item.targetWeight) || 0) > 0 || (Number(item.mcWeight) || 0) > 0);
             const signedDrift = hasTargetWeight ? currentWeightPct - targetWeightRaw : null;
@@ -2581,6 +2681,7 @@ watch([groupedHoldings, portfolioStats, stats, sysCorr, chaosMeta, cloudRebalanc
 
     const backendXray = chaosMeta.value?.xray_meta || {};
     const backendTail = chaosMeta.value?.tail_meta || {};
+    const evtRobust = backendTail?.evt_robustness || chaosMeta.value?.evt_robustness || chaosMeta.value?.evt_tail?.evt_robustness || {};
 
     if (backendXray?.mrc_table?.length) {
         xrayStats.value = {
@@ -2622,58 +2723,109 @@ watch([groupedHoldings, portfolioStats, stats, sysCorr, chaosMeta, cloudRebalanc
     }
 
     const backendRebalance = cloudRebalanceMeta.value || {};
+    const backendSignals = Array.isArray(backendRebalance.signals) ? backendRebalance.signals : [];
+    const backendBlockedSignals = Array.isArray(backendRebalance.blocked_signals) ? backendRebalance.blocked_signals : [];
+    const authoritativeRebalance =
+        backendRebalance.universe_policy === 'material_ledger_holdings_plus_hard_buffer_only';
 
-const fallbackBufferFloorPct = (parseFloat(liquidityBufferRatio.value) || 0).toFixed(1);
+    const normalizeSignalDirection = (signal) => {
+        const explicit = String(signal?.direction || '').toUpperCase();
+        if (explicit === 'ADD' || explicit === 'TRIM') return explicit;
+        const legacy = String(signal?.action || '').toUpperCase();
+        if (legacy.includes('BUY')) return 'ADD';
+        if (legacy.includes('SELL')) return 'TRIM';
+        return 'REVIEW';
+    };
 
-let fallbackCurrentBufferPct = '0.0';
-if (typeof getSleeveStats === 'function') {
-    fallbackCurrentBufferPct = ((getSleeveStats().hardBufferWeight || 0) * 100).toFixed(1);
-}
+    if (authoritativeRebalance) {
+        trims = backendSignals.filter(s => normalizeSignalDirection(s) === 'TRIM').length;
+        adds = backendSignals.filter(s => normalizeSignalDirection(s) === 'ADD').length;
+        drifts = [...backendSignals, ...backendBlockedSignals]
+            .filter(s => String(s?.signal_type || 'TARGET_DRIFT') === 'TARGET_DRIFT').length;
+        alertCount = backendSignals.length + backendBlockedSignals.length;
 
-const resolvedBufferFloorPct =
-    backendRebalance.buffer_floor_pct !== undefined && backendRebalance.buffer_floor_pct !== null
-        ? fmtNum(backendRebalance.buffer_floor_pct, 1)
-        : fallbackBufferFloorPct;
+        // Backend rule engine is authoritative for actionable direction. Discard local
+        // target fallbacks so stale metadata cannot manufacture an ADD/TRIM.
+        alertList.splice(0, alertList.length);
+        [...backendSignals, ...backendBlockedSignals].forEach(signal => {
+            const direction = normalizeSignalDirection(signal);
+            const current = Number(signal?.current_weight_pct);
+            const target = Number(signal?.target_weight_pct);
+            const drift = Number(signal?.signed_drift_pp);
+            const status = String(signal?.execution_status || 'ACTIONABLE');
+            const pieces = [
+                `[${signal?.ticker || 'N/A'}]`,
+                Number.isFinite(current) ? `目前 ${current.toFixed(1)}%` : '',
+                Number.isFinite(target) ? `目標 ${target.toFixed(1)}%` : '',
+                Number.isFinite(drift) ? `drift ${drift >= 0 ? '+' : ''}${drift.toFixed(1)}pp` : '',
+                `候選動作 ${direction}`,
+                status === 'BLOCKED_BY_BUFFER' ? '狀態 BLOCKED_BY_BUFFER' : ''
+            ].filter(Boolean);
+            alertList.push(`${pieces.join(' / ')}。`);
+        });
+    }
 
-const backendCurrent = Number(backendRebalance.current_buffer_pct);
-const fallbackCurrent = Number(fallbackCurrentBufferPct);
+    const fallbackBufferFloorPct = (parseFloat(liquidityBufferRatio.value) || 0).toFixed(1);
 
-const resolvedCurrentBufferPct =
-    Number.isFinite(backendCurrent) && Math.abs(backendCurrent - fallbackCurrent) < 2
-        ? backendCurrent.toFixed(1)
-        : fallbackCurrent.toFixed(1);
+    let fallbackCurrentBufferPct = '0.0';
+    if (typeof getSleeveStats === 'function') {
+        fallbackCurrentBufferPct = ((getSleeveStats().hardBufferWeight || 0) * 100).toFixed(1);
+    }
 
-const resolvedBufferGapPct =
-    Math.max(0, parseFloat(resolvedBufferFloorPct) - parseFloat(resolvedCurrentBufferPct)).toFixed(1);
+    const resolvedBufferFloorPct =
+        backendRebalance.buffer_floor_pct !== undefined && backendRebalance.buffer_floor_pct !== null
+            ? fmtNum(backendRebalance.buffer_floor_pct, 1)
+            : fallbackBufferFloorPct;
 
-const resolvedBufferBlocking = parseFloat(resolvedBufferGapPct) > 0.05;
+    const backendCurrent = Number(backendRebalance.current_buffer_pct);
+    const fallbackCurrent = Number(fallbackCurrentBufferPct);
 
-const resolvedHardBufferTickers =
-    Array.isArray(backendRebalance.hard_buffer_tickers) && backendRebalance.hard_buffer_tickers.length
-        ? backendRebalance.hard_buffer_tickers
-        : ['SHY', 'BOXX'];
+    const resolvedCurrentBufferPct =
+        Number.isFinite(backendCurrent) && Math.abs(backendCurrent - fallbackCurrent) < 2
+            ? backendCurrent.toFixed(1)
+            : fallbackCurrent.toFixed(1);
 
-if (resolvedBufferBlocking) {
-    alertList.unshift(
-        `硬緩衝不足：目前 ${resolvedCurrentBufferPct}% / 目標 ${resolvedBufferFloorPct}% ，風險資產買入已暫停，請優先補足 ${resolvedHardBufferTickers.join(' + ')}。`
-    );
-}
+    const resolvedBufferGapPct =
+        Math.max(0, parseFloat(resolvedBufferFloorPct) - parseFloat(resolvedCurrentBufferPct)).toFixed(1);
 
-rebalanceMonitor.value = {
-    trimCount: trims,
-    addCount: adds,
-    driftCount: drifts,
-    concentrationCount: concentrations,
-    alertCount: alertCount,
-    volDrag30d: ((0.5 * Math.pow(portVol, 2) * (30 / 365)) * 100).toFixed(2),
-    volDrag90d: ((0.5 * Math.pow(portVol, 2) * (90 / 365)) * 100).toFixed(2),
-    bufferFloorPct: resolvedBufferFloorPct,
-    currentBufferPct: resolvedCurrentBufferPct,
-    bufferGapPct: resolvedBufferGapPct,
-    bufferBlockingRiskBuys: resolvedBufferBlocking,
-    hardBufferTickers: resolvedHardBufferTickers,
-    alerts: alertList
-};
+    const resolvedBufferBlocking = parseFloat(resolvedBufferGapPct) > 0.05;
+
+    const resolvedHardBufferTickers =
+        Array.isArray(backendRebalance.hard_buffer_tickers) && backendRebalance.hard_buffer_tickers.length
+            ? backendRebalance.hard_buffer_tickers
+            : ['SHY', 'BOXX'];
+
+    if (resolvedBufferBlocking) {
+        alertList.unshift(
+            `硬緩衝不足：目前 ${resolvedCurrentBufferPct}% / 目標 ${resolvedBufferFloorPct}% ，風險資產 ADD 已暫停，請優先補足 ${resolvedHardBufferTickers.join(' + ')}。`
+        );
+    }
+
+    rebalanceMonitor.value = {
+        trimCount: trims,
+        addCount: adds,
+        blockedAddCount: backendBlockedSignals.filter(s => normalizeSignalDirection(s) === 'ADD').length,
+        driftCount: drifts,
+        concentrationCount: concentrations,
+        alertCount: alertCount + (resolvedBufferBlocking ? 1 : 0),
+        // 0.5*sigma^2*time is a geometric-return volatility-drag approximation,
+        // not evidence of leverage.
+        volDrag30d: ((0.5 * Math.pow(portVol, 2) * (30 / 365)) * 100).toFixed(2),
+        volDrag90d: ((0.5 * Math.pow(portVol, 2) * (90 / 365)) * 100).toFixed(2),
+        bufferFloorPct: resolvedBufferFloorPct,
+        currentBufferPct: resolvedCurrentBufferPct,
+        bufferGapPct: resolvedBufferGapPct,
+        bufferBlockingRiskBuys: resolvedBufferBlocking,
+        hardBufferTickers: resolvedHardBufferTickers,
+        universePolicy: backendRebalance.universe_policy || '',
+        ruleThresholdPp: Number(backendRebalance.rule_threshold_pp || 1),
+        economicDustTickers: Array.isArray(backendRebalance.economic_dust_tickers_excluded)
+            ? backendRebalance.economic_dust_tickers_excluded : [],
+        sheetOnlyTickersExcluded: Array.isArray(backendRebalance.sheet_only_tickers_excluded)
+            ? backendRebalance.sheet_only_tickers_excluded : [],
+        backendSignalCount: backendSignals.length,
+        alerts: alertList
+    };
 
     const baseCvar = parseFloat(stats.value.cvar95) || 0;
 const currentSysCorr = sysCorr.value || 0.6;
@@ -2699,8 +2851,21 @@ if (backendTail && (
         crisisWindowLabel: backendTail.crisis_window_label || '-',
         tailSampleCount: backendTail.tail_sample_count ?? '-',
         crisisSampleCount: backendTail.crisis_sample_count ?? '-',
+        downsideSampleCount: backendTail.tail_inference?.downside_sample_count ?? '-',
         coDrawdownThreshold: fmtNum(backendTail.co_drawdown_threshold, 1),
         tailThresholdQuantile: fmtNum((backendTail.tail_threshold_quantile ?? 0) * 100, 0),
+
+        tailInferenceStatus: backendTail.tail_inference?.status || 'not_computed',
+        tailInferenceMethod: backendTail.tail_inference?.method || '-',
+        tailBootstrapReplicates: backendTail.tail_inference?.bootstrap_replicates_requested ?? '-',
+        tailBootstrapBlockWeeks: backendTail.tail_inference?.block_length_weeks ?? '-',
+        tailCiLevel: fmtNum((backendTail.tail_inference?.ci_level ?? 0) * 100, 0),
+        conditionalCorrCiLow: fmtNum(backendTail.tail_inference?.conditional_corr_ci95_low, 2),
+        conditionalCorrCiHigh: fmtNum(backendTail.tail_inference?.conditional_corr_ci95_high, 2),
+        crisisCorrCiLow: fmtNum(backendTail.tail_inference?.crisis_corr_ci95_low, 2),
+        crisisCorrCiHigh: fmtNum(backendTail.tail_inference?.crisis_corr_ci95_high, 2),
+        downsideBetaCiLow: fmtNum(backendTail.tail_inference?.downside_beta_ci95_low, 2),
+        downsideBetaCiHigh: fmtNum(backendTail.tail_inference?.downside_beta_ci95_high, 2),
 
         historicalVar95_1w: fmtPctMaybe(backendTail.historical_var95_1w, 2),
         historicalEs95_1w: fmtPctMaybe(backendTail.historical_es95_1w, 2),
@@ -2728,17 +2893,40 @@ if (backendTail && (
         jdExpectedJumpDragWeeklyPct: fmtPctMaybe(backendTail.jd_expected_jump_drag_weekly_pct, 4),
         jdSimulationCount: backendTail.jd_simulation_count ?? '-',
 
-        // EVT (one-week diagnostic)
-        evtVar95: fmtPctMaybe(backendTail.evt_var95, 2),
-        evtEs95: fmtPctMaybe(backendTail.evt_es95, 2),
-        evtShapeXi: fmtNum(backendTail.evt_shape_xi, 4),
-        evtScaleBeta: fmtNum(backendTail.evt_scale_beta, 6),
-        evtThreshold: fmtPctMaybe(backendTail.evt_threshold, 2),
-        evtExceedanceCount: backendTail.evt_exceedance_count ?? '-',
-        evtAlphaConf: fmtNum((backendTail.evt_alpha_conf ?? 0) * 100, 0),
-        evtHorizonWeeks: backendTail.evt_horizon_weeks ?? 1,
+        // EVT robustness (one-day current-weight diagnostic)
+        evtVar95: fmtPctMaybe(evtRobust.var95_pct ?? backendTail.evt_var95, 2),
+        evtEs95: fmtPctMaybe(evtRobust.es95_pct ?? backendTail.evt_es95, 2),
+        evtShapeXi: fmtNum(evtRobust.shape_xi ?? backendTail.evt_shape_xi, 4),
+        evtScaleBeta: fmtNum(evtRobust.scale_beta ?? backendTail.evt_scale_beta, 6),
+        evtThreshold: fmtPctMaybe(
+            evtRobust.threshold_loss_pct !== null && evtRobust.threshold_loss_pct !== undefined
+                ? -Math.abs(Number(evtRobust.threshold_loss_pct))
+                : backendTail.evt_threshold,
+            2
+        ),
+        evtExceedanceCount: evtRobust.exceedance_count ?? backendTail.evt_exceedance_count ?? '-',
+        evtAlphaConf: fmtNum((evtRobust.alpha_conf ?? backendTail.evt_alpha_conf ?? 0) * 100, 0),
+        evtReturnFrequency: evtRobust.return_frequency || backendTail.evt_return_frequency || 'daily',
+        evtHorizonDays: evtRobust.horizon_days ?? backendTail.evt_horizon_days ?? 1,
         evtComparableToJd: backendTail.evt_comparable_to_jd ?? false,
-        evtComparisonNote: backendTail.evt_comparison_note || '-'
+        evtComparisonNote: backendTail.evt_comparison_note || 'one_day_evt_not_directly_comparable_to_13_week_jump_stress',
+        evtRobustStatus: evtRobust.status || 'not_computed',
+        evtDailySampleCount: evtRobust.sample_count ?? '-',
+        evtXiCiLow: fmtNum(evtRobust.shape_xi_ci95_low, 4),
+        evtXiCiHigh: fmtNum(evtRobust.shape_xi_ci95_high, 4),
+        evtVarCiLow: fmtPctMaybe(evtRobust.var95_ci95_low_pct, 2),
+        evtVarCiHigh: fmtPctMaybe(evtRobust.var95_ci95_high_pct, 2),
+        evtEsCiLow: fmtPctMaybe(evtRobust.es95_ci95_low_pct, 2),
+        evtEsCiHigh: fmtPctMaybe(evtRobust.es95_ci95_high_pct, 2),
+        evtBootstrapReplicates: evtRobust.bootstrap_replicates_requested ?? '-',
+        evtBootstrapValidReps: evtRobust.bootstrap_valid_reps ?? '-',
+        evtBootstrapBlockDays: evtRobust.bootstrap_block_days ?? '-',
+        evtThresholdValidCount: evtRobust.threshold_valid_count ?? '-',
+        evtXiMin: fmtNum(evtRobust.shape_xi_min, 4),
+        evtXiMax: fmtNum(evtRobust.shape_xi_max, 4),
+        evtXiSignStability: evtRobust.shape_xi_sign_stability || 'insufficient',
+        evtEvidenceFlag: evtRobust.evidence_flag || 'insufficient_sample',
+        evtFiniteEndpointLossPct: fmtPctMaybe(evtRobust.finite_upper_endpoint_loss_pct, 2)
     };
 } else {
     tailStatsLite.value = {
@@ -2754,8 +2942,21 @@ if (backendTail && (
         crisisWindowLabel: 'Benchmark < q20 或 VIX 飆升',
         tailSampleCount: '-',
         crisisSampleCount: '-',
+        downsideSampleCount: '-',
         coDrawdownThreshold: '-10.0',
         tailThresholdQuantile: '5',
+
+        tailInferenceStatus: 'not_computed',
+        tailInferenceMethod: '-',
+        tailBootstrapReplicates: '-',
+        tailBootstrapBlockWeeks: '-',
+        tailCiLevel: '-',
+        conditionalCorrCiLow: '-',
+        conditionalCorrCiHigh: '-',
+        crisisCorrCiLow: '-',
+        crisisCorrCiHigh: '-',
+        downsideBetaCiLow: '-',
+        downsideBetaCiHigh: '-',
 
         historicalVar95_1w: '-',
         historicalEs95_1w: '-',
@@ -2791,9 +2992,27 @@ if (backendTail && (
         evtThreshold: '-',
         evtExceedanceCount: '-',
         evtAlphaConf: '-',
-        evtHorizonWeeks: '-',
+        evtReturnFrequency: '-',
+        evtHorizonDays: '-',
         evtComparableToJd: '-',
-        evtComparisonNote: '-'
+        evtComparisonNote: '-',
+        evtRobustStatus: 'not_computed',
+        evtDailySampleCount: '-',
+        evtXiCiLow: '-',
+        evtXiCiHigh: '-',
+        evtVarCiLow: '-',
+        evtVarCiHigh: '-',
+        evtEsCiLow: '-',
+        evtEsCiHigh: '-',
+        evtBootstrapReplicates: '-',
+        evtBootstrapValidReps: '-',
+        evtBootstrapBlockDays: '-',
+        evtThresholdValidCount: '-',
+        evtXiMin: '-',
+        evtXiMax: '-',
+        evtXiSignStability: 'insufficient',
+        evtEvidenceFlag: 'insufficient_sample',
+        evtFiniteEndpointLossPct: '-'
     };
 }
 }, { deep: true, immediate: true });
@@ -3457,16 +3676,41 @@ function normCdf(x) {
     return x >= 0 ? prob : 1 - prob;
 }
 
-function sharpeStdErrApprox(sr, skew, exKurt, nObs) {
-    if (!Number.isFinite(sr) || !Number.isFinite(nObs) || nObs <= 1) return null;
-
+function sharpeMomentVarianceTerm(sr, skew, exKurt) {
+    if (!Number.isFinite(sr)) return null;
+    const safeSkew = Number.isFinite(skew) ? skew : 0;
     const kurt = (Number.isFinite(exKurt) ? exKurt : 0) + 3; // 轉成常規 kurtosis
-    const denom = Math.max(
-        1e-12,
-        1 - (skew || 0) * sr + ((kurt - 1) / 4) * sr * sr
-    );
+    const term = 1 - safeSkew * sr + ((kurt - 1) / 4) * sr * sr;
+    return Number.isFinite(term) ? Math.max(1e-12, term) : null;
+}
 
-    return Math.sqrt(denom / Math.max(1, nObs - 1));
+function sharpeStdErrApprox(sr, skew, exKurt, nObs) {
+    if (!Number.isFinite(nObs) || nObs <= 1) return null;
+    const varianceTerm = sharpeMomentVarianceTerm(sr, skew, exKurt);
+    if (!Number.isFinite(varianceTerm)) return null;
+    return Math.sqrt(varianceTerm / Math.max(1, nObs - 1));
+}
+
+function computeMinTrackRecordLength95({ sr, srBenchmark = 0, skew = 0, exKurt = 0 }) {
+    if (!Number.isFinite(sr) || !Number.isFinite(srBenchmark)) return null;
+    const varianceTerm = sharpeMomentVarianceTerm(sr, skew, exKurt);
+    if (!Number.isFinite(varianceTerm)) return null;
+
+    const sharpeGap = sr - srBenchmark;
+    if (sharpeGap <= 0) {
+        return { observations: Infinity, rawObservations: Infinity, finite: false };
+    }
+
+    // One-sided 95% normal quantile. Same moment adjustment and benchmark as PSR.
+    const z95 = 1.6448536269514722;
+    const rawObservations = 1 + varianceTerm * Math.pow(z95 / sharpeGap, 2);
+    if (!Number.isFinite(rawObservations)) return null;
+
+    return {
+        observations: Math.max(2, Math.ceil(rawObservations)),
+        rawObservations,
+        finite: true
+    };
 }
 
 function computePSR({ sr, srBenchmark = 0, skew = 0, exKurt = 0, nObs = 0 }) {

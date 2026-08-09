@@ -34,6 +34,7 @@
        const rebalanceMonitor = ref({
     trimCount: 0,
     addCount: 0,
+    blockedAddCount: 0,
     driftCount: 0,
     concentrationCount: 0,
     alertCount: 0,
@@ -44,6 +45,11 @@
     bufferGapPct: '0.0',
     bufferBlockingRiskBuys: false,
     hardBufferTickers: ['SHY', 'BOXX'],
+    universePolicy: '',
+    ruleThresholdPp: 1,
+    economicDustTickers: [],
+    sheetOnlyTickersExcluded: [],
+    backendSignalCount: 0,
     alerts: []
 });
 
@@ -374,7 +380,10 @@ watch([groupedHoldings, portfolioStats, stats, sysCorr, chaosMeta, cloudRebalanc
 
             const currentWeightPct = item.totalWeight * 100;
             const targetWeightRaw = Number(item.blendedWeight);
+            // A tiny residual should not reopen an economically closed position via stale target metadata.
+            const isEconomicDustForFallback = currentWeightPct > 0 && currentWeightPct < 0.02;
             const hasTargetWeight =
+                !isEconomicDustForFallback &&
                 Number.isFinite(targetWeightRaw) &&
                 ((Number(item.targetWeight) || 0) > 0 || (Number(item.mcWeight) || 0) > 0);
             const signedDrift = hasTargetWeight ? currentWeightPct - targetWeightRaw : null;
@@ -463,58 +472,109 @@ watch([groupedHoldings, portfolioStats, stats, sysCorr, chaosMeta, cloudRebalanc
     }
 
     const backendRebalance = cloudRebalanceMeta.value || {};
+    const backendSignals = Array.isArray(backendRebalance.signals) ? backendRebalance.signals : [];
+    const backendBlockedSignals = Array.isArray(backendRebalance.blocked_signals) ? backendRebalance.blocked_signals : [];
+    const authoritativeRebalance =
+        backendRebalance.universe_policy === 'material_ledger_holdings_plus_hard_buffer_only';
 
-const fallbackBufferFloorPct = (parseFloat(liquidityBufferRatio.value) || 0).toFixed(1);
+    const normalizeSignalDirection = (signal) => {
+        const explicit = String(signal?.direction || '').toUpperCase();
+        if (explicit === 'ADD' || explicit === 'TRIM') return explicit;
+        const legacy = String(signal?.action || '').toUpperCase();
+        if (legacy.includes('BUY')) return 'ADD';
+        if (legacy.includes('SELL')) return 'TRIM';
+        return 'REVIEW';
+    };
 
-let fallbackCurrentBufferPct = '0.0';
-if (typeof getSleeveStats === 'function') {
-    fallbackCurrentBufferPct = ((getSleeveStats().hardBufferWeight || 0) * 100).toFixed(1);
-}
+    if (authoritativeRebalance) {
+        trims = backendSignals.filter(s => normalizeSignalDirection(s) === 'TRIM').length;
+        adds = backendSignals.filter(s => normalizeSignalDirection(s) === 'ADD').length;
+        drifts = [...backendSignals, ...backendBlockedSignals]
+            .filter(s => String(s?.signal_type || 'TARGET_DRIFT') === 'TARGET_DRIFT').length;
+        alertCount = backendSignals.length + backendBlockedSignals.length;
 
-const resolvedBufferFloorPct =
-    backendRebalance.buffer_floor_pct !== undefined && backendRebalance.buffer_floor_pct !== null
-        ? fmtNum(backendRebalance.buffer_floor_pct, 1)
-        : fallbackBufferFloorPct;
+        // Backend rule engine is authoritative for actionable direction. Discard local
+        // target fallbacks so stale metadata cannot manufacture an ADD/TRIM.
+        alertList.splice(0, alertList.length);
+        [...backendSignals, ...backendBlockedSignals].forEach(signal => {
+            const direction = normalizeSignalDirection(signal);
+            const current = Number(signal?.current_weight_pct);
+            const target = Number(signal?.target_weight_pct);
+            const drift = Number(signal?.signed_drift_pp);
+            const status = String(signal?.execution_status || 'ACTIONABLE');
+            const pieces = [
+                `[${signal?.ticker || 'N/A'}]`,
+                Number.isFinite(current) ? `目前 ${current.toFixed(1)}%` : '',
+                Number.isFinite(target) ? `目標 ${target.toFixed(1)}%` : '',
+                Number.isFinite(drift) ? `drift ${drift >= 0 ? '+' : ''}${drift.toFixed(1)}pp` : '',
+                `候選動作 ${direction}`,
+                status === 'BLOCKED_BY_BUFFER' ? '狀態 BLOCKED_BY_BUFFER' : ''
+            ].filter(Boolean);
+            alertList.push(`${pieces.join(' / ')}。`);
+        });
+    }
 
-const backendCurrent = Number(backendRebalance.current_buffer_pct);
-const fallbackCurrent = Number(fallbackCurrentBufferPct);
+    const fallbackBufferFloorPct = (parseFloat(liquidityBufferRatio.value) || 0).toFixed(1);
 
-const resolvedCurrentBufferPct =
-    Number.isFinite(backendCurrent) && Math.abs(backendCurrent - fallbackCurrent) < 2
-        ? backendCurrent.toFixed(1)
-        : fallbackCurrent.toFixed(1);
+    let fallbackCurrentBufferPct = '0.0';
+    if (typeof getSleeveStats === 'function') {
+        fallbackCurrentBufferPct = ((getSleeveStats().hardBufferWeight || 0) * 100).toFixed(1);
+    }
 
-const resolvedBufferGapPct =
-    Math.max(0, parseFloat(resolvedBufferFloorPct) - parseFloat(resolvedCurrentBufferPct)).toFixed(1);
+    const resolvedBufferFloorPct =
+        backendRebalance.buffer_floor_pct !== undefined && backendRebalance.buffer_floor_pct !== null
+            ? fmtNum(backendRebalance.buffer_floor_pct, 1)
+            : fallbackBufferFloorPct;
 
-const resolvedBufferBlocking = parseFloat(resolvedBufferGapPct) > 0.05;
+    const backendCurrent = Number(backendRebalance.current_buffer_pct);
+    const fallbackCurrent = Number(fallbackCurrentBufferPct);
 
-const resolvedHardBufferTickers =
-    Array.isArray(backendRebalance.hard_buffer_tickers) && backendRebalance.hard_buffer_tickers.length
-        ? backendRebalance.hard_buffer_tickers
-        : ['SHY', 'BOXX'];
+    const resolvedCurrentBufferPct =
+        Number.isFinite(backendCurrent) && Math.abs(backendCurrent - fallbackCurrent) < 2
+            ? backendCurrent.toFixed(1)
+            : fallbackCurrent.toFixed(1);
 
-if (resolvedBufferBlocking) {
-    alertList.unshift(
-        `硬緩衝不足：目前 ${resolvedCurrentBufferPct}% / 目標 ${resolvedBufferFloorPct}% ，風險資產買入已暫停，請優先補足 ${resolvedHardBufferTickers.join(' + ')}。`
-    );
-}
+    const resolvedBufferGapPct =
+        Math.max(0, parseFloat(resolvedBufferFloorPct) - parseFloat(resolvedCurrentBufferPct)).toFixed(1);
 
-rebalanceMonitor.value = {
-    trimCount: trims,
-    addCount: adds,
-    driftCount: drifts,
-    concentrationCount: concentrations,
-    alertCount: alertCount,
-    volDrag30d: ((0.5 * Math.pow(portVol, 2) * (30 / 365)) * 100).toFixed(2),
-    volDrag90d: ((0.5 * Math.pow(portVol, 2) * (90 / 365)) * 100).toFixed(2),
-    bufferFloorPct: resolvedBufferFloorPct,
-    currentBufferPct: resolvedCurrentBufferPct,
-    bufferGapPct: resolvedBufferGapPct,
-    bufferBlockingRiskBuys: resolvedBufferBlocking,
-    hardBufferTickers: resolvedHardBufferTickers,
-    alerts: alertList
-};
+    const resolvedBufferBlocking = parseFloat(resolvedBufferGapPct) > 0.05;
+
+    const resolvedHardBufferTickers =
+        Array.isArray(backendRebalance.hard_buffer_tickers) && backendRebalance.hard_buffer_tickers.length
+            ? backendRebalance.hard_buffer_tickers
+            : ['SHY', 'BOXX'];
+
+    if (resolvedBufferBlocking) {
+        alertList.unshift(
+            `硬緩衝不足：目前 ${resolvedCurrentBufferPct}% / 目標 ${resolvedBufferFloorPct}% ，風險資產 ADD 已暫停，請優先補足 ${resolvedHardBufferTickers.join(' + ')}。`
+        );
+    }
+
+    rebalanceMonitor.value = {
+        trimCount: trims,
+        addCount: adds,
+        blockedAddCount: backendBlockedSignals.filter(s => normalizeSignalDirection(s) === 'ADD').length,
+        driftCount: drifts,
+        concentrationCount: concentrations,
+        alertCount: alertCount + (resolvedBufferBlocking ? 1 : 0),
+        // 0.5*sigma^2*time is a geometric-return volatility-drag approximation,
+        // not evidence of leverage.
+        volDrag30d: ((0.5 * Math.pow(portVol, 2) * (30 / 365)) * 100).toFixed(2),
+        volDrag90d: ((0.5 * Math.pow(portVol, 2) * (90 / 365)) * 100).toFixed(2),
+        bufferFloorPct: resolvedBufferFloorPct,
+        currentBufferPct: resolvedCurrentBufferPct,
+        bufferGapPct: resolvedBufferGapPct,
+        bufferBlockingRiskBuys: resolvedBufferBlocking,
+        hardBufferTickers: resolvedHardBufferTickers,
+        universePolicy: backendRebalance.universe_policy || '',
+        ruleThresholdPp: Number(backendRebalance.rule_threshold_pp || 1),
+        economicDustTickers: Array.isArray(backendRebalance.economic_dust_tickers_excluded)
+            ? backendRebalance.economic_dust_tickers_excluded : [],
+        sheetOnlyTickersExcluded: Array.isArray(backendRebalance.sheet_only_tickers_excluded)
+            ? backendRebalance.sheet_only_tickers_excluded : [],
+        backendSignalCount: backendSignals.length,
+        alerts: alertList
+    };
 
     const baseCvar = parseFloat(stats.value.cvar95) || 0;
 const currentSysCorr = sysCorr.value || 0.6;

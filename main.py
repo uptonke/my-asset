@@ -1638,40 +1638,34 @@ try:
             closed_tickers = sorted([t for t, s in current_shares.items() if abs(s) <= 0.0001])
 
             sheet_tickers = load_google_sheet_ticker_whitelist()
-            if sheet_tickers:
-                active_tickers = sheet_tickers
-                print(
-                    "🎯 Active universe overridden by Google Sheet ticker whitelist: "
-                    + ", ".join(active_tickers),
-                    flush=True
-                )
-            else:
-                active_tickers = ledger_active_tickers
 
-            pipeline_tickers = active_tickers[:]
+            # Ledger holdings are the source of truth for actionable portfolio exposure.
+            # The Google Sheet is a research / target-candidate universe only.
+            active_tickers = ledger_active_tickers[:]
+            pipeline_tickers = sorted(set(ledger_active_tickers) | set(sheet_tickers))
 
             print(
-                "📌 Active holdings from ledger: "
+                "📌 Active holdings source-of-truth (ledger): "
                 + (", ".join(ledger_active_tickers) if ledger_active_tickers else "NONE"),
                 flush=True
             )
             print(
-                "📌 Active universe used by pipeline: "
-                + (", ".join(active_tickers) if active_tickers else "NONE"),
+                "📌 Analytics pipeline universe (ledger + sheet research candidates): "
+                + (", ".join(pipeline_tickers) if pipeline_tickers else "NONE"),
                 flush=True
             )
 
-            sheet_only_tickers = sorted(set(active_tickers) - set(ledger_active_tickers))
-            ledger_only_tickers = sorted(set(ledger_active_tickers) - set(active_tickers))
+            sheet_only_tickers = sorted(set(sheet_tickers) - set(ledger_active_tickers))
+            ledger_only_tickers = sorted(set(ledger_active_tickers) - set(sheet_tickers)) if sheet_tickers else []
             if sheet_only_tickers:
                 print(
-                    "📄 Sheet-only tickers, currently zero-share in ledger: "
+                    "📄 Sheet-only research candidates (NOT held / NOT actionable): "
                     + ", ".join(sheet_only_tickers),
                     flush=True
                 )
             if ledger_only_tickers:
                 print(
-                    "🧹 Ledger active but excluded by Google Sheet whitelist: "
+                    "📌 Ledger holdings absent from Sheet remain active because holdings are authoritative: "
                     + ", ".join(ledger_only_tickers),
                     flush=True
                 )
@@ -1833,14 +1827,47 @@ try:
                     print(f"✅ [{original_ticker}] 診斷更新 -> daily_beta: {beta_val:.2f}, daily_std: {std_val:.1f}%, 目標權重: {tw_val*100:.2f}%")
 
             print("\n⚖️ 啟動自動再平衡引擎：計算目標權重落差與交易訊號...", flush=True)
-            portfolio_value, asset_values, rebalance_signals = 0.0, {}, []
+            raw_asset_values, rebalance_signals = {}, []
             for t in pipeline_tickers:
                 shares = current_shares.get(t, 0)
                 lp = stock_meta.get(t, {}).get("last_price", 0.0)
-                if lp == 0.0 and yf_tickers and yf_tickers[all_tickers.index(t)] in prices_df.columns:
-                    lp = float(prices_df[yf_tickers[all_tickers.index(t)]].dropna().iloc[-1])
-                val = max(0, shares * lp)
-                asset_values[t], portfolio_value = val, portfolio_value + val
+                if lp == 0.0 and t in all_tickers:
+                    yf_idx = all_tickers.index(t)
+                    if yf_tickers and yf_idx < len(yf_tickers) and yf_tickers[yf_idx] in prices_df.columns:
+                        series = prices_df[yf_tickers[yf_idx]].dropna()
+                        if len(series):
+                            lp = float(series.iloc[-1])
+                raw_asset_values[t] = max(0, shares * lp)
+
+            raw_portfolio_value = sum(raw_asset_values.get(t, 0.0) for t in ledger_active_tickers)
+            # Share-count thresholds are unsafe for fractional crypto / US assets. Exclude only
+            # economically immaterial remnants: max(NT$100, 0.02% of raw portfolio value).
+            economic_dust_threshold_twd = max(100.0, raw_portfolio_value * 0.0002) if raw_portfolio_value > 0 else 100.0
+            economic_dust_tickers = sorted([
+                t for t in ledger_active_tickers
+                if 0.0 < raw_asset_values.get(t, 0.0) < economic_dust_threshold_twd
+            ])
+            material_active_tickers = [
+                t for t in ledger_active_tickers
+                if raw_asset_values.get(t, 0.0) >= economic_dust_threshold_twd
+            ]
+            if ledger_active_tickers and not material_active_tickers:
+                material_active_tickers = ledger_active_tickers[:]
+                economic_dust_tickers = []
+
+            active_tickers = material_active_tickers
+            asset_values = {
+                t: (raw_asset_values.get(t, 0.0) if t in active_tickers or is_hard_buffer_ticker(t) else 0.0)
+                for t in pipeline_tickers
+            }
+            portfolio_value = sum(asset_values.get(t, 0.0) for t in active_tickers)
+
+            if economic_dust_tickers:
+                print(
+                    f"🧹 Economic dust excluded (< NT${economic_dust_threshold_twd:,.2f}): "
+                    + ", ".join(economic_dust_tickers),
+                    flush=True
+                )
 
             liquidity_buffer_ratio = (
                 db_record.get("settings", {}).get("liquidityBufferRatio", 0.0)
@@ -1958,6 +1985,7 @@ try:
             print(f"\n💰 當前投資組合總淨值估算: {portfolio_value:,.2f}")
             
             rebalance_signals = []
+            blocked_buy_signals = []
             
             if portfolio_value > 0:
                 buffer_floor_wt = max(0.0, min(float(liquidity_buffer_ratio or 0.0) / 100.0, 0.80))
@@ -2023,35 +2051,51 @@ try:
                     if abs(delta_w) <= 0.01:
                         continue
             
-                    action_str = "BUY (加碼)" if delta_w > 0 else "SELL (減碼)"
+                    direction = "ADD" if delta_w > 0 else "TRIM"
+                    action_str = "BUY (加碼)" if direction == "ADD" else "SELL (減碼)"
                     trade_amount = round((portfolio_value * effective_tw) - asset_values.get(t, 0.0), 2)
-            
+                    signal_type = "BUFFER_REPLENISHMENT" if is_hard_buffer_ticker(t) and delta_w > 0 and buffer_gap_wt > 0.0001 else "TARGET_DRIFT"
+
                     signal = {
                         "ticker": t,
+                        "direction": direction,
+                        "signal_type": signal_type,
+                        "execution_status": "ACTIONABLE",
                         "action": action_str,
                         "current_weight": f"{cw*100:.2f}%",
                         "target_weight": f"{effective_tw*100:.2f}%",
                         "delta_weight": f"{delta_w*100:.2f}%",
+                        "current_weight_pct": round(cw * 100, 4),
+                        "target_weight_pct": round(effective_tw * 100, 4),
+                        "signed_drift_pp": round((cw - effective_tw) * 100, 4),
+                        "delta_to_target_pp": round(delta_w * 100, 4),
+                        "rule_threshold_pp": 1.0,
                         "trade_amount": trade_amount
                     }
-            
+
                     if delta_w < 0:
+                        signal["reason"] = "目前權重高於目標超過規則門檻，候選動作為 TRIM"
                         sell_signals.append(signal)
-                        print(f"   [{t}] {action_str} -> 目標: {effective_tw*100:.1f}%, 當前: {cw*100:.1f}%")
+                        print(f"   [{t}] {direction} -> 目標: {effective_tw*100:.1f}%, 當前: {cw*100:.1f}%")
                         continue
-            
+
                     if buffer_gap_wt > 0.0001:
                         if is_hard_buffer_ticker(t):
                             signal["reason"] = "補足硬緩衝 (SHY / BOXX) 至最低安全邊際"
                             buffer_buy_signals.append(signal)
-                            print(f"   [{t}] {action_str} -> 目標: {effective_tw*100:.1f}%, 當前: {cw*100:.1f}% [⚠️ 優先補 Buffer]")
+                            print(f"   [{t}] {direction} -> 目標: {effective_tw*100:.1f}%, 當前: {cw*100:.1f}% [優先補 Buffer]")
                         else:
-                            print(f"   [{t}] BUY 遭系統暫停 🛑 -> Buffer 缺口尚未補足 (目標 {buffer_floor_wt*100:.1f}%)")
+                            blocked = dict(signal)
+                            blocked["execution_status"] = "BLOCKED_BY_BUFFER"
+                            blocked["reason"] = "目標低配但硬緩衝缺口尚未補足；ADD 暫不可執行"
+                            blocked_buy_signals.append(blocked)
+                            print(f"   [{t}] ADD BLOCKED -> Buffer 缺口尚未補足 (目標 {buffer_floor_wt*100:.1f}%)")
                         continue
-            
+
+                    signal["reason"] = "目前權重低於目標超過規則門檻，候選動作為 ADD"
                     risk_buy_signals.append(signal)
-                    print(f"   [{t}] {action_str} -> 目標: {effective_tw*100:.1f}%, 當前: {cw*100:.1f}%")
-            
+                    print(f"   [{t}] {direction} -> 目標: {effective_tw*100:.1f}%, 當前: {cw*100:.1f}%")
+
                 rebalance_signals = sell_signals + buffer_buy_signals + risk_buy_signals
             
                 rebalance_meta = {
@@ -2060,7 +2104,16 @@ try:
                     "buffer_gap_pct": round(buffer_gap_wt * 100, 2),
                     "buffer_gap_value": round(buffer_gap_value, 2),
                     "buffer_blocking_risk_buys": bool(buffer_gap_wt > 0.0001),
-                    "hard_buffer_tickers": available_buffer_names
+                    "hard_buffer_tickers": available_buffer_names,
+                    "universe_policy": "material_ledger_holdings_plus_hard_buffer_only",
+                    "sheet_only_tickers_excluded": sheet_only_tickers,
+                    "economic_dust_threshold_twd": round(economic_dust_threshold_twd, 2),
+                    "economic_dust_tickers_excluded": economic_dust_tickers,
+                    "rule_threshold_pp": 1.0,
+                    "signals": rebalance_signals,
+                    "blocked_signals": blocked_buy_signals,
+                    "signal_count": len(rebalance_signals),
+                    "blocked_signal_count": len(blocked_buy_signals)
                 }
             else:
                 rebalance_meta = {
@@ -2069,7 +2122,16 @@ try:
                     "buffer_gap_pct": 0.0,
                     "buffer_gap_value": 0.0,
                     "buffer_blocking_risk_buys": False,
-                    "hard_buffer_tickers": ["SHY", "BOXX"]
+                    "hard_buffer_tickers": ["SHY", "BOXX"],
+                    "universe_policy": "material_ledger_holdings_plus_hard_buffer_only",
+                    "sheet_only_tickers_excluded": sheet_only_tickers,
+                    "economic_dust_threshold_twd": round(economic_dust_threshold_twd, 2),
+                    "economic_dust_tickers_excluded": economic_dust_tickers,
+                    "rule_threshold_pp": 1.0,
+                    "signals": [],
+                    "blocked_signals": [],
+                    "signal_count": 0,
+                    "blocked_signal_count": 0
                 }
 
             supabase.table("portfolio_db").update({
@@ -2091,10 +2153,15 @@ try:
                 - TRUE HEDGING means moving to cash, bonds, or negative-beta assets.
                 - DO NOT suggest buying high-beta, risk-on assets (like Crypto or Tech stocks) as a "hedge" against market risks.
                 - If the trades involve moving capital to high-beta assets, explicitly frame it as "Risk-On Rotation", "Pursuing Alpha", or "Capitalizing on Momentum", NEVER as "Hedging".
+                - Execution List contains ACTIONABLE signals only. A BLOCKED_BY_BUFFER ADD is not executable until the buffer condition clears.
+                - Sheet-only research candidates and economic-dust remnants are outside the actionable rebalance universe. Never reopen them from stale target metadata.
 
                 [INPUT_DATA]
                 Macro Summary: {macro_payload.get('ai_analysis', {}).get('summary', '無')}
-                Execution List: {json.dumps(rebalance_signals, ensure_ascii=False)}
+                Execution List (ACTIONABLE only): {json.dumps(rebalance_signals, ensure_ascii=False)}
+                Blocked List: {json.dumps(blocked_buy_signals, ensure_ascii=False)}
+                Sheet-only excluded: {json.dumps(sheet_only_tickers, ensure_ascii=False)}
+                Economic dust excluded: {json.dumps(economic_dust_tickers, ensure_ascii=False)}
                 Buffer Status: Gap {rebalance_meta['buffer_gap_pct']}%, Blocks Risk Buys: {rebalance_meta['buffer_blocking_risk_buys']}
 
                 [OUTPUT_SCHEMA]

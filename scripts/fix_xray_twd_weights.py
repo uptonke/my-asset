@@ -113,6 +113,34 @@ def active_shares_from_ledger(ledger: List[Dict[str, Any]]) -> Dict[str, float]:
     return {t: s for t, s in shares.items() if s > 0.0001}
 
 
+def split_material_values(
+    values_twd: Dict[str, float],
+    *,
+    absolute_floor_twd: float = 100.0,
+    nav_fraction: float = 0.0002,
+) -> Tuple[Dict[str, float], Dict[str, float], float, float]:
+    """Split economically material positions from tiny ledger remnants.
+
+    Share counts are deliberately NOT used because fractional crypto/US shares can
+    be economically large. Threshold = max(absolute floor, NAV fraction).
+    """
+    clean = {
+        str(t): float(v)
+        for t, v in (values_twd or {}).items()
+        if math.isfinite(float(v)) and float(v) > 0
+    }
+    raw_total = float(sum(clean.values()))
+    threshold = max(float(absolute_floor_twd), raw_total * float(nav_fraction)) if raw_total > 0 else float(absolute_floor_twd)
+    material = {t: v for t, v in clean.items() if v >= threshold}
+    dust = {t: v for t, v in clean.items() if 0 < v < threshold}
+
+    # Fail-safe for synthetic/tiny portfolios: never erase every position.
+    if clean and not material:
+        material = dict(clean)
+        dust = {}
+    return material, dust, threshold, raw_total
+
+
 def price_for_asset(ticker: str, meta: Dict[str, Any], settings: Dict[str, Any], latest_prices: Dict[str, float], yf_ticker: str) -> Optional[float]:
     price_map = settings.get("priceMap") if isinstance(settings.get("priceMap"), dict) else {}
     candidates = [
@@ -158,9 +186,8 @@ def compute_xray_twd(row: Dict[str, Any]) -> Dict[str, Any]:
         except Exception as exc:
             print(f"WARN xray price history failed {yf_t}: {exc}")
 
-    values_twd: Dict[str, float] = {}
-    usd_value_twd = 0.0
-    total_value_twd = 0.0
+    raw_values_twd: Dict[str, float] = {}
+    usd_flags: Dict[str, bool] = {}
 
     for t, qty in shares.items():
         meta = stock_meta.get(t, {}) if isinstance(stock_meta.get(t, {}), dict) else {}
@@ -169,15 +196,23 @@ def compute_xray_twd(row: Dict[str, Any]) -> Dict[str, Any]:
         if p is None:
             print(f"WARN xray no price for {t}; skipped valuation")
             continue
-        multiplier = exchange_rate if is_usd_asset(t, meta, yf_t) else 1.0
-        v = max(0.0, float(qty) * float(p) * multiplier)
-        values_twd[t] = v
-        total_value_twd += v
-        if multiplier != 1.0:
-            usd_value_twd += v
+        usd_asset = is_usd_asset(t, meta, yf_t)
+        multiplier = exchange_rate if usd_asset else 1.0
+        raw_values_twd[t] = max(0.0, float(qty) * float(p) * multiplier)
+        usd_flags[t] = usd_asset
+
+    values_twd, dust_values_twd, dust_threshold_twd, raw_total_value_twd = split_material_values(raw_values_twd)
+    total_value_twd = float(sum(values_twd.values()))
+    usd_value_twd = float(sum(v for t, v in values_twd.items() if usd_flags.get(t, False)))
+
+    if dust_values_twd:
+        print(
+            f"INFO xray economic dust excluded (< NT${dust_threshold_twd:,.2f}): "
+            + ", ".join(f"{t}=NT${v:,.2f}" for t, v in sorted(dust_values_twd.items()))
+        )
 
     if total_value_twd <= 0:
-        raise RuntimeError("total TWD holding value <= 0")
+        raise RuntimeError("total material TWD holding value <= 0")
 
     grouped_values: Dict[str, float] = {}
     label_map: Dict[str, List[str]] = {}
@@ -253,10 +288,117 @@ def compute_xray_twd(row: Dict[str, Any]) -> Dict[str, Any]:
         "basis": {
             "currency": "TWD",
             "exchange_rate": exchange_rate,
+            "raw_total_holding_value_twd": round(raw_total_value_twd, 2),
             "total_holding_value_twd": round(total_value_twd, 2),
             "model_total_value_twd": round(model_total, 2),
+            "economic_dust_policy": "exclude_if_value_below_max_100_twd_or_0.02pct_raw_nav",
+            "economic_dust_threshold_twd": round(dust_threshold_twd, 2),
+            "economic_dust_value_twd": round(sum(dust_values_twd.values()), 2),
+            "economic_dust_weight_pct": round(
+                (sum(dust_values_twd.values()) / raw_total_value_twd * 100.0) if raw_total_value_twd > 0 else 0.0,
+                4
+            ),
+            "economic_dust_tickers_excluded": sorted(dust_values_twd),
+            "material_position_values_twd": {t: round(v, 2) for t, v in sorted(values_twd.items())},
             "updated_at": str(TODAY_TPE),
         },
+    }
+
+
+def compute_rebalance_semantics(row: Dict[str, Any], xray: Dict[str, Any]) -> Dict[str, Any]:
+    """Build an actionable rebalance packet from material ledger positions only."""
+    stock_meta = row.get("stock_meta") if isinstance(row.get("stock_meta"), dict) else {}
+    settings = row.get("settings") if isinstance(row.get("settings"), dict) else {}
+    basis = xray.get("basis") if isinstance(xray.get("basis"), dict) else {}
+    values = basis.get("material_position_values_twd") if isinstance(basis.get("material_position_values_twd"), dict) else {}
+    values = {str(t): float(v) for t, v in values.items() if float(v) >= 0}
+    portfolio_value = float(sum(values.values()))
+
+    buffer_floor_wt = max(0.0, min(float(settings.get("liquidityBufferRatio") or 0.0) / 100.0, 0.80))
+    hard_buffers = ["SHY", "BOXX"]
+    current_buffer_value = float(sum(values.get(t, 0.0) for t in hard_buffers))
+    current_buffer_wt = current_buffer_value / portfolio_value if portfolio_value > 0 else 0.0
+    buffer_gap_wt = max(0.0, buffer_floor_wt - current_buffer_wt)
+    per_buffer_fill_wt = buffer_gap_wt / len(hard_buffers) if hard_buffers else 0.0
+
+    active = set(values)
+    excluded_nonheld_targets = sorted([
+        str(t)
+        for t, meta in stock_meta.items()
+        if isinstance(meta, dict)
+        and str(t) not in active
+        and normalize_ticker(t) not in set(hard_buffers)
+        and float(meta.get("target_weight") or 0.0) > 0
+    ])
+
+    signals: List[Dict[str, Any]] = []
+    blocked: List[Dict[str, Any]] = []
+    universe = sorted(active | set(hard_buffers))
+    for t in universe:
+        meta = stock_meta.get(t, {}) if isinstance(stock_meta.get(t, {}), dict) else {}
+        cw = values.get(t, 0.0) / portfolio_value if portfolio_value > 0 else 0.0
+        base_tw = float(meta.get("target_weight") or 0.0)
+        effective_tw = base_tw
+        if t in hard_buffers and buffer_gap_wt > 0.0001:
+            effective_tw = max(base_tw, cw + per_buffer_fill_wt)
+
+        delta_w = effective_tw - cw
+        if abs(delta_w) <= 0.01:
+            continue
+
+        direction = "ADD" if delta_w > 0 else "TRIM"
+        signal_type = "BUFFER_REPLENISHMENT" if t in hard_buffers and delta_w > 0 and buffer_gap_wt > 0.0001 else "TARGET_DRIFT"
+        signal = {
+            "ticker": t,
+            "direction": direction,
+            "signal_type": signal_type,
+            "execution_status": "ACTIONABLE",
+            "action": "BUY (加碼)" if direction == "ADD" else "SELL (減碼)",
+            "current_weight": f"{cw * 100:.2f}%",
+            "target_weight": f"{effective_tw * 100:.2f}%",
+            "delta_weight": f"{delta_w * 100:.2f}%",
+            "current_weight_pct": round(cw * 100, 4),
+            "target_weight_pct": round(effective_tw * 100, 4),
+            "signed_drift_pp": round((cw - effective_tw) * 100, 4),
+            "delta_to_target_pp": round(delta_w * 100, 4),
+            "rule_threshold_pp": 1.0,
+            "trade_amount": round(portfolio_value * delta_w, 2),
+        }
+
+        if direction == "TRIM":
+            signal["reason"] = "目前權重高於目標超過規則門檻，候選動作為 TRIM"
+            signals.append(signal)
+        elif buffer_gap_wt > 0.0001 and t not in hard_buffers:
+            signal["execution_status"] = "BLOCKED_BY_BUFFER"
+            signal["reason"] = "目標低配但硬緩衝缺口尚未補足；ADD 暫不可執行"
+            blocked.append(signal)
+        else:
+            signal["reason"] = (
+                "補足硬緩衝至最低安全邊際"
+                if signal_type == "BUFFER_REPLENISHMENT"
+                else "目前權重低於目標超過規則門檻，候選動作為 ADD"
+            )
+            signals.append(signal)
+
+    return {
+        "buffer_floor_pct": round(buffer_floor_wt * 100.0, 2),
+        "current_buffer_pct": round(current_buffer_wt * 100.0, 2),
+        "buffer_gap_pct": round(buffer_gap_wt * 100.0, 2),
+        "buffer_gap_value": round(portfolio_value * buffer_gap_wt, 2),
+        "buffer_blocking_risk_buys": bool(buffer_gap_wt > 0.0001),
+        "hard_buffer_tickers": hard_buffers,
+        "universe_policy": "material_ledger_holdings_plus_hard_buffer_only",
+        "sheet_only_tickers_excluded": excluded_nonheld_targets,
+        "nonheld_target_tickers_excluded": excluded_nonheld_targets,
+        "economic_dust_threshold_twd": basis.get("economic_dust_threshold_twd"),
+        "economic_dust_tickers_excluded": basis.get("economic_dust_tickers_excluded") or [],
+        "rule_threshold_pp": 1.0,
+        "signals": signals,
+        "blocked_signals": blocked,
+        "signal_count": len(signals),
+        "blocked_signal_count": len(blocked),
+        "generated_by": "fix_xray_twd_weights.py",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -269,11 +411,20 @@ def main() -> None:
         raise SystemExit("ERROR: portfolio row not found")
 
     xray = compute_xray_twd(row)
+    rebalance_meta = compute_rebalance_semantics(row, xray)
     chaos_meta = row.get("chaos_meta") if isinstance(row.get("chaos_meta"), dict) else {}
     chaos_meta["xray_meta"] = xray
-    client.table(TABLE).update({"chaos_meta": chaos_meta}).eq("id", ROW_ID).execute()
+    client.table(TABLE).update({
+        "chaos_meta": chaos_meta,
+        "rebalance_meta": rebalance_meta,
+    }).eq("id", ROW_ID).execute()
 
-    print("OK xray TWD weights fixed")
+    print("OK xray TWD weights + rebalance semantics refreshed")
+    print(
+        f"rebalance actionable={rebalance_meta['signal_count']} "
+        f"blocked={rebalance_meta['blocked_signal_count']} "
+        f"dust={rebalance_meta['economic_dust_tickers_excluded']}"
+    )
     for r in xray.get("mrc_table", [])[:10]:
         print(f"{r['ticker']}: capital={r['weight_pct']}% model={r['model_weight_pct']}% risk={r['risk_pct']}%")
 

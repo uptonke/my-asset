@@ -5982,7 +5982,7 @@
                                         再平衡警報器
                                     </h4>
                                     <p class="text-xs md:text-sm text-gray-400 mt-2 leading-relaxed">
-                                        結合 weight drift、Chaos 指標與槓桿拖累，強制把風險分析轉成可執行動作。
+                                        結合 weight drift、Chaos 指標與波動拖累；只有實際持倉且超過規則門檻的訊號才視為可執行候選。
                                     </p>
                                 </div>
                                 <div class="text-xs text-gray-500">
@@ -6004,12 +6004,12 @@
     </div>
 
     <div class="quant-card border-orange-500/20 bg-orange-500/10">
-        <div class="quant-label text-orange-300">槓桿拖累 30D</div>
+        <div class="quant-label text-orange-300">波動拖累 30D</div>
         <div class="quant-value text-white">{{ rebalanceMonitor?.volDrag30d ?? '-' }}%</div>
     </div>
 
     <div class="quant-card border-orange-500/20 bg-orange-500/10">
-        <div class="quant-label text-orange-300">槓桿拖累 90D</div>
+        <div class="quant-label text-orange-300">波動拖累 90D</div>
         <div class="quant-value text-white">{{ rebalanceMonitor?.volDrag90d ?? '-' }}%</div>
     </div>
 
@@ -6054,8 +6054,19 @@
 
     <div class="text-[11px] text-gray-400 mt-2 leading-relaxed">
         {{ rebalanceMonitor?.bufferBlockingRiskBuys
-            ? '後端再平衡已進入防守模式：先允許 SELL 與補足 SHY / BOXX，其他風險資產 BUY 暫停。'
-            : '硬緩衝已達最低要求，風險資產買入不再被 Buffer Floor 阻擋。' }}
+            ? '後端再平衡已進入防守模式：先允許 TRIM 與補足 SHY / BOXX，其他風險資產 ADD 暫停。'
+            : '硬緩衝已達最低要求，風險資產 ADD 不再被 Buffer Floor 阻擋。' }}
+    </div>
+    <div class="text-[11px] text-gray-500 mt-2 leading-relaxed space-x-1">
+        <span v-if="(rebalanceMonitor?.economicDustTickers || []).length">
+            經濟性殘值已排除：{{ rebalanceMonitor.economicDustTickers.join(' / ') }}。
+        </span>
+        <span v-if="(rebalanceMonitor?.sheetOnlyTickersExcluded || []).length">
+            Sheet-only 但未實際持有：{{ rebalanceMonitor.sheetOnlyTickersExcluded.join(' / ') }}；不產生 ADD。
+        </span>
+        <span v-if="rebalanceMonitor?.universePolicy">
+            再平衡 universe：實際且具經濟意義的 ledger holdings + hard buffer。
+        </span>
     </div>
 </div>
 
@@ -6093,7 +6104,9 @@
                                         <i class="fas fa-triangle-exclamation text-yellow-400"></i>
                                         再平衡 / 風險警報清單
                                     </div>
-                                    <div class="text-[11px] text-gray-500">Rule Engine</div>
+                                    <div class="text-[11px] text-gray-500">
+                                        Rule Engine · ADD {{ rebalanceMonitor?.addCount ?? 0 }} / Blocked {{ rebalanceMonitor?.blockedAddCount ?? 0 }}
+                                    </div>
                                 </div>
                                 <ul class="p-4 md:p-5 space-y-3">
                                     <li v-for="(alert, idx) in (rebalanceMonitor?.alerts || [])" :key="idx" class="flex items-start gap-3 text-sm rounded-xl border border-white/8 bg-white/[0.025] px-4 py-3 hover:bg-white/[0.04] transition-colors">
@@ -6102,7 +6115,7 @@
                                         </div>
                                         <span class="text-gray-200 leading-relaxed">{{ alert }}</span>
                                     </li>
-                                    <li v-if="!((rebalanceMonitor?.alerts || []).length)" class="text-xs text-gray-500">等待 script.js 接入再平衡警報邏輯。</li>
+                                    <li v-if="!((rebalanceMonitor?.alerts || []).length)" class="text-xs text-gray-500">目前沒有觸發再平衡或風險警報。</li>
                                 </ul>
                             </div>
                         </div>

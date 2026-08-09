@@ -129,12 +129,14 @@ createApp({
 
     regime_rebalance_monitor: {
         overweight_trim_candidates: rebalanceMonitor.value.trimCount,
-        underweight_add_candidates: rebalanceMonitor.value.addCount,
+        underweight_add_candidates_actionable: rebalanceMonitor.value.addCount,
+        underweight_add_candidates_blocked_by_buffer: rebalanceMonitor.value.blockedAddCount,
         total_target_drift_candidates: rebalanceMonitor.value.driftCount,
         concentration_candidates_over_20pct: rebalanceMonitor.value.concentrationCount,
-        high_priority_alerts: rebalanceMonitor.value.alertCount,
-        leverage_vol_drag_30d: rebalanceMonitor.value.volDrag30d + '%',
-        leverage_vol_drag_90d: rebalanceMonitor.value.volDrag90d + '%',
+        rule_engine_alerts: rebalanceMonitor.value.alertCount,
+        volatility_drag_30d_approx: rebalanceMonitor.value.volDrag30d + '%',
+        volatility_drag_90d_approx: rebalanceMonitor.value.volDrag90d + '%',
+        volatility_drag_note: '0.5*sigma^2*time approximation; this is volatility drag, not evidence that the portfolio is leveraged.',
         buffer_floor_pct: rebalanceMonitor.value.bufferFloorPct + '%',
         current_buffer_pct: rebalanceMonitor.value.currentBufferPct + '%',
         buffer_gap_pct: rebalanceMonitor.value.bufferGapPct + '%',
@@ -143,7 +145,12 @@ createApp({
             ? 'DISABLED_ZERO_FLOOR'
             : 'ACTIVE',
         hard_buffer_tickers: (rebalanceMonitor.value.hardBufferTickers || []).join(' + '),
-        rebalance_alerts_with_direction: rebalanceMonitor.value.alerts.slice(0, 8)
+        universe_policy: rebalanceMonitor.value.universePolicy || 'frontend_fallback',
+        rule_threshold_pp: rebalanceMonitor.value.ruleThresholdPp,
+        economic_dust_tickers_excluded: rebalanceMonitor.value.economicDustTickers || [],
+        sheet_only_tickers_excluded: rebalanceMonitor.value.sheetOnlyTickersExcluded || [],
+        backend_actionable_signal_count: rebalanceMonitor.value.backendSignalCount || 0,
+        rebalance_alerts_with_direction: rebalanceMonitor.value.alerts.slice(0, 10)
     },
 
     portfolio_xray: {
@@ -264,6 +271,9 @@ Constraint: Output strictly in Traditional Chinese. Maximum 8 bullets. No pleasa
 - Small tail/crisis samples are preliminary evidence, not an "extremely clear" signal. Do not claim statistical certainty without confidence intervals.
 - Tail / Crash Radar confidence intervals use a circular moving-block bootstrap on paired weekly returns, with P20/P10 benchmark thresholds recomputed inside each bootstrap sample. These intervals measure estimation uncertainty, not a predictive range for future returns.
 - If the crisis-correlation 95% bootstrap CI includes 0, do not call positive crisis co-movement statistically robust. If the downside-beta 95% bootstrap CI includes 1, do not claim clear amplification (>1) or dampening (<1) relative to the benchmark.
+- Rebalance semantics: ADD/TRIM direction from the backend rule engine is authoritative when universe_policy is material_ledger_holdings_plus_hard_buffer_only. An ADD marked BLOCKED_BY_BUFFER is NOT executable until the buffer condition clears.
+- Under the material-ledger universe policy, sheet-only research candidates and economic-dust remnants are intentionally excluded. Do not recommend reopening them because of stale target metadata.
+- volatility_drag_30d_approx / 90d use 0.5*sigma^2*time and measure volatility drag. Do not call this leverage drag unless independent evidence of actual leverage is present.
 - Historical PSR uses benchmark Sharpe 0. Interpret PSR as the estimated probability/confidence that the true Sharpe exceeds 0 under the PSR model. A value below 95% means it has not met a strict 95% credibility threshold. Use MinTRL95 to state whether the current observation count is long enough under the same moment-adjusted PSR assumptions; if current n < MinTRL95, say the track record is still too short for that 95% threshold. MinTRL95 is model-based and does not guarantee persistence or future performance. Never describe PSR as a test of whether returns are random, and do not infer survivor bias from it.
 - MWR > TWR may indicate favorable cash-flow timing. It does not prove security selection skill.
 - capm_alpha_proxy is not regression-estimated Jensen alpha and has no t-stat. Do not claim persistent selection alpha from the proxy.
