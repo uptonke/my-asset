@@ -3,12 +3,18 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 import time
+from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any
 
 import pandas as pd
 from supabase import create_client
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from scripts.evt_robustness import compute_evt_robustness
 from scripts.fix_xray_twd_weights import fetch_yahoo_chart_close
