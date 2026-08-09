@@ -15,40 +15,32 @@ jobs:
           python-version: '3.12'
       - name: Install probe deps
         run: pip install requests beautifulsoup4
-      - name: Probe sources
+      - name: Probe 00981A source
         run: |
           python - <<'PY'
           import re, requests
           from bs4 import BeautifulSoup
           H={'User-Agent':'Mozilla/5.0 my-asset-holdings/1.0','Accept':'*/*'}
-
-          for fund in ['VOO','VEA']:
-              for start in [1,501]:
-                  url=f'https://investor.vanguard.com/investment-products/etfs/profile/api/{fund}/portfolio-holding/stock?start={start}&count=500'
-                  r=requests.get(url,headers=H,timeout=30)
-                  print('VANGUARD_PAGE',fund,start,r.status_code,len(r.content))
-                  if r.ok:
-                      j=r.json(); rows=((j.get('fund') or {}).get('entity') or [])
-                      print('  size',j.get('size'),'asOf',j.get('asOfDate'),'rows',len(rows),'first',rows[0].get('ticker') if rows else None,'last',rows[-1].get('ticker') if rows else None,'next',j.get('next'))
-
-          url='https://www.avantisinvestors.com/avantis-investments/avantis-us-small-cap-value-etf/'
+          url='https://www.etfinfo.tw/etf/00981A/holdings'
           r=requests.get(url,headers=H,timeout=30)
-          print('AVUV_PAGE',r.status_code,len(r.text))
+          print('ETFINFO',r.status_code,r.url,r.headers.get('content-type'),len(r.content))
           html=r.text
-          patterns=['AVUV','025072877','total-holdings','fundId','fundID','productId','productID','portfolioHoldings','holdings','api/','/api/']
-          for pat in patterns:
+          print('ENC',r.encoding,r.apparent_encoding)
+          for pat in ['2330','00981A','holdings','__NEXT_DATA__','51','2049','TX']:
               print('\nPATTERN',pat)
-              for m in list(re.finditer(re.escape(pat),html,re.I))[:12]:
-                  a=max(0,m.start()-220); b=min(len(html),m.end()+350)
-                  print(re.sub(r'\s+',' ',html[a:b])[:750])
-          print('\nSCRIPT_SRCS')
+              for m in list(re.finditer(re.escape(pat),html,re.I))[:10]:
+                  a=max(0,m.start()-180); b=min(len(html),m.end()+300)
+                  print(re.sub(r'\s+',' ',html[a:b])[:600])
           soup=BeautifulSoup(html,'html.parser')
-          for s in soup.find_all('script',src=True):
+          print('\nSCRIPTS')
+          for s in soup.find_all('script'):
               src=s.get('src','')
-              if src: print(src)
-
-          for candidate in range(1,1100):
-              # Cheap HEAD-like GET only for a small candidate set inferred from source snippets is preferable;
-              # this loop is intentionally not used to hammer the site.
-              pass
+              txt=s.string or s.get_text('',strip=False) or ''
+              if src: print('SRC',src)
+              if txt and any(x in txt for x in ['2330','00981A','holdings']):
+                  print('INLINE',txt[:2000])
+          print('\nROWS')
+          for i,tr in enumerate(soup.find_all('tr')[:120]):
+              cells=[' '.join(c.stripped_strings) for c in tr.find_all(['th','td'])]
+              if cells: print(i,cells[:10])
           PY
