@@ -35,8 +35,9 @@ jobs:
             'requests>=2.31,<3' \
             'openpyxl>=3.1,<4' \
             'beautifulsoup4>=4.12,<5' \
-            'numpy>=2,<3' \
+            'numpy>=2,<2.3' \
             'pandas>=2.2,<3' \
+            'scipy>=1.13,<1.14' \
             'supabase>=2.7,<3' \
             'statsmodels>=0.14,<0.15'
 
@@ -111,6 +112,20 @@ jobs:
       - name: Warn if Tail / Crash inference refresh failed
         if: steps.tail_inference.outcome == 'failure'
         run: echo '::warning::Tail / Crash inference refresh failed; the last valid tail inference remains in Supabase.'
+
+      - name: Refresh daily EVT robustness
+        id: evt_robustness
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_TABLE: portfolio_db
+          PORTFOLIO_ROW_ID: '1'
+        run: python scripts/update_evt_robustness.py
+
+      - name: Warn if EVT robustness refresh failed
+        if: steps.evt_robustness.outcome == 'failure'
+        run: echo '::warning::Daily EVT robustness refresh failed; the last valid EVT robustness result remains in Supabase.'
 
       - name: Enrich ETF Look-through into X-Ray
         env:
