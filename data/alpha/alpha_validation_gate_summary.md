@@ -1,9 +1,9 @@
 # v6.0 Alpha Validation Gate
 
-- Generated: `2026-06-18T12:01:42+00:00`
+- Generated: `2026-08-10T04:03:23+00:00`
 - Validation status: **watch_only_validation**
 - Gates: `6` pass / `1` watch / `0` fail
-- Further research rankings: `2`
+- Further research rankings: `1`
 - Trade signal enabled: `False`
 
 ## Gates

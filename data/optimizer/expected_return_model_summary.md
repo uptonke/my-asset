@@ -1,6 +1,6 @@
 # Expected Return Model v3.2
 
-Generated: `2026-06-18T12:01:30+00:00`
+Generated: `2026-08-10T04:03:12+00:00`
 
 ## Safety boundary
 
@@ -10,7 +10,7 @@ Generated: `2026-06-18T12:01:30+00:00`
 
 ## Summary
 
-- Asset priors: `14`
+- Asset priors: `13`
 - Positive prior buckets: `2`
 - Negative prior buckets: `3`
 - Verdict: `relative_prior_only_no_max_sharpe`
@@ -42,7 +42,6 @@ Generated: `2026-06-18T12:01:30+00:00`
 | `USMV` | `other` | 0.0 | `neutral_or_no_edge_prior` | 0.75 |
 | `VEA` | `other` | 0.0 | `neutral_or_no_edge_prior` | 0.75 |
 | `VOO` | `us_equity` | 0.0 | `neutral_or_no_edge_prior` | 0.75 |
-| `GRID` | `theme_etf` | -0.45 | `neutral_or_no_edge_prior` | 0.7 |
 | `IFRA` | `theme_etf` | -0.45 | `neutral_or_no_edge_prior` | 0.7 |
 | `SRVR` | `theme_etf` | -0.45 | `neutral_or_no_edge_prior` | 0.7 |
 | `00981A` | `taiwan_tech` | -0.55 | `neutral_or_no_edge_prior` | 0.75 |

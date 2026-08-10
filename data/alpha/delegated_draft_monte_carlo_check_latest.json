@@ -1,7 +1,7 @@
 {
   "version": "v10.5",
   "status": "OK",
-  "generated_at": "2026-06-18T12:01:47+00:00",
+  "generated_at": "2026-08-10T04:03:27+00:00",
   "mode": "delegated_draft_monte_carlo_reference_check",
   "safe_mode": true,
   "research_only": true,
@@ -20,13 +20,13 @@
     "synthetic_risk_available": true,
     "monte_carlo_reference_available": true,
     "delegated_draft_status": "machine_delegated_draft_available",
-    "delegated_draft_line_count": 4,
-    "target_asset_weight_sum_pct": 100.0001,
+    "delegated_draft_line_count": 3,
+    "target_asset_weight_sum_pct": 99.9999,
     "cash_target_weight_pct": 0.0,
-    "stressed_var95_pct": 7.08,
-    "stressed_es95_pct": 9.5,
-    "liquidity_run_probability_pct": 20.75,
-    "risk_note_count": 2,
+    "stressed_var95_pct": 6.44,
+    "stressed_es95_pct": 9.0,
+    "liquidity_run_probability_pct": 19.15,
+    "risk_note_count": 1,
     "check_count": 4,
     "trade_signal_enabled": false,
     "execution_permission": false,
@@ -60,35 +60,72 @@
   ],
   "monte_carlo_reference": {
     "available": true,
-    "source": "Supabase chaos_meta produced by Daily Quant Pipeline / dashboard Monte Carlo layer",
-    "stressed_var95_pct": 7.08,
-    "stressed_es95_pct": 9.5,
-    "contagion_loss_pct": 0.98,
-    "fire_sale_loss_pct": 1.44,
-    "liquidity_run_probability_pct": 20.75,
+    "source": "Supabase chaos_meta produced by Daily Quant Pipeline / dashboard risk layer",
+    "stressed_var95_pct": 6.44,
+    "stressed_es95_pct": 9.0,
+    "contagion_loss_pct": 1.41,
+    "fire_sale_loss_pct": 1.15,
+    "liquidity_run_probability_pct": 19.15,
     "fragile_nodes": [
+      "BTC-USD",
       "VEA",
-      "GRID",
-      "ETH-USD"
+      "PICK"
     ],
+    "same_horizon_tail_comparison": {
+      "horizon_weeks": 13,
+      "historical_var95": -1.65,
+      "historical_es95": -2.49,
+      "historical_sample_count": 50,
+      "historical_method": "overlapping_compounded_current_weight_returns",
+      "jump_stress_var95": -6.88,
+      "jump_stress_es95": -9.95
+    },
+    "jump_stress_scenario": {
+      "jd_var95": -6.88,
+      "jd_es95": -9.95,
+      "jd_tail_loss": 9.95,
+      "jd_crash_prob": 1.87,
+      "jd_crash_threshold_pct": -10.0,
+      "jd_horizon_weeks": 13,
+      "model_type": "asset_level_heuristic_jump_stress",
+      "parameter_source": "asset_class_policy_assumptions_not_historically_fitted",
+      "jump_aggregation": "independent_asset_level_poisson_weighted_to_portfolio",
+      "drift_compensated": true,
+      "simulation_count": 20000
+    },
     "jump_diffusion": {
-      "jd_var95": -11.63,
-      "jd_es95": -17.69,
-      "jd_tail_loss": 17.69,
-      "jd_crash_prob": 6.4,
-      "jd_horizon_weeks": 13
+      "jd_var95": -6.88,
+      "jd_es95": -9.95,
+      "jd_tail_loss": 9.95,
+      "jd_crash_prob": 1.87,
+      "jd_crash_threshold_pct": -10.0,
+      "jd_horizon_weeks": 13,
+      "model_type": "asset_level_heuristic_jump_stress",
+      "parameter_source": "asset_class_policy_assumptions_not_historically_fitted",
+      "jump_aggregation": "independent_asset_level_poisson_weighted_to_portfolio",
+      "drift_compensated": true,
+      "simulation_count": 20000
+    },
+    "evt_tail_1w": {
+      "evt_var95": -0.6234,
+      "evt_es95": -0.9278,
+      "evt_shape_xi": 0.067277,
+      "evt_exceedance_count": 83,
+      "horizon_weeks": null,
+      "comparable_to_jump_stress": false,
+      "comparison_note": "one_day_evt_not_directly_comparable_to_13_week_jump_stress"
     },
     "evt_tail": {
-      "evt_var95": -3.0,
-      "evt_es95": -3.81,
-      "evt_shape_xi": -0.1856,
-      "evt_exceedance_count": 18
+      "evt_var95": -0.6234,
+      "evt_es95": -0.9278,
+      "evt_shape_xi": 0.067277,
+      "evt_exceedance_count": 83
     },
     "sample_context": {
-      "sample_weeks": 181,
-      "tail_sample_count": 10,
-      "crisis_sample_count": 19,
-      "crisis_window_label": "^TWII <= P10 weekly return"
+      "sample_weeks": 62,
+      "tail_sample_count": 4,
+      "crisis_sample_count": 7,
+      "crisis_window_label": "SPY <= P10 weekly return"
     }
   },
   "synthetic_risk_reference": {
@@ -98,16 +135,16 @@
     "generated_at": null,
     "method": "current_weight_synthetic_daily_returns",
     "metrics": {
-      "sample_count": 386,
-      "ann_vol_pct": 11.43,
-      "var95_pct": 1.02,
-      "es95_pct": 1.63,
-      "max_drawdown_pct": -5.56
+      "sample_count": 437,
+      "ann_vol_pct": 11.6,
+      "var95_pct": 1.06,
+      "es95_pct": 1.65,
+      "max_drawdown_pct": -6.24
     },
     "coverage": {
-      "strict_sample": 386,
+      "strict_sample": 437,
       "flexible_sample": 730,
-      "usable_weight_pct": 100.0
+      "usable_weight_pct": 100
     },
     "quantstats_status": "OK",
     "ewma_regime_status": "OK",
@@ -115,31 +152,31 @@
     "risk_budgeting_status": "OK"
   },
   "delegated_draft_reference": {
-    "generated_at": "2026-06-18T12:01:47+00:00",
+    "generated_at": "2026-08-10T04:03:27+00:00",
     "status": "machine_delegated_draft_available",
     "summary": {
       "delegated_draft_status": "machine_delegated_draft_available",
-      "pool_asset_count": 15,
-      "selected_asset_count": 15,
-      "target_asset_weight_sum_pct": 100.0001,
+      "pool_asset_count": 14,
+      "selected_asset_count": 12,
+      "target_asset_weight_sum_pct": 99.9999,
       "liquidity_buffer_pct": 0.0,
       "cash_target_weight_pct": 0.0,
       "liquidity_buffer_source": "portfolio_settings.liquidity_buffer_ratio_pct",
       "zero_liquidity_buffer_is_valid": true,
       "included_asset_min_weight_pct": 2.0,
       "single_asset_max_weight_pct": 40.0,
-      "draft_line_count": 4,
+      "draft_line_count": 3,
       "price_quality_excluded_line_count": 0,
       "trade_sizing_requires_real_world_price": false,
       "holdings_snapshot_price_allowed": true,
       "blocker_count": 0,
-      "warning_count": 30,
+      "warning_count": 34,
       "cash_balance_available": false,
       "internal_rebalance_can_fund_buys": true,
       "cash_balance_twd": null,
       "cash_balance_missing_but_internal_rebalance_allowed": true,
-      "nav_twd": 657442.99,
-      "cloud_target_weight_available_count": 14,
+      "nav_twd": 571283.14,
+      "cloud_target_weight_available_count": 13,
       "cloud_target_weight_missing_count": 1,
       "target_weight_source": "dual_blend_cloud_target_and_v105_native_target",
       "cloud_target_weight_source": "stock_meta[ticker].target_weight",
@@ -147,14 +184,14 @@
       "dual_blend_cloud_weight": 0.5,
       "dual_blend_v105_native_weight": 0.5,
       "frontend_mc_percent_target_used": false,
-      "native_target_weight_sum_pct": 100.0001,
+      "native_target_weight_sum_pct": 100.0,
       "native_ranking_candidate_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX",
       "native_coefficients": {
         "current_weight": 0.6,
         "ranking_prior": 0.28,
         "alpha_research": 0.12
       },
-      "dual_target_conflict_count": 7,
+      "dual_target_conflict_count": 9,
       "source_candidate_id": "v5_2_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX",
       "daily_quant_reference_available": true,
       "daily_quant_reference_source": "supabase_live",
@@ -168,23 +205,18 @@
       "broker_submission_enabled": false
     },
     "concentration_delta": {
-      "current_max_weight_pct": 11.253511,
+      "current_max_weight_pct": 13.269681,
       "current_max_weight_ticker": "BOXX",
-      "target_max_weight_pct": 11.5133,
+      "target_max_weight_pct": 14.5119,
       "target_max_weight_ticker": "BOXX",
-      "target_minus_current_max_weight_pct": 0.259789
+      "target_minus_current_max_weight_pct": 1.242219
     }
   },
   "risk_notes": [
     {
       "code": "mc_stressed_es95_reference",
       "severity": "info",
-      "message": "Monte Carlo / chaos_meta stressed ES95 約 9.5%。"
-    },
-    {
-      "code": "liquidity_run_probability_watch",
-      "severity": "warning",
-      "message": "流動性擠兌機率參考值約 20.75%，v10.x 草案應避免增加不可流動部位。"
+      "message": "Monte Carlo / chaos_meta stressed ES95 約 9.0%。"
     }
   ],
   "safety_boundary": [

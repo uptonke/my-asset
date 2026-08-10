@@ -1,11 +1,11 @@
 # v7.0 Manual Rebalance Proposal
 
-- Generated: `2026-06-18T12:01:42+00:00`
+- Generated: `2026-08-10T04:03:23+00:00`
 - Validation status: `watch_only_validation`
 - Proposal count: `11`
 - Manual research proposals: `0`
-- Watch-only proposals: `11`
-- Blocked: `0`
+- Watch-only proposals: `10`
+- Blocked: `1`
 - Trade signal enabled: `False`
 
 ## Safety boundary

@@ -1,7 +1,7 @@
 {
   "version": "v3.3",
   "status": "OK",
-  "generated_at": "2026-06-18T12:01:36+00:00",
+  "generated_at": "2026-08-10T04:03:18+00:00",
   "mode": "walk_forward_backtest",
   "safe_mode": true,
   "safe_mode_note": "v3.3 Walk-forward Backtest 用於檢查 optimizer 是否在樣本外風險/報酬表現上優於 current portfolio；輸出僅供模型驗證，不產生 BUY / SELL 指令，不自動交易，不寫入 Supabase，不修改正式持倉或正式權重。",
@@ -21,7 +21,7 @@
   },
   "mode_detail": "true_walk_forward_from_price_returns",
   "sample": {
-    "return_sample_count": 387,
+    "return_sample_count": 439,
     "train_days": 126,
     "test_days": 21,
     "step_days": 21,
@@ -32,7 +32,6 @@
       "BTC-USD": "YahooChart:BTC-USD",
       "ETH-USD": "YahooChart:ETH-USD",
       "GLDM": "YahooChart:GLDM",
-      "GRID": "YahooChart:GRID",
       "IFRA": "YahooChart:IFRA",
       "PICK": "YahooChart:PICK",
       "QQQ": "YahooChart:QQQ",
@@ -43,9 +42,9 @@
     },
     "skipped": [],
     "fx_source": "YahooChart:TWD=X",
-    "strict_sample": 387,
+    "strict_sample": 439,
     "strict_start": "2025-05-28",
-    "strict_end": "2026-06-18"
+    "strict_end": "2026-08-10"
   },
   "folds": [
     {
@@ -66,14 +65,14 @@
           "label": "inverse_vol_baseline",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 18.345,
+          "turnover_vs_current_pct": 21.489,
           "fold_id": "wf_01"
         },
         "scipy_min_variance_fallback": {
           "label": "scipy_min_variance_fallback",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 60.773,
+          "turnover_vs_current_pct": 61.201,
           "fold_id": "wf_01"
         }
       }
@@ -96,14 +95,14 @@
           "label": "inverse_vol_baseline",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 20.742,
+          "turnover_vs_current_pct": 24.275,
           "fold_id": "wf_02"
         },
         "scipy_min_variance_fallback": {
           "label": "scipy_min_variance_fallback",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 63.174,
+          "turnover_vs_current_pct": 65.696,
           "fold_id": "wf_02"
         }
       }
@@ -126,14 +125,14 @@
           "label": "inverse_vol_baseline",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 23.593,
+          "turnover_vs_current_pct": 27.661,
           "fold_id": "wf_03"
         },
         "scipy_min_variance_fallback": {
           "label": "scipy_min_variance_fallback",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 71.539,
+          "turnover_vs_current_pct": 72.685,
           "fold_id": "wf_03"
         }
       }
@@ -156,14 +155,14 @@
           "label": "inverse_vol_baseline",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 23.338,
+          "turnover_vs_current_pct": 27.243,
           "fold_id": "wf_04"
         },
         "scipy_min_variance_fallback": {
           "label": "scipy_min_variance_fallback",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 71.755,
+          "turnover_vs_current_pct": 68.031,
           "fold_id": "wf_04"
         }
       }
@@ -186,14 +185,14 @@
           "label": "inverse_vol_baseline",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 22.626,
+          "turnover_vs_current_pct": 26.593,
           "fold_id": "wf_05"
         },
         "scipy_min_variance_fallback": {
           "label": "scipy_min_variance_fallback",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 72.012,
+          "turnover_vs_current_pct": 70.845,
           "fold_id": "wf_05"
         }
       }
@@ -216,14 +215,14 @@
           "label": "inverse_vol_baseline",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 22.362,
+          "turnover_vs_current_pct": 26.336,
           "fold_id": "wf_06"
         },
         "scipy_min_variance_fallback": {
           "label": "scipy_min_variance_fallback",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 74.672,
+          "turnover_vs_current_pct": 73.686,
           "fold_id": "wf_06"
         }
       }
@@ -246,14 +245,14 @@
           "label": "inverse_vol_baseline",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 22.219,
+          "turnover_vs_current_pct": 26.277,
           "fold_id": "wf_07"
         },
         "scipy_min_variance_fallback": {
           "label": "scipy_min_variance_fallback",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 74.88,
+          "turnover_vs_current_pct": 74.569,
           "fold_id": "wf_07"
         }
       }
@@ -276,14 +275,14 @@
           "label": "inverse_vol_baseline",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 21.804,
+          "turnover_vs_current_pct": 25.848,
           "fold_id": "wf_08"
         },
         "scipy_min_variance_fallback": {
           "label": "scipy_min_variance_fallback",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 75.629,
+          "turnover_vs_current_pct": 74.461,
           "fold_id": "wf_08"
         }
       }
@@ -306,14 +305,14 @@
           "label": "inverse_vol_baseline",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 22.905,
+          "turnover_vs_current_pct": 25.958,
           "fold_id": "wf_09"
         },
         "scipy_min_variance_fallback": {
           "label": "scipy_min_variance_fallback",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 72.374,
+          "turnover_vs_current_pct": 71.471,
           "fold_id": "wf_09"
         }
       }
@@ -336,14 +335,14 @@
           "label": "inverse_vol_baseline",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 25.223,
+          "turnover_vs_current_pct": 27.655,
           "fold_id": "wf_10"
         },
         "scipy_min_variance_fallback": {
           "label": "scipy_min_variance_fallback",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 80.731,
+          "turnover_vs_current_pct": 80.537,
           "fold_id": "wf_10"
         }
       }
@@ -366,14 +365,14 @@
           "label": "inverse_vol_baseline",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 25.74,
+          "turnover_vs_current_pct": 28.275,
           "fold_id": "wf_11"
         },
         "scipy_min_variance_fallback": {
           "label": "scipy_min_variance_fallback",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 82.251,
+          "turnover_vs_current_pct": 80.546,
           "fold_id": "wf_11"
         }
       }
@@ -396,15 +395,75 @@
           "label": "inverse_vol_baseline",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 25.616,
+          "turnover_vs_current_pct": 28.329,
           "fold_id": "wf_12"
         },
         "scipy_min_variance_fallback": {
           "label": "scipy_min_variance_fallback",
           "status": "INSUFFICIENT_SAMPLE",
           "sample_count": 21,
-          "turnover_vs_current_pct": 79.118,
+          "turnover_vs_current_pct": 78.783,
           "fold_id": "wf_12"
+        }
+      }
+    },
+    {
+      "fold_id": "wf_13",
+      "train_start": "2026-02-04",
+      "train_end": "2026-06-09",
+      "test_start": "2026-06-10",
+      "test_end": "2026-06-30",
+      "methods": {
+        "current_weight": {
+          "label": "current_weight",
+          "status": "INSUFFICIENT_SAMPLE",
+          "sample_count": 21,
+          "turnover_vs_current_pct": 0.0,
+          "fold_id": "wf_13"
+        },
+        "inverse_vol_baseline": {
+          "label": "inverse_vol_baseline",
+          "status": "INSUFFICIENT_SAMPLE",
+          "sample_count": 21,
+          "turnover_vs_current_pct": 30.074,
+          "fold_id": "wf_13"
+        },
+        "scipy_min_variance_fallback": {
+          "label": "scipy_min_variance_fallback",
+          "status": "INSUFFICIENT_SAMPLE",
+          "sample_count": 21,
+          "turnover_vs_current_pct": 78.177,
+          "fold_id": "wf_13"
+        }
+      }
+    },
+    {
+      "fold_id": "wf_14",
+      "train_start": "2026-02-25",
+      "train_end": "2026-06-30",
+      "test_start": "2026-07-01",
+      "test_end": "2026-07-21",
+      "methods": {
+        "current_weight": {
+          "label": "current_weight",
+          "status": "INSUFFICIENT_SAMPLE",
+          "sample_count": 21,
+          "turnover_vs_current_pct": 0.0,
+          "fold_id": "wf_14"
+        },
+        "inverse_vol_baseline": {
+          "label": "inverse_vol_baseline",
+          "status": "INSUFFICIENT_SAMPLE",
+          "sample_count": 21,
+          "turnover_vs_current_pct": 30.289,
+          "fold_id": "wf_14"
+        },
+        "scipy_min_variance_fallback": {
+          "label": "scipy_min_variance_fallback",
+          "status": "INSUFFICIENT_SAMPLE",
+          "sample_count": 21,
+          "turnover_vs_current_pct": 74.569,
+          "fold_id": "wf_14"
         }
       }
     }
@@ -412,33 +471,33 @@
   "aggregate_results": [
     {
       "method": "inverse_vol_baseline",
-      "fold_count": 12,
+      "fold_count": 14,
       "avg_annual_return_pct": 0.0,
       "avg_annual_vol_pct": 0.0,
       "avg_es95_pct": 0.0,
       "avg_max_drawdown_pct": 0.0,
       "avg_sharpe": 0.0,
-      "avg_turnover_vs_current_pct": 22.876,
+      "avg_turnover_vs_current_pct": 26.879,
       "risk_win_rate_vs_current": 0.0,
       "return_win_rate_vs_current": 0.0,
       "decision": "watch_only_validation"
     },
     {
       "method": "scipy_min_variance_fallback",
-      "fold_count": 12,
+      "fold_count": 14,
       "avg_annual_return_pct": 0.0,
       "avg_annual_vol_pct": 0.0,
       "avg_es95_pct": 0.0,
       "avg_max_drawdown_pct": 0.0,
       "avg_sharpe": 0.0,
-      "avg_turnover_vs_current_pct": 73.242,
+      "avg_turnover_vs_current_pct": 73.233,
       "risk_win_rate_vs_current": 0.0,
       "return_win_rate_vs_current": 0.0,
       "decision": "watch_only_validation"
     },
     {
       "method": "current_weight",
-      "fold_count": 12,
+      "fold_count": 14,
       "avg_annual_return_pct": 0.0,
       "avg_annual_vol_pct": 0.0,
       "avg_es95_pct": 0.0,
@@ -452,7 +511,7 @@
   ],
   "summary": {
     "method_count": 3,
-    "fold_count": 12,
+    "fold_count": 14,
     "likely_better_than_current_count": 0,
     "likely_better_than_current": [],
     "verdict": "needs_more_out_of_sample_evidence"
