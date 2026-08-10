@@ -230,7 +230,10 @@ function lookthroughStatusLabel(status) {
 
 function lookthroughSourceLabel(sourceQuality) {
     const source = String(sourceQuality || 'UNKNOWN');
-    if (source.startsWith('OFFICIAL')) return '官方每日';
+    if (source === 'OFFICIAL_DAILY') return '官方每日';
+    if (source === 'OFFICIAL_MONTHLY') return '官方月度';
+    if (source === 'OFFICIAL_WEEKLY') return '官方每週';
+    if (source.startsWith('OFFICIAL')) return '官方來源';
     if (source === 'THIRD_PARTY_FALLBACK') return '第三方備援';
     return source;
 }
