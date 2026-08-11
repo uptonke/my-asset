@@ -28,10 +28,26 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Patch frontend and daily workflow
+      - name: Patch target sync, frontend and daily workflow
         run: |
           python - <<'PY'
           from pathlib import Path
+
+          # Make dry-run dependency-free and include explicit zero-target assets.
+          p = Path('scripts/sync_rebalance_from_delegated_target.py')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('from supabase import create_client\n\n', '', 1)
+          old_rows = """    row_map: Dict[str, Dict[str, Any]] = {}\n    for raw in rows:\n        if not isinstance(raw, dict):\n            continue\n        t = str(raw.get(\"ticker\") or \"\").strip()\n        if t:\n            row_map[t] = dict(raw)\n\n    cash_target_pct"""
+          new_rows = """    row_map: Dict[str, Dict[str, Any]] = {}\n    for raw in rows:\n        if not isinstance(raw, dict):\n            continue\n        t = str(raw.get(\"ticker\") or \"\").strip()\n        if not t:\n            continue\n        row_map[t] = dict(raw)\n        # machine_target_weights_pct only contains positive selected weights.\n        # Add explicit zero-target rows too, so the vector is complete for held assets.\n        if t not in weights:\n            zero_or_machine = raw.get(\"machine_target_weight_pct\", raw.get(\"final_suggested_weight_pct\"))\n            if zero_or_machine is not None:\n                w = _num(zero_or_machine, -1.0)\n                if w < 0:\n                    raise RuntimeError(f\"invalid machine target weight for {t}: {zero_or_machine}\")\n                weights[t] = w\n\n    cash_target_pct"""
+          if old_rows not in s:
+              raise SystemExit('sync script: row_map anchor missing')
+          s = s.replace(old_rows, new_rows, 1)
+          old_client = """    supabase = create_client(url, key)\n    response = supabase.table(TABLE).select(\"stock_meta\")"""
+          new_client = """    from supabase import create_client\n\n    supabase = create_client(url, key)\n    response = supabase.table(TABLE).select(\"stock_meta\")"""
+          if old_client not in s:
+              raise SystemExit('sync script: client anchor missing')
+          s = s.replace(old_client, new_client, 1)
+          p.write_text(s, encoding='utf-8')
 
           p = Path('assets/js/src/20-holdings-performance.js')
           s = p.read_text(encoding='utf-8')
@@ -63,13 +79,18 @@ jobs:
 
           p = Path('assets/js/src/00-bootstrap-and-cro.js')
           s = p.read_text(encoding='utf-8')
-          old_payload = """        universe_policy: rebalanceMonitor.value.universePolicy || 'frontend_fallback',\n        rule_threshold_pp: rebalanceMonitor.value.ruleThresholdPp,\n        economic_dust_tickers_excluded:"""
-          new_payload = """        universe_policy: rebalanceMonitor.value.universePolicy || 'frontend_fallback',\n        rule_threshold_pp: rebalanceMonitor.value.ruleThresholdPp,\n        target_weight_source: rebalanceMonitor.value.targetWeightSource || 'unknown',\n        target_vector_complete: Boolean(rebalanceMonitor.value.targetVectorComplete),\n        target_asset_weight_sum_pct: rebalanceMonitor.value.targetAssetWeightSumPct,\n        cash_target_weight_pct: rebalanceMonitor.value.cashTargetWeightPct,\n        target_source_generated_at: rebalanceMonitor.value.targetSourceGeneratedAt || '',\n        economic_dust_tickers_excluded:"""
+          old_counts = """        overweight_trim_candidates: rebalanceMonitor.value.trimCount,\n        underweight_add_candidates_actionable: rebalanceMonitor.value.addCount,\n        underweight_add_candidates_blocked_by_buffer: rebalanceMonitor.value.blockedAddCount,\n        total_target_drift_candidates: rebalanceMonitor.value.driftCount,\n        concentration_candidates_over_20pct: rebalanceMonitor.value.concentrationCount,\n        rule_engine_alerts: rebalanceMonitor.value.alertCount,"""
+          new_counts = """        overweight_trim_candidates: (rebalanceCockpitBuckets.value?.trim || []).length,\n        underweight_add_candidates_actionable: (rebalanceCockpitBuckets.value?.add || []).length,\n        underweight_add_candidates_blocked_by_buffer: (rebalanceCockpitBuckets.value?.pending || []).length,\n        total_target_drift_candidates: (rebalanceCockpitBuckets.value?.trim || []).length\n            + (rebalanceCockpitBuckets.value?.add || []).length\n            + (rebalanceCockpitBuckets.value?.pending || []).length,\n        concentration_candidates_over_20pct: rebalanceMonitor.value.concentrationCount,\n        rule_engine_alerts: (rebalanceCockpitBuckets.value?.trim || []).length\n            + (rebalanceCockpitBuckets.value?.add || []).length\n            + (rebalanceCockpitBuckets.value?.pending || []).length,"""
+          if old_counts not in s:
+              raise SystemExit('00-bootstrap-and-cro: counts anchor missing')
+          s = s.replace(old_counts, new_counts, 1)
+          old_payload = """        universe_policy: rebalanceMonitor.value.universePolicy || 'frontend_fallback',\n        rule_threshold_pp: rebalanceMonitor.value.ruleThresholdPp,\n        economic_dust_tickers_excluded: rebalanceMonitor.value.economicDustTickers || [],\n        sheet_only_tickers_excluded: rebalanceMonitor.value.sheetOnlyTickersExcluded || [],\n        backend_actionable_signal_count: rebalanceMonitor.value.backendSignalCount || 0,\n        rebalance_alerts_with_direction: rebalanceMonitor.value.alerts.slice(0, 10)"""
+          new_payload = """        universe_policy: rebalanceMonitor.value.universePolicy || 'frontend_fallback',\n        rule_threshold_pp: Number(tradeBufferBasePct.value || 3),\n        backend_rule_threshold_pp: rebalanceMonitor.value.ruleThresholdPp,\n        target_weight_source: rebalanceMonitor.value.targetWeightSource || 'unknown',\n        target_vector_complete: Boolean(rebalanceMonitor.value.targetVectorComplete),\n        target_asset_weight_sum_pct: rebalanceMonitor.value.targetAssetWeightSumPct,\n        cash_target_weight_pct: rebalanceMonitor.value.cashTargetWeightPct,\n        target_source_generated_at: rebalanceMonitor.value.targetSourceGeneratedAt || '',\n        economic_dust_tickers_excluded: rebalanceMonitor.value.economicDustTickers || [],\n        sheet_only_tickers_excluded: rebalanceMonitor.value.sheetOnlyTickersExcluded || [],\n        backend_actionable_signal_count: rebalanceMonitor.value.backendSignalCount || 0,\n        rebalance_alerts_with_direction: (rebalanceCockpitRows.value || [])\n            .filter(row => row.bucket !== 'hold')\n            .slice(0, 20)\n            .map(row => ({\n                ticker: row.ticker,\n                direction: row.bucket === 'trim' ? 'TRIM' : (row.bucket === 'add' ? 'ADD' : 'ADD'),\n                execution_status: row.bucket === 'pending' ? 'BLOCKED_BY_CRO' : 'ACTIONABLE',\n                current_weight_pct: row.currentWeightPct,\n                target_weight_pct: row.targetWeightPct,\n                signed_drift_pp: -Number(row.driftPct || 0),\n                delta_to_target_pp: Number(row.driftPct || 0),\n                visible_buffer_pp: Number(tradeBufferBasePct.value || 3)\n            })),\n        backend_rebalance_alerts_for_audit: rebalanceMonitor.value.alerts.slice(0, 20)"""
           if old_payload not in s:
               raise SystemExit('00-bootstrap-and-cro: payload anchor missing')
           s = s.replace(old_payload, new_payload, 1)
           prompt_anchor = "- Reconcile action counts before writing: the number of actionable TRIM / ADD / BLOCKED items stated in prose must equal the items actually listed. Keep concentration-only, general-drift, and informational alerts separate from actionable trade counts."
-          prompt_extra = prompt_anchor + "\n- If target_vector_complete is true, the Rebalance Monitor target is a portfolio-complete delegated/blended allocation. Do not imply TRIM proceeds should remain as cash unless cash_target_weight_pct is positive; interpret simultaneous TRIM and ADD signals as internal reallocation toward the complete target vector."
+          prompt_extra = prompt_anchor + "\n- Rebalance action counts and listed actions in the report must use the same visible no-trade buffer (rule_threshold_pp) as the Rebalance Monitor cockpit. backend_rule_threshold_pp and backend_rebalance_alerts_for_audit are audit-only and must not replace the visible cockpit action count.\n- If target_vector_complete is true, the Rebalance Monitor target is a portfolio-complete delegated/blended allocation. Do not imply TRIM proceeds should remain as cash unless cash_target_weight_pct is positive; interpret simultaneous TRIM and ADD signals as internal reallocation toward the complete target vector."
           if prompt_anchor not in s:
               raise SystemExit('00-bootstrap-and-cro: prompt anchor missing')
           s = s.replace(prompt_anchor, prompt_extra, 1)
@@ -95,6 +116,19 @@ jobs:
           grep -q 'sum=99.9999%' /tmp/rebalance.txt
           grep -q 'TRIM BTC-USD' /tmp/rebalance.txt
           grep -q 'ADD BOXX' /tmp/rebalance.txt
+          python - <<'PY'
+          from scripts.sync_rebalance_from_delegated_target import _load_json, build_rebalance_meta, DEFAULT_TARGET_FILE
+          payload = _load_json(DEFAULT_TARGET_FILE)
+          meta_3 = build_rebalance_meta(payload, {}, rule_threshold_pp=3.0)
+          assert abs(float(meta_3['target_asset_weight_sum_pct']) + float(meta_3['cash_target_weight_pct']) - 100.0) < 0.15
+          assert meta_3['target_vector_complete'] is True
+          assert abs(float(meta_3['target_weights_pct']['BOXX']) - 14.5119) < 0.01
+          assert abs(float(meta_3['target_weights_pct']['00981A']) - 10.6435) < 0.01
+          assert float(meta_3['target_weights_pct']['SRVR']) == 0.0
+          actions = [(x['direction'], x['ticker']) for x in meta_3['signals']]
+          assert actions == [('TRIM', 'BTC-USD')], actions
+          print('3pp visible-buffer validation OK:', actions)
+          PY
           node --check assets/js/app.bundle.js
           git diff --check
           python scripts/validate_repo_integrity.py --no-node
