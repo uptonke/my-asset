@@ -564,7 +564,12 @@ ${JSON.stringify(payload, null, 2)}
                         }
                     }
 
-                    if (data.rebalance_meta) cloudRebalanceMeta.value = data.rebalance_meta;
+                    const embeddedRebalanceMeta = stockMeta.value?.__portfolio_rebalance__;
+          if (embeddedRebalanceMeta && typeof embeddedRebalanceMeta === 'object') {
+              cloudRebalanceMeta.value = embeddedRebalanceMeta;
+          } else if (data.rebalance_meta) {
+              cloudRebalanceMeta.value = data.rebalance_meta;
+          }
                     if (data.cro_insight) croInsight.value = data.cro_insight;
                     if (data.chaos_meta) chaosMeta.value = data.chaos_meta;
 
