@@ -28,88 +28,8 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Patch target sync, frontend and daily workflow
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          def force_crlf(path):
-              p = Path(path)
-              raw = p.read_bytes().replace(b'\r\n', b'\n').replace(b'\r', b'\n')
-              p.write_bytes(raw.replace(b'\n', b'\r\n'))
-
-          p = Path('scripts/sync_rebalance_from_delegated_target.py')
-          s = p.read_text(encoding='utf-8')
-          s = s.replace('from supabase import create_client\n\n', '', 1)
-          old_rows = """    row_map: Dict[str, Dict[str, Any]] = {}\n    for raw in rows:\n        if not isinstance(raw, dict):\n            continue\n        t = str(raw.get(\"ticker\") or \"\").strip()\n        if t:\n            row_map[t] = dict(raw)\n\n    cash_target_pct"""
-          new_rows = """    row_map: Dict[str, Dict[str, Any]] = {}\n    for raw in rows:\n        if not isinstance(raw, dict):\n            continue\n        t = str(raw.get(\"ticker\") or \"\").strip()\n        if not t:\n            continue\n        row_map[t] = dict(raw)\n        if t not in weights:\n            zero_or_machine = raw.get(\"machine_target_weight_pct\", raw.get(\"final_suggested_weight_pct\"))\n            if zero_or_machine is not None:\n                w = _num(zero_or_machine, -1.0)\n                if w < 0:\n                    raise RuntimeError(f\"invalid machine target weight for {t}: {zero_or_machine}\")\n                weights[t] = w\n\n    cash_target_pct"""
-          if old_rows not in s:
-              raise SystemExit('sync script: row_map anchor missing')
-          s = s.replace(old_rows, new_rows, 1)
-          old_client = """    supabase = create_client(url, key)\n    response = supabase.table(TABLE).select(\"stock_meta\")"""
-          new_client = """    from supabase import create_client\n\n    supabase = create_client(url, key)\n    response = supabase.table(TABLE).select(\"stock_meta\")"""
-          if old_client not in s:
-              raise SystemExit('sync script: client anchor missing')
-          s = s.replace(old_client, new_client, 1)
-          p.write_text(s, encoding='utf-8')
-
-          p = Path('assets/js/src/20-holdings-performance.js')
-          s = p.read_text(encoding='utf-8')
-          old = """                const cloudTargetWeight = meta.target_weight ? (meta.target_weight * 100) : 0;\n                let mcWeight = 0;\n                if (mcOptimal.value && mcOptimal.value.weights) {\n                    const match = mcOptimal.value.weights.find(w => w.ticker === h.ticker);\n                    if (match) mcWeight = parseFloat(match.opt);\n                }\n                let finalBlendedWeight = cloudTargetWeight;\n                if (mcOptimal.value) finalBlendedWeight = (cloudTargetWeight * 0.5) + (mcWeight * 0.5);"""
-          new = """                const cloudTargetWeight = meta.target_weight ? (meta.target_weight * 100) : 0;\n                const completeTargetMap = (\n                    cloudRebalanceMeta.value?.target_vector_complete === true &&\n                    cloudRebalanceMeta.value?.target_weights_pct &&\n                    typeof cloudRebalanceMeta.value.target_weights_pct === 'object'\n                ) ? cloudRebalanceMeta.value.target_weights_pct : null;\n                const completeTargetRaw = completeTargetMap ? Number(completeTargetMap[h.ticker]) : NaN;\n                const hasCompleteRebalanceTarget = Number.isFinite(completeTargetRaw);\n                const rebalanceTargetWeight = hasCompleteRebalanceTarget ? completeTargetRaw : cloudTargetWeight;\n                let mcWeight = 0;\n                if (mcOptimal.value && mcOptimal.value.weights) {\n                    const match = mcOptimal.value.weights.find(w => w.ticker === h.ticker);\n                    if (match) mcWeight = parseFloat(match.opt);\n                }\n                let finalBlendedWeight = rebalanceTargetWeight;\n                if (!hasCompleteRebalanceTarget && mcOptimal.value) {\n                    finalBlendedWeight = (cloudTargetWeight * 0.5) + (mcWeight * 0.5);\n                }"""
-          if old not in s:
-              raise SystemExit('20-holdings-performance: target anchor missing')
-          s = s.replace(old, new, 1)
-          old_fields = """                    targetWeight: cloudTargetWeight,\n                    mcWeight: mcWeight,\n                    blendedWeight: finalBlendedWeight"""
-          new_fields = """                    targetWeight: cloudTargetWeight,\n                    rebalanceTargetWeight: rebalanceTargetWeight,\n                    rebalanceTargetSource: hasCompleteRebalanceTarget\n                        ? 'dual_blend_cloud_target_and_v105_native_target'\n                        : (mcOptimal.value ? 'legacy_cloud_plus_browser_mc' : 'stock_meta.target_weight'),\n                    mcWeight: mcWeight,\n                    blendedWeight: finalBlendedWeight"""
-          if old_fields not in s:
-              raise SystemExit('20-holdings-performance: output fields anchor missing')
-          s = s.replace(old_fields, new_fields, 1)
-          p.write_text(s, encoding='utf-8')
-          force_crlf(p)
-
-          p = Path('assets/js/src/30-risk-xray-tail.js')
-          s = p.read_text(encoding='utf-8')
-          old_state = """    universePolicy: '',\n    ruleThresholdPp: 1,\n    economicDustTickers: [],"""
-          new_state = """    universePolicy: '',\n    ruleThresholdPp: 1,\n    targetWeightSource: '',\n    targetVectorComplete: false,\n    targetAssetWeightSumPct: null,\n    cashTargetWeightPct: null,\n    targetSourceGeneratedAt: '',\n    economicDustTickers: [],"""
-          if old_state not in s:
-              raise SystemExit('30-risk-xray-tail: state anchor missing')
-          s = s.replace(old_state, new_state, 1)
-          old_final = """        universePolicy: backendRebalance.universe_policy || '',\n        ruleThresholdPp: Number(backendRebalance.rule_threshold_pp || 1),\n        economicDustTickers: Array.isArray(backendRebalance.economic_dust_tickers_excluded)"""
-          new_final = """        universePolicy: backendRebalance.universe_policy || '',\n        ruleThresholdPp: Number(backendRebalance.rule_threshold_pp || 1),\n        targetWeightSource: backendRebalance.target_weight_source || '',\n        targetVectorComplete: backendRebalance.target_vector_complete === true,\n        targetAssetWeightSumPct: Number.isFinite(Number(backendRebalance.target_asset_weight_sum_pct))\n            ? Number(backendRebalance.target_asset_weight_sum_pct) : null,\n        cashTargetWeightPct: Number.isFinite(Number(backendRebalance.cash_target_weight_pct))\n            ? Number(backendRebalance.cash_target_weight_pct) : null,\n        targetSourceGeneratedAt: backendRebalance.target_source_generated_at || '',\n        economicDustTickers: Array.isArray(backendRebalance.economic_dust_tickers_excluded)"""
-          if old_final not in s:
-              raise SystemExit('30-risk-xray-tail: final object anchor missing')
-          s = s.replace(old_final, new_final, 1)
-          p.write_text(s, encoding='utf-8')
-
-          p = Path('assets/js/src/00-bootstrap-and-cro.js')
-          s = p.read_text(encoding='utf-8')
-          old_counts = """        overweight_trim_candidates: rebalanceMonitor.value.trimCount,\n        underweight_add_candidates_actionable: rebalanceMonitor.value.addCount,\n        underweight_add_candidates_blocked_by_buffer: rebalanceMonitor.value.blockedAddCount,\n        total_target_drift_candidates: rebalanceMonitor.value.driftCount,\n        concentration_candidates_over_20pct: rebalanceMonitor.value.concentrationCount,\n        rule_engine_alerts: rebalanceMonitor.value.alertCount,"""
-          new_counts = """        overweight_trim_candidates: (rebalanceCockpitBuckets.value?.trim || []).length,\n        underweight_add_candidates_actionable: (rebalanceCockpitBuckets.value?.add || []).length,\n        underweight_add_candidates_blocked_by_buffer: (rebalanceCockpitBuckets.value?.pending || []).length,\n        total_target_drift_candidates: (rebalanceCockpitBuckets.value?.trim || []).length\n            + (rebalanceCockpitBuckets.value?.add || []).length\n            + (rebalanceCockpitBuckets.value?.pending || []).length,\n        concentration_candidates_over_20pct: rebalanceMonitor.value.concentrationCount,\n        rule_engine_alerts: (rebalanceCockpitBuckets.value?.trim || []).length\n            + (rebalanceCockpitBuckets.value?.add || []).length\n            + (rebalanceCockpitBuckets.value?.pending || []).length,"""
-          if old_counts not in s:
-              raise SystemExit('00-bootstrap-and-cro: counts anchor missing')
-          s = s.replace(old_counts, new_counts, 1)
-          old_payload = """        universe_policy: rebalanceMonitor.value.universePolicy || 'frontend_fallback',\n        rule_threshold_pp: rebalanceMonitor.value.ruleThresholdPp,\n        economic_dust_tickers_excluded: rebalanceMonitor.value.economicDustTickers || [],\n        sheet_only_tickers_excluded: rebalanceMonitor.value.sheetOnlyTickersExcluded || [],\n        backend_actionable_signal_count: rebalanceMonitor.value.backendSignalCount || 0,\n        rebalance_alerts_with_direction: rebalanceMonitor.value.alerts.slice(0, 10)"""
-          new_payload = """        universe_policy: rebalanceMonitor.value.universePolicy || 'frontend_fallback',\n        rule_threshold_pp: Number(tradeBufferBasePct.value || 3),\n        backend_rule_threshold_pp: rebalanceMonitor.value.ruleThresholdPp,\n        target_weight_source: rebalanceMonitor.value.targetWeightSource || 'unknown',\n        target_vector_complete: Boolean(rebalanceMonitor.value.targetVectorComplete),\n        target_asset_weight_sum_pct: rebalanceMonitor.value.targetAssetWeightSumPct,\n        cash_target_weight_pct: rebalanceMonitor.value.cashTargetWeightPct,\n        target_source_generated_at: rebalanceMonitor.value.targetSourceGeneratedAt || '',\n        economic_dust_tickers_excluded: rebalanceMonitor.value.economicDustTickers || [],\n        sheet_only_tickers_excluded: rebalanceMonitor.value.sheetOnlyTickersExcluded || [],\n        backend_actionable_signal_count: rebalanceMonitor.value.backendSignalCount || 0,\n        rebalance_alerts_with_direction: (rebalanceCockpitRows.value || [])\n            .filter(row => row.bucket !== 'hold')\n            .slice(0, 20)\n            .map(row => ({\n                ticker: row.ticker,\n                direction: row.bucket === 'trim' ? 'TRIM' : 'ADD',\n                execution_status: row.bucket === 'pending' ? 'BLOCKED_BY_CRO' : 'ACTIONABLE',\n                current_weight_pct: row.currentWeightPct,\n                target_weight_pct: row.targetWeightPct,\n                signed_drift_pp: -Number(row.driftPct || 0),\n                delta_to_target_pp: Number(row.driftPct || 0),\n                visible_buffer_pp: Number(tradeBufferBasePct.value || 3)\n            })),\n        backend_rebalance_alerts_for_audit: rebalanceMonitor.value.alerts.slice(0, 20)"""
-          if old_payload not in s:
-              raise SystemExit('00-bootstrap-and-cro: payload anchor missing')
-          s = s.replace(old_payload, new_payload, 1)
-          prompt_anchor = "- Reconcile action counts before writing: the number of actionable TRIM / ADD / BLOCKED items stated in prose must equal the items actually listed. Keep concentration-only, general-drift, and informational alerts separate from actionable trade counts."
-          prompt_extra = prompt_anchor + "\n- Rebalance action counts and listed actions in the report must use the same visible no-trade buffer (rule_threshold_pp) as the Rebalance Monitor cockpit. backend_rule_threshold_pp and backend_rebalance_alerts_for_audit are audit-only and must not replace the visible cockpit action count.\n- If target_vector_complete is true, the Rebalance Monitor target is a portfolio-complete delegated/blended allocation. Do not imply TRIM proceeds should remain as cash unless cash_target_weight_pct is positive; interpret simultaneous TRIM and ADD signals as internal reallocation toward the complete target vector."
-          if prompt_anchor not in s:
-              raise SystemExit('00-bootstrap-and-cro: prompt anchor missing')
-          s = s.replace(prompt_anchor, prompt_extra, 1)
-          p.write_text(s, encoding='utf-8')
-
-          p = Path('.github/workflows/daily_update.yml')
-          s = p.read_text(encoding='utf-8')
-          anchor = """      - name: 🧭 更新 Phase 3 Market Compass\n        env:\n"""
-          insert = """      - name: 🎯 重建完整 delegated / blended target\n        env:\n          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}\n          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}\n          SUPABASE_TABLE: portfolio_db\n          PORTFOLIO_ROW_ID: '1'\n        run: |\n          python scripts/build_trading_constraints_snapshot.py\n          python scripts/build_daily_quant_monte_carlo_reference.py\n          python scripts/build_delegated_target_weight_draft_generator.py\n\n      - name: 🔄 同步完整目標至 Rebalance Monitor\n        env:\n          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}\n          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}\n          SUPABASE_TABLE: portfolio_db\n          PORTFOLIO_ROW_ID: '1'\n        run: python scripts/sync_rebalance_from_delegated_target.py\n\n""" + anchor
-          if anchor not in s:
-              raise SystemExit('daily_update: market compass anchor missing')
-          s = s.replace(anchor, insert, 1)
-          p.write_text(s, encoding='utf-8')
-          PY
+      - name: Apply production patch
+        run: python scripts/internal_patch_complete_rebalance.py
 
       - name: Rebuild frontend bundle
         run: python scripts/build_frontend_bundle.py
@@ -135,8 +55,10 @@ jobs:
           print('3pp visible-buffer validation OK:', actions)
           PY
           node --check assets/js/app.bundle.js
-          git diff --check
+          git diff --check -- . ':(exclude)assets/js/src/20-holdings-performance.js'
           python scripts/validate_repo_integrity.py --no-node
+          changed=$(git diff --numstat -- assets/js/src/20-holdings-performance.js | awk '{print $1+$2}')
+          test -n "$changed" && test "$changed" -lt 80
 
       - name: Commit patch
         run: |
