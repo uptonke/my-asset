@@ -824,53 +824,208 @@ chartCML.data.datasets = [
             applyTradeBuffer(Number(tradeBufferBasePct.value || 0) + Number(delta || 0));
         };
 
+        function buildSelfFinancingRebalancePlan(inputRows, basePct, addDisabled, desiredAssetSumPct) {
+            const eps = 1e-7;
+            const base = Math.max(0, Number(basePct || 0));
+            const rows = (inputRows || []).map(row => {
+                const currentWeightPct = Number(row.currentWeightPct || 0);
+                const targetWeightPct = Math.max(0, Number(row.targetWeightPct || 0));
+                const lowerBoundPct = Math.max(0, targetWeightPct - base);
+                const upperBoundPct = targetWeightPct + base;
+                const boundaryBreachHigh = currentWeightPct > upperBoundPct + eps;
+                const boundaryBreachLow = currentWeightPct < lowerBoundPct - eps;
+                return {
+                    ...row,
+                    currentWeightPct,
+                    targetWeightPct,
+                    lowerBoundPct,
+                    upperBoundPct,
+                    boundaryBreachHigh,
+                    boundaryBreachLow,
+                    boundaryBreach: boundaryBreachHigh || boundaryBreachLow,
+                    postTradeWeightPct: currentWeightPct,
+                    plannedTradeReason: 'NO_TRADE_ZONE'
+                };
+            });
+
+            const targetSum = rows.reduce((sum, row) => sum + Number(row.targetWeightPct || 0), 0);
+            const desiredAssetSum = Number.isFinite(Number(desiredAssetSumPct))
+                ? Number(desiredAssetSumPct)
+                : targetSum;
+            const triggered = rows.some(row => row.boundaryBreach);
+
+            if (!triggered) {
+                return {
+                    rows,
+                    triggered: false,
+                    desiredAssetSumPct: desiredAssetSum,
+                    unresolvedAssetSumGapPct: desiredAssetSum - rows.reduce((sum, row) => sum + row.currentWeightPct, 0)
+                };
+            }
+
+            // 1) Minimal trades: project breached holdings back to the no-trade band.
+            rows.forEach(row => {
+                if (row.boundaryBreachHigh) {
+                    row.postTradeWeightPct = row.upperBoundPct;
+                    row.plannedTradeReason = 'BAND_TRIM';
+                } else if (row.boundaryBreachLow && !addDisabled) {
+                    row.postTradeWeightPct = row.lowerBoundPct;
+                    row.plannedTradeReason = 'BAND_ADD';
+                } else if (row.boundaryBreachLow && addDisabled) {
+                    row.plannedTradeReason = 'BLOCKED_ADD';
+                }
+            });
+
+            // 2) Capital conservation: use released cash on the largest remaining target gaps first.
+            // This minimizes extra ticket count and never crosses the model target.
+            let balance = desiredAssetSum - rows.reduce((sum, row) => sum + row.postTradeWeightPct, 0);
+            if (balance > eps && !addDisabled) {
+                const receivers = rows
+                    .filter(row => row.postTradeWeightPct < row.targetWeightPct - eps)
+                    .sort((a, b) => (b.targetWeightPct - b.postTradeWeightPct) - (a.targetWeightPct - a.postTradeWeightPct));
+                for (const row of receivers) {
+                    if (balance <= eps) break;
+                    const room = Math.max(0, row.targetWeightPct - row.postTradeWeightPct);
+                    const add = Math.min(room, balance);
+                    if (add <= eps) continue;
+                    row.postTradeWeightPct += add;
+                    balance -= add;
+                    row.plannedTradeReason = row.plannedTradeReason === 'BAND_ADD'
+                        ? 'BAND_ADD_PLUS_REALLOCATION'
+                        : 'REALLOCATION_ADD';
+                }
+            }
+
+            if (balance < -eps) {
+                const funders = rows
+                    .filter(row => row.postTradeWeightPct > row.targetWeightPct + eps)
+                    .sort((a, b) => (b.postTradeWeightPct - b.targetWeightPct) - (a.postTradeWeightPct - a.targetWeightPct));
+                for (const row of funders) {
+                    if (balance >= -eps) break;
+                    const room = Math.max(0, row.postTradeWeightPct - row.targetWeightPct);
+                    const trim = Math.min(room, -balance);
+                    if (trim <= eps) continue;
+                    row.postTradeWeightPct -= trim;
+                    balance += trim;
+                    row.plannedTradeReason = row.plannedTradeReason === 'BAND_TRIM'
+                        ? 'BAND_TRIM_PLUS_REALLOCATION'
+                        : 'REALLOCATION_TRIM';
+                }
+            }
+
+            return {
+                rows,
+                triggered: true,
+                desiredAssetSumPct: desiredAssetSum,
+                unresolvedAssetSumGapPct: balance
+            };
+        }
+
         const rebalanceCockpitRows = computed(() => {
-            const rows = flattenHoldingRows(false).map(stock => {
+            const base = Math.max(0, Number(tradeBufferBasePct.value || 3));
+            const addDisabled = !!tradeBufferProfile.value.addDisabled;
+            const nav = Number(totalPortfolioNav?.value || totalStockValueTwd?.value || 0);
+            const rawRows = flattenHoldingRows(false).map(stock => {
                 const currentWeightPct = Number(stock.totalWeight || 0) * 100;
                 const targetWeightPct = Number(stock.blendedWeight ?? stock.targetWeight ?? 0);
-                const driftPct = targetWeightPct - currentWeightPct;
-                const base = Number(tradeBufferBasePct.value || 3);
-                const addDisabled = !!tradeBufferProfile.value.addDisabled;
-
-                let bucket = 'hold';
-                let action = '暫不動';
-                let actionClass = 'text-slate-300 bg-slate-500/10 border-slate-500/20';
-                if (driftPct <= -base) {
-                    bucket = 'trim';
-                    action = '減碼';
-                    actionClass = 'text-red-300 bg-red-500/10 border-red-500/20';
-                } else if (driftPct >= base && addDisabled) {
-                    bucket = 'pending';
-                    action = '候補加碼';
-                    actionClass = 'text-amber-300 bg-amber-500/10 border-amber-500/20';
-                } else if (driftPct >= base) {
-                    bucket = 'add';
-                    action = '加碼';
-                    actionClass = 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20';
-                }
-
-                const nav = Number(totalPortfolioNav?.value || totalStockValueTwd?.value || 0);
-                const actionValue = nav * Math.abs(driftPct) / 100;
-
                 return {
                     ticker: stock.ticker || '-',
                     categoryName: stock.categoryName || stock.category || '-',
                     currentWeightPct,
                     targetWeightPct,
-                    driftPct,
-                    driftText: `${driftPct >= 0 ? '+' : ''}${driftPct.toFixed(1)}%`,
-                    actionValueText: `NT$ ${formatNumber(actionValue)}`,
-                    action,
-                    actionClass,
-                    decisionOwner: bucket === 'pending' ? 'CRO' : 'MC',
-                    governanceNote: bucket === 'hold' ? '在 no-trade zone 內' : tradeBufferProfile.value.modeNote,
-                    bucket,
-                    trimThresholdPct: base,
-                    addThresholdPct: addDisabled ? Infinity : base
+                    driftPct: targetWeightPct - currentWeightPct
                 };
             });
 
-            return rows.sort((a, b) => Math.abs(b.driftPct) - Math.abs(a.driftPct));
+            const metaAssetSum = Number(cloudRebalanceMeta.value?.target_asset_weight_sum_pct);
+            const fallbackTargetSum = rawRows.reduce((sum, row) => sum + Number(row.targetWeightPct || 0), 0);
+            const desiredAssetSum = Number.isFinite(metaAssetSum) ? metaAssetSum : fallbackTargetSum;
+            const plan = buildSelfFinancingRebalancePlan(rawRows, base, addDisabled, desiredAssetSum);
+            const actionEps = 0.0005;
+
+            const rows = plan.rows.map(row => {
+                const plannedTradePct = Number(row.postTradeWeightPct || 0) - Number(row.currentWeightPct || 0);
+                const pendingRequiredPct = row.boundaryBreachLow && addDisabled
+                    ? Math.max(0, Number(row.lowerBoundPct || 0) - Number(row.currentWeightPct || 0))
+                    : 0;
+                let bucket = 'hold';
+                let action = '暫不動';
+                let actionClass = 'text-slate-300 bg-slate-500/10 border-slate-500/20';
+
+                if (plannedTradePct < -actionEps) {
+                    bucket = 'trim';
+                    action = row.plannedTradeReason === 'REALLOCATION_TRIM' ? '再分配減碼' : '減碼';
+                    actionClass = 'text-red-300 bg-red-500/10 border-red-500/20';
+                } else if (plannedTradePct > actionEps) {
+                    bucket = 'add';
+                    action = row.plannedTradeReason === 'REALLOCATION_ADD' ? '再分配加碼' : '加碼';
+                    actionClass = 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20';
+                } else if (pendingRequiredPct > actionEps) {
+                    bucket = 'pending';
+                    action = '候補加碼';
+                    actionClass = 'text-amber-300 bg-amber-500/10 border-amber-500/20';
+                }
+
+                const actionPct = bucket === 'pending' ? pendingRequiredPct : Math.abs(plannedTradePct);
+                const actionValue = nav * actionPct / 100;
+                let governanceNote = '在 no-trade zone 內';
+                if (bucket === 'pending') governanceNote = '低於緩衝下界，但目前 governance / buffer policy 暫停加碼';
+                else if (row.plannedTradeReason === 'REALLOCATION_ADD') governanceNote = '接收減碼資金；仍不超過完整目標';
+                else if (row.plannedTradeReason === 'REALLOCATION_TRIM') governanceNote = '提供加碼資金；仍不低於完整目標';
+                else if (bucket !== 'hold') governanceNote = '先回到緩衝區，再以完整目標做資金守恆分配';
+
+                return {
+                    ...row,
+                    driftText: `${row.driftPct >= 0 ? '+' : ''}${row.driftPct.toFixed(1)}%`,
+                    plannedTradePct,
+                    plannedTradeTwd: nav * plannedTradePct / 100,
+                    actionValueText: bucket === 'hold' ? '—' : `NT$ ${formatNumber(actionValue)}`,
+                    action,
+                    actionClass,
+                    decisionOwner: bucket === 'pending' ? 'CRO' : 'MC',
+                    governanceNote,
+                    bucket,
+                    trimThresholdPct: base,
+                    addThresholdPct: addDisabled ? Infinity : base,
+                    tradePlanTriggered: plan.triggered,
+                    unresolvedAssetSumGapPct: plan.unresolvedAssetSumGapPct
+                };
+            });
+
+            const rank = { trim: 0, add: 1, pending: 2, hold: 3 };
+            return rows.sort((a, b) =>
+                (rank[a.bucket] ?? 9) - (rank[b.bucket] ?? 9)
+                || Math.abs(Number(b.plannedTradePct || 0)) - Math.abs(Number(a.plannedTradePct || 0))
+                || Math.abs(b.driftPct) - Math.abs(a.driftPct)
+            );
+        });
+
+        const rebalanceTradePlanSummary = computed(() => {
+            const rows = rebalanceCockpitRows.value || [];
+            const nav = Number(totalPortfolioNav?.value || totalStockValueTwd?.value || 0);
+            const trimPct = rows.reduce((sum, row) => sum + Math.max(0, -Number(row.plannedTradePct || 0)), 0);
+            const addPct = rows.reduce((sum, row) => sum + Math.max(0, Number(row.plannedTradePct || 0)), 0);
+            const currentAssetSumPct = rows.reduce((sum, row) => sum + Number(row.currentWeightPct || 0), 0);
+            const postTradeAssetSumPct = rows.reduce((sum, row) => sum + Number(row.postTradeWeightPct || row.currentWeightPct || 0), 0);
+            const inferredCurrentCashPct = 100 - currentAssetSumPct;
+            const plannedCashAfterPct = 100 - postTradeAssetSumPct;
+            const targetCashRaw = Number(cloudRebalanceMeta.value?.cash_target_weight_pct);
+            const targetCashPct = Number.isFinite(targetCashRaw) ? targetCashRaw : Math.max(0, 100 - postTradeAssetSumPct);
+            const residualCashVsTargetPct = plannedCashAfterPct - targetCashPct;
+            return {
+                triggered: rows.some(row => row.tradePlanTriggered),
+                method: 'buffer_boundary_projection_then_largest_gap_self_financing',
+                trimPct,
+                addPct,
+                trimTwd: nav * trimPct / 100,
+                addTwd: nav * addPct / 100,
+                inferredCurrentCashPct,
+                plannedCashAfterPct,
+                targetCashPct,
+                residualCashVsTargetPct,
+                selfFinancingWithinTolerance: Math.abs(residualCashVsTargetPct) <= 0.05,
+                addDisabled: !!tradeBufferProfile.value.addDisabled
+            };
         });
 
         const rebalanceCockpitBuckets = computed(() => {
@@ -919,23 +1074,26 @@ chartCML.data.datasets = [
             const rows = rebalanceCockpitRows.value || [];
             const weights = rows.map(row => Number(row.currentWeightPct || 0)).filter(Number.isFinite);
             const concentrationBefore = weights.length ? Math.max(...weights) : null;
-            const afterWeights = rows.map(row => {
-                const current = Number(row.currentWeightPct || 0);
-                const target = Number(row.targetWeightPct || current);
-                if (row.bucket === 'trim' || row.bucket === 'add') return target;
-                return current;
-            }).filter(Number.isFinite);
+            const afterWeights = rows
+                .map(row => Number(row.postTradeWeightPct ?? row.currentWeightPct ?? 0))
+                .filter(Number.isFinite);
             const concentrationAfter = afterWeights.length ? Math.max(...afterWeights) : null;
-            const active = rows.filter(row => row.bucket !== 'hold');
-            const avgGapBefore = active.length
-                ? active.reduce((sum, row) => sum + Math.abs(Number(row.driftPct || 0)), 0) / active.length
+            const base = Math.max(0, Number(tradeBufferBasePct.value || 3));
+            const breached = rows.filter(row => Math.max(0, Math.abs(Number(row.driftPct || 0)) - base) > 1e-7);
+            const gapBefore = row => Math.max(0, Math.abs(Number(row.targetWeightPct || 0) - Number(row.currentWeightPct || 0)) - base);
+            const gapAfter = row => Math.max(0, Math.abs(Number(row.targetWeightPct || 0) - Number(row.postTradeWeightPct ?? row.currentWeightPct ?? 0)) - base);
+            const avgGapBefore = breached.length
+                ? breached.reduce((sum, row) => sum + gapBefore(row), 0) / breached.length
+                : 0;
+            const avgGapAfter = breached.length
+                ? breached.reduce((sum, row) => sum + gapAfter(row), 0) / breached.length
                 : 0;
 
             return {
                 concentrationBefore,
                 concentrationAfter,
                 bufferGapBefore: avgGapBefore,
-                bufferGapAfter: Math.max(0, avgGapBefore - Number(tradeBufferBasePct.value || 3))
+                bufferGapAfter: avgGapAfter
             };
         });
 
