@@ -1,0 +1,108 @@
+name: Internal Patch Complete Rebalance Target
+
+on:
+  push:
+    branches:
+      - work/rebalance-complete-target-20260811
+    paths:
+      - .github/workflows/internal_patch_complete_rebalance_target.yml
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/rebalance-complete-target-20260811
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Patch frontend and daily workflow
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('assets/js/src/20-holdings-performance.js')
+          s = p.read_text(encoding='utf-8')
+          old = """                const cloudTargetWeight = meta.target_weight ? (meta.target_weight * 100) : 0;\n                let mcWeight = 0;\n                if (mcOptimal.value && mcOptimal.value.weights) {\n                    const match = mcOptimal.value.weights.find(w => w.ticker === h.ticker);\n                    if (match) mcWeight = parseFloat(match.opt);\n                }\n                let finalBlendedWeight = cloudTargetWeight;\n                if (mcOptimal.value) finalBlendedWeight = (cloudTargetWeight * 0.5) + (mcWeight * 0.5);"""
+          new = """                const cloudTargetWeight = meta.target_weight ? (meta.target_weight * 100) : 0;\n                const completeTargetMap = (\n                    cloudRebalanceMeta.value?.target_vector_complete === true &&\n                    cloudRebalanceMeta.value?.target_weights_pct &&\n                    typeof cloudRebalanceMeta.value.target_weights_pct === 'object'\n                ) ? cloudRebalanceMeta.value.target_weights_pct : null;\n                const completeTargetRaw = completeTargetMap ? Number(completeTargetMap[h.ticker]) : NaN;\n                const hasCompleteRebalanceTarget = Number.isFinite(completeTargetRaw);\n                const rebalanceTargetWeight = hasCompleteRebalanceTarget ? completeTargetRaw : cloudTargetWeight;\n                let mcWeight = 0;\n                if (mcOptimal.value && mcOptimal.value.weights) {\n                    const match = mcOptimal.value.weights.find(w => w.ticker === h.ticker);\n                    if (match) mcWeight = parseFloat(match.opt);\n                }\n                let finalBlendedWeight = rebalanceTargetWeight;\n                // The complete delegated target is already the authoritative cloud/native blend.\n                // Only use the legacy browser MC blend when that complete vector is unavailable.\n                if (!hasCompleteRebalanceTarget && mcOptimal.value) {\n                    finalBlendedWeight = (cloudTargetWeight * 0.5) + (mcWeight * 0.5);\n                }"""
+          if old not in s:
+              raise SystemExit('20-holdings-performance: target anchor missing')
+          s = s.replace(old, new, 1)
+          old_fields = """                    targetWeight: cloudTargetWeight,\n                    mcWeight: mcWeight,\n                    blendedWeight: finalBlendedWeight"""
+          new_fields = """                    targetWeight: cloudTargetWeight,\n                    rebalanceTargetWeight: rebalanceTargetWeight,\n                    rebalanceTargetSource: hasCompleteRebalanceTarget\n                        ? 'dual_blend_cloud_target_and_v105_native_target'\n                        : (mcOptimal.value ? 'legacy_cloud_plus_browser_mc' : 'stock_meta.target_weight'),\n                    mcWeight: mcWeight,\n                    blendedWeight: finalBlendedWeight"""
+          if old_fields not in s:
+              raise SystemExit('20-holdings-performance: output fields anchor missing')
+          s = s.replace(old_fields, new_fields, 1)
+          p.write_text(s, encoding='utf-8')
+
+          p = Path('assets/js/src/30-risk-xray-tail.js')
+          s = p.read_text(encoding='utf-8')
+          old_state = """    universePolicy: '',\n    ruleThresholdPp: 1,\n    economicDustTickers: [],"""
+          new_state = """    universePolicy: '',\n    ruleThresholdPp: 1,\n    targetWeightSource: '',\n    targetVectorComplete: false,\n    targetAssetWeightSumPct: null,\n    cashTargetWeightPct: null,\n    targetSourceGeneratedAt: '',\n    economicDustTickers: [],"""
+          if old_state not in s:
+              raise SystemExit('30-risk-xray-tail: state anchor missing')
+          s = s.replace(old_state, new_state, 1)
+          old_final = """        universePolicy: backendRebalance.universe_policy || '',\n        ruleThresholdPp: Number(backendRebalance.rule_threshold_pp || 1),\n        economicDustTickers: Array.isArray(backendRebalance.economic_dust_tickers_excluded)"""
+          new_final = """        universePolicy: backendRebalance.universe_policy || '',\n        ruleThresholdPp: Number(backendRebalance.rule_threshold_pp || 1),\n        targetWeightSource: backendRebalance.target_weight_source || '',\n        targetVectorComplete: backendRebalance.target_vector_complete === true,\n        targetAssetWeightSumPct: Number.isFinite(Number(backendRebalance.target_asset_weight_sum_pct))\n            ? Number(backendRebalance.target_asset_weight_sum_pct) : null,\n        cashTargetWeightPct: Number.isFinite(Number(backendRebalance.cash_target_weight_pct))\n            ? Number(backendRebalance.cash_target_weight_pct) : null,\n        targetSourceGeneratedAt: backendRebalance.target_source_generated_at || '',\n        economicDustTickers: Array.isArray(backendRebalance.economic_dust_tickers_excluded)"""
+          if old_final not in s:
+              raise SystemExit('30-risk-xray-tail: final object anchor missing')
+          s = s.replace(old_final, new_final, 1)
+          p.write_text(s, encoding='utf-8')
+
+          p = Path('assets/js/src/00-bootstrap-and-cro.js')
+          s = p.read_text(encoding='utf-8')
+          old_payload = """        universe_policy: rebalanceMonitor.value.universePolicy || 'frontend_fallback',\n        rule_threshold_pp: rebalanceMonitor.value.ruleThresholdPp,\n        economic_dust_tickers_excluded:"""
+          new_payload = """        universe_policy: rebalanceMonitor.value.universePolicy || 'frontend_fallback',\n        rule_threshold_pp: rebalanceMonitor.value.ruleThresholdPp,\n        target_weight_source: rebalanceMonitor.value.targetWeightSource || 'unknown',\n        target_vector_complete: Boolean(rebalanceMonitor.value.targetVectorComplete),\n        target_asset_weight_sum_pct: rebalanceMonitor.value.targetAssetWeightSumPct,\n        cash_target_weight_pct: rebalanceMonitor.value.cashTargetWeightPct,\n        target_source_generated_at: rebalanceMonitor.value.targetSourceGeneratedAt || '',\n        economic_dust_tickers_excluded:"""
+          if old_payload not in s:
+              raise SystemExit('00-bootstrap-and-cro: payload anchor missing')
+          s = s.replace(old_payload, new_payload, 1)
+          prompt_anchor = "- Reconcile action counts before writing: the number of actionable TRIM / ADD / BLOCKED items stated in prose must equal the items actually listed. Keep concentration-only, general-drift, and informational alerts separate from actionable trade counts."
+          prompt_extra = prompt_anchor + "\n- If target_vector_complete is true, the Rebalance Monitor target is a portfolio-complete delegated/blended allocation. Do not imply TRIM proceeds should remain as cash unless cash_target_weight_pct is positive; interpret simultaneous TRIM and ADD signals as internal reallocation toward the complete target vector."
+          if prompt_anchor not in s:
+              raise SystemExit('00-bootstrap-and-cro: prompt anchor missing')
+          s = s.replace(prompt_anchor, prompt_extra, 1)
+          p.write_text(s, encoding='utf-8')
+
+          p = Path('.github/workflows/daily_update.yml')
+          s = p.read_text(encoding='utf-8')
+          anchor = """      - name: 🧭 更新 Phase 3 Market Compass\n        env:\n"""
+          insert = """      - name: 🎯 重建完整 delegated / blended target\n        env:\n          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}\n          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}\n          SUPABASE_TABLE: portfolio_db\n          PORTFOLIO_ROW_ID: '1'\n        run: |\n          python scripts/build_trading_constraints_snapshot.py\n          python scripts/build_daily_quant_monte_carlo_reference.py\n          python scripts/build_delegated_target_weight_draft_generator.py\n\n      - name: 🔄 同步完整目標至 Rebalance Monitor\n        env:\n          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}\n          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}\n          SUPABASE_TABLE: portfolio_db\n          PORTFOLIO_ROW_ID: '1'\n        run: python scripts/sync_rebalance_from_delegated_target.py\n\n""" + anchor
+          if anchor not in s:
+              raise SystemExit('daily_update: market compass anchor missing')
+          s = s.replace(anchor, insert, 1)
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Rebuild frontend bundle
+        run: python scripts/build_frontend_bundle.py
+
+      - name: Validate complete target behavior
+        run: |
+          python -m py_compile scripts/sync_rebalance_from_delegated_target.py
+          python scripts/sync_rebalance_from_delegated_target.py --dry-run | tee /tmp/rebalance.txt
+          grep -q 'sum=99.9999%' /tmp/rebalance.txt
+          grep -q 'TRIM BTC-USD' /tmp/rebalance.txt
+          grep -q 'ADD BOXX' /tmp/rebalance.txt
+          node --check assets/js/app.bundle.js
+          git diff --check
+          python scripts/validate_repo_integrity.py --no-node
+
+      - name: Commit patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add scripts/sync_rebalance_from_delegated_target.py .github/workflows/daily_update.yml assets/js/src/20-holdings-performance.js assets/js/src/30-risk-xray-tail.js assets/js/src/00-bootstrap-and-cro.js assets/js/src/app.bundle.source.js assets/js/app.bundle.js
+          git commit -m 'Use complete delegated target in Rebalance Monitor'
+          git push origin HEAD:work/rebalance-complete-target-20260811
