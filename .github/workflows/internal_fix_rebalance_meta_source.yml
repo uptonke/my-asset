@@ -1,0 +1,75 @@
+name: Internal Fix Rebalance Meta Source
+
+on:
+  push:
+    branches:
+      - work/fix-rebalance-meta-source-20260811
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/fix-rebalance-meta-source-20260811
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Patch rebalance metadata source
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          paths = [
+              Path('assets/js/src/10-state-auth-cloud.js'),
+              Path('assets/js/src/app.bundle.source.js'),
+          ]
+          old = "                    if (data.rebalance_meta) cloudRebalanceMeta.value = data.rebalance_meta;"
+          new = """                    const embeddedRebalanceMeta = stockMeta.value?.__portfolio_rebalance__;
+                    if (embeddedRebalanceMeta && typeof embeddedRebalanceMeta === 'object') {
+                        cloudRebalanceMeta.value = embeddedRebalanceMeta;
+                    } else if (data.rebalance_meta) {
+                        cloudRebalanceMeta.value = data.rebalance_meta;
+                    }"""
+          catch_old = """                stockMeta.value = JSON.parse(await localforage.getItem('stockMeta') || '{}');
+                chaosMeta.value = JSON.parse(await localforage.getItem('chaosMeta') || 'null');"""
+          catch_new = """                stockMeta.value = JSON.parse(await localforage.getItem('stockMeta') || '{}');
+                const cachedRebalanceMeta = stockMeta.value?.__portfolio_rebalance__;
+                if (cachedRebalanceMeta && typeof cachedRebalanceMeta === 'object') {
+                    cloudRebalanceMeta.value = cachedRebalanceMeta;
+                }
+                chaosMeta.value = JSON.parse(await localforage.getItem('chaosMeta') || 'null');"""
+
+          for path in paths:
+              text = path.read_text(encoding='utf-8')
+              if old not in text:
+                  raise SystemExit(f'missing cloud rebalance needle in {path}')
+              text = text.replace(old, new, 1)
+              if catch_old not in text:
+                  raise SystemExit(f'missing cache fallback needle in {path}')
+              text = text.replace(catch_old, catch_new, 1)
+              path.write_text(text, encoding='utf-8')
+          PY
+      - name: Build and validate frontend
+        run: |
+          python scripts/build_frontend_bundle.py
+          python scripts/build_frontend_bundle.py --check
+          node --check assets/js/app.bundle.js
+          grep -q "stockMeta.value?.__portfolio_rebalance__" assets/js/src/app.bundle.source.js
+          grep -q "stockMeta.value?.__portfolio_rebalance__" assets/js/app.bundle.js
+          grep -q "cachedRebalanceMeta" assets/js/src/app.bundle.source.js
+          git diff --check -- assets/js/src/10-state-auth-cloud.js assets/js/src/app.bundle.source.js assets/js/app.bundle.js
+      - name: Commit patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/js/src/10-state-auth-cloud.js assets/js/src/app.bundle.source.js assets/js/app.bundle.js
+          git commit -m 'Read complete rebalance target from stock metadata'
+          git push origin HEAD:work/fix-rebalance-meta-source-20260811
