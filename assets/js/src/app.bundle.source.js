@@ -160,6 +160,17 @@ createApp({
         economic_dust_tickers_excluded: rebalanceMonitor.value.economicDustTickers || [],
         sheet_only_tickers_excluded: rebalanceMonitor.value.sheetOnlyTickersExcluded || [],
         backend_actionable_signal_count: rebalanceMonitor.value.backendSignalCount || 0,
+        trade_plan_method: rebalanceTradePlanSummary.value.method,
+        trade_plan_triggered: rebalanceTradePlanSummary.value.triggered,
+        planned_trim_total_pp: rebalanceTradePlanSummary.value.trimPct,
+        planned_add_total_pp: rebalanceTradePlanSummary.value.addPct,
+        planned_trim_total_twd: rebalanceTradePlanSummary.value.trimTwd,
+        planned_add_total_twd: rebalanceTradePlanSummary.value.addTwd,
+        inferred_current_cash_pct: rebalanceTradePlanSummary.value.inferredCurrentCashPct,
+        planned_cash_after_pct: rebalanceTradePlanSummary.value.plannedCashAfterPct,
+        target_cash_pct: rebalanceTradePlanSummary.value.targetCashPct,
+        planned_cash_residual_vs_target_pct: rebalanceTradePlanSummary.value.residualCashVsTargetPct,
+        self_financing_within_005pp: rebalanceTradePlanSummary.value.selfFinancingWithinTolerance,
         rebalance_alerts_with_direction: (rebalanceCockpitRows.value || [])
             .filter(row => row.bucket !== 'hold')
             .slice(0, 20)
@@ -171,7 +182,12 @@ createApp({
                 target_weight_pct: row.targetWeightPct,
                 signed_drift_pp: -Number(row.driftPct || 0),
                 delta_to_target_pp: Number(row.driftPct || 0),
-                visible_buffer_pp: Number(tradeBufferBasePct.value || 3)
+                visible_buffer_pp: Number(tradeBufferBasePct.value || 3),
+                post_trade_weight_pct: Number(row.postTradeWeightPct ?? row.currentWeightPct ?? 0),
+                planned_trade_pct: Number(row.plannedTradePct || 0),
+                planned_trade_twd: Number(row.plannedTradeTwd || 0),
+                trade_reason: row.plannedTradeReason || 'N/A',
+                boundary_breach: Boolean(row.boundaryBreach)
             })),
         backend_rebalance_alerts_for_audit: rebalanceMonitor.value.alerts.slice(0, 20)
     },
@@ -318,7 +334,7 @@ Constraint: Output strictly in Traditional Chinese. Maximum 8 bullets. No pleasa
 1. 【資金效率 / Alpha】Compare TWR, MWR, the CAPM alpha proxy, and realized Jensen alpha vs SPY / ^TWII. Report HAC t-stat, p-value and 95% CI when available; explicitly discuss benchmark sensitivity and do not equate regression alpha with pure selection skill.
 2. 【風險報酬可信度】Assess Sharpe, PSR/DSR, volatility, Sortino and Treynor. State PSR as confidence/probability that the true Sharpe exceeds its benchmark; never phrase it as confirming that returns are non-random.
 3. 【Portfolio X-Ray】Assess concentration, risk contribution, PCA, USD exposure and look-through coverage. Explicitly distinguish covariance-based concentration from constituent overlap: PCA/MRC do not directly measure shared ETF holdings. Use "risk concentration" rather than "leverage" unless actual leverage exists.
-4. 【再平衡監控】Distinguish Trim, Add, general drift and concentration candidates. State the exact direction of major alerts.
+4. 【再平衡監控】Distinguish Trim, Add, general drift and concentration candidates. State the exact direction of major alerts. When trade_plan_method is available, treat planned_trade_pct / planned_trade_twd and post_trade_weight_pct as the executable buffer-aware plan; do not report the full target drift as the trade size. If self_financing_within_005pp is true and target_cash_pct is near zero, explain that trim proceeds are reallocated to ADD legs rather than intentionally retained as cash.
 5. 【Tail / Crash Radar】Assess conditional correlation, crisis correlation and downside beta. Report the block-bootstrap 95% CIs when available; use 0 as the key reference for correlation and 1 as the key reference for downside beta, and explicitly qualify small samples.
 6. 【13週尾部風險】Inspect same_horizon_tail_comparison. If historical_current_weight_var95 and historical_current_weight_es95 are both available, title the bullet 【13週同期間尾部比較】 and compare them with jump-stress on the same horizon. If either historical metric is N/A, title the bullet 【13週跳躍壓力測試】, report the jump-stress scenario only, and state that a same-horizon historical comparison is unavailable. Never label a jump-only paragraph as a same-horizon comparison.
 7. 【EVT】Discuss the one-day current-weight POT-GPD result separately. Report xi, its block-bootstrap 95% CI, threshold/exceedance count, threshold-sensitivity sign stability, and the lack of direct 13-week comparability. Treat mixed threshold signs or a CI crossing 0 as inconclusive.
@@ -6213,53 +6229,208 @@ chartCML.data.datasets = [
             applyTradeBuffer(Number(tradeBufferBasePct.value || 0) + Number(delta || 0));
         };
 
+        function buildSelfFinancingRebalancePlan(inputRows, basePct, addDisabled, desiredAssetSumPct) {
+            const eps = 1e-7;
+            const base = Math.max(0, Number(basePct || 0));
+            const rows = (inputRows || []).map(row => {
+                const currentWeightPct = Number(row.currentWeightPct || 0);
+                const targetWeightPct = Math.max(0, Number(row.targetWeightPct || 0));
+                const lowerBoundPct = Math.max(0, targetWeightPct - base);
+                const upperBoundPct = targetWeightPct + base;
+                const boundaryBreachHigh = currentWeightPct > upperBoundPct + eps;
+                const boundaryBreachLow = currentWeightPct < lowerBoundPct - eps;
+                return {
+                    ...row,
+                    currentWeightPct,
+                    targetWeightPct,
+                    lowerBoundPct,
+                    upperBoundPct,
+                    boundaryBreachHigh,
+                    boundaryBreachLow,
+                    boundaryBreach: boundaryBreachHigh || boundaryBreachLow,
+                    postTradeWeightPct: currentWeightPct,
+                    plannedTradeReason: 'NO_TRADE_ZONE'
+                };
+            });
+
+            const targetSum = rows.reduce((sum, row) => sum + Number(row.targetWeightPct || 0), 0);
+            const desiredAssetSum = Number.isFinite(Number(desiredAssetSumPct))
+                ? Number(desiredAssetSumPct)
+                : targetSum;
+            const triggered = rows.some(row => row.boundaryBreach);
+
+            if (!triggered) {
+                return {
+                    rows,
+                    triggered: false,
+                    desiredAssetSumPct: desiredAssetSum,
+                    unresolvedAssetSumGapPct: desiredAssetSum - rows.reduce((sum, row) => sum + row.currentWeightPct, 0)
+                };
+            }
+
+            // 1) Minimal trades: project breached holdings back to the no-trade band.
+            rows.forEach(row => {
+                if (row.boundaryBreachHigh) {
+                    row.postTradeWeightPct = row.upperBoundPct;
+                    row.plannedTradeReason = 'BAND_TRIM';
+                } else if (row.boundaryBreachLow && !addDisabled) {
+                    row.postTradeWeightPct = row.lowerBoundPct;
+                    row.plannedTradeReason = 'BAND_ADD';
+                } else if (row.boundaryBreachLow && addDisabled) {
+                    row.plannedTradeReason = 'BLOCKED_ADD';
+                }
+            });
+
+            // 2) Capital conservation: use released cash on the largest remaining target gaps first.
+            // This minimizes extra ticket count and never crosses the model target.
+            let balance = desiredAssetSum - rows.reduce((sum, row) => sum + row.postTradeWeightPct, 0);
+            if (balance > eps && !addDisabled) {
+                const receivers = rows
+                    .filter(row => row.postTradeWeightPct < row.targetWeightPct - eps)
+                    .sort((a, b) => (b.targetWeightPct - b.postTradeWeightPct) - (a.targetWeightPct - a.postTradeWeightPct));
+                for (const row of receivers) {
+                    if (balance <= eps) break;
+                    const room = Math.max(0, row.targetWeightPct - row.postTradeWeightPct);
+                    const add = Math.min(room, balance);
+                    if (add <= eps) continue;
+                    row.postTradeWeightPct += add;
+                    balance -= add;
+                    row.plannedTradeReason = row.plannedTradeReason === 'BAND_ADD'
+                        ? 'BAND_ADD_PLUS_REALLOCATION'
+                        : 'REALLOCATION_ADD';
+                }
+            }
+
+            if (balance < -eps) {
+                const funders = rows
+                    .filter(row => row.postTradeWeightPct > row.targetWeightPct + eps)
+                    .sort((a, b) => (b.postTradeWeightPct - b.targetWeightPct) - (a.postTradeWeightPct - a.targetWeightPct));
+                for (const row of funders) {
+                    if (balance >= -eps) break;
+                    const room = Math.max(0, row.postTradeWeightPct - row.targetWeightPct);
+                    const trim = Math.min(room, -balance);
+                    if (trim <= eps) continue;
+                    row.postTradeWeightPct -= trim;
+                    balance += trim;
+                    row.plannedTradeReason = row.plannedTradeReason === 'BAND_TRIM'
+                        ? 'BAND_TRIM_PLUS_REALLOCATION'
+                        : 'REALLOCATION_TRIM';
+                }
+            }
+
+            return {
+                rows,
+                triggered: true,
+                desiredAssetSumPct: desiredAssetSum,
+                unresolvedAssetSumGapPct: balance
+            };
+        }
+
         const rebalanceCockpitRows = computed(() => {
-            const rows = flattenHoldingRows(false).map(stock => {
+            const base = Math.max(0, Number(tradeBufferBasePct.value || 3));
+            const addDisabled = !!tradeBufferProfile.value.addDisabled;
+            const nav = Number(totalPortfolioNav?.value || totalStockValueTwd?.value || 0);
+            const rawRows = flattenHoldingRows(false).map(stock => {
                 const currentWeightPct = Number(stock.totalWeight || 0) * 100;
                 const targetWeightPct = Number(stock.blendedWeight ?? stock.targetWeight ?? 0);
-                const driftPct = targetWeightPct - currentWeightPct;
-                const base = Number(tradeBufferBasePct.value || 3);
-                const addDisabled = !!tradeBufferProfile.value.addDisabled;
-
-                let bucket = 'hold';
-                let action = '暫不動';
-                let actionClass = 'text-slate-300 bg-slate-500/10 border-slate-500/20';
-                if (driftPct <= -base) {
-                    bucket = 'trim';
-                    action = '減碼';
-                    actionClass = 'text-red-300 bg-red-500/10 border-red-500/20';
-                } else if (driftPct >= base && addDisabled) {
-                    bucket = 'pending';
-                    action = '候補加碼';
-                    actionClass = 'text-amber-300 bg-amber-500/10 border-amber-500/20';
-                } else if (driftPct >= base) {
-                    bucket = 'add';
-                    action = '加碼';
-                    actionClass = 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20';
-                }
-
-                const nav = Number(totalPortfolioNav?.value || totalStockValueTwd?.value || 0);
-                const actionValue = nav * Math.abs(driftPct) / 100;
-
                 return {
                     ticker: stock.ticker || '-',
                     categoryName: stock.categoryName || stock.category || '-',
                     currentWeightPct,
                     targetWeightPct,
-                    driftPct,
-                    driftText: `${driftPct >= 0 ? '+' : ''}${driftPct.toFixed(1)}%`,
-                    actionValueText: `NT$ ${formatNumber(actionValue)}`,
-                    action,
-                    actionClass,
-                    decisionOwner: bucket === 'pending' ? 'CRO' : 'MC',
-                    governanceNote: bucket === 'hold' ? '在 no-trade zone 內' : tradeBufferProfile.value.modeNote,
-                    bucket,
-                    trimThresholdPct: base,
-                    addThresholdPct: addDisabled ? Infinity : base
+                    driftPct: targetWeightPct - currentWeightPct
                 };
             });
 
-            return rows.sort((a, b) => Math.abs(b.driftPct) - Math.abs(a.driftPct));
+            const metaAssetSum = Number(cloudRebalanceMeta.value?.target_asset_weight_sum_pct);
+            const fallbackTargetSum = rawRows.reduce((sum, row) => sum + Number(row.targetWeightPct || 0), 0);
+            const desiredAssetSum = Number.isFinite(metaAssetSum) ? metaAssetSum : fallbackTargetSum;
+            const plan = buildSelfFinancingRebalancePlan(rawRows, base, addDisabled, desiredAssetSum);
+            const actionEps = 0.0005;
+
+            const rows = plan.rows.map(row => {
+                const plannedTradePct = Number(row.postTradeWeightPct || 0) - Number(row.currentWeightPct || 0);
+                const pendingRequiredPct = row.boundaryBreachLow && addDisabled
+                    ? Math.max(0, Number(row.lowerBoundPct || 0) - Number(row.currentWeightPct || 0))
+                    : 0;
+                let bucket = 'hold';
+                let action = '暫不動';
+                let actionClass = 'text-slate-300 bg-slate-500/10 border-slate-500/20';
+
+                if (plannedTradePct < -actionEps) {
+                    bucket = 'trim';
+                    action = row.plannedTradeReason === 'REALLOCATION_TRIM' ? '再分配減碼' : '減碼';
+                    actionClass = 'text-red-300 bg-red-500/10 border-red-500/20';
+                } else if (plannedTradePct > actionEps) {
+                    bucket = 'add';
+                    action = row.plannedTradeReason === 'REALLOCATION_ADD' ? '再分配加碼' : '加碼';
+                    actionClass = 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20';
+                } else if (pendingRequiredPct > actionEps) {
+                    bucket = 'pending';
+                    action = '候補加碼';
+                    actionClass = 'text-amber-300 bg-amber-500/10 border-amber-500/20';
+                }
+
+                const actionPct = bucket === 'pending' ? pendingRequiredPct : Math.abs(plannedTradePct);
+                const actionValue = nav * actionPct / 100;
+                let governanceNote = '在 no-trade zone 內';
+                if (bucket === 'pending') governanceNote = '低於緩衝下界，但目前 governance / buffer policy 暫停加碼';
+                else if (row.plannedTradeReason === 'REALLOCATION_ADD') governanceNote = '接收減碼資金；仍不超過完整目標';
+                else if (row.plannedTradeReason === 'REALLOCATION_TRIM') governanceNote = '提供加碼資金；仍不低於完整目標';
+                else if (bucket !== 'hold') governanceNote = '先回到緩衝區，再以完整目標做資金守恆分配';
+
+                return {
+                    ...row,
+                    driftText: `${row.driftPct >= 0 ? '+' : ''}${row.driftPct.toFixed(1)}%`,
+                    plannedTradePct,
+                    plannedTradeTwd: nav * plannedTradePct / 100,
+                    actionValueText: bucket === 'hold' ? '—' : `NT$ ${formatNumber(actionValue)}`,
+                    action,
+                    actionClass,
+                    decisionOwner: bucket === 'pending' ? 'CRO' : 'MC',
+                    governanceNote,
+                    bucket,
+                    trimThresholdPct: base,
+                    addThresholdPct: addDisabled ? Infinity : base,
+                    tradePlanTriggered: plan.triggered,
+                    unresolvedAssetSumGapPct: plan.unresolvedAssetSumGapPct
+                };
+            });
+
+            const rank = { trim: 0, add: 1, pending: 2, hold: 3 };
+            return rows.sort((a, b) =>
+                (rank[a.bucket] ?? 9) - (rank[b.bucket] ?? 9)
+                || Math.abs(Number(b.plannedTradePct || 0)) - Math.abs(Number(a.plannedTradePct || 0))
+                || Math.abs(b.driftPct) - Math.abs(a.driftPct)
+            );
+        });
+
+        const rebalanceTradePlanSummary = computed(() => {
+            const rows = rebalanceCockpitRows.value || [];
+            const nav = Number(totalPortfolioNav?.value || totalStockValueTwd?.value || 0);
+            const trimPct = rows.reduce((sum, row) => sum + Math.max(0, -Number(row.plannedTradePct || 0)), 0);
+            const addPct = rows.reduce((sum, row) => sum + Math.max(0, Number(row.plannedTradePct || 0)), 0);
+            const currentAssetSumPct = rows.reduce((sum, row) => sum + Number(row.currentWeightPct || 0), 0);
+            const postTradeAssetSumPct = rows.reduce((sum, row) => sum + Number(row.postTradeWeightPct || row.currentWeightPct || 0), 0);
+            const inferredCurrentCashPct = 100 - currentAssetSumPct;
+            const plannedCashAfterPct = 100 - postTradeAssetSumPct;
+            const targetCashRaw = Number(cloudRebalanceMeta.value?.cash_target_weight_pct);
+            const targetCashPct = Number.isFinite(targetCashRaw) ? targetCashRaw : Math.max(0, 100 - postTradeAssetSumPct);
+            const residualCashVsTargetPct = plannedCashAfterPct - targetCashPct;
+            return {
+                triggered: rows.some(row => row.tradePlanTriggered),
+                method: 'buffer_boundary_projection_then_largest_gap_self_financing',
+                trimPct,
+                addPct,
+                trimTwd: nav * trimPct / 100,
+                addTwd: nav * addPct / 100,
+                inferredCurrentCashPct,
+                plannedCashAfterPct,
+                targetCashPct,
+                residualCashVsTargetPct,
+                selfFinancingWithinTolerance: Math.abs(residualCashVsTargetPct) <= 0.05,
+                addDisabled: !!tradeBufferProfile.value.addDisabled
+            };
         });
 
         const rebalanceCockpitBuckets = computed(() => {
@@ -6308,23 +6479,26 @@ chartCML.data.datasets = [
             const rows = rebalanceCockpitRows.value || [];
             const weights = rows.map(row => Number(row.currentWeightPct || 0)).filter(Number.isFinite);
             const concentrationBefore = weights.length ? Math.max(...weights) : null;
-            const afterWeights = rows.map(row => {
-                const current = Number(row.currentWeightPct || 0);
-                const target = Number(row.targetWeightPct || current);
-                if (row.bucket === 'trim' || row.bucket === 'add') return target;
-                return current;
-            }).filter(Number.isFinite);
+            const afterWeights = rows
+                .map(row => Number(row.postTradeWeightPct ?? row.currentWeightPct ?? 0))
+                .filter(Number.isFinite);
             const concentrationAfter = afterWeights.length ? Math.max(...afterWeights) : null;
-            const active = rows.filter(row => row.bucket !== 'hold');
-            const avgGapBefore = active.length
-                ? active.reduce((sum, row) => sum + Math.abs(Number(row.driftPct || 0)), 0) / active.length
+            const base = Math.max(0, Number(tradeBufferBasePct.value || 3));
+            const breached = rows.filter(row => Math.max(0, Math.abs(Number(row.driftPct || 0)) - base) > 1e-7);
+            const gapBefore = row => Math.max(0, Math.abs(Number(row.targetWeightPct || 0) - Number(row.currentWeightPct || 0)) - base);
+            const gapAfter = row => Math.max(0, Math.abs(Number(row.targetWeightPct || 0) - Number(row.postTradeWeightPct ?? row.currentWeightPct ?? 0)) - base);
+            const avgGapBefore = breached.length
+                ? breached.reduce((sum, row) => sum + gapBefore(row), 0) / breached.length
+                : 0;
+            const avgGapAfter = breached.length
+                ? breached.reduce((sum, row) => sum + gapAfter(row), 0) / breached.length
                 : 0;
 
             return {
                 concentrationBefore,
                 concentrationAfter,
                 bufferGapBefore: avgGapBefore,
-                bufferGapAfter: Math.max(0, avgGapBefore - Number(tradeBufferBasePct.value || 3))
+                bufferGapAfter: avgGapAfter
             };
         });
 

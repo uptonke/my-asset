@@ -160,6 +160,17 @@ createApp({
         economic_dust_tickers_excluded: rebalanceMonitor.value.economicDustTickers || [],
         sheet_only_tickers_excluded: rebalanceMonitor.value.sheetOnlyTickersExcluded || [],
         backend_actionable_signal_count: rebalanceMonitor.value.backendSignalCount || 0,
+        trade_plan_method: rebalanceTradePlanSummary.value.method,
+        trade_plan_triggered: rebalanceTradePlanSummary.value.triggered,
+        planned_trim_total_pp: rebalanceTradePlanSummary.value.trimPct,
+        planned_add_total_pp: rebalanceTradePlanSummary.value.addPct,
+        planned_trim_total_twd: rebalanceTradePlanSummary.value.trimTwd,
+        planned_add_total_twd: rebalanceTradePlanSummary.value.addTwd,
+        inferred_current_cash_pct: rebalanceTradePlanSummary.value.inferredCurrentCashPct,
+        planned_cash_after_pct: rebalanceTradePlanSummary.value.plannedCashAfterPct,
+        target_cash_pct: rebalanceTradePlanSummary.value.targetCashPct,
+        planned_cash_residual_vs_target_pct: rebalanceTradePlanSummary.value.residualCashVsTargetPct,
+        self_financing_within_005pp: rebalanceTradePlanSummary.value.selfFinancingWithinTolerance,
         rebalance_alerts_with_direction: (rebalanceCockpitRows.value || [])
             .filter(row => row.bucket !== 'hold')
             .slice(0, 20)
@@ -171,7 +182,12 @@ createApp({
                 target_weight_pct: row.targetWeightPct,
                 signed_drift_pp: -Number(row.driftPct || 0),
                 delta_to_target_pp: Number(row.driftPct || 0),
-                visible_buffer_pp: Number(tradeBufferBasePct.value || 3)
+                visible_buffer_pp: Number(tradeBufferBasePct.value || 3),
+                post_trade_weight_pct: Number(row.postTradeWeightPct ?? row.currentWeightPct ?? 0),
+                planned_trade_pct: Number(row.plannedTradePct || 0),
+                planned_trade_twd: Number(row.plannedTradeTwd || 0),
+                trade_reason: row.plannedTradeReason || 'N/A',
+                boundary_breach: Boolean(row.boundaryBreach)
             })),
         backend_rebalance_alerts_for_audit: rebalanceMonitor.value.alerts.slice(0, 20)
     },
@@ -318,7 +334,7 @@ Constraint: Output strictly in Traditional Chinese. Maximum 8 bullets. No pleasa
 1. 【資金效率 / Alpha】Compare TWR, MWR, the CAPM alpha proxy, and realized Jensen alpha vs SPY / ^TWII. Report HAC t-stat, p-value and 95% CI when available; explicitly discuss benchmark sensitivity and do not equate regression alpha with pure selection skill.
 2. 【風險報酬可信度】Assess Sharpe, PSR/DSR, volatility, Sortino and Treynor. State PSR as confidence/probability that the true Sharpe exceeds its benchmark; never phrase it as confirming that returns are non-random.
 3. 【Portfolio X-Ray】Assess concentration, risk contribution, PCA, USD exposure and look-through coverage. Explicitly distinguish covariance-based concentration from constituent overlap: PCA/MRC do not directly measure shared ETF holdings. Use "risk concentration" rather than "leverage" unless actual leverage exists.
-4. 【再平衡監控】Distinguish Trim, Add, general drift and concentration candidates. State the exact direction of major alerts.
+4. 【再平衡監控】Distinguish Trim, Add, general drift and concentration candidates. State the exact direction of major alerts. When trade_plan_method is available, treat planned_trade_pct / planned_trade_twd and post_trade_weight_pct as the executable buffer-aware plan; do not report the full target drift as the trade size. If self_financing_within_005pp is true and target_cash_pct is near zero, explain that trim proceeds are reallocated to ADD legs rather than intentionally retained as cash.
 5. 【Tail / Crash Radar】Assess conditional correlation, crisis correlation and downside beta. Report the block-bootstrap 95% CIs when available; use 0 as the key reference for correlation and 1 as the key reference for downside beta, and explicitly qualify small samples.
 6. 【13週尾部風險】Inspect same_horizon_tail_comparison. If historical_current_weight_var95 and historical_current_weight_es95 are both available, title the bullet 【13週同期間尾部比較】 and compare them with jump-stress on the same horizon. If either historical metric is N/A, title the bullet 【13週跳躍壓力測試】, report the jump-stress scenario only, and state that a same-horizon historical comparison is unavailable. Never label a jump-only paragraph as a same-horizon comparison.
 7. 【EVT】Discuss the one-day current-weight POT-GPD result separately. Report xi, its block-bootstrap 95% CI, threshold/exceedance count, threshold-sensitivity sign stability, and the lack of direct 13-week comparability. Treat mixed threshold signs or a CI crossing 0 as inconclusive.
