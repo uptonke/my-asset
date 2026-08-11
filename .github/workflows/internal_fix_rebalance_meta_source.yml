@@ -22,15 +22,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Patch rebalance metadata source
+      - name: Patch canonical rebalance metadata source
         run: |
           python - <<'PY'
           from pathlib import Path
-
-          paths = [
-              Path('assets/js/src/10-state-auth-cloud.js'),
-              Path('assets/js/src/app.bundle.source.js'),
-          ]
+          path = Path('assets/js/src/app.bundle.source.js')
           old = "                    if (data.rebalance_meta) cloudRebalanceMeta.value = data.rebalance_meta;"
           new = """                    const embeddedRebalanceMeta = stockMeta.value?.__portfolio_rebalance__;
                     if (embeddedRebalanceMeta && typeof embeddedRebalanceMeta === 'object') {
@@ -38,12 +34,10 @@ jobs:
                     } else if (data.rebalance_meta) {
                         cloudRebalanceMeta.value = data.rebalance_meta;
                     }"""
-
-          for path in paths:
-              text = path.read_text(encoding='utf-8')
-              if old not in text:
-                  raise SystemExit(f'missing cloud rebalance needle in {path}')
-              path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          text = path.read_text(encoding='utf-8')
+          if old not in text:
+              raise SystemExit('missing cloud rebalance needle in canonical source')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
           PY
       - name: Build and validate frontend
         run: |
@@ -52,11 +46,11 @@ jobs:
           node --check assets/js/app.bundle.js
           grep -Fq "stockMeta.value?.__portfolio_rebalance__" assets/js/src/app.bundle.source.js
           grep -Fq "stockMeta.value?.__portfolio_rebalance__" assets/js/app.bundle.js
-          git diff --check -- assets/js/src/10-state-auth-cloud.js assets/js/src/app.bundle.source.js assets/js/app.bundle.js
+          git diff --check -- assets/js/src/app.bundle.source.js assets/js/app.bundle.js
       - name: Commit patch
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add assets/js/src/10-state-auth-cloud.js assets/js/src/app.bundle.source.js assets/js/app.bundle.js
+          git add assets/js/src/app.bundle.source.js assets/js/app.bundle.js
           git commit -m 'Read complete rebalance target from stock metadata'
           git push origin HEAD:work/fix-rebalance-meta-source-20260811
