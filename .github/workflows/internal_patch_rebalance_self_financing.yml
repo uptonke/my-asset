@@ -32,6 +32,45 @@ jobs:
           grep -Fq 'buildSelfFinancingRebalancePlan' assets/js/src/app.bundle.source.js
           grep -Fq 'planned_trade_pct' assets/js/src/app.bundle.source.js
           grep -Fq 'self_financing_within_005pp' assets/js/src/app.bundle.source.js
+      - name: Unit test self-financing plan
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('assets/js/src/app.bundle.source.js').read_text(encoding='utf-8')
+          start = text.index('        function buildSelfFinancingRebalancePlan(')
+          end = text.index('        const rebalanceCockpitRows = computed(() => {', start)
+          fn = text[start:end].replace('        function buildSelfFinancingRebalancePlan', 'function buildSelfFinancingRebalancePlan', 1)
+          test = r'''
+          const rows = [
+            {ticker:'BTC', currentWeightPct:9.7, targetWeightPct:5.2},
+            {ticker:'VEA', currentWeightPct:7.0, targetWeightPct:4.6},
+            {ticker:'SRVR', currentWeightPct:1.3, targetWeightPct:0.0},
+            {ticker:'BOXX', currentWeightPct:13.3, targetWeightPct:14.5},
+            {ticker:'QQQ', currentWeightPct:12.2, targetWeightPct:13.4},
+            {ticker:'VOO', currentWeightPct:12.0, targetWeightPct:13.1},
+            {ticker:'AVUV', currentWeightPct:10.7, targetWeightPct:11.7},
+            {ticker:'REST', currentWeightPct:33.8, targetWeightPct:37.5}
+          ];
+          const sum = a => a.reduce((s,x)=>s+x,0);
+          for (const b of [1,3]) {
+            const p = buildSelfFinancingRebalancePlan(rows,b,false,100);
+            const trades = p.rows.map(r=>r.postTradeWeightPct-r.currentWeightPct);
+            const buys = sum(trades.filter(x=>x>0));
+            const sells = -sum(trades.filter(x=>x<0));
+            if (Math.abs(buys-sells)>1e-6) throw new Error(`cash mismatch at buffer ${b}: ${buys} vs ${sells}`);
+            if (Math.abs(sum(p.rows.map(r=>r.postTradeWeightPct))-100)>1e-6) throw new Error(`post-trade asset sum mismatch at ${b}`);
+            for (const r of p.rows) {
+              if (r.postTradeWeightPct < r.lowerBoundPct-1e-6 || r.postTradeWeightPct > r.upperBoundPct+1e-6) throw new Error(`band violation ${r.ticker} at ${b}`);
+            }
+          }
+          const p3 = buildSelfFinancingRebalancePlan(rows,3,false,100);
+          const btc = p3.rows.find(r=>r.ticker==='BTC');
+          if (Math.abs(btc.postTradeWeightPct-8.2)>1e-6) throw new Error(`BTC should trim to 8.2, got ${btc.postTradeWeightPct}`);
+          console.log('self-financing rebalance unit test OK');
+          '''
+          Path('/tmp/rebalance-test.js').write_text(fn + '\n' + test, encoding='utf-8')
+          PY
+          node /tmp/rebalance-test.js
       - name: Commit code
         run: |
           git config user.name 'github-actions[bot]'
