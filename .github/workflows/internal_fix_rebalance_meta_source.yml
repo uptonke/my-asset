@@ -38,33 +38,20 @@ jobs:
                     } else if (data.rebalance_meta) {
                         cloudRebalanceMeta.value = data.rebalance_meta;
                     }"""
-          catch_old = """                stockMeta.value = JSON.parse(await localforage.getItem('stockMeta') || '{}');
-                chaosMeta.value = JSON.parse(await localforage.getItem('chaosMeta') || 'null');"""
-          catch_new = """                stockMeta.value = JSON.parse(await localforage.getItem('stockMeta') || '{}');
-                const cachedRebalanceMeta = stockMeta.value?.__portfolio_rebalance__;
-                if (cachedRebalanceMeta && typeof cachedRebalanceMeta === 'object') {
-                    cloudRebalanceMeta.value = cachedRebalanceMeta;
-                }
-                chaosMeta.value = JSON.parse(await localforage.getItem('chaosMeta') || 'null');"""
 
           for path in paths:
               text = path.read_text(encoding='utf-8')
               if old not in text:
                   raise SystemExit(f'missing cloud rebalance needle in {path}')
-              text = text.replace(old, new, 1)
-              if catch_old not in text:
-                  raise SystemExit(f'missing cache fallback needle in {path}')
-              text = text.replace(catch_old, catch_new, 1)
-              path.write_text(text, encoding='utf-8')
+              path.write_text(text.replace(old, new, 1), encoding='utf-8')
           PY
       - name: Build and validate frontend
         run: |
           python scripts/build_frontend_bundle.py
           python scripts/build_frontend_bundle.py --check
           node --check assets/js/app.bundle.js
-          grep -q "stockMeta.value?.__portfolio_rebalance__" assets/js/src/app.bundle.source.js
-          grep -q "stockMeta.value?.__portfolio_rebalance__" assets/js/app.bundle.js
-          grep -q "cachedRebalanceMeta" assets/js/src/app.bundle.source.js
+          grep -Fq "stockMeta.value?.__portfolio_rebalance__" assets/js/src/app.bundle.source.js
+          grep -Fq "stockMeta.value?.__portfolio_rebalance__" assets/js/app.bundle.js
           git diff --check -- assets/js/src/10-state-auth-cloud.js assets/js/src/app.bundle.source.js assets/js/app.bundle.js
       - name: Commit patch
         run: |
