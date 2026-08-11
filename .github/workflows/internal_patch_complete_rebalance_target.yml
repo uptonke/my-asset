@@ -29,7 +29,9 @@ jobs:
           node-version: '24'
 
       - name: Apply production patch
-        run: python scripts/internal_patch_complete_rebalance.py
+        run: |
+          python scripts/internal_patch_complete_rebalance.py
+          python scripts/internal_patch_canonical_complete_rebalance.py
 
       - name: Rebuild frontend bundle
         run: python scripts/build_frontend_bundle.py
@@ -54,6 +56,10 @@ jobs:
           assert actions == [('TRIM', 'BTC-USD')], actions
           print('3pp visible-buffer validation OK:', actions)
           PY
+          grep -q 'target_vector_complete' assets/js/src/app.bundle.source.js
+          grep -q 'rebalanceCockpitBuckets.value' assets/js/src/app.bundle.source.js
+          grep -q 'target_vector_complete' assets/js/app.bundle.js
+          python scripts/build_frontend_bundle.py --check
           node --check assets/js/app.bundle.js
           git diff --check -- . ':(exclude)assets/js/src/20-holdings-performance.js'
           python scripts/validate_repo_integrity.py --no-node
