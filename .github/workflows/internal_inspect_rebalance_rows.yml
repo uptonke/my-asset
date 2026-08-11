@@ -18,6 +18,14 @@ jobs:
           from pathlib import Path
           text = Path('assets/js/src/app.bundle.source.js').read_text(encoding='utf-8')
           start = text.index('        const rebalanceCockpitRows = computed(() => {')
-          end = text.index('        const rebalanceCockpitBuckets = computed(() => {', start)
-          print(text[start:end])
+          for needle in ['        const alertCenterItems = computed(() => {', '        const rebalancePostTradeProxy = computed(() => {']:
+              try:
+                  end = text.index(needle, start)
+                  if needle.startswith('        const alertCenterItems'):
+                      print(text[start:end])
+                      break
+              except ValueError:
+                  pass
+          else:
+              print(text[start:start+14000])
           PY
