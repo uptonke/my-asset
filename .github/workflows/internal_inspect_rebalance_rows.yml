@@ -1,0 +1,23 @@
+name: Internal Inspect Rebalance Rows
+
+on:
+  push:
+    branches:
+      - work/rebalance-buffer-self-financing-20260811
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/rebalance-buffer-self-financing-20260811
+      - name: Print rebalance block
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('assets/js/src/app.bundle.source.js').read_text(encoding='utf-8')
+          start = text.index('        const rebalanceCockpitRows = computed(() => {')
+          end = text.index('        const rebalanceCockpitBuckets = computed(() => {', start)
+          print(text[start:end])
+          PY
