@@ -45,6 +45,25 @@ jobs:
           PORTFOLIO_ROW_ID: '1'
         run: python scripts/enrich_xray_lookthrough.py
 
+      - name: 🎯 重建完整 delegated / blended target
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_TABLE: portfolio_db
+          PORTFOLIO_ROW_ID: '1'
+        run: |
+          python scripts/build_trading_constraints_snapshot.py
+          python scripts/build_daily_quant_monte_carlo_reference.py
+          python scripts/build_delegated_target_weight_draft_generator.py
+
+      - name: 🔄 同步完整目標至 Rebalance Monitor
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_TABLE: portfolio_db
+          PORTFOLIO_ROW_ID: '1'
+        run: python scripts/sync_rebalance_from_delegated_target.py
+
       - name: 🧭 更新 Phase 3 Market Compass
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

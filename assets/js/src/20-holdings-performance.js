@@ -71,13 +71,23 @@
                 else if (macdH < 0) { macdSignal = '🔴 死亡交叉'; macdColor = 'text-red-400 border-red-900/50 bg-red-900/20'; }
 
                 const cloudTargetWeight = meta.target_weight ? (meta.target_weight * 100) : 0;
+                const completeTargetMap = (
+                    cloudRebalanceMeta.value?.target_vector_complete === true &&
+                    cloudRebalanceMeta.value?.target_weights_pct &&
+                    typeof cloudRebalanceMeta.value.target_weights_pct === 'object'
+                ) ? cloudRebalanceMeta.value.target_weights_pct : null;
+                const completeTargetRaw = completeTargetMap ? Number(completeTargetMap[h.ticker]) : NaN;
+                const hasCompleteRebalanceTarget = Number.isFinite(completeTargetRaw);
+                const rebalanceTargetWeight = hasCompleteRebalanceTarget ? completeTargetRaw : cloudTargetWeight;
                 let mcWeight = 0;
                 if (mcOptimal.value && mcOptimal.value.weights) {
                     const match = mcOptimal.value.weights.find(w => w.ticker === h.ticker);
                     if (match) mcWeight = parseFloat(match.opt);
                 }
-                let finalBlendedWeight = cloudTargetWeight;
-                if (mcOptimal.value) finalBlendedWeight = (cloudTargetWeight * 0.5) + (mcWeight * 0.5);
+                let finalBlendedWeight = rebalanceTargetWeight;
+                if (!hasCompleteRebalanceTarget && mcOptimal.value) {
+                    finalBlendedWeight = (cloudTargetWeight * 0.5) + (mcWeight * 0.5);
+                }
 
                 const rawLiquidityScore = meta.liquidity_score ?? meta.liquidityScore ?? '-';
                 const rawContagionScore = meta.contagion_score ?? meta.contagionScore ?? '-';
@@ -134,6 +144,10 @@
                     returnRate: cumulativeReturn * 100,
                     annualizedReturnRate: annualizedReturn * 100,
                     targetWeight: cloudTargetWeight,
+                    rebalanceTargetWeight: rebalanceTargetWeight,
+                    rebalanceTargetSource: hasCompleteRebalanceTarget
+                        ? 'dual_blend_cloud_target_and_v105_native_target'
+                        : (mcOptimal.value ? 'legacy_cloud_plus_browser_mc' : 'stock_meta.target_weight'),
                     mcWeight: mcWeight,
                     blendedWeight: finalBlendedWeight
                 });

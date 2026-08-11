@@ -47,6 +47,11 @@
     hardBufferTickers: ['SHY', 'BOXX'],
     universePolicy: '',
     ruleThresholdPp: 1,
+    targetWeightSource: '',
+    targetVectorComplete: false,
+    targetAssetWeightSumPct: null,
+    cashTargetWeightPct: null,
+    targetSourceGeneratedAt: '',
     economicDustTickers: [],
     sheetOnlyTickersExcluded: [],
     backendSignalCount: 0,
@@ -571,6 +576,13 @@ watch([groupedHoldings, portfolioStats, stats, sysCorr, chaosMeta, cloudRebalanc
         hardBufferTickers: resolvedHardBufferTickers,
         universePolicy: backendRebalance.universe_policy || '',
         ruleThresholdPp: Number(backendRebalance.rule_threshold_pp || 1),
+        targetWeightSource: backendRebalance.target_weight_source || '',
+        targetVectorComplete: backendRebalance.target_vector_complete === true,
+        targetAssetWeightSumPct: Number.isFinite(Number(backendRebalance.target_asset_weight_sum_pct))
+            ? Number(backendRebalance.target_asset_weight_sum_pct) : null,
+        cashTargetWeightPct: Number.isFinite(Number(backendRebalance.cash_target_weight_pct))
+            ? Number(backendRebalance.cash_target_weight_pct) : null,
+        targetSourceGeneratedAt: backendRebalance.target_source_generated_at || '',
         economicDustTickers: Array.isArray(backendRebalance.economic_dust_tickers_excluded)
             ? backendRebalance.economic_dust_tickers_excluded : [],
         sheetOnlyTickersExcluded: Array.isArray(backendRebalance.sheet_only_tickers_excluded)
