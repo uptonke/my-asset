@@ -54,7 +54,7 @@ jobs:
         run: |
           python scripts/build_trading_constraints_snapshot.py
           python scripts/build_daily_quant_monte_carlo_reference.py
-          python scripts/build_delegated_target_weight_draft_generator.py
+          python scripts/build_delegated_target_weight_draft_guarded.py
 
       - name: 🔄 同步完整目標至 Rebalance Monitor
         env:
