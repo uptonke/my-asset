@@ -18,6 +18,16 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install quant dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r scripts/quant_requirements.txt
+
       - name: Apply patch
         run: python scripts/patch_stock_meta_nonfinite_once.py
 
@@ -73,5 +83,3 @@ jobs:
           git diff --cached --check
           git commit -m 'Sanitize non-finite stock quant metrics before Supabase write'
           git push origin HEAD:main
-
-# retrigger after function-scoped patch fix
