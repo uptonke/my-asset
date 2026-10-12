@@ -140,17 +140,25 @@ jobs:
               raise SystemExit(f'Google Sheet price ticker canonicalization: expected 1 match, found {count}')
           text = text.replace(old, 'ticker = normalize_ticker_symbol(row[0])', 1)
 
-          old = '''            for original_ticker in pipeline_tickers:
-                      yf_ticker = ticker_to_yf.get(original_ticker, "")
-                      if original_ticker in sheet_prices: stock_meta[original_ticker]["last_price"] = sheet_prices[original_ticker]
-          '''
-          new = '''            for original_ticker in pipeline_tickers:
-                      stock_meta.setdefault(original_ticker, {})
-                      yf_ticker = ticker_to_yf.get(original_ticker, "")
-                      if original_ticker in sheet_prices:
-                          stock_meta[original_ticker]["last_price"] = sheet_prices[original_ticker]
-          '''
-          replace_once(old, new, 'pipeline stock_meta guard')
+          lines = text.splitlines()
+          hits = [i for i, line in enumerate(lines) if line.strip() == 'for original_ticker in pipeline_tickers:']
+          if len(hits) != 1:
+              raise SystemExit(f'pipeline stock_meta guard: expected one loop, found {len(hits)}')
+          i = hits[0]
+          indent = lines[i][:len(lines[i]) - len(lines[i].lstrip())]
+          body_indent = indent + '    '
+          if i + 2 >= len(lines) or lines[i + 1].strip() != 'yf_ticker = ticker_to_yf.get(original_ticker, "")':
+              raise SystemExit('pipeline stock_meta guard: unexpected loop body')
+          lines.insert(i + 1, body_indent + 'stock_meta.setdefault(original_ticker, {})')
+          price_line_index = i + 3
+          expected_price = 'if original_ticker in sheet_prices: stock_meta[original_ticker]["last_price"] = sheet_prices[original_ticker]'
+          if lines[price_line_index].strip() != expected_price:
+              raise SystemExit(f'pipeline stock_meta guard: unexpected price line: {lines[price_line_index].strip()}')
+          lines[price_line_index:price_line_index + 1] = [
+              body_indent + 'if original_ticker in sheet_prices:',
+              body_indent + '    stock_meta[original_ticker]["last_price"] = sheet_prices[original_ticker]',
+          ]
+          text = '\n'.join(lines) + '\n'
 
           path.write_text(text, encoding='utf-8')
           PY
@@ -170,6 +178,8 @@ jobs:
           missing = [item for item in required if item not in text]
           if missing:
               raise SystemExit(f'missing expected repairs: {missing}')
+          if 'TPE:2317' in text or 'TPE:2382' in text:
+              print('note: literal examples may remain only in comments/docs')
           print('ticker namespace source repair validated')
           PY
 
