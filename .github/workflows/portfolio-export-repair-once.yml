@@ -25,11 +25,21 @@ jobs:
           from pathlib import Path
           p = Path('scripts/patch_portfolio_export_once.py')
           text = p.read_text(encoding='utf-8')
-          old = 'exportAll, importData, getTypeColor, getCategoryColorCode, formatNumber, formatPercent,'
-          new = 'exportAll, importData, getTypeColor, getCategoryColorCode, formatNumber, formatCurrency, formatPercent,'
-          if text.count(old) != 2:
-              raise SystemExit(f'expected two matcher strings, got {text.count(old)}')
-          p.write_text(text.replace(old, new), encoding='utf-8')
+          pairs = [
+              (
+                  'exportAll, importData, getTypeColor, getCategoryColorCode, formatNumber, formatPercent,',
+                  'exportAll, importData, getTypeColor, getCategoryColorCode, formatNumber, formatCurrency, formatPercent,'
+              ),
+              (
+                  'exportAll, exportHoldingsCsv, exportPortfolioPdf, importData, getTypeColor, getCategoryColorCode, formatNumber, formatPercent,',
+                  'exportAll, exportHoldingsCsv, exportPortfolioPdf, importData, getTypeColor, getCategoryColorCode, formatNumber, formatCurrency, formatPercent,'
+              ),
+          ]
+          for old, new in pairs:
+              if text.count(old) != 1:
+                  raise SystemExit(f'expected one matcher string, got {text.count(old)}: {old}')
+              text = text.replace(old, new, 1)
+          p.write_text(text, encoding='utf-8')
           PY
           python scripts/patch_portfolio_export_once.py
 
@@ -43,6 +53,8 @@ jobs:
           cmp assets/js/src/app.bundle.source.js assets/js/app.bundle.js
           grep -q 'function exportPortfolioPdf' assets/js/src/app.bundle.source.js
           grep -q 'function exportHoldingsCsv' assets/js/src/app.bundle.source.js
+          grep -q 'exportAll, exportHoldingsCsv, exportPortfolioPdf' assets/js/src/app.bundle.source.js
+          grep -q 'formatNumber, formatCurrency, formatPercent' assets/js/src/app.bundle.source.js
           grep -q 'portfolio-export-menu' index.html
           grep -q 'Portfolio export menu v1' assets/css/10-components.css
           git diff --check
