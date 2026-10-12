@@ -75,7 +75,7 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git rm .github/workflows/portfolio-export-repair-once.yml scripts/patch_portfolio_export_once.py
+          git rm -f .github/workflows/portfolio-export-repair-once.yml scripts/patch_portfolio_export_once.py
           git checkout -- data/repo_architecture/frontend_build_status_latest.json data/repo_architecture/frontend_build_status_summary.md || true
           git add index.html assets/css/10-components.css assets/js/src/app.bundle.source.js assets/js/app.bundle.js
           git diff --cached --check
