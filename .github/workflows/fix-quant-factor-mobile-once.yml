@@ -1,0 +1,70 @@
+name: One-time quant factor and mobile UI repair
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-quant-factor-mobile-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install quant dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r scripts/quant_requirements.txt
+
+      - name: Apply patch
+        run: python scripts/patch_quant_factor_mobile_once.py
+
+      - name: Validate quant and UI source
+        shell: bash
+        run: |
+          python -m py_compile scripts/update_stock_meta.py
+          node --check assets/js/quant-main-display.js
+          python - <<'PY'
+          import importlib.util
+          import math
+
+          spec = importlib.util.spec_from_file_location('quant_meta_test', 'scripts/update_stock_meta.py')
+          mod = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(mod)
+
+          trend = mod.score_trend(0.03, 0.05, 0.10, 0.01, 0.02, 0.03)
+          momentum = mod.score_momentum(-0.04, 0.02, 0.08, 0.15)
+          assert math.isfinite(trend) and 0 <= trend <= 10, trend
+          assert math.isfinite(momentum) and 0 <= momentum <= 10, momentum
+          assert trend != momentum, (trend, momentum)
+
+          weak_trend = mod.score_trend(-0.03, -0.05, -0.10, -0.01, -0.02, -0.03)
+          strong_momentum = mod.score_momentum(0.08, 0.15, 0.25, 0.35)
+          assert weak_trend < 5, weak_trend
+          assert strong_momentum > 5, strong_momentum
+          print('split trend/momentum scoring validated')
+          PY
+
+      - name: Commit repair and remove temporary files
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/fix-quant-factor-mobile-once.yml scripts/patch_quant_factor_mobile_once.py
+          git add scripts/update_stock_meta.py assets/js/quant-main-display.js
+          git diff --cached --check
+          git commit -m 'Split trend and momentum factors and improve mobile quant view'
+          git push origin HEAD:main
