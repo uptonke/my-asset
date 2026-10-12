@@ -96,12 +96,25 @@ if ta is None:
 GOOGLE_SHEET_TICKER_CSV_URL_DEFAULT = "https://docs.google.com/spreadsheets/d/1cVoE67-mR9lQQLn4FE_GYftAOAR2RjvaL3MgqIUQ880/export?format=csv&gid=0"
 
 def normalize_ticker_symbol(value):
-    """Normalize user-maintained ticker strings from Google Sheet / ledger."""
+    """Return one canonical portfolio ticker across ledger, Sheet, and analytics."""
     if value is None:
         return ""
     t = str(value).strip().upper()
     if not t or t in {"NAN", "NONE", "NULL", "-"}:
         return ""
+
+    # Google Finance-style Taiwan symbols are aliases, not distinct assets.
+    # Keep the portfolio namespace aligned with ledger tickers such as 2317/2382.
+    for prefix in ("TPE:", "TWSE:", "TPEX:"):
+        if t.startswith(prefix):
+            candidate = t.split(":", 1)[1].strip()
+            if re.fullmatch(r"\d{4}[A-Z]?", candidate):
+                t = candidate
+            break
+
+    match = re.fullmatch(r"(\d{4}[A-Z]?)\.(TW|TWO)", t)
+    if match:
+        t = match.group(1)
     return t
 
 def load_google_sheet_ticker_whitelist():
@@ -424,7 +437,7 @@ PROXY_TICKER_MAP = {
 }
 
 def normalize_ticker(raw):
-    return str(raw).strip().upper() if raw is not None else ""
+    return normalize_ticker_symbol(raw)
 
 
 def is_tw_numeric_ticker(ticker):
@@ -1355,7 +1368,7 @@ try:
         if response.data:
             db_record = response.data[0]
             for tx in db_record.get("ledger_data", []):
-                t = str(tx.get("ticker", "")).strip().upper()
+                t = normalize_ticker_symbol(tx.get("ticker"))
                 if not t:
                     continue
                 
@@ -1553,7 +1566,7 @@ def get_sheet_prices(url_str):
         price_map = {}
         for _, row in df.iterrows():
             if len(row) >= 2 and pd.notna(row[0]) and pd.notna(row[1]):
-                ticker = str(row[0]).strip().upper()
+                ticker = normalize_ticker_symbol(row[0])
                 try:
                     price = float(str(row[1]).replace(',', ''))
                     price_map[ticker] = price
@@ -1596,11 +1609,35 @@ try:
     portfolio_resp = supabase.table("portfolio_db").select("*").limit(1).execute()
     if portfolio_resp.data:
         db_record = portfolio_resp.data[0]
-        stock_meta, ledger_data = db_record.get("stock_meta", {}), db_record.get("ledger_data", [])
-        ledger_tickers = [str(tx["ticker"]).strip().upper() for tx in ledger_data if tx.get("ticker")]
-        all_tickers = list(set(list(stock_meta.keys()) + ledger_tickers))
+        raw_stock_meta = db_record.get("stock_meta", {}) or {}
+        ledger_data = db_record.get("ledger_data", []) or []
+
+        # Canonicalize legacy aliases (e.g. TPE:2317 / 2317.TW -> 2317).
+        # Alias metadata is merged first; an already-canonical key wins on conflicts.
+        stock_meta = {}
+        if isinstance(raw_stock_meta, dict):
+            for raw_ticker, raw_meta in raw_stock_meta.items():
+                canonical = normalize_ticker_symbol(raw_ticker)
+                if not canonical:
+                    continue
+                dest = stock_meta.setdefault(canonical, {})
+                if isinstance(raw_meta, dict):
+                    for key, value in raw_meta.items():
+                        dest.setdefault(key, value)
+            for raw_ticker, raw_meta in raw_stock_meta.items():
+                canonical = normalize_ticker_symbol(raw_ticker)
+                if canonical and str(raw_ticker).strip().upper() == canonical and isinstance(raw_meta, dict):
+                    stock_meta.setdefault(canonical, {}).update(raw_meta)
+
+        ledger_tickers = [
+            normalize_ticker_symbol(tx.get("ticker"))
+            for tx in ledger_data
+            if normalize_ticker_symbol(tx.get("ticker"))
+        ]
+        sheet_tickers = load_google_sheet_ticker_whitelist()
+        all_tickers = sorted(set(stock_meta.keys()) | set(ledger_tickers) | set(sheet_tickers))
         for t in all_tickers:
-            if t not in stock_meta: stock_meta[t] = {}
+            stock_meta.setdefault(t, {})
 
         print("📊 正在從 Google Sheet 抓取自訂報價...", flush=True)
         sheet_prices = get_sheet_prices(db_record.get("settings", {}).get("sheetUrl", ""))
@@ -1625,7 +1662,7 @@ try:
             print("⚖️ 正在過濾真實庫存標的...", flush=True)
             current_shares = {}
             for tx in ledger_data:
-                t = str(tx.get("ticker", "")).strip().upper()
+                t = normalize_ticker_symbol(tx.get("ticker"))
                 if not t: continue
                 
                 # 修正：阻絕 JSON Null 穿透
@@ -1637,7 +1674,8 @@ try:
             ledger_active_tickers = [t for t, s in current_shares.items() if s > 0.0001]
             closed_tickers = sorted([t for t, s in current_shares.items() if abs(s) <= 0.0001])
 
-            sheet_tickers = load_google_sheet_ticker_whitelist()
+            # sheet_tickers was loaded before the Yahoo download so research-only
+            # candidates receive a mapping and historical data too.
 
             # Ledger holdings are the source of truth for actionable portfolio exposure.
             # The Google Sheet is a research / target-candidate universe only.
@@ -1783,8 +1821,10 @@ try:
 
             print("🧠 開始計算各別標的風險參數並寫入資料庫...", flush=True)
             for original_ticker in pipeline_tickers:
+                stock_meta.setdefault(original_ticker, {})
                 yf_ticker = ticker_to_yf.get(original_ticker, "")
-                if original_ticker in sheet_prices: stock_meta[original_ticker]["last_price"] = sheet_prices[original_ticker]
+                if original_ticker in sheet_prices:
+                    stock_meta[original_ticker]["last_price"] = sheet_prices[original_ticker]
                 
                 if yf_ticker in returns.columns:
                     stock_close = prices_df[yf_ticker].dropna()
