@@ -98,6 +98,10 @@
             <i class="fas fa-chevron-down portfolio-export-chevron"></i>
         </summary>
         <div class="portfolio-export-popover">
+            <button type="button" @click="exportAiPortfolioJson(); $event.currentTarget.closest('details').removeAttribute('open')" class="portfolio-export-item">
+                <i class="fas fa-brain"></i>
+                <span><strong>AI 分析 JSON</strong><small>NAV、配置、量化因子與風險摘要</small></span>
+            </button>
             <button type="button" @click="exportPortfolioPdf(); $event.currentTarget.closest('details').removeAttribute('open')" class="portfolio-export-item">
                 <i class="fas fa-file-pdf"></i>
                 <span><strong>投組報告 PDF</strong><small>NAV、持倉、權重與量化因子</small></span>
@@ -6954,7 +6958,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=portfolio-export-v1"></script>
+<script src="assets/js/app.bundle.js?v=portfolio-ai-export-v1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
