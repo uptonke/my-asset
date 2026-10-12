@@ -617,10 +617,19 @@ def compute_beta_and_corr(asset: pd.DataFrame, bench: pd.DataFrame) -> Tuple[Opt
     b = bench[["date", "close"]].copy()
     a["date"] = pd.to_datetime(a["date"]).dt.date
     b["date"] = pd.to_datetime(b["date"]).dt.date
+    a["close"] = pd.to_numeric(a["close"], errors="coerce").replace([np.inf, -np.inf], np.nan)
+    b["close"] = pd.to_numeric(b["close"], errors="coerce").replace([np.inf, -np.inf], np.nan)
+    a = a.dropna(subset=["close"])
+    b = b.dropna(subset=["close"])
+    a = a[a["close"] > 0]
+    b = b[b["close"] > 0]
     merged = pd.merge(a, b, on="date", suffixes=("_asset", "_bench")).sort_values("date")
     if len(merged) < 80:
         return None, None
-    aligned = pd.concat([merged["close_asset"].pct_change(), merged["close_bench"].pct_change()], axis=1).dropna()
+    aligned = pd.concat([
+        merged["close_asset"].pct_change(fill_method=None),
+        merged["close_bench"].pct_change(fill_method=None),
+    ], axis=1).replace([np.inf, -np.inf], np.nan).dropna()
     aligned.columns = ["asset", "bench"]
     if len(aligned) < 60:
         return None, None
@@ -629,6 +638,10 @@ def compute_beta_and_corr(asset: pd.DataFrame, bench: pd.DataFrame) -> Tuple[Opt
         return None, None
     beta = float(np.cov(aligned["asset"], aligned["bench"], ddof=1)[0, 1] / var)
     corr = float(aligned["asset"].corr(aligned["bench"]))
+    if not math.isfinite(beta):
+        beta = None
+    if not math.isfinite(corr):
+        corr = None
     return beta, corr
 
 def score_trend(m1, m3, m6, m12, ma60, ma200) -> float:
@@ -716,8 +729,9 @@ def score_liquidity(df: pd.DataFrame) -> Optional[float]:
 
 def compute_meta(ticker: str, category: str, df: pd.DataFrame, source: str, extras: Dict[str, Any]) -> Dict[str, Any]:
     df = df.dropna(subset=["close"]).sort_values("date").copy()
-    close = pd.to_numeric(df["close"], errors="coerce").dropna()
-    returns = close.pct_change().dropna()
+    close = pd.to_numeric(df["close"], errors="coerce").replace([np.inf, -np.inf], np.nan).dropna()
+    close = close[close > 0]
+    returns = close.pct_change(fill_method=None).replace([np.inf, -np.inf], np.nan).dropna()
     if len(close) < 40:
         raise RuntimeError(f"insufficient price history for {ticker}: {len(close)} rows")
     last_price = safe_last(close)
@@ -838,8 +852,9 @@ def clean_price_series(df: pd.DataFrame) -> pd.Series:
         return pd.Series(dtype=float)
     out = df[["date", "close"]].copy()
     out["date"] = pd.to_datetime(out["date"]).dt.tz_localize(None).dt.normalize()
-    out["close"] = pd.to_numeric(out["close"], errors="coerce")
+    out["close"] = pd.to_numeric(out["close"], errors="coerce").replace([np.inf, -np.inf], np.nan)
     out = out.dropna(subset=["date", "close"]).drop_duplicates(subset=["date"]).sort_values("date")
+    out = out[out["close"] > 0]
     if out.empty:
         return pd.Series(dtype=float)
     return pd.Series(out["close"].values, index=out["date"], dtype=float)
@@ -1576,7 +1591,7 @@ def ewma_annual_vol(returns: pd.Series, lam: float = 0.94) -> Optional[float]:
     - Returns annualized volatility as decimal, e.g. 0.18 = 18%.
     """
     try:
-        r = pd.to_numeric(returns, errors="coerce").dropna()
+        r = pd.to_numeric(returns, errors="coerce").replace([np.inf, -np.inf], np.nan).dropna()
         if len(r) < 20:
             return None
 
@@ -1606,7 +1621,7 @@ def ewma_covariance_matrix(returns: pd.DataFrame, lam: float = SYNTHETIC_EWMA_LA
     Returns annualized covariance matrix.
     """
     try:
-        df = returns.apply(pd.to_numeric, errors="coerce").dropna(how="any")
+        df = returns.apply(pd.to_numeric, errors="coerce").replace([np.inf, -np.inf], np.nan).dropna(how="any")
         if df.shape[0] < 40 or df.shape[1] < 2:
             return None
 
@@ -2727,12 +2742,32 @@ def merge_stock_meta(existing: Dict[str, Any], new_meta: Dict[str, Dict[str, Any
         merged[ticker] = {**old, **meta}
     return merged
 
+
+def sanitize_json_value(value: Any) -> Any:
+    """Recursively convert numpy scalars and non-finite floats into strict JSON values."""
+    if isinstance(value, dict):
+        return {str(k): sanitize_json_value(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [sanitize_json_value(v) for v in value]
+    if isinstance(value, (np.bool_, bool)):
+        return bool(value)
+    if isinstance(value, np.integer):
+        return int(value)
+    if isinstance(value, (np.floating, float)):
+        v = float(value)
+        return v if math.isfinite(v) else None
+    if isinstance(value, pd.Timestamp):
+        return value.isoformat()
+    return value
+
+
 def write_supabase_stock_meta(client, merged_stock_meta: Dict[str, Any]) -> None:
     if DRY_RUN:
         print("DRY_RUN=true, not writing to Supabase.")
         return
     try:
-        client.table(SUPABASE_TABLE).upsert({"id": int(PORTFOLIO_ROW_ID), "stock_meta": merged_stock_meta}, on_conflict="id").execute()
+        safe_stock_meta = sanitize_json_value(merged_stock_meta)
+        client.table(SUPABASE_TABLE).upsert({"id": int(PORTFOLIO_ROW_ID), "stock_meta": safe_stock_meta}, on_conflict="id").execute()
     except Exception as exc:
         fail(f"Failed to write Supabase stock_meta: {exc}")
 
