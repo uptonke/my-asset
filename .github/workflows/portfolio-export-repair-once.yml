@@ -42,6 +42,16 @@ jobs:
           p.write_text(text, encoding='utf-8')
           PY
           python scripts/patch_portfolio_export_once.py
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('assets/js/src/app.bundle.source.js')
+          text = p.read_text(encoding='utf-8')
+          old = '            exportAll, exportHoldingsCsv, exportPortfolioPdf, importData, getTypeColor, getCategoryColorCode, formatNumber, formatCurrency, formatPercent, \n'
+          new = '            exportAll, exportHoldingsCsv, exportPortfolioPdf, importData, getTypeColor, getCategoryColorCode, formatNumber, formatCurrency, formatPercent,\n'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one export return line with trailing space, got {text.count(old)}')
+          p.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
 
       - name: Build and validate frontend bundle
         shell: bash
