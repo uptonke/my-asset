@@ -91,10 +91,27 @@
         <input type="file" @change="importData" class="hidden" accept=".json">
     </label>
 
-    <button @click="exportAll" class="tool-btn tool-btn-green">
-        <i class="fas fa-download"></i>
-        <span>匯出</span>
-    </button>
+    <details class="portfolio-export-menu">
+        <summary class="tool-btn tool-btn-green" title="匯出投資組合">
+            <i class="fas fa-download"></i>
+            <span>匯出</span>
+            <i class="fas fa-chevron-down portfolio-export-chevron"></i>
+        </summary>
+        <div class="portfolio-export-popover">
+            <button type="button" @click="exportPortfolioPdf(); $event.currentTarget.closest('details').removeAttribute('open')" class="portfolio-export-item">
+                <i class="fas fa-file-pdf"></i>
+                <span><strong>投組報告 PDF</strong><small>NAV、持倉、權重與量化因子</small></span>
+            </button>
+            <button type="button" @click="exportHoldingsCsv(); $event.currentTarget.closest('details').removeAttribute('open')" class="portfolio-export-item">
+                <i class="fas fa-file-csv"></i>
+                <span><strong>持倉 CSV</strong><small>Excel / Numbers / 分析工具</small></span>
+            </button>
+            <button type="button" @click="exportAll(); $event.currentTarget.closest('details').removeAttribute('open')" class="portfolio-export-item">
+                <i class="fas fa-file-code"></i>
+                <span><strong>JSON 備份</strong><small>Ledger、歷史與 stock_meta</small></span>
+            </button>
+        </div>
+    </details>
 
     <button @click="handleLogout" class="tool-btn tool-btn-red">
         <i class="fas fa-sign-out-alt"></i>
@@ -6937,7 +6954,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=risk-optimizer-card-org-v1"></script>
+<script src="assets/js/app.bundle.js?v=portfolio-export-v1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
