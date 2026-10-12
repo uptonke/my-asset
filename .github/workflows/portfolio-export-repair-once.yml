@@ -17,8 +17,21 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Apply portfolio export patch
-        run: python scripts/patch_portfolio_export_once.py
+      - name: Fix patch matcher and apply portfolio export patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/patch_portfolio_export_once.py')
+          text = p.read_text(encoding='utf-8')
+          old = 'exportAll, importData, getTypeColor, getCategoryColorCode, formatNumber, formatPercent,'
+          new = 'exportAll, importData, getTypeColor, getCategoryColorCode, formatNumber, formatCurrency, formatPercent,'
+          if text.count(old) != 2:
+              raise SystemExit(f'expected two matcher strings, got {text.count(old)}')
+          p.write_text(text.replace(old, new), encoding='utf-8')
+          PY
+          python scripts/patch_portfolio_export_once.py
 
       - name: Build and validate frontend bundle
         shell: bash
