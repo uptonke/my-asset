@@ -12,6 +12,23 @@ def replace_once(old: str, new: str, label: str) -> None:
     text = text.replace(old, new, 1)
 
 
+def replace_in_function(function_name: str, old: str, new: str, label: str) -> None:
+    global text
+    marker = f'def {function_name}('
+    start = text.find(marker)
+    if start < 0:
+        raise SystemExit(f'{label}: function {function_name} not found')
+    end = text.find('\ndef ', start + len(marker))
+    if end < 0:
+        end = len(text)
+    block = text[start:end]
+    count = block.count(old)
+    if count != 1:
+        raise SystemExit(f'{label}: expected exactly 1 match in {function_name}, found {count}')
+    block = block.replace(old, new, 1)
+    text = text[:start] + block + text[end:]
+
+
 replace_once(
 '''def compute_beta_and_corr(asset: pd.DataFrame, bench: pd.DataFrame) -> Tuple[Optional[float], Optional[float]]:
     if asset.empty or bench.empty:
@@ -110,19 +127,19 @@ replace_once(
 ''',
 'clean_price_series')
 
-replace_once(
-'''        r = pd.to_numeric(returns, errors="coerce").dropna()
-''',
-'''        r = pd.to_numeric(returns, errors="coerce").replace([np.inf, -np.inf], np.nan).dropna()
-''',
-'ewma annual vol finite cleanup')
+replace_in_function(
+    'ewma_annual_vol',
+    '        r = pd.to_numeric(returns, errors="coerce").dropna()\n',
+    '        r = pd.to_numeric(returns, errors="coerce").replace([np.inf, -np.inf], np.nan).dropna()\n',
+    'ewma annual vol finite cleanup',
+)
 
-replace_once(
-'''        df = returns.apply(pd.to_numeric, errors="coerce").dropna(how="any")
-''',
-'''        df = returns.apply(pd.to_numeric, errors="coerce").replace([np.inf, -np.inf], np.nan).dropna(how="any")
-''',
-'ewma covariance finite cleanup')
+replace_in_function(
+    'ewma_covariance_matrix',
+    '        df = returns.apply(pd.to_numeric, errors="coerce").dropna(how="any")\n',
+    '        df = returns.apply(pd.to_numeric, errors="coerce").replace([np.inf, -np.inf], np.nan).dropna(how="any")\n',
+    'ewma covariance finite cleanup',
+)
 
 replace_once(
 '''def merge_stock_meta(existing: Dict[str, Any], new_meta: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
