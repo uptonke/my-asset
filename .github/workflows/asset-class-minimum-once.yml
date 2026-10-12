@@ -17,7 +17,9 @@ jobs:
           fetch-depth: 0
 
       - name: Apply asset-class minimum-weight patch
-        run: python scripts/patch_asset_class_min_weight_once.py
+        run: |
+          python scripts/patch_asset_class_min_weight_once.py
+          python scripts/fix_asset_class_minimum_tests_once.py
 
       - name: Validate Python and unit tests
         shell: bash
@@ -37,7 +39,10 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git rm -f scripts/patch_asset_class_min_weight_once.py .github/workflows/asset-class-minimum-once.yml
+          git rm -f \
+            scripts/patch_asset_class_min_weight_once.py \
+            scripts/fix_asset_class_minimum_tests_once.py \
+            .github/workflows/asset-class-minimum-once.yml
           git add \
             config/manual_approval_override.json \
             scripts/build_delegated_target_weight_draft_generator.py \
