@@ -3374,8 +3374,28 @@ async function saveData() {
         }
 
         function portfolioAiFinite(value) {
+            if (value === null || value === undefined || value === '') return null;
             const n = Number(value);
             return Number.isFinite(n) ? n : null;
+        }
+
+        function portfolioAiHasQuantSource(meta) {
+            if (!meta || typeof meta !== 'object') return false;
+            return [meta.source, meta.data_quality, meta.last_market_date].some((value) =>
+                value !== null && value !== undefined && String(value).trim() !== ''
+            );
+        }
+
+        function portfolioAiPivotZone(meta, side) {
+            const low = portfolioAiFinite(meta?.[`pivot_${side}_zone_low`]);
+            const high = portfolioAiFinite(meta?.[`pivot_${side}_zone_high`]);
+            if (low === null || high === null) return null;
+            return {
+                low,
+                high,
+                mid: portfolioAiFinite(meta?.[`pivot_${side}_zone_mid`]),
+                distance_pct: portfolioAiFinite(meta?.[`pivot_${side}_distance_pct`])
+            };
         }
 
         function portfolioAiClean(value) {
@@ -3424,23 +3444,23 @@ async function saveData() {
                         beta: portfolioAiFinite(meta.beta ?? row.beta),
                         beta_benchmark: meta.beta_benchmark ?? null,
                         correlation: portfolioAiFinite(meta.corr ?? meta.correlation),
-                        trend_score: portfolioAiFinite(meta.trend_score ?? row.trendScore),
-                        momentum_score: portfolioAiFinite(meta.momentum_score ?? row.momentumScore),
-                        technical_score: portfolioAiFinite(meta.technical_score),
-                        valuation_score: portfolioAiFinite(meta.valuation_score),
-                        valuation_pressure: portfolioAiFinite(meta.valuation_pressure),
-                        health_score: portfolioAiFinite(meta.quant_health_score ?? row.healthScore),
+                        trend_score: portfolioAiHasQuantSource(meta) ? portfolioAiFinite(meta.trend_score ?? row.trendScore) : null,
+                        momentum_score: portfolioAiHasQuantSource(meta) ? portfolioAiFinite(meta.momentum_score ?? row.momentumScore) : null,
+                        technical_score: portfolioAiHasQuantSource(meta) ? portfolioAiFinite(meta.technical_score) : null,
+                        valuation_score: portfolioAiHasQuantSource(meta) ? portfolioAiFinite(meta.valuation_score) : null,
+                        valuation_pressure: portfolioAiHasQuantSource(meta) ? portfolioAiFinite(meta.valuation_pressure) : null,
+                        health_score: portfolioAiHasQuantSource(meta) ? portfolioAiFinite(meta.quant_health_score ?? row.healthScore) : null,
                     },
                     risk_metrics: {
-                        risk_score: portfolioAiFinite(meta.risk_score ?? row.riskScore),
-                        max_drawdown_1y: portfolioAiFinite(meta.max_drawdown_1y),
+                        risk_score: portfolioAiHasQuantSource(meta) ? portfolioAiFinite(meta.risk_score ?? row.riskScore) : null,
+                        max_drawdown_1y: portfolioAiHasQuantSource(meta) ? portfolioAiFinite(meta.max_drawdown_1y) : null,
                         liquidity_score: portfolioAiFinite(meta.liquidity_score),
-                        volatility_20d: portfolioAiFinite(meta.volatility_20d ?? meta.vol_20d),
-                        annualized_volatility: portfolioAiFinite(meta.annualized_volatility ?? meta.volatility_annualized),
+                        volatility_20d: portfolioAiHasQuantSource(meta) ? portfolioAiFinite(meta.volatility_20d ?? meta.vol_20d) : null,
+                        annualized_volatility: portfolioAiHasQuantSource(meta) ? portfolioAiFinite(meta.annualized_volatility ?? meta.volatility_annualized) : null,
                     },
                     technical_context: {
-                        monthly_support: portfolioAiClean(meta.monthly_support ?? meta.pivot_support),
-                        monthly_resistance: portfolioAiClean(meta.monthly_resistance ?? meta.pivot_resistance),
+                        monthly_support: portfolioAiPivotZone(meta, 'support'),
+                        monthly_resistance: portfolioAiPivotZone(meta, 'resistance'),
                         monthly_position: meta.pivot_position_plain ?? meta.pivot_status ?? null,
                         signal: meta.pivot_signal ?? null,
                         signal_reason: meta.pivot_signal_reason ?? null,
