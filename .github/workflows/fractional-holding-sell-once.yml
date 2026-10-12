@@ -1,0 +1,57 @@
+name: One-time fractional holding sell fix
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fractional-holding-sell-once.yml'
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  patch-test-cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply fractional holding sell patch
+        run: python scripts/patch_fractional_holding_sell_once.py
+
+      - name: Rebuild and validate frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build_frontend_bundle.py
+          node --check assets/js/src/app.bundle.source.js
+          node --check assets/js/app.bundle.js
+          cmp assets/js/src/app.bundle.source.js assets/js/app.bundle.js
+          grep -F 'function formatQuantity' assets/js/src/app.bundle.source.js
+          grep -F 'step="any" inputmode="decimal"' index.html
+          grep -F '{{ formatQuantity(stock.shares) }}' index.html
+          grep -F 'qty - Number(holding.shares || 0) > 1e-8' assets/js/src/app.bundle.source.js
+          grep -F 'finalShares - Number(holding.shares || 0) > 1e-8' assets/js/src/app.bundle.source.js
+          node - <<'NODE'
+          const holding = 0.10000000000000142;
+          const exactSale = 0.1;
+          const overSale = 0.1001;
+          if (exactSale - holding > 1e-8) throw new Error('0.1 full-sale incorrectly blocked');
+          if (!(overSale - holding > 1e-8)) throw new Error('oversell not blocked');
+          NODE
+          git diff --check
+
+      - name: Commit final fix and remove temporary files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -f scripts/patch_fractional_holding_sell_once.py .github/workflows/fractional-holding-sell-once.yml
+          git add index.html assets/js/src/app.bundle.source.js assets/js/app.bundle.js
+          git diff --cached --check
+          git commit -m 'Support fractional holding quantities and sells'
+          git push origin HEAD:main
