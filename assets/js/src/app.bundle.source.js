@@ -3622,7 +3622,7 @@ async function saveData() {
         const holding = holdingsFlat.value.find(h => h.ticker === String(ticker || '').toUpperCase());
         if (type === 'Sell') {
             if (!holding) output.warnings.push('目前沒有這檔持倉可賣。');
-            else if (qty > holding.shares) output.warnings.push(`賣出股數超過現有持倉 (${formatNumber(holding.shares)})。`);
+            else if (qty - Number(holding.shares || 0) > 1e-8) output.warnings.push(`賣出股數超過現有持倉 (${formatQuantity(holding.shares)})。`);
         }
     } else if (type === 'Deposit' || type === 'Withdraw') {
         const estimatedAmount = Number(amount) || 0;
@@ -3684,8 +3684,8 @@ async function saveData() {
                 alert('目前沒有這檔持倉可賣出');
                 return;
             }
-            if (finalShares > holding.shares) {
-                alert(`賣出股數超過現有持倉 (${formatNumber(holding.shares)})`);
+            if (finalShares - Number(holding.shares || 0) > 1e-8) {
+                alert(`賣出股數超過現有持倉 (${formatQuantity(holding.shares)})`);
                 return;
             }
         }
@@ -4488,6 +4488,11 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
         function getTypeColor(type) { return (type==='Buy' || type==='Expense') ? 'text-red-400' : 'text-green-400'; }
         function getCategoryColorCode(cat) { return '#3b82f6'; }
         function formatNumber(n) { return new Intl.NumberFormat('zh-TW', {maximumFractionDigits:0}).format(n||0); }
+        function formatQuantity(n) {
+            const value = Number(n);
+            if (!Number.isFinite(value)) return '0';
+            return new Intl.NumberFormat('zh-TW', { maximumFractionDigits: 8 }).format(value);
+        }
         function formatCurrency(n, currency='TWD') {
             const value = Number(n || 0);
             if (!Number.isFinite(value)) return '—';
@@ -6875,7 +6880,7 @@ chartCML.data.datasets = [
                 const holding = holdingsFlat.value.find(h => h.ticker === String(form.ticker || '').toUpperCase());
                 if (type === 'Sell') {
                     if (!holding) blockers.push('目前沒有這檔持倉可賣出。');
-                    else if (qty > Number(holding.shares || 0)) blockers.push(`賣出數量超過現有持倉 (${formatNumber(holding.shares)})。`);
+                    else if (qty - Number(holding.shares || 0) > 1e-8) blockers.push(`賣出數量超過現有持倉 (${formatQuantity(holding.shares)})。`);
                 }
             } else if (type === 'Deposit' || type === 'Withdraw' || type === 'Expense' || type === 'Income') {
                 if (!inputAmount || inputAmount <= 0) errors.push('尚未填寫有效金額。');
@@ -6903,7 +6908,7 @@ chartCML.data.datasets = [
             txFlowMode, txIntent, txTypeOptions, setTxIntent, ledgerDraftPreview,
             sheetUrl, addTransaction, addHistoryRecord,
             removeTransaction, removeHistoryByDate, manualUpdate, updateMeta, fetchPrices, 
-            exportAll, exportHoldingsCsv, exportPortfolioPdf, exportAiPortfolioJson, importData, getTypeColor, getCategoryColorCode, formatNumber, formatCurrency, formatPercent,
+            exportAll, exportHoldingsCsv, exportPortfolioPdf, exportAiPortfolioJson, importData, getTypeColor, getCategoryColorCode, formatNumber, formatQuantity, formatCurrency, formatPercent,
             lastUpdate, displayHistory, enrichedHistory, quantStartDate, dataFrequency, 
             snapshotToHistory, snapshotDate, isDbSyncing, 
             isAppReady, showMCModal, mcOptimal, openMonteCarlo, aiInsights, isAiExpanded, quantDays,
