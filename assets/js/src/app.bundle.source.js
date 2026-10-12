@@ -3306,16 +3306,25 @@ async function saveData() {
                 (group?.items || []).forEach((item) => {
                     const meta = stockMeta.value?.[item.ticker] || {};
                     const marketValue = Number(item.marketValueTwd || 0);
+                    const rowCategory = String(category || item.category || '');
+                    const currentPriceTwd = Number(item.currentPriceTwd || 0);
+                    const fx = Number(exchangeRate.value || 0);
+                    const inferredNativeCurrency = (rowCategory === '美股' || rowCategory === '加密貨幣') ? 'USD' : 'TWD';
+                    const fetchedPrice = Number(item.fetchedPrice);
+                    const currentPriceNative = Number.isFinite(fetchedPrice) && fetchedPrice > 0
+                        ? fetchedPrice
+                        : (inferredNativeCurrency === 'USD' && fx > 0 ? currentPriceTwd / fx : currentPriceTwd);
                     const weightPct = nav > 0
                         ? (marketValue / nav) * 100
                         : Number(item.totalWeight || 0) * 100;
                     const targetPct = Number(item.blendedWeight ?? item.rebalanceTargetWeight ?? item.targetWeight ?? 0);
                     rows.push({
                         ticker: String(item.ticker || ''),
-                        category: String(category || item.category || ''),
+                        category: rowCategory,
                         shares: Number(item.shares || 0),
                         avgCostTwd: Number(item.avgCostTwd || 0),
-                        currentPriceTwd: Number(item.currentPriceTwd || 0),
+                        currentPriceNative,
+                        currentPriceTwd,
                         totalCostTwd: Number(item.totalCostTwd || 0),
                         marketValueTwd: marketValue,
                         unrealizedPLTwd: Number(item.unrealizedPLTwd || 0),
@@ -3386,16 +3395,75 @@ async function saveData() {
             );
         }
 
-        function portfolioAiPivotZone(meta, side) {
+        function portfolioAiNativeCurrency(row, meta) {
+            const explicit = meta?.native_currency ?? meta?.price_currency ?? meta?.currency;
+            if (explicit !== null && explicit !== undefined && String(explicit).trim() !== '') {
+                return String(explicit).trim().toUpperCase();
+            }
+            return row?.category === '美股' || row?.category === '加密貨幣' ? 'USD' : 'TWD';
+        }
+
+        function portfolioAiLongHorizonAnnualizedVol(meta) {
+            const explicit = portfolioAiFinite(meta?.annualized_volatility ?? meta?.volatility_annualized);
+            if (explicit !== null) return explicit;
+            const stdPct = portfolioAiFinite(meta?.std);
+            return stdPct !== null && stdPct > 0 ? stdPct / 100 : null;
+        }
+
+        function portfolioAiLongHorizonVolBasis(meta) {
+            if (!portfolioAiHasQuantSource(meta)) return null;
+            if (portfolioAiFinite(meta?.annualized_volatility ?? meta?.volatility_annualized) !== null) return 'metadata_explicit';
+            return portfolioAiFinite(meta?.std) > 0 ? '252d_annualized_or_60d_fallback' : null;
+        }
+
+        function portfolioAiPivotZone(meta, side, currency) {
             const low = portfolioAiFinite(meta?.[`pivot_${side}_zone_low`]);
             const high = portfolioAiFinite(meta?.[`pivot_${side}_zone_high`]);
             if (low === null || high === null) return null;
             return {
+                currency: currency || null,
                 low,
                 high,
                 mid: portfolioAiFinite(meta?.[`pivot_${side}_zone_mid`]),
                 distance_pct: portfolioAiFinite(meta?.[`pivot_${side}_distance_pct`])
             };
+        }
+
+        function portfolioAiValidate(payload) {
+            const errors = [];
+            const usdTwd = portfolioAiFinite(payload?.portfolio?.usd_twd);
+            (payload?.holdings || []).forEach((holding) => {
+                const ticker = holding?.ticker || 'UNKNOWN';
+                const market = holding?.market || {};
+                const technical = holding?.technical_context || {};
+                const nativeCurrency = market.native_currency;
+                const nativePrice = portfolioAiFinite(market.current_price_native);
+                const twdPrice = portfolioAiFinite(market.current_price_twd);
+                const hasTechnicalZone = Boolean(technical.monthly_support || technical.monthly_resistance);
+
+                if (!nativeCurrency) errors.push(`${ticker}: market.native_currency is missing`);
+                if (hasTechnicalZone) {
+                    if (!technical.price_currency) errors.push(`${ticker}: technical_context.price_currency is missing`);
+                    if (technical.price_currency !== nativeCurrency) errors.push(`${ticker}: technical currency does not match native market currency`);
+                    if (portfolioAiFinite(technical.reference_price_native) === null) errors.push(`${ticker}: technical native reference price is missing`);
+                    for (const zoneName of ['monthly_support', 'monthly_resistance']) {
+                        const zone = technical[zoneName];
+                        if (zone && zone.currency !== technical.price_currency) errors.push(`${ticker}: ${zoneName}.currency mismatch`);
+                    }
+                }
+
+                if (nativePrice !== null && twdPrice !== null) {
+                    if (nativeCurrency === 'USD' && usdTwd !== null && usdTwd > 0) {
+                        const expectedTwd = nativePrice * usdTwd;
+                        const relativeError = Math.abs(expectedTwd - twdPrice) / Math.max(Math.abs(twdPrice), 1);
+                        if (relativeError > 0.005) errors.push(`${ticker}: USD native price × FX does not reconcile to TWD price`);
+                    } else if (nativeCurrency === 'TWD') {
+                        const relativeError = Math.abs(nativePrice - twdPrice) / Math.max(Math.abs(twdPrice), 1);
+                        if (relativeError > 0.000001) errors.push(`${ticker}: TWD native price does not match TWD accounting price`);
+                    }
+                }
+            });
+            return errors;
         }
 
         function portfolioAiClean(value) {
@@ -3422,12 +3490,17 @@ async function saveData() {
 
             const holdings = rows.map((row) => {
                 const meta = stockMeta.value?.[row.ticker] || {};
+                const nativeCurrency = portfolioAiNativeCurrency(row, meta);
+                const currentPriceNative = portfolioAiFinite(row.currentPriceNative);
                 return {
                     ticker: row.ticker,
                     category: row.category,
                     shares: portfolioAiFinite(row.shares),
                     market: {
+                        native_currency: nativeCurrency,
+                        current_price_native: currentPriceNative,
                         current_price_twd: portfolioAiFinite(row.currentPriceTwd),
+                        fx_to_twd: nativeCurrency === 'USD' ? portfolioAiFinite(exchangeRate.value) : (nativeCurrency === 'TWD' ? 1 : null),
                         average_cost_twd: portfolioAiFinite(row.avgCostTwd),
                         total_cost_twd: portfolioAiFinite(row.totalCostTwd),
                         market_value_twd: portfolioAiFinite(row.marketValueTwd),
@@ -3455,12 +3528,16 @@ async function saveData() {
                         risk_score: portfolioAiHasQuantSource(meta) ? portfolioAiFinite(meta.risk_score ?? row.riskScore) : null,
                         max_drawdown_1y: portfolioAiHasQuantSource(meta) ? portfolioAiFinite(meta.max_drawdown_1y) : null,
                         liquidity_score: portfolioAiFinite(meta.liquidity_score),
-                        volatility_20d: portfolioAiHasQuantSource(meta) ? portfolioAiFinite(meta.volatility_20d ?? meta.vol_20d) : null,
-                        annualized_volatility: portfolioAiHasQuantSource(meta) ? portfolioAiFinite(meta.annualized_volatility ?? meta.volatility_annualized) : null,
+                        volatility_20d_annualized: portfolioAiHasQuantSource(meta) ? portfolioAiFinite(meta.volatility_20d ?? meta.vol_20d) : null,
+                        volatility_long_horizon_annualized: portfolioAiHasQuantSource(meta) ? portfolioAiLongHorizonAnnualizedVol(meta) : null,
+                        volatility_long_horizon_basis: portfolioAiLongHorizonVolBasis(meta),
                     },
                     technical_context: {
-                        monthly_support: portfolioAiPivotZone(meta, 'support'),
-                        monthly_resistance: portfolioAiPivotZone(meta, 'resistance'),
+                        price_basis: 'native_market_currency',
+                        price_currency: nativeCurrency,
+                        reference_price_native: currentPriceNative,
+                        monthly_support: portfolioAiPivotZone(meta, 'support', nativeCurrency),
+                        monthly_resistance: portfolioAiPivotZone(meta, 'resistance', nativeCurrency),
                         monthly_position: meta.pivot_position_plain ?? meta.pivot_status ?? null,
                         signal: meta.pivot_signal ?? null,
                         signal_reason: meta.pivot_signal_reason ?? null,
@@ -3475,7 +3552,7 @@ async function saveData() {
             });
 
             const payload = {
-                schema: 'portfolio_ai_export_v1',
+                schema: 'portfolio_ai_export_v1.1',
                 purpose: 'Structured portfolio snapshot for AI analysis. This is not a transaction backup.',
                 exported_at: new Date().toISOString(),
                 base_currency: 'TWD',
@@ -3487,6 +3564,18 @@ async function saveData() {
                     trend_momentum_technical_valuation: 'Higher generally means stronger/more favorable according to the model.',
                     null_values: 'null means unavailable or not reliably computable; do not infer a numeric zero.',
                     target_weight: 'Target weight is a model target, not an automatic trade instruction.',
+                    price_fields: {
+                        portfolio_accounting_currency: 'TWD',
+                        native_price_suffix: '_native',
+                        portfolio_price_suffix: '_twd',
+                        technical_levels: 'Support/resistance and reference_price_native are always in technical_context.price_currency, which is the native market currency.',
+                        distance_pct: 'Percentage distance from reference_price_native in the same native market currency.',
+                    },
+                    volatility_fields: {
+                        volatility_20d_annualized: 'Decimal annualized volatility estimated from the latest 20 daily returns; 0.156 means 15.6% annualized.',
+                        volatility_long_horizon_annualized: 'Decimal annualized volatility from the long-horizon metadata estimate.',
+                        volatility_long_horizon_basis: 'States whether the long-horizon estimate is explicit metadata or the stock-meta 252-day estimate with 60-day fallback.',
+                    },
                 },
                 portfolio: {
                     nav_twd: nav,
@@ -3522,6 +3611,22 @@ async function saveData() {
                     },
                 },
                 holdings,
+            };
+
+            const validationErrors = portfolioAiValidate(payload);
+            if (validationErrors.length) {
+                console.error('AI Export validation failed', validationErrors);
+                alert(`AI Export validation failed:\n${validationErrors.slice(0, 8).join('\n')}`);
+                return;
+            }
+            payload.export_validation = {
+                status: 'passed',
+                rules: [
+                    'technical levels must declare native market currency',
+                    'technical zone currency must match technical_context.price_currency',
+                    'USD native price multiplied by usd_twd must reconcile to current_price_twd within 0.5%',
+                    'TWD native price must match current_price_twd',
+                ],
             };
 
             portfolioExportDownload(
