@@ -30,6 +30,23 @@ STOCK_POLICY = load_policy(CONFIG)
 LAST_DIAGNOSTICS: Dict[str, Any] = {"enabled": bool(STOCK_POLICY.get("enabled", True))}
 LAST_WARNINGS: List[str] = []
 
+
+def _selected_min_weight_map(
+    asset_rows: List[Dict[str, Any]], default_min_weight: float
+) -> Dict[str, float]:
+    stock_min = max(0.0, float(STOCK_POLICY.get("selected_min_weight", 0.005)))
+    out: Dict[str, float] = {}
+    for row in asset_rows:
+        ticker = str(row.get("ticker") or row.get("symbol") or "").strip()
+        if not ticker:
+            continue
+        classification = classify_instrument(row, ROOT)
+        out[ticker] = stock_min if classification in {
+            "tw_individual_stock", "us_individual_stock"
+        } else default_min_weight
+    return out
+
+
 _ORIGINAL_NATIVE = base.build_v105_native_target_weights
 _ORIGINAL_BLEND = base.build_dual_blended_targets
 
@@ -49,6 +66,7 @@ def _apply_guard(
         min_weight=min_w,
         global_max_weight=max_w,
         policy=STOCK_POLICY,
+        min_weight_by_ticker=_selected_min_weight_map(asset_rows, min_w),
     )
 
 
@@ -71,6 +89,7 @@ def guarded_native_target_weights(
         daily_quant_context,
         min_w,
         max_w,
+        min_weight_by_ticker=_selected_min_weight_map(asset_rows, min_w),
     )
     guarded, diagnostics, guard_warnings = _apply_guard(
         weights, asset_rows, investable_weight, min_w, max_w
@@ -101,6 +120,7 @@ def guarded_dual_blended_targets(
         native_weights,
         min_w,
         max_w,
+        min_weight_by_ticker=_selected_min_weight_map(asset_rows, min_w),
     )
     guarded, diagnostics, guard_warnings = _apply_guard(
         weights, asset_rows, investable_weight, min_w, max_w
@@ -141,6 +161,9 @@ def _postprocess_output() -> None:
     policy["us_individual_stock_risk_policy"] = LAST_DIAGNOSTICS.get("markets", {}).get("us", {})
     target_policy = policy.setdefault("target_generation_policy", {})
     target_policy["individual_stock_policy_enabled"] = bool(STOCK_POLICY.get("enabled", True))
+    target_policy["individual_stock_selected_min_weight_pct"] = round(
+        float(STOCK_POLICY.get("selected_min_weight", 0.005)) * 100, 6
+    )
 
     tw = _market_policy("taiwan")
     us = _market_policy("us")
@@ -154,6 +177,9 @@ def _postprocess_output() -> None:
 
     summary = doc.setdefault("summary", {})
     summary["individual_stock_policy_enabled"] = bool(STOCK_POLICY.get("enabled", True))
+    summary["individual_stock_selected_min_weight_pct"] = round(
+        float(STOCK_POLICY.get("selected_min_weight", 0.005)) * 100, 6
+    )
     for market, prefix in (("taiwan", "taiwan"), ("us", "us")):
         cfg = _market_policy(market)
         diag = LAST_DIAGNOSTICS.get("markets", {}).get(market, {})
@@ -182,6 +208,12 @@ def _postprocess_output() -> None:
             ticker = str(row.get("ticker") or "").strip()
             classification = classify_instrument(asset_map.get(ticker, row), ROOT)
             row["instrument_classification"] = classification
+            row["effective_min_weight_rule_pct"] = round(
+                (float(STOCK_POLICY.get("selected_min_weight", 0.005))
+                 if classification in {"tw_individual_stock", "us_individual_stock"}
+                 else float(target_policy.get("included_asset_min_weight_pct", 0.02))) * 100,
+                6,
+            )
             row["effective_max_weight_rule_pct"] = effective_caps.get(ticker, default_cap_pct)
 
     warnings = doc.get("warnings") if isinstance(doc.get("warnings"), list) else []
@@ -195,7 +227,8 @@ def _postprocess_output() -> None:
     note = (
         "Individual stocks are guarded separately from ETFs. Taiwan: direct stock <= 8%, TW direct-stock sleeve <= 15%, "
         "ETF look-through plus direct exposure to the same issuer <= 10% when feasible. "
-        "US: direct stock <= 10%, US direct-stock sleeve <= 25%, ETF look-through plus direct exposure to the same issuer <= 15% when feasible."
+        "US: direct stock <= 10%, US direct-stock sleeve <= 25%, ETF look-through plus direct exposure to the same issuer <= 15% when feasible. "
+        "Selected individual stocks may use a 0.5% starter-position minimum; other selected assets retain the 2% minimum."
     )
     if note not in notes:
         notes.append(note)

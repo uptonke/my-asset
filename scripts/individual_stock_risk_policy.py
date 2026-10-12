@@ -12,6 +12,7 @@ DEFAULT_TW_ISSUER_LOOKTHROUGH_MAX_WEIGHT = 0.10
 DEFAULT_US_INDIVIDUAL_MAX_WEIGHT = 0.10
 DEFAULT_US_INDIVIDUAL_SLEEVE_MAX_WEIGHT = 0.25
 DEFAULT_US_ISSUER_LOOKTHROUGH_MAX_WEIGHT = 0.15
+DEFAULT_INDIVIDUAL_STOCK_SELECTED_MIN_WEIGHT = 0.005
 
 KNOWN_US_FUND_OR_WRAPPER_TICKERS = {
     "AVUV", "BIL", "BOXX", "COPX", "GLD", "GLDM", "GRID", "IAU", "IFRA",
@@ -121,6 +122,10 @@ def load_policy(config: Dict[str, Any]) -> Dict[str, Any]:
     )
     return {
         "enabled": bool(enabled),
+        "selected_min_weight": _ratio(
+            delegated.get("individual_stock_selected_min_weight_pct"),
+            DEFAULT_INDIVIDUAL_STOCK_SELECTED_MIN_WEIGHT,
+        ),
         "markets": {
             "taiwan": {
                 "individual_max_weight": _ratio(
@@ -223,19 +228,29 @@ def _normalize_with_caps(
     investable: float,
     min_weight: float,
     caps: Dict[str, float],
+    min_weight_by_ticker: Dict[str, float] | None = None,
 ) -> Tuple[Dict[str, float], List[str]]:
     warnings: List[str] = []
     selected = {k: max(0.0, _num(v)) for k, v in raw.items() if _num(v) > 1e-12}
     if investable <= 0 or not selected:
         return {}, ["individual_stock_guard_no_investable_weight_or_empty_pool"]
 
-    if min_weight > 0:
-        max_selected = max(1, int(math.floor(investable / min_weight)))
-        if len(selected) > max_selected:
-            selected = dict(sorted(selected.items(), key=lambda kv: kv[1], reverse=True)[:max_selected])
-            warnings.append("individual_stock_guard_pool_pruned_by_min_weight_capacity")
+    def minimum_for(ticker: str) -> float:
+        if isinstance(min_weight_by_ticker, dict) and ticker in min_weight_by_ticker:
+            return max(0.0, _num(min_weight_by_ticker.get(ticker), min_weight))
+        return max(0.0, min_weight)
 
-    impossible = [k for k in selected if caps.get(k, 1.0) + 1e-12 < min_weight]
+    # Mixed asset classes can have different selected-position floors. Prune only
+    # when the sum of those floors cannot fit inside investable weight.
+    pruned_for_capacity = False
+    while len(selected) > 1 and sum(minimum_for(k) for k in selected) > investable + 1e-12:
+        weakest = min(selected, key=lambda k: selected[k])
+        selected.pop(weakest, None)
+        pruned_for_capacity = True
+    if pruned_for_capacity:
+        warnings.append("individual_stock_guard_pool_pruned_by_min_weight_capacity")
+
+    impossible = [k for k in selected if caps.get(k, 1.0) + 1e-12 < minimum_for(k)]
     for key in impossible:
         selected.pop(key, None)
         warnings.append(f"individual_stock_guard_min_weight_exceeds_cap:{key}")
@@ -270,7 +285,7 @@ def _normalize_with_caps(
         warnings.append(f"individual_stock_guard_capacity_shortfall:{remaining:.8f}")
 
     while len(fixed) > 1:
-        low = [k for k, value in fixed.items() if 0 < value < min_weight - 1e-12]
+        low = [k for k, value in fixed.items() if 0 < value < minimum_for(k) - 1e-12]
         if not low:
             break
         for key in low:
@@ -329,6 +344,7 @@ def enforce_individual_stock_policy(
     min_weight: float,
     global_max_weight: float,
     policy: Dict[str, Any],
+    min_weight_by_ticker: Dict[str, float] | None = None,
 ) -> Tuple[Dict[str, float], Dict[str, Any], List[str]]:
     if not policy.get("enabled", True):
         return dict(weights), {"enabled": False}, []
@@ -408,7 +424,9 @@ def enforce_individual_stock_policy(
                 "etf_lookthrough_exposure_pct": {k: round(v * 100, 6) for k, v in etf_exposure.items()},
             }
 
-        guarded, bound_warnings = _normalize_with_caps(guarded, investable, min_weight, caps)
+        guarded, bound_warnings = _normalize_with_caps(
+            guarded, investable, min_weight, caps, min_weight_by_ticker=min_weight_by_ticker
+        )
         warnings.extend(bound_warnings)
 
         for market in ("taiwan", "us"):

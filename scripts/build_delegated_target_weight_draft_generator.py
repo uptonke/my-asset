@@ -264,6 +264,7 @@ def build_v105_native_target_weights(
     daily_quant_context: Dict[str, Any],
     min_w: float,
     max_w: float,
+    min_weight_by_ticker: Dict[str, float] | None = None,
 ) -> Tuple[Dict[str, float], List[Dict[str, Any]], Dict[str, Any], List[str]]:
     tickers = [asset_key(r) for r in asset_rows if asset_key(r)]
     current_weights = {
@@ -306,7 +307,9 @@ def build_v105_native_target_weights(
             "daily_quant_mc_reasons": dq_reasons,
             "mc_fragile_node": t in set(daily_quant_context.get("fragile_nodes") or []),
         })
-    native_weights, warnings = normalize_with_bounds(raw, investable_weight, min_w, max_w)
+    native_weights, warnings = normalize_with_bounds(
+        raw, investable_weight, min_w, max_w, min_weight_by_ticker=min_weight_by_ticker
+    )
     row_map = {r["ticker"]: r for r in rows}
     for t, w in native_weights.items():
         if t in row_map:
@@ -337,6 +340,7 @@ def build_dual_blended_targets(
     native_weights: Dict[str, float],
     min_w: float,
     max_w: float,
+    min_weight_by_ticker: Dict[str, float] | None = None,
 ) -> Tuple[Dict[str, float], Dict[str, Dict[str, Any]], List[Dict[str, Any]], List[str]]:
     tickers = [asset_key(r) for r in asset_rows if asset_key(r)]
     current_weights = {asset_key(r): (num(r.get("market_value_twd")) / nav_twd if nav_twd > 0 else 0.0) for r in asset_rows if asset_key(r)}
@@ -412,38 +416,52 @@ def build_dual_blended_targets(
         raw_blend = {t: v * scale for t, v in raw_blend.items()}
         residual_policy = "scaled_down_to_investable_weight"
 
-    final_weights, bound_warnings = normalize_with_bounds(raw_blend, investable_weight, min_w, max_w)
+    final_weights, bound_warnings = normalize_with_bounds(
+        raw_blend, investable_weight, min_w, max_w, min_weight_by_ticker=min_weight_by_ticker
+    )
     for t, w in final_weights.items():
         meta_by_ticker.setdefault(t, {})["final_target_weight_pct"] = round6(w * 100)
         meta_by_ticker[t]["residual_policy"] = residual_policy
     return final_weights, meta_by_ticker, conflict_warnings, bound_warnings
 
 
-def normalize_with_bounds(raw: Dict[str, float], investable: float, min_w: float, max_w: float) -> Tuple[Dict[str, float], List[str]]:
+def normalize_with_bounds(
+    raw: Dict[str, float],
+    investable: float,
+    min_w: float,
+    max_w: float,
+    min_weight_by_ticker: Dict[str, float] | None = None,
+) -> Tuple[Dict[str, float], List[str]]:
     warnings: List[str] = []
     if investable <= 0 or not raw:
         return {}, ["no_investable_weight_or_empty_pool"]
 
-    # Keep positive raw weights only; min weight is applied only after an asset is selected.
     selected = {k: max(0.0, v) for k, v in raw.items() if v > 1e-12}
     if not selected:
         return {}, ["no_positive_raw_scores"]
 
-    # If too many selected assets for the min weight, keep the strongest names.
-    max_selected_by_min = max(1, int(math.floor(investable / min_w))) if min_w > 0 else len(selected)
-    if len(selected) > max_selected_by_min:
-        selected = dict(sorted(selected.items(), key=lambda kv: kv[1], reverse=True)[:max_selected_by_min])
+    def minimum_for(ticker: str) -> float:
+        if isinstance(min_weight_by_ticker, dict) and ticker in min_weight_by_ticker:
+            return max(0.0, num(min_weight_by_ticker.get(ticker), min_w))
+        return max(0.0, min_w)
+
+    # With mixed floors (e.g. 0.5% starter stocks vs 2% funds), capacity
+    # depends on the sum of each selected asset's own floor.
+    pruned_for_capacity = False
+    while len(selected) > 1 and sum(minimum_for(k) for k in selected) > investable + 1e-12:
+        weakest = min(selected, key=lambda k: selected[k])
+        selected.pop(weakest, None)
+        pruned_for_capacity = True
+    if pruned_for_capacity:
         warnings.append("pool_pruned_by_min_weight_capacity")
 
-    # Initial normalization.
     total = sum(selected.values()) or 1.0
     weights = {k: investable * v / total for k, v in selected.items()}
 
-    # Drop names below min and renormalize until stable.
     changed = True
     while changed and weights:
         changed = False
-        low = [k for k, v in weights.items() if v < min_w - 1e-12]
+        low = [k for k, v in weights.items() if v < minimum_for(k) - 1e-12]
         if low and len(weights) > 1:
             for k in low:
                 weights.pop(k, None)
@@ -452,7 +470,6 @@ def normalize_with_bounds(raw: Dict[str, float], investable: float, min_w: float
             changed = True
             warnings.append("low_weight_assets_excluded")
 
-    # Cap high weights and redistribute residual among uncapped names.
     capped: Dict[str, float] = {}
     free = dict(weights)
     remaining = investable
@@ -471,7 +488,6 @@ def normalize_with_bounds(raw: Dict[str, float], investable: float, min_w: float
             break
         warnings.append("single_asset_cap_applied")
 
-    # Final tiny residual correction on largest nonzero row.
     total_out = sum(capped.values())
     if capped and abs(total_out - investable) > 1e-8:
         k = max(capped, key=lambda x: capped[x])
