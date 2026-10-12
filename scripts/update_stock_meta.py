@@ -644,11 +644,37 @@ def compute_beta_and_corr(asset: pd.DataFrame, bench: pd.DataFrame) -> Tuple[Opt
         corr = None
     return beta, corr
 
-def score_trend(m1, m3, m6, m12, ma60, ma200) -> float:
+def score_trend(ma20_gap, ma60_gap, ma200_gap, ma20_slope, ma60_slope, ma200_slope) -> float:
+    """0-10 structural trend score based only on moving-average state and slope."""
     score = 5.0
-    for val, weight in [(m1, 10.0), (m3, 8.0), (m6, 5.0), (m12, 3.5), (ma60, 7.0), (ma200, 5.0)]:
-        if val is not None:
-            score += max(-1.6, min(1.6, val * weight))
+    parts = [
+        (ma20_gap, 12.0, 0.9),
+        (ma60_gap, 9.0, 1.0),
+        (ma200_gap, 6.0, 1.1),
+        (ma20_slope, 14.0, 0.7),
+        (ma60_slope, 12.0, 0.7),
+        (ma200_slope, 10.0, 0.6),
+    ]
+    for val, weight, cap_value in parts:
+        value = finite_float(val)
+        if value is not None:
+            score += max(-cap_value, min(cap_value, value * weight))
+    return clamp(score)
+
+
+def score_momentum(m1, m3, m6, m12) -> float:
+    """0-10 absolute-price momentum score; recent horizons receive more weight."""
+    score = 5.0
+    parts = [
+        (m1, 10.0, 1.0),
+        (m3, 7.0, 1.4),
+        (m6, 4.5, 1.4),
+        (m12, 2.5, 1.2),
+    ]
+    for val, weight, cap_value in parts:
+        value = finite_float(val)
+        if value is not None:
+            score += max(-cap_value, min(cap_value, value * weight))
     return clamp(score)
 
 def score_risk(vol60, vol252, mdd, beta, corr) -> float:
@@ -744,8 +770,14 @@ def compute_meta(ticker: str, category: str, df: pd.DataFrame, source: str, extr
     vol60 = float(returns.tail(60).std(ddof=1) * math.sqrt(252)) if len(returns) >= 60 else None
     vol252 = float(returns.tail(252).std(ddof=1) * math.sqrt(252)) if len(returns) >= 252 else None
     rsi_val, macd_h = rsi(close), macd_hist(close)
-    ma20, ma60, ma200 = safe_last(close.rolling(20).mean()), safe_last(close.rolling(60).mean()), safe_last(close.rolling(200).mean())
+    ma20_series = close.rolling(20).mean()
+    ma60_series = close.rolling(60).mean()
+    ma200_series = close.rolling(200).mean()
+    ma20, ma60, ma200 = safe_last(ma20_series), safe_last(ma60_series), safe_last(ma200_series)
     ma20_gap, ma60_gap, ma200_gap = pct(last_price, ma20), pct(last_price, ma60), pct(last_price, ma200)
+    ma20_slope_20d = pct(ma20, safe_last(ma20_series.shift(20)))
+    ma60_slope_20d = pct(ma60, safe_last(ma60_series.shift(20)))
+    ma200_slope_20d = pct(ma200, safe_last(ma200_series.shift(20)))
     mdd_1y = max_drawdown(close.tail(min(len(close), 252)))
     beta, corr, bench_symbol = compute_beta_with_benchmark_candidates(df, benchmark_candidates(ticker, category))
 
@@ -756,7 +788,8 @@ def compute_meta(ticker: str, category: str, df: pd.DataFrame, source: str, extr
         tracking_beta, tracking_corr = compute_beta_and_corr(df, get_benchmark("GLD"))
         tracking_benchmark = "GLD"
 
-    trend = score_trend(mom1, mom3, mom6, mom12, ma60_gap, ma200_gap)
+    trend = score_trend(ma20_gap, ma60_gap, ma200_gap, ma20_slope_20d, ma60_slope_20d, ma200_slope_20d)
+    momentum = score_momentum(mom1, mom3, mom6, mom12)
     risk_s = score_risk(vol60, vol252, mdd_1y, beta, corr)
     tech = score_technical(rsi_val, macd_h, ma20_gap, ma60_gap, ma200_gap)
     chip = score_chip(extras)
@@ -765,7 +798,7 @@ def compute_meta(ticker: str, category: str, df: pd.DataFrame, source: str, extr
     beta_for_risk = beta if beta is not None else 1.0
     corr_for_risk = corr if corr is not None else 0.0
     contagion = clamp((abs(beta_for_risk) * 3.0) + (abs(corr_for_risk) * 4.0))
-    quant_health = clamp(0.30 * trend + 0.20 * tech + 0.15 * (chip if chip is not None else 5.0) + 0.15 * valuation + 0.20 * (10.0 - risk_s))
+    quant_health = clamp(0.15 * trend + 0.15 * momentum + 0.20 * tech + 0.15 * (chip if chip is not None else 5.0) + 0.15 * valuation + 0.20 * (10.0 - risk_s))
     last_date = pd.to_datetime(df["date"].iloc[-1]).date()
     days_stale = (TODAY_TPE - last_date).days
     coverage_score = clamp(len(df) / 252.0, 0, 1)
@@ -786,9 +819,12 @@ def compute_meta(ticker: str, category: str, df: pd.DataFrame, source: str, extr
         "ma20_gap": round(ma20_gap, 6) if ma20_gap is not None else None,
         "ma60_gap": round(ma60_gap, 6) if ma60_gap is not None else None,
         "ma200_gap": round(ma200_gap, 6) if ma200_gap is not None else None,
+        "ma20_slope_20d": round(ma20_slope_20d, 6) if ma20_slope_20d is not None else None,
+        "ma60_slope_20d": round(ma60_slope_20d, 6) if ma60_slope_20d is not None else None,
+        "ma200_slope_20d": round(ma200_slope_20d, 6) if ma200_slope_20d is not None else None,
         "max_drawdown_1y": round(mdd_1y, 6) if mdd_1y is not None else None,
         "trend_score": trend,
-        "momentum_score": trend,
+        "momentum_score": momentum,
         "risk_score": risk_s,
         "technical_score": tech,
         "chip_score": chip,
