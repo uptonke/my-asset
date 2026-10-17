@@ -895,9 +895,9 @@
                                 <div class="mb-4">
     <h4 class="panel-title">
         <i class="fas fa-chart-line text-emerald-400"></i>
-        淨值成長趨勢 (NAV)
+        資產規模 / 績效趨勢
     </h4>
-    <p class="panel-subtitle">觀察資產淨值隨時間的變化，並加入短期 / 長期趨勢線與 Cost 對照。</p>
+    <p class="panel-subtitle">主圖用 Raw NAV / Cost 看資產規模；趨勢卡與回撤用 Flow-adjusted TWR index 看投資績效。</p>
     <div class="terminal-inline-note mt-3 flex flex-wrap items-center gap-2 text-[11px]">
         <span class="terminal-chip">{{ navMaConfig?.monthLabel || '短期趨勢：N/A' }}</span>
         <span class="terminal-chip">{{ navMaConfig?.yearLabel || '長期趨勢：N/A' }}</span>
@@ -913,26 +913,26 @@
             {{ opt?.label || '疊圖' }}
         </button>
     </div>
-    <div class="text-[11px] text-gray-500 mt-2 leading-relaxed">回撤疊圖（Drawdown Overlay）＝把回撤曲線疊加到 NAV 圖上，拿來一起看最大跌幅、目前仍在水下多少，以及修復進度。</div>
+    <div class="text-[11px] text-gray-500 mt-2 leading-relaxed">TWR 回撤＝Flow-adjusted TWR index 相對自身歷史高點的跌幅；Deposit / Withdraw 不會直接被誤判為投資虧損。</div>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
         <div class="terminal-mini-stat soft">
-            <div class="terminal-mini-label">NAV vs 短期</div>
+            <div class="terminal-mini-label">TWR vs 3M MA</div>
             <div class="terminal-mini-value">{{ navTrendSummary?.navVsMonth || 'N/A' }}</div>
         </div>
         <div class="terminal-mini-stat soft">
-            <div class="terminal-mini-label">NAV vs 長期</div>
+            <div class="terminal-mini-label">TWR vs 12M MA</div>
             <div class="terminal-mini-value">{{ navTrendSummary?.navVsYear || 'N/A' }}</div>
         </div>
         <div class="terminal-mini-stat soft">
-            <div class="terminal-mini-label">短期斜率</div>
+            <div class="terminal-mini-label">3M MA 斜率</div>
             <div class="terminal-mini-value">{{ navTrendSummary?.monthSlope || 'N/A' }}</div>
         </div>
         <div class="terminal-mini-stat soft">
-            <div class="terminal-mini-label">長期斜率</div>
+            <div class="terminal-mini-label">12M MA 斜率</div>
             <div class="terminal-mini-value">{{ navTrendSummary?.yearSlope || 'N/A' }}</div>
         </div>
         <div class="terminal-mini-stat soft sm:col-span-2">
-            <div class="terminal-mini-label">目前距前高跌幅</div>
+            <div class="terminal-mini-label">TWR 目前回撤</div>
             <div class="terminal-mini-value">{{ navTrendSummary?.currentDrawdown || 'N/A' }}</div>
         </div>
     </div>
@@ -6958,7 +6958,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=fractional-sell-v1"></script>
+<script src="assets/js/app.bundle.js?v=twr-trend-v1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
