@@ -102,17 +102,20 @@ def normalize_ticker_symbol(value):
     t = str(value).strip().upper()
     if not t or t in {"NAN", "NONE", "NULL", "-"}:
         return ""
+    if t.startswith("__") and t.endswith("__"):
+        return ""
 
     # Google Finance-style Taiwan symbols are aliases, not distinct assets.
-    # Keep the portfolio namespace aligned with ledger tickers such as 2317/2382.
+    # Support 4-6 digit Taiwan stock/ETF codes plus optional suffix letters
+    # (e.g. 2317, 00981A, 00675L) and keep one canonical portfolio namespace.
     for prefix in ("TPE:", "TWSE:", "TPEX:"):
         if t.startswith(prefix):
             candidate = t.split(":", 1)[1].strip()
-            if re.fullmatch(r"\d{4}[A-Z]?", candidate):
+            if re.fullmatch(r"\d{4,6}[A-Z]?", candidate):
                 t = candidate
             break
 
-    match = re.fullmatch(r"(\d{4}[A-Z]?)\.(TW|TWO)", t)
+    match = re.fullmatch(r"(\d{4,6}[A-Z]?)\.(TW|TWO)", t)
     if match:
         t = match.group(1)
     return t
@@ -464,6 +467,57 @@ def map_to_yf_ticker(ticker, tw_bench="^TWII"):
         return f"{t}.TW"
 
     return t
+
+
+def build_factor_market_value_weights(active_tickers, valid_yf_tickers, ticker_to_yf, current_shares, stock_meta, prices_df, settings):
+    """Build normalized current TWD market-value weights for the factor-return proxy."""
+    valid_set = set(valid_yf_tickers or [])
+    settings = settings if isinstance(settings, dict) else {}
+    fx = _num(settings.get("exchangeRate"), None)
+    values = {}
+    missing = []
+    source_counts = {"stock_meta_market_value_twd": 0, "price_fx_fallback": 0}
+
+    for original in active_tickers or []:
+        yf_ticker = ticker_to_yf.get(original, "")
+        if not yf_ticker or yf_ticker not in valid_set or yf_ticker not in prices_df.columns:
+            continue
+        shares = max(0.0, _num(current_shares.get(original), 0.0) or 0.0)
+        if shares <= 0:
+            continue
+
+        meta = stock_meta.get(original, {}) if isinstance(stock_meta.get(original, {}), dict) else {}
+        market_value_twd = _num(meta.get("market_value_twd"), None)
+        if market_value_twd is not None and market_value_twd > 0:
+            source_counts["stock_meta_market_value_twd"] += 1
+        else:
+            series = prices_df[yf_ticker].dropna()
+            if series.empty:
+                missing.append(original)
+                continue
+            native_price = _num(series.iloc[-1], None)
+            is_twd = str(yf_ticker).upper().endswith((".TW", ".TWO"))
+            if native_price is None or native_price <= 0 or (not is_twd and (fx is None or fx <= 0)):
+                missing.append(original)
+                continue
+            price_twd = native_price if is_twd else native_price * fx
+            market_value_twd = shares * price_twd
+            source_counts["price_fx_fallback"] += 1
+
+        if market_value_twd is not None and market_value_twd > 0:
+            values[yf_ticker] = values.get(yf_ticker, 0.0) + float(market_value_twd)
+
+    total = float(sum(values.values()))
+    diagnostics = {
+        "market_value_twd_sum": round(total, 2),
+        "asset_count": len(values),
+        "missing_tickers": sorted(set(missing)),
+        "source_counts": source_counts,
+    }
+    if total <= 0:
+        return pd.Series(dtype=float), diagnostics
+    weights = pd.Series({ticker: value / total for ticker, value in values.items()}, dtype=float).sort_index()
+    return weights, diagnostics
 
 
 def sigmoid(x):
@@ -1656,8 +1710,17 @@ try:
             # ==========================================
             # 🌟 方案 A: 延長歷史資料長度至 10 年，讓 EVT 與 JD 模型有足夠樣本配適
             # ==========================================
-            prices_df = safe_download_close(download_list, period="10y", progress=False)
-            returns = prices_df.pct_change().dropna()
+            prices_df = (
+                safe_download_close(download_list, period="10y", progress=False)
+                .replace([np.inf, -np.inf], np.nan)
+                .dropna(axis=1, how="all")
+                .sort_index()
+            )
+            returns = (
+                prices_df.pct_change(fill_method=None)
+                .replace([np.inf, -np.inf], np.nan)
+                .dropna(how="all")
+            )
 
             print("⚖️ 正在過濾真實庫存標的...", flush=True)
             current_shares = {}
@@ -1721,80 +1784,153 @@ try:
             print(f"✅ 篩選完成：庫存共有 {len(valid_investable)} 檔標的進入最佳化引擎。")
 
             target_weights = {}
+            factor_status = {
+                "status": "unavailable",
+                "reason_code": "not_run",
+                "message": "多因子迴歸尚未執行",
+                "sample_count": 0,
+                "min_sample_count": 26,
+                "weighting_method": "current_market_value_twd",
+                "model": "FF5+Momentum+TW_Mkt+Crypto",
+            }
+            # Never let an old factor snapshot masquerade as a fresh successful run.
+            macro_payload.pop("fama_french", None)
+            macro_payload["fama_french_status"] = factor_status
+
             if valid_investable:
                 num_assets = len(valid_investable)
-                dynamic_min = 0.0 if num_assets < 5 else min(0.03, 0.9 / num_assets)
-                print(f"🧠 啟動機構級最佳化引擎 (限制 {dynamic_min*100:.0f}%~20%)...", flush=True)
-                target_weights = get_optimal_weights(returns[valid_investable], stock_meta, min_wt=dynamic_min, max_wt=1.0 if num_assets < 5 else 0.20)
+                optimizer_returns = returns[valid_investable].dropna(how="any")
+                if len(optimizer_returns) >= 30:
+                    dynamic_min = 0.0 if num_assets < 5 else min(0.03, 0.9 / num_assets)
+                    print(f"🧠 啟動機構級最佳化引擎 (限制 {dynamic_min*100:.0f}%~20%)...", flush=True)
+                    target_weights = get_optimal_weights(optimizer_returns, stock_meta, min_wt=dynamic_min, max_wt=1.0 if num_assets < 5 else 0.20)
+                else:
+                    print(f"⚠️ 最佳化有效完整樣本不足: {len(optimizer_returns)} < 30", flush=True)
                 
                 # ==========================================
-                # 🌟 終極升級：跨資產 8 因子模型 (FF6 + TW + Crypto)
+                # Cross-asset factor model: FF5 + Momentum + TW market + Crypto
+                # Current-holdings proxy is weighted by CURRENT TWD MARKET VALUE, never share count.
                 # ==========================================
-                print("🧠 啟動跨資產 8 因子模型 (FF6 + TW_Mkt + Crypto) 迴歸引擎...", flush=True)
+                print("🧠 啟動跨資產 8 因子模型 (FF5 + Momentum + TW_Mkt + Crypto) 迴歸引擎...", flush=True)
                 try:
                     import statsmodels.api as sm
-                    domain_kf = "https://mba.tuck.dartmouth.edu"
-                    ff5_url = domain_kf + "/pages/faculty/ken.french/ftp/F-F_Research_Data_5_Factors_2x3_daily_CSV.zip"
-                    mom_url = domain_kf + "/pages/faculty/ken.french/ftp/F-F_Momentum_Factor_daily_CSV.zip"
-                    
-                    def parse_french_csv(content):
-                        with zipfile.ZipFile(io.BytesIO(content)) as z:
-                            with z.open(z.namelist()[0]) as f:
-                                lines = [line.decode('utf-8', errors='ignore') for line in f.readlines()]
-                                start_idx = next((i - 1 for i, line in enumerate(lines) if (line.strip().startswith('19') or line.strip().startswith('20')) and ',' in line), 0)
-                                z.open(z.namelist()[0]).seek(0)
-                                df = pd.read_csv(z.open(z.namelist()[0]), skiprows=start_idx, index_col=0)
+
+                    factor_weights, factor_weight_diag = build_factor_market_value_weights(
+                        active_tickers=active_tickers,
+                        valid_yf_tickers=valid_investable,
+                        ticker_to_yf=ticker_to_yf,
+                        current_shares=current_shares,
+                        stock_meta=stock_meta,
+                        prices_df=prices_df,
+                        settings=db_record.get("settings", {}) or {},
+                    )
+                    factor_status["weight_diagnostics"] = factor_weight_diag
+
+                    if factor_weights.empty:
+                        factor_status.update({
+                            "reason_code": "market_value_weights_unavailable",
+                            "message": "無法建立目前持倉的 TWD 市值權重",
+                        })
+                    else:
+                        domain_kf = "https://mba.tuck.dartmouth.edu"
+                        ff5_url = domain_kf + "/pages/faculty/ken.french/ftp/F-F_Research_Data_5_Factors_2x3_daily_CSV.zip"
+                        mom_url = domain_kf + "/pages/faculty/ken.french/ftp/F-F_Momentum_Factor_daily_CSV.zip"
+
+                        def parse_french_csv(content):
+                            with zipfile.ZipFile(io.BytesIO(content)) as z:
+                                name = z.namelist()[0]
+                                with z.open(name) as f:
+                                    lines = [line.decode('utf-8', errors='ignore') for line in f.readlines()]
+                                start_idx = next(
+                                    (i - 1 for i, line in enumerate(lines)
+                                     if (line.strip().startswith('19') or line.strip().startswith('20')) and ',' in line),
+                                    0,
+                                )
+                                df = pd.read_csv(z.open(name), skiprows=start_idx, index_col=0)
                                 df.index = pd.to_datetime(df.index.astype(str).str.strip(), format='%Y%m%d', errors='coerce')
                                 df.columns = df.columns.str.strip()
                                 return df.dropna().apply(pd.to_numeric, errors='coerce').dropna() / 100.0
 
-                    def fetch_french_zip(url):
-                        resp = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
-                        resp.raise_for_status()
-                        if not resp.content.startswith(b"PK"):
-                            raise ValueError("Ken French 回傳的不是 zip 檔")
-                        return resp.content
+                        def fetch_french_zip(url):
+                            resp = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
+                            resp.raise_for_status()
+                            if not resp.content.startswith(b"PK"):
+                                raise ValueError("Ken French 回傳的不是 zip 檔")
+                            return resp.content
 
-                    ff5_data = parse_french_csv(fetch_french_zip(ff5_url))
-                    mom_data = parse_french_csv(fetch_french_zip(mom_url))
-                    ff_data = pd.concat([ff5_data, mom_data], axis=1).dropna()
-                    
-                    # 🌟 方案 A: 將因子與母體價格同樣對齊至 10 年，確保迴歸有足夠交集
-                    custom_factors_df = safe_download_close(["^TWII", "BTC-USD"], period="10y", progress=False).pct_change().dropna()
-                    # 確保欄位名稱正確
-                    if "^TWII" in custom_factors_df.columns and "BTC-USD" in custom_factors_df.columns:
-                        custom_factors = custom_factors_df[["^TWII", "BTC-USD"]].rename(columns={"^TWII": "TW_Mkt", "BTC-USD": "Crypto"})
-                    else:
-                        custom_factors = pd.DataFrame(0, index=ff_data.index, columns=["TW_Mkt", "Crypto"])
+                        ff5_data = parse_french_csv(fetch_french_zip(ff5_url))
+                        mom_data = parse_french_csv(fetch_french_zip(mom_url))
+                        ff_data = pd.concat([ff5_data, mom_data], axis=1).dropna()
 
-                    if len(returns) > 30:
-                        port_weights = []
-                        total_shares = sum([current_shares.get(t, 0) for t in active_tickers])
-                        if total_shares > 0:
-                            for yt in valid_investable:
-                                orig_t = list(ticker_to_yf.keys())[list(ticker_to_yf.values()).index(yt)]
-                                port_weights.append(current_shares.get(orig_t, 0) / total_shares)
-                                
-                            daily_port_return = returns[valid_investable].dot(np.array(port_weights))
+                        custom_prices = (
+                            safe_download_close(["^TWII", "BTC-USD"], period="10y", progress=False)
+                            .replace([np.inf, -np.inf], np.nan)
+                            .dropna(axis=1, how="all")
+                            .sort_index()
+                        )
+                        required_custom = {"^TWII", "BTC-USD"}
+                        if not required_custom.issubset(set(custom_prices.columns)):
+                            raise ValueError("TW_Mkt / Crypto factor price source incomplete")
+                        custom_factors = (
+                            custom_prices[["^TWII", "BTC-USD"]]
+                            .ffill(limit=3)
+                            .pct_change(fill_method=None)
+                            .replace([np.inf, -np.inf], np.nan)
+                            .dropna(how="any")
+                            .rename(columns={"^TWII": "TW_Mkt", "BTC-USD": "Crypto"})
+                        )
+
+                        factor_cols = [ticker for ticker in factor_weights.index if ticker in prices_df.columns]
+                        factor_prices = prices_df[factor_cols].sort_index().ffill(limit=3)
+                        factor_daily_returns = (
+                            factor_prices.pct_change(fill_method=None)
+                            .replace([np.inf, -np.inf], np.nan)
+                            .dropna(how="any")
+                        )
+
+                        if len(factor_daily_returns) < 30:
+                            factor_status.update({
+                                "reason_code": "insufficient_daily_portfolio_samples",
+                                "message": f"有效日報酬樣本不足（{len(factor_daily_returns)}/30）",
+                            })
+                        else:
+                            usable_weights = factor_weights.reindex(factor_daily_returns.columns).fillna(0.0)
+                            usable_weight_sum = float(usable_weights.sum())
+                            if usable_weight_sum <= 0:
+                                raise ValueError("factor market-value weights sum to zero")
+                            usable_weights = usable_weights / usable_weight_sum
+
+                            daily_port_return = factor_daily_returns.mul(usable_weights, axis=1).sum(axis=1)
                             daily_port_return.index = pd.to_datetime(daily_port_return.index).tz_localize(None)
                             daily_port_return.name = 'Port_Ret'
 
-                            # 將所有資料降頻為「週報酬 (Weekly)」吸收時差與假日錯位
+                            # Weekly frequency absorbs market-calendar/time-zone mismatch.
                             weekly_port = daily_port_return.resample('W-FRI').apply(lambda x: (1 + x).prod() - 1)
                             weekly_ff = ff_data.resample('W-FRI').apply(lambda x: (1 + x).prod() - 1)
                             weekly_custom = custom_factors.resample('W-FRI').apply(lambda x: (1 + x).prod() - 1)
-                            
-                            aligned_data = pd.concat([weekly_port, weekly_ff, weekly_custom], axis=1).replace([np.inf, -np.inf], np.nan).dropna()
-                            
-                            if len(aligned_data) > 10:
-                                # 計算客製化因子的超額報酬 (扣除無風險利率 RF)
+                            aligned_data = (
+                                pd.concat([weekly_port, weekly_ff, weekly_custom], axis=1)
+                                .replace([np.inf, -np.inf], np.nan)
+                                .dropna()
+                            )
+
+                            sample_count = int(len(aligned_data))
+                            factor_status["sample_count"] = sample_count
+                            if sample_count < int(factor_status["min_sample_count"]):
+                                factor_status.update({
+                                    "reason_code": "insufficient_aligned_weekly_samples",
+                                    "message": f"有效週樣本不足（{sample_count}/{factor_status['min_sample_count']}）",
+                                })
+                            else:
                                 aligned_data['TW_Mkt_RF'] = aligned_data['TW_Mkt'] - aligned_data['RF']
                                 aligned_data['Crypto_RF'] = aligned_data['Crypto'] - aligned_data['RF']
-                                
+
                                 Y = (aligned_data['Port_Ret'] - aligned_data['RF']).astype(float)
-                                X = sm.add_constant(aligned_data[['Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'Mom', 'TW_Mkt_RF', 'Crypto_RF']]).astype(float)
-                                
+                                X = sm.add_constant(
+                                    aligned_data[['Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'Mom', 'TW_Mkt_RF', 'Crypto_RF']]
+                                ).astype(float)
                                 results = sm.OLS(Y, X).fit()
+
                                 macro_payload["fama_french"] = {
                                     "alpha": float(round(results.params['const'] * 52 * 100, 2)),
                                     "mkt_beta": float(round(results.params['Mkt-RF'], 2)),
@@ -1803,13 +1939,42 @@ try:
                                     "rmw": float(round(results.params['RMW'], 2)),
                                     "cma": float(round(results.params['CMA'], 2)),
                                     "wml": float(round(results.params['Mom'], 2)),
-                                    "tw_mkt": float(round(results.params.get('TW_Mkt_RF', 0), 2)), 
-                                    "crypto": float(round(results.params.get('Crypto_RF', 0), 2)), 
-                                    "r_squared": float(round(results.rsquared, 2))
+                                    "tw_mkt": float(round(results.params.get('TW_Mkt_RF', 0), 2)),
+                                    "crypto": float(round(results.params.get('Crypto_RF', 0), 2)),
+                                    "r_squared": float(round(results.rsquared, 3)),
+                                    "adj_r_squared": float(round(results.rsquared_adj, 3)),
+                                    "sample_count": sample_count,
+                                    "weighting_method": "current_market_value_twd",
+                                    "model": "FF5+Momentum+TW_Mkt+Crypto",
                                 }
-                                print(f"✅ 8因子運算成功: R²={results.rsquared:.2f}, TW_β={results.params.get('TW_Mkt_RF', 0):.2f}, Crypto_β={results.params.get('Crypto_RF', 0):.2f}")
-                                supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
-                except Exception as e: print(f"⚠️ 8因子迴歸失敗: {e}", flush=True)
+                                factor_status.update({
+                                    "status": "available",
+                                    "reason_code": "ok",
+                                    "message": "模型可用",
+                                    "sample_count": sample_count,
+                                })
+                                print(
+                                    f"✅ 8因子運算成功: R²={results.rsquared:.3f}, n={sample_count}, "
+                                    f"TW_β={results.params.get('TW_Mkt_RF', 0):.2f}, "
+                                    f"Crypto_β={results.params.get('Crypto_RF', 0):.2f}",
+                                    flush=True,
+                                )
+                except Exception as e:
+                    factor_status.update({
+                        "status": "error",
+                        "reason_code": "factor_engine_exception",
+                        "message": f"{type(e).__name__}: {str(e)[:180]}",
+                    })
+                    macro_payload.pop("fama_french", None)
+                    print(f"⚠️ 8因子迴歸失敗: {factor_status['message']}", flush=True)
+
+            if not valid_investable:
+                factor_status.update({
+                    "reason_code": "no_valid_investable_assets",
+                    "message": "沒有可用於多因子迴歸的有效持倉標的",
+                })
+            macro_payload["fama_french_status"] = factor_status
+            supabase.table("portfolio_db").update({"macro_meta": macro_payload}).eq("id", target_id).execute()
 
             for t in active_tickers:
                 yf_t = ticker_to_yf.get(t, "")

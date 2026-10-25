@@ -525,7 +525,9 @@ ${JSON.stringify(payload, null, 2)}
             tuw: '0', ulcer: '0.00', omega: '0.00', profitFactor: '0.00', 
             ff_alpha: '-', ff_mkt_beta: '-', ff_smb: '-', ff_hml: '-', 
             ff_rmw: '-', ff_cma: '-', ff_wml: '-', ff_r_squared: '-', 
-            ff_tw_mkt: '-', ff_crypto: '-'
+            ff_tw_mkt: '-', ff_crypto: '-',
+            ff_status: 'unavailable', ff_reason: '尚未產生有效迴歸結果',
+            ff_sample_count: 0, ff_weighting: '-'
         });
 
         async function loadDataFromCloud() {
@@ -565,6 +567,12 @@ ${JSON.stringify(payload, null, 2)}
                         if (macroData.ai_analysis) cloudAiAnalysis.value = macroData.ai_analysis;
                         if (macroData.corr_matrix) correlationMatrix.value = macroData.corr_matrix;
                         if (macroData.sys_corr) sysCorr.value = macroData.sys_corr;
+
+                        const ffStatus = macroData.fama_french_status || {};
+                        stats.value.ff_status = ffStatus.status || (macroData.fama_french ? 'available' : 'unavailable');
+                        stats.value.ff_reason = ffStatus.message || ffStatus.reason_code || '尚未產生有效迴歸結果';
+                        stats.value.ff_sample_count = Number(ffStatus.sample_count ?? macroData.fama_french?.sample_count ?? 0);
+                        stats.value.ff_weighting = ffStatus.weighting_method || macroData.fama_french?.weighting_method || '-';
 
                         if (macroData.fama_french) {
                             stats.value.ff_alpha = macroData.fama_french.alpha;
@@ -1425,16 +1433,20 @@ const minTrl95Years = minTrl95Finite && periodsPerYear > 0 ? minTrl95Obs / perio
                  omega: omegaRatio > 100 ? '∞' : Number(omegaRatio).toFixed(2),
                  profitFactor: profitFactor > 100 ? '∞' : Number(profitFactor).toFixed(2),
                  
-                 ff_alpha: stats.value.ff_alpha || '-',
-                 ff_mkt_beta: stats.value.ff_mkt_beta || '-',
-                 ff_smb: stats.value.ff_smb || '-',
-                 ff_hml: stats.value.ff_hml || '-',
-                 ff_rmw: stats.value.ff_rmw || '-',
-                 ff_cma: stats.value.ff_cma || '-',
-                 ff_wml: stats.value.ff_wml || '-', 
-                 ff_tw_mkt: stats.value.ff_tw_mkt || '-', 
-                 ff_crypto: stats.value.ff_crypto || '-', 
-                 ff_r_squared: stats.value.ff_r_squared || '-'
+                 ff_alpha: stats.value.ff_alpha ?? '-',
+                 ff_mkt_beta: stats.value.ff_mkt_beta ?? '-',
+                 ff_smb: stats.value.ff_smb ?? '-',
+                 ff_hml: stats.value.ff_hml ?? '-',
+                 ff_rmw: stats.value.ff_rmw ?? '-',
+                 ff_cma: stats.value.ff_cma ?? '-',
+                 ff_wml: stats.value.ff_wml ?? '-',
+                 ff_tw_mkt: stats.value.ff_tw_mkt ?? '-',
+                 ff_crypto: stats.value.ff_crypto ?? '-',
+                 ff_r_squared: stats.value.ff_r_squared ?? '-',
+                 ff_status: stats.value.ff_status || 'unavailable',
+                 ff_reason: stats.value.ff_reason || '尚未產生有效迴歸結果',
+                 ff_sample_count: Number(stats.value.ff_sample_count || 0),
+                 ff_weighting: stats.value.ff_weighting || '-'
              };
 
              // 【CRO 防禦機制：資料異常監控】
