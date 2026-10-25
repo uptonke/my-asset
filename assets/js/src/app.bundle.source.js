@@ -524,7 +524,7 @@ ${JSON.stringify(payload, null, 2)}
             alpha:'0.00', var95:'0.00', cvar95:'0.00', mdd:'0.00', calmar:'0.00', skew:'0.00', kurt:'0.00', 
             tuw: '0', ulcer: '0.00', omega: '0.00', profitFactor: '0.00', 
             ff_alpha: '-', ff_mkt_beta: '-', ff_smb: '-', ff_hml: '-', 
-            ff_rmw: '-', ff_cma: '-', ff_wml: '-', ff_r_squared: '-', 
+            ff_rmw: '-', ff_cma: '-', ff_wml: '-', ff_r_squared: '-', ff_adj_r_squared: '-',
             ff_tw_mkt: '-', ff_crypto: '-',
             ff_status: 'unavailable', ff_reason: '尚未產生有效迴歸結果',
             ff_sample_count: 0, ff_weighting: '-'
@@ -583,6 +583,7 @@ ${JSON.stringify(payload, null, 2)}
                             stats.value.ff_cma = macroData.fama_french.cma;
                             stats.value.ff_wml = macroData.fama_french.wml;
                             stats.value.ff_r_squared = macroData.fama_french.r_squared;
+                            stats.value.ff_adj_r_squared = macroData.fama_french.adj_r_squared;
                             stats.value.ff_tw_mkt = macroData.fama_french.tw_mkt;
                             stats.value.ff_crypto = macroData.fama_french.crypto;
                         }
@@ -1443,6 +1444,7 @@ const minTrl95Years = minTrl95Finite && periodsPerYear > 0 ? minTrl95Obs / perio
                  ff_tw_mkt: stats.value.ff_tw_mkt ?? '-',
                  ff_crypto: stats.value.ff_crypto ?? '-',
                  ff_r_squared: stats.value.ff_r_squared ?? '-',
+                 ff_adj_r_squared: stats.value.ff_adj_r_squared ?? '-',
                  ff_status: stats.value.ff_status || 'unavailable',
                  ff_reason: stats.value.ff_reason || '尚未產生有效迴歸結果',
                  ff_sample_count: Number(stats.value.ff_sample_count || 0),

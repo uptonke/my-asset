@@ -1490,7 +1490,7 @@
                             <i class="fas fa-atom text-indigo-400"></i> 多因子迴歸解構 (FF5 + Momentum + TW + Crypto)
                         </h4>
                         <p class="text-xs text-gray-400 mb-5">
-                            <span v-if="stats?.ff_status === 'available'">目前持倉以 TWD 市值加權重建報酬 proxy；週頻 OLS。R² = {{ stats?.ff_r_squared ?? '-' }}，n = {{ stats?.ff_sample_count || 0 }}。</span>
+                            <span v-if="stats?.ff_status === 'available'">目前持倉以 TWD 市值加權重建報酬 proxy；週頻 OLS。R² = {{ stats?.ff_r_squared ?? '-' }}，Adj R² = {{ stats?.ff_adj_r_squared ?? '-' }}，n = {{ stats?.ff_sample_count || 0 }}。</span>
                             <span v-else class="text-amber-300">模型暫不可用：{{ stats?.ff_reason || '尚未產生有效迴歸結果' }}</span>
                         </p>
                         
@@ -1524,6 +1524,10 @@
                             <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-700/50">
                                 <div class="text-[10px] text-gray-500 mb-1" title=">0 偏高獲利品質, <0 偏低利潤/虧損">獲利能力 (RMW)</div>
                                 <div class="text-lg font-bold font-mono text-emerald-400">{{ stats?.ff_rmw ?? '-' }}</div>
+                            </div>
+                            <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-700/50">
+                                <div class="text-[10px] text-gray-500 mb-1" title=">0 偏保守投資企業, <0 偏積極投資企業">投資風格 (CMA)</div>
+                                <div class="text-lg font-bold font-mono text-sky-400">{{ stats?.ff_cma ?? '-' }}</div>
                             </div>
                             <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-700/50">
                                 <div class="text-[10px] text-gray-500 mb-1" title=">0 偏動能強勢股, <0 偏反轉弱勢股">動能因子 (WML)</div>
@@ -6961,7 +6965,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=twr-trend-v1"></script>
+<script src="assets/js/app.bundle.js?v=factor-ui-v2"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
