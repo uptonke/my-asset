@@ -1,0 +1,170 @@
+name: One-time HAC alpha inference patch
+
+on:
+  push:
+    paths:
+      - '.github/workflows/factor-alpha-hac-once.yml'
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  patch-test-cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch HAC alpha inference and UI
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          main_path = Path('main.py')
+          src_path = Path('assets/js/src/app.bundle.source.js')
+          idx_path = Path('index.html')
+          main = main_path.read_text(encoding='utf-8')
+          src = src_path.read_text(encoding='utf-8')
+          idx = idx_path.read_text(encoding='utf-8')
+
+          def replace_once(text, old, new, label):
+              if old not in text:
+                  raise SystemExit(f'{label} anchor not found')
+              return text.replace(old, new, 1)
+
+          # Backend: same OLS coefficients, HAC/Newey-West covariance for inference.
+          old_fit = """                                results = sm.OLS(Y, X).fit()\n\n                                macro_payload[\"fama_french\"] = {\n                                    \"alpha\": float(round(results.params['const'] * 52 * 100, 2)),"""
+          new_fit = """                                hac_maxlags = 4\n                                results = sm.OLS(Y, X).fit(\n                                    cov_type=\"HAC\",\n                                    cov_kwds={\"maxlags\": hac_maxlags, \"use_correction\": True},\n                                )\n                                alpha_weekly = float(results.params['const'])\n                                alpha_t_stat = float(results.tvalues['const'])\n                                alpha_p_value = float(results.pvalues['const'])\n                                alpha_ci_weekly = results.conf_int(alpha=0.05).loc['const']\n                                alpha_ci95_low = float(alpha_ci_weekly.iloc[0] * 52 * 100)\n                                alpha_ci95_high = float(alpha_ci_weekly.iloc[1] * 52 * 100)\n                                alpha_annualized = float(alpha_weekly * 52 * 100)\n                                if alpha_p_value < 0.05 and alpha_ci95_low > 0:\n                                    alpha_evidence = \"positive_significant_5pct\"\n                                elif alpha_p_value < 0.05 and alpha_ci95_high < 0:\n                                    alpha_evidence = \"negative_significant_5pct\"\n                                elif alpha_p_value < 0.10 and alpha_annualized > 0:\n                                    alpha_evidence = \"weak_positive_10pct\"\n                                elif alpha_p_value < 0.10 and alpha_annualized < 0:\n                                    alpha_evidence = \"weak_negative_10pct\"\n                                else:\n                                    alpha_evidence = \"not_statistically_distinguishable_from_zero\"\n\n                                macro_payload[\"fama_french\"] = {\n                                    \"alpha\": float(round(alpha_annualized, 2)),\n                                    \"alpha_hac_t_stat\": float(round(alpha_t_stat, 3)),\n                                    \"alpha_hac_p_value\": float(round(alpha_p_value, 6)),\n                                    \"alpha_hac_ci95_low\": float(round(alpha_ci95_low, 2)),\n                                    \"alpha_hac_ci95_high\": float(round(alpha_ci95_high, 2)),\n                                    \"alpha_evidence\": alpha_evidence,\n                                    \"alpha_inference_method\": \"OLS_HAC_Newey_West\",\n                                    \"hac_maxlags\": hac_maxlags,"""
+          main = replace_once(main, old_fit, new_fit, 'backend HAC fit')
+
+          old_print = """                                    f\"✅ 8因子運算成功: R²={results.rsquared:.3f}, n={sample_count}, \"\n                                    f\"TW_β={results.params.get('TW_Mkt_RF', 0):.2f}, \""""
+          new_print = """                                    f\"✅ 8因子運算成功: R²={results.rsquared:.3f}, n={sample_count}, \"\n                                    f\"α={alpha_annualized:.2f}% (HAC t={alpha_t_stat:.2f}, p={alpha_p_value:.3f}), \"\n                                    f\"TW_β={results.params.get('TW_Mkt_RF', 0):.2f}, \""""
+          main = replace_once(main, old_print, new_print, 'backend alpha log')
+
+          # Frontend state defaults.
+          old_state = """            ff_rmw: '-', ff_cma: '-', ff_wml: '-', ff_r_squared: '-', ff_adj_r_squared: '-',\n            ff_tw_mkt: '-', ff_crypto: '-',"""
+          new_state = """            ff_rmw: '-', ff_cma: '-', ff_wml: '-', ff_r_squared: '-', ff_adj_r_squared: '-',\n            ff_alpha_t_stat: '-', ff_alpha_p_value: '-', ff_alpha_ci95_low: '-', ff_alpha_ci95_high: '-',\n            ff_alpha_evidence: 'unavailable', ff_alpha_inference_method: '-', ff_hac_maxlags: '-',\n            ff_tw_mkt: '-', ff_crypto: '-',"""
+          src = replace_once(src, old_state, new_state, 'frontend factor defaults')
+
+          # Cloud payload mapping.
+          old_map = """                            stats.value.ff_alpha = macroData.fama_french.alpha;\n                            stats.value.ff_mkt_beta = macroData.fama_french.mkt_beta;"""
+          new_map = """                            stats.value.ff_alpha = macroData.fama_french.alpha;\n                            stats.value.ff_alpha_t_stat = macroData.fama_french.alpha_hac_t_stat ?? '-';\n                            stats.value.ff_alpha_p_value = macroData.fama_french.alpha_hac_p_value ?? '-';\n                            stats.value.ff_alpha_ci95_low = macroData.fama_french.alpha_hac_ci95_low ?? '-';\n                            stats.value.ff_alpha_ci95_high = macroData.fama_french.alpha_hac_ci95_high ?? '-';\n                            stats.value.ff_alpha_evidence = macroData.fama_french.alpha_evidence || 'unavailable';\n                            stats.value.ff_alpha_inference_method = macroData.fama_french.alpha_inference_method || '-';\n                            stats.value.ff_hac_maxlags = macroData.fama_french.hac_maxlags ?? '-';\n                            stats.value.ff_mkt_beta = macroData.fama_french.mkt_beta;"""
+          src = replace_once(src, old_map, new_map, 'frontend alpha inference mapping')
+
+          # Preserve inference fields whenever historical performance recomputes stats.value.
+          old_preserve = """                 ff_alpha: stats.value.ff_alpha ?? '-',\n                 ff_mkt_beta: stats.value.ff_mkt_beta ?? '-',"""
+          new_preserve = """                 ff_alpha: stats.value.ff_alpha ?? '-',\n                 ff_alpha_t_stat: stats.value.ff_alpha_t_stat ?? '-',\n                 ff_alpha_p_value: stats.value.ff_alpha_p_value ?? '-',\n                 ff_alpha_ci95_low: stats.value.ff_alpha_ci95_low ?? '-',\n                 ff_alpha_ci95_high: stats.value.ff_alpha_ci95_high ?? '-',\n                 ff_alpha_evidence: stats.value.ff_alpha_evidence || 'unavailable',\n                 ff_alpha_inference_method: stats.value.ff_alpha_inference_method || '-',\n                 ff_hac_maxlags: stats.value.ff_hac_maxlags ?? '-',\n                 ff_mkt_beta: stats.value.ff_mkt_beta ?? '-',"""
+          src = replace_once(src, old_preserve, new_preserve, 'frontend inference preservation')
+
+          # Subtitle: explicitly identify robust inference method.
+          old_subtitle = """                            <span v-if=\"stats?.ff_status === 'available'\">目前持倉以 TWD 市值加權重建報酬 proxy；週頻 OLS。R² = {{ stats?.ff_r_squared ?? '-' }}，Adj R² = {{ stats?.ff_adj_r_squared ?? '-' }}，n = {{ stats?.ff_sample_count || 0 }}。</span>"""
+          new_subtitle = """                            <span v-if=\"stats?.ff_status === 'available'\">目前持倉以 TWD 市值加權重建報酬 proxy；週頻 OLS，Alpha 推論採 HAC/Newey-West({{ stats?.ff_hac_maxlags ?? 4 }})。R² = {{ stats?.ff_r_squared ?? '-' }}，Adj R² = {{ stats?.ff_adj_r_squared ?? '-' }}，n = {{ stats?.ff_sample_count || 0 }}。</span>"""
+          idx = replace_once(idx, old_subtitle, new_subtitle, 'factor subtitle HAC')
+
+          old_alpha_card = """                            <div class=\"bg-gray-900/60 p-3 rounded-xl border border-gray-700/50\">\n                                <div class=\"text-[10px] text-gray-500 mb-1\">純粹超額報酬 (α)</div>\n                                <div class=\"text-lg font-bold font-mono\" :class=\"parseFloat(stats?.ff_alpha) > 0 ? 'text-green-400' : 'text-red-400'\">\n                                    {{ parseFloat(stats?.ff_alpha) > 0 ? '+' : '' }}{{ stats?.ff_alpha ?? '-' }}%\n                                </div>\n                            </div>"""
+          new_alpha_card = """                            <div class=\"bg-gray-900/60 p-3 rounded-xl border border-gray-700/50\">\n                                <div class=\"text-[10px] text-gray-500 mb-1\">純粹超額報酬 (α，年化)</div>\n                                <div class=\"text-lg font-bold font-mono\" :class=\"parseFloat(stats?.ff_alpha) > 0 ? 'text-green-400' : 'text-red-400'\">\n                                    {{ parseFloat(stats?.ff_alpha) > 0 ? '+' : '' }}{{ stats?.ff_alpha ?? '-' }}%\n                                </div>\n                                <div class=\"mt-1 text-[10px] text-gray-400 font-mono leading-relaxed\">\n                                    HAC t={{ stats?.ff_alpha_t_stat ?? '-' }} · p={{ stats?.ff_alpha_p_value ?? '-' }}<br>\n                                    95% CI [{{ stats?.ff_alpha_ci95_low ?? '-' }}%, {{ stats?.ff_alpha_ci95_high ?? '-' }}%]\n                                </div>\n                                <div class=\"mt-1.5 text-[10px] font-bold\">\n                                    <span v-if=\"stats?.ff_alpha_evidence === 'positive_significant_5pct'\" class=\"text-emerald-300\">正 Alpha 證據（5%）</span>\n                                    <span v-else-if=\"stats?.ff_alpha_evidence === 'negative_significant_5pct'\" class=\"text-red-300\">負 Alpha 證據（5%）</span>\n                                    <span v-else-if=\"stats?.ff_alpha_evidence === 'weak_positive_10pct'\" class=\"text-amber-300\">弱正向證據（10%）</span>\n                                    <span v-else-if=\"stats?.ff_alpha_evidence === 'weak_negative_10pct'\" class=\"text-amber-300\">弱負向證據（10%）</span>\n                                    <span v-else class=\"text-slate-400\">Alpha 未能與 0 顯著區分</span>\n                                </div>\n                            </div>"""
+          idx = replace_once(idx, old_alpha_card, new_alpha_card, 'alpha inference card')
+
+          # Bust browser cache.
+          bundle_pattern = r'assets/js/app\.bundle\.js(?:\?v=[^\"\']+)?'
+          idx, count = re.subn(bundle_pattern, 'assets/js/app.bundle.js?v=factor-alpha-hac-v1', idx, count=1)
+          if count != 1:
+              raise SystemExit(f'bundle script cache-bust anchor count={count}')
+
+          main_path.write_text(main, encoding='utf-8')
+          src_path.write_text(src, encoding='utf-8')
+          idx_path.write_text(idx, encoding='utf-8')
+          PY
+
+      - name: Install focused inference test dependencies
+        run: python -m pip install --quiet numpy pandas statsmodels
+
+      - name: Rebuild and validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile main.py
+          node --check assets/js/src/app.bundle.source.js
+          python scripts/build_frontend_bundle.py
+          node --check assets/js/app.bundle.js
+          cmp assets/js/src/app.bundle.source.js assets/js/app.bundle.js
+          git diff --check
+
+          python - <<'PY'
+          from pathlib import Path
+          main = Path('main.py').read_text(encoding='utf-8')
+          src = Path('assets/js/src/app.bundle.source.js').read_text(encoding='utf-8')
+          idx = Path('index.html').read_text(encoding='utf-8')
+          for needle in [
+              'cov_type="HAC"',
+              '"maxlags": hac_maxlags, "use_correction": True',
+              '"alpha_hac_t_stat"',
+              '"alpha_hac_p_value"',
+              '"alpha_hac_ci95_low"',
+              '"alpha_hac_ci95_high"',
+              '"alpha_inference_method": "OLS_HAC_Newey_West"',
+              '"hac_maxlags": hac_maxlags',
+              'not_statistically_distinguishable_from_zero',
+          ]:
+              assert needle in main, needle
+          for needle in [
+              'ff_alpha_t_stat', 'ff_alpha_p_value', 'ff_alpha_ci95_low', 'ff_alpha_ci95_high',
+              'ff_alpha_evidence', 'ff_alpha_inference_method', 'ff_hac_maxlags',
+          ]:
+              assert needle in src, needle
+          for needle in [
+              'HAC/Newey-West({{ stats?.ff_hac_maxlags ?? 4 }})',
+              'HAC t={{ stats?.ff_alpha_t_stat',
+              '95% CI [{{ stats?.ff_alpha_ci95_low',
+              'Alpha 未能與 0 顯著區分',
+              'assets/js/app.bundle.js?v=factor-alpha-hac-v1',
+          ]:
+              assert needle in idx, needle
+          print('Static HAC alpha assertions passed')
+          PY
+
+          python - <<'PY'
+          import numpy as np
+          import pandas as pd
+          import statsmodels.api as sm
+
+          rng = np.random.default_rng(42)
+          n = 160
+          x = rng.normal(size=(n, 3))
+          eps = np.zeros(n)
+          noise = rng.normal(scale=0.006, size=n)
+          for i in range(1, n):
+              eps[i] = 0.35 * eps[i-1] + noise[i]
+          y = 0.0015 + x @ np.array([0.4, -0.2, 0.1]) * 0.01 + eps
+          X = sm.add_constant(pd.DataFrame(x, columns=['a','b','c']))
+          Y = pd.Series(y)
+          results = sm.OLS(Y, X).fit(cov_type='HAC', cov_kwds={'maxlags': 4, 'use_correction': True})
+          ci = results.conf_int(alpha=0.05).loc['const']
+          annual_alpha = float(results.params['const'] * 52 * 100)
+          lo = float(ci.iloc[0] * 52 * 100)
+          hi = float(ci.iloc[1] * 52 * 100)
+          assert np.isfinite(results.tvalues['const'])
+          assert 0 <= float(results.pvalues['const']) <= 1
+          assert lo <= annual_alpha <= hi
+          print('HAC inference behavior test passed:', round(annual_alpha, 3), round(lo, 3), round(hi, 3))
+          PY
+
+      - name: Commit final change and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git checkout -- data/repo_architecture/frontend_build_status_latest.json data/repo_architecture/frontend_build_status_summary.md 2>/dev/null || true
+          git rm -f .github/workflows/factor-alpha-hac-once.yml
+          git add main.py index.html assets/js/src/app.bundle.source.js assets/js/app.bundle.js
+          git diff --cached --check
+          git commit -m 'Add HAC inference for multifactor alpha'
+          git push origin HEAD:main
