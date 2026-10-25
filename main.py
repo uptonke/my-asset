@@ -1929,10 +1929,38 @@ try:
                                 X = sm.add_constant(
                                     aligned_data[['Mkt-RF', 'SMB', 'HML', 'RMW', 'CMA', 'Mom', 'TW_Mkt_RF', 'Crypto_RF']]
                                 ).astype(float)
-                                results = sm.OLS(Y, X).fit()
+                                hac_maxlags = 4
+                                results = sm.OLS(Y, X).fit(
+                                    cov_type="HAC",
+                                    cov_kwds={"maxlags": hac_maxlags, "use_correction": True},
+                                )
+                                alpha_weekly = float(results.params['const'])
+                                alpha_t_stat = float(results.tvalues['const'])
+                                alpha_p_value = float(results.pvalues['const'])
+                                alpha_ci_weekly = results.conf_int(alpha=0.05).loc['const']
+                                alpha_ci95_low = float(alpha_ci_weekly.iloc[0] * 52 * 100)
+                                alpha_ci95_high = float(alpha_ci_weekly.iloc[1] * 52 * 100)
+                                alpha_annualized = float(alpha_weekly * 52 * 100)
+                                if alpha_p_value < 0.05 and alpha_ci95_low > 0:
+                                    alpha_evidence = "positive_significant_5pct"
+                                elif alpha_p_value < 0.05 and alpha_ci95_high < 0:
+                                    alpha_evidence = "negative_significant_5pct"
+                                elif alpha_p_value < 0.10 and alpha_annualized > 0:
+                                    alpha_evidence = "weak_positive_10pct"
+                                elif alpha_p_value < 0.10 and alpha_annualized < 0:
+                                    alpha_evidence = "weak_negative_10pct"
+                                else:
+                                    alpha_evidence = "not_statistically_distinguishable_from_zero"
 
                                 macro_payload["fama_french"] = {
-                                    "alpha": float(round(results.params['const'] * 52 * 100, 2)),
+                                    "alpha": float(round(alpha_annualized, 2)),
+                                    "alpha_hac_t_stat": float(round(alpha_t_stat, 3)),
+                                    "alpha_hac_p_value": float(round(alpha_p_value, 6)),
+                                    "alpha_hac_ci95_low": float(round(alpha_ci95_low, 2)),
+                                    "alpha_hac_ci95_high": float(round(alpha_ci95_high, 2)),
+                                    "alpha_evidence": alpha_evidence,
+                                    "alpha_inference_method": "OLS_HAC_Newey_West",
+                                    "hac_maxlags": hac_maxlags,
                                     "mkt_beta": float(round(results.params['Mkt-RF'], 2)),
                                     "smb": float(round(results.params['SMB'], 2)),
                                     "hml": float(round(results.params['HML'], 2)),
@@ -1955,6 +1983,7 @@ try:
                                 })
                                 print(
                                     f"✅ 8因子運算成功: R²={results.rsquared:.3f}, n={sample_count}, "
+                                    f"α={alpha_annualized:.2f}% (HAC t={alpha_t_stat:.2f}, p={alpha_p_value:.3f}), "
                                     f"TW_β={results.params.get('TW_Mkt_RF', 0):.2f}, "
                                     f"Crypto_β={results.params.get('Crypto_RF', 0):.2f}",
                                     flush=True,

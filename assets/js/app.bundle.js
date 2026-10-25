@@ -525,6 +525,8 @@ ${JSON.stringify(payload, null, 2)}
             tuw: '0', ulcer: '0.00', omega: '0.00', profitFactor: '0.00', 
             ff_alpha: '-', ff_mkt_beta: '-', ff_smb: '-', ff_hml: '-', 
             ff_rmw: '-', ff_cma: '-', ff_wml: '-', ff_r_squared: '-', ff_adj_r_squared: '-',
+            ff_alpha_t_stat: '-', ff_alpha_p_value: '-', ff_alpha_ci95_low: '-', ff_alpha_ci95_high: '-',
+            ff_alpha_evidence: 'unavailable', ff_alpha_inference_method: '-', ff_hac_maxlags: '-',
             ff_tw_mkt: '-', ff_crypto: '-',
             ff_status: 'unavailable', ff_reason: '尚未產生有效迴歸結果',
             ff_sample_count: 0, ff_weighting: '-'
@@ -576,6 +578,13 @@ ${JSON.stringify(payload, null, 2)}
 
                         if (macroData.fama_french) {
                             stats.value.ff_alpha = macroData.fama_french.alpha;
+                            stats.value.ff_alpha_t_stat = macroData.fama_french.alpha_hac_t_stat ?? '-';
+                            stats.value.ff_alpha_p_value = macroData.fama_french.alpha_hac_p_value ?? '-';
+                            stats.value.ff_alpha_ci95_low = macroData.fama_french.alpha_hac_ci95_low ?? '-';
+                            stats.value.ff_alpha_ci95_high = macroData.fama_french.alpha_hac_ci95_high ?? '-';
+                            stats.value.ff_alpha_evidence = macroData.fama_french.alpha_evidence || 'unavailable';
+                            stats.value.ff_alpha_inference_method = macroData.fama_french.alpha_inference_method || '-';
+                            stats.value.ff_hac_maxlags = macroData.fama_french.hac_maxlags ?? '-';
                             stats.value.ff_mkt_beta = macroData.fama_french.mkt_beta;
                             stats.value.ff_smb = macroData.fama_french.smb;
                             stats.value.ff_hml = macroData.fama_french.hml;
@@ -1435,6 +1444,13 @@ const minTrl95Years = minTrl95Finite && periodsPerYear > 0 ? minTrl95Obs / perio
                  profitFactor: profitFactor > 100 ? '∞' : Number(profitFactor).toFixed(2),
                  
                  ff_alpha: stats.value.ff_alpha ?? '-',
+                 ff_alpha_t_stat: stats.value.ff_alpha_t_stat ?? '-',
+                 ff_alpha_p_value: stats.value.ff_alpha_p_value ?? '-',
+                 ff_alpha_ci95_low: stats.value.ff_alpha_ci95_low ?? '-',
+                 ff_alpha_ci95_high: stats.value.ff_alpha_ci95_high ?? '-',
+                 ff_alpha_evidence: stats.value.ff_alpha_evidence || 'unavailable',
+                 ff_alpha_inference_method: stats.value.ff_alpha_inference_method || '-',
+                 ff_hac_maxlags: stats.value.ff_hac_maxlags ?? '-',
                  ff_mkt_beta: stats.value.ff_mkt_beta ?? '-',
                  ff_smb: stats.value.ff_smb ?? '-',
                  ff_hml: stats.value.ff_hml ?? '-',
