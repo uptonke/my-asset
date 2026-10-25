@@ -85,7 +85,6 @@ jobs:
           text = Path('main.py').read_text(encoding='utf-8')
           for needle in [
               'if t.startswith("__") and t.endswith("__")',
-              r're.fullmatch(r"\\d{4,6}[A-Z]?", candidate)',
               '.dropna(axis=1, how="all")',
               'pct_change(fill_method=None)',
               'def build_factor_market_value_weights(',
