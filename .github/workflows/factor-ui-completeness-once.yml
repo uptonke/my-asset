@@ -37,15 +37,13 @@ jobs:
                   raise SystemExit(f'{label} anchor not found')
               return text.replace(old, new, 1)
 
-          # Initial stats state: keep adjusted R² explicit rather than relying on an undefined property.
           src = replace_once(
               src,
               "            ff_rmw: '-', ff_cma: '-', ff_wml: '-', ff_r_squared: '-', \n            ff_tw_mkt: '-', ff_crypto: '-'",
-              "            ff_rmw: '-', ff_cma: '-', ff_wml: '-', ff_r_squared: '-', ff_adj_r_squared: '-', \n            ff_tw_mkt: '-', ff_crypto: '-'",
+              "            ff_rmw: '-', ff_cma: '-', ff_wml: '-', ff_r_squared: '-', ff_adj_r_squared: '-',\n            ff_tw_mkt: '-', ff_crypto: '-'",
               'initial factor stats',
           )
 
-          # Cloud factor payload mapping.
           src = replace_once(
               src,
               "                            stats.value.ff_r_squared = macroData.fama_french.r_squared;\n                            stats.value.ff_tw_mkt = macroData.fama_french.tw_mkt;",
@@ -53,7 +51,6 @@ jobs:
               'factor payload adjusted R2 mapping',
           )
 
-          # Preserve the cloud value when the historical-performance stats object is recomputed.
           src = replace_once(
               src,
               "                 ff_r_squared: stats.value.ff_r_squared ?? '-',\n                 ff_status: stats.value.ff_status || 'unavailable',",
@@ -69,7 +66,6 @@ jobs:
           cma_card = """                            <div class=\"bg-gray-900/60 p-3 rounded-xl border border-gray-700/50\">\n                                <div class=\"text-[10px] text-gray-500 mb-1\" title=\">0 偏保守投資企業, <0 偏積極投資企業\">投資風格 (CMA)</div>\n                                <div class=\"text-lg font-bold font-mono text-sky-400\">{{ stats?.ff_cma ?? '-' }}</div>\n                            </div>\n""" + wml_card
           idx = replace_once(idx, wml_card, cma_card, 'CMA card insertion')
 
-          # Bust browser cache for the rebuilt runtime bundle.
           bundle_pattern = r'assets/js/app\.bundle\.js(?:\?v=[^\"\']+)?'
           idx, count = re.subn(bundle_pattern, 'assets/js/app.bundle.js?v=factor-ui-v2', idx, count=1)
           if count != 1:
