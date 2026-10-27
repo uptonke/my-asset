@@ -20,11 +20,28 @@ except ModuleNotFoundError:
 import scipy.optimize as sco
 from supabase import create_client, Client
 from google import genai
+from google.genai import types
 from scripts.jensen_alpha import compute_jensen_alpha_regression
 from scripts.tail_inference import compute_tail_bootstrap_ci
 from scripts.evt_robustness import compute_evt_robustness
 
 warnings.filterwarnings('ignore')
+
+
+def generate_gemini_json(client, model_name, prompt):
+    """Generate JSON with model-compatible reasoning controls."""
+    if str(model_name).startswith(("gemini-3", "gemini-4")):
+        config = types.GenerateContentConfig(
+            response_mime_type="application/json",
+            thinking_config=types.ThinkingConfig(thinking_level="high"),
+        )
+    else:
+        # Gemini 2.5 does not support thinking_level; retain dynamic thinking.
+        config = types.GenerateContentConfig(
+            response_mime_type="application/json",
+            thinking_config=types.ThinkingConfig(thinking_budget=-1),
+        )
+    return client.models.generate_content(model=model_name, contents=prompt, config=config)
 
 # ==========================================
 # Optional technical-analysis fallback
@@ -192,7 +209,7 @@ try:
     cache_path = os.path.join(os.path.expanduser('~'), '.cache', 'yfinance')
     if os.path.exists(cache_path):
         shutil.rmtree(cache_path)
-    
+
     # 針對 Windows 系統的快取路徑
     windows_cache = os.path.join(os.environ.get('LOCALAPPDATA', ''), 'yfinance')
     if os.path.exists(windows_cache):
@@ -276,13 +293,13 @@ def choose_stage(scores):
     # 5. 一般狀態
     if 3 <= total <= 9: return "neutral"
     if -5 <= total <= 2: return "tight_liquidity"
-    
+
     return "mixed"
 
 def build_regime_packet(macro_payload):
     raw = {k: macro_payload.get(k) for k in [
-        "yield_curve", "hy_spread", "vix", "vix_z", "dxy", "btc_1m_mom", "oil_price", "copper_gold_ratio", "move_index", "move_z", 
-        "iwm_spy_mom", "xlu_xly_mom", "vxn", "vxn_z", "vvix", "vvix_z", "hyg_tlt_mom", "dbc_mom", "soxx_spy_mom", "liquidity_spread", 
+        "yield_curve", "hy_spread", "vix", "vix_z", "dxy", "btc_1m_mom", "oil_price", "copper_gold_ratio", "move_index", "move_z",
+        "iwm_spy_mom", "xlu_xly_mom", "vxn", "vxn_z", "vvix", "vvix_z", "hyg_tlt_mom", "dbc_mom", "soxx_spy_mom", "liquidity_spread",
         "rsp_spy_mom", "kre_spy_mom", "aud_jpy_mom", "put_call_ratio", "pcr_z", "sys_corr"]}
     scores = {
         "yield_curve": score_yield_curve(raw["yield_curve"]), "hy_spread": score_hy_spread(raw["hy_spread"]),
@@ -756,7 +773,7 @@ def compute_drawdown_series(return_series):
         return dd
     except Exception:
         return pd.Series(dtype=float)
-    
+
 def get_jump_params_for_ticker(ticker, meta):
     t = str(ticker or "").strip().upper()
     category = str(meta.get("category", ""))
@@ -1425,11 +1442,11 @@ try:
                 t = normalize_ticker_symbol(tx.get("ticker"))
                 if not t:
                     continue
-                
+
                 # 修正：阻絕 JSON Null 穿透
                 raw_shares = tx.get("shares")
                 s = float(raw_shares) if raw_shares not in [None, ""] else 0.0
-                
+
                 if str(tx.get("type", "buy")).lower() in ["sell", "賣出"]:
                     s = -s
                 current_shares[t] = current_shares.get(t, 0) + s
@@ -1451,21 +1468,21 @@ try:
         print(f"⚠️ 相關性計算失敗: {e}", flush=True)
 
     macro_payload = {
-        "yield_10y": float(round(y10, 2)), "yield_2y": float(round(y3m, 2)), "yield_curve": float(round(y10 - y3m, 2)), 
+        "yield_10y": float(round(y10, 2)), "yield_2y": float(round(y3m, 2)), "yield_curve": float(round(y10 - y3m, 2)),
         "hy_spread": float(round(hy_spread, 2)), "btc_1m_mom": float(round(btc_mom, 2)), "market_rf": float(round(y10, 2)),
         "market_rm": float(round(spy_cagr * 100, 2)), "market_sm": float(round(spy_vol * 100, 2)),
         "vix": float(round(vix, 2)), "vix_z": float(round(vix_z, 2)), "vxn": float(round(vxn, 2)), "vxn_z": float(round(vxn_z, 2)),
         "vvix": float(round(vvix, 2)), "vvix_z": float(round(vvix_z, 2)),
-        "dxy": float(round(dxy, 2)), "gold_price": float(round(gold, 2)), "oil_price": float(round(oil, 2)), "copper_gold_ratio": float(round(copper_gold_ratio, 4)), 
+        "dxy": float(round(dxy, 2)), "gold_price": float(round(gold, 2)), "oil_price": float(round(oil, 2)), "copper_gold_ratio": float(round(copper_gold_ratio, 4)),
         "move_index": float(round(move_idx, 2)), "move_z": float(round(move_z, 2)),
         "iwm_spy_mom": float(round(iwm_spy_mom, 2)), "xlu_xly_mom": float(round(xlu_xly_mom, 2)),
         "hyg_tlt_mom": float(round(hyg_tlt_mom, 2)), "dbc_mom": float(round(dbc_mom, 2)),
         "soxx_spy_mom": float(round(soxx_spy_mom, 2)), "liquidity_spread": float(round(liquidity_spread, 2)),
-        "rsp_spy_mom": float(round(rsp_spy_mom, 2)), "kre_spy_mom": float(round(kre_spy_mom, 2)), "aud_jpy_mom": float(round(aud_jpy_mom, 2)), 
+        "rsp_spy_mom": float(round(rsp_spy_mom, 2)), "kre_spy_mom": float(round(kre_spy_mom, 2)), "aud_jpy_mom": float(round(aud_jpy_mom, 2)),
         "put_call_ratio": float(round(pcr, 2)), "pcr_z": float(round(pcr_z, 2)),
         "sys_corr": float(round(sys_corr, 2)), "corr_matrix": corr_matrix
     }
-    
+
     # ==========================================
     # Gemini AI 總結
     # ==========================================
@@ -1492,12 +1509,23 @@ try:
             [INPUT_DATA]
             {json.dumps(regime_packet, ensure_ascii=False)}
 
+            [EVIDENCE_GUARDRAILS]
+            Quantitative evidence outranks narrative. Follow these rules strictly:
+            - Sys Corr < 0.30 means low cross-asset correlation / stronger diversification. Never call it correlation collapse, market-structure breakdown, or Beta failure.
+            - Sys Corr alone can never establish Beta failure. Only discuss Beta/factor failure when explicit beta or factor-model diagnostics support it.
+            - If Alpha p-value is absent OR p >= 0.10, do not claim an Alpha edge, persistent Alpha, high-Alpha opportunity, or ability to extract Alpha. If an estimate is supplied, call it an unproven point estimate.
+            - If factor-model R-squared >= 0.80, do not describe Beta/systematic factors as ineffective or failed.
+            - Z-score language: abs(Z) < 1 = near normal; 1 <= abs(Z) < 2 = elevated; abs(Z) >= 2 = unusually high/extreme. A single Z-score never proves forced liquidation, deleveraging, or a carry unwind.
+            - Forced liquidation / deleveraging / carry unwind requires at least TWO independent confirming stress signals. Otherwise say risk is elevated or consistent with stress, not that liquidation is occurring.
+            - Relative momentum is relative performance, not an absolute crash. Do not use bloodbath/crash language unless an absolute drawdown metric confirms it.
+            - Positive RSP/SPY means improving market breadth / equal-weight leadership. Do not automatically call it small-cap leadership.
+            - Use measured language. Avoid 崩潰、失效、強行榨取、血洗、暴力殺盤 unless the supplied quantitative evidence explicitly meets the rules above.
             [OUTPUT_SCHEMA]
             {{"summary": "<string>", "details": [{{"icon": "<emoji>", "color": "<string_class>", "title": "<string>", "desc": "<string>"}}]}}
             """
-            for model_name in ["gemini-3-flash-preview", "gemini-2.5-flash", "gemini-2.0-flash"]:
+            for model_name in ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-2.5-flash"]:
                 try:
-                    res = client.models.generate_content(model=model_name, contents=prompt)
+                    res = generate_gemini_json(client, model_name, prompt)
                     match = re.search(r'\{.*\}', res.text, re.DOTALL)
                     if match:
                         macro_payload['ai_analysis'] = json.loads(match.group(0))
@@ -1614,7 +1642,7 @@ def get_sheet_prices(url_str):
         gid_match = re.search(r'[#&?]gid=([0-9]+)', clean_url)
         if not match: return {}
         csv_url = "https://docs.google.com/spreadsheets/d/" + match.group(1) + "/gviz/tq?tqx=out:csv&gid=" + (gid_match.group(1) if gid_match else '0')
-        
+
         response = requests.get(csv_url, timeout=10)
         df = pd.read_csv(io.StringIO(response.text), header=None)
         price_map = {}
@@ -1636,8 +1664,8 @@ def get_optimal_weights(returns_df, stock_meta, min_wt=0.03, max_wt=0.20):
     num_assets = len(returns_df.columns)
     if num_assets == 0: return {}
     mean_returns = returns_df.mean() * 252
-    cov_matrix = returns_df.cov() * 252 + np.eye(num_assets) * 1e-6 
-    
+    cov_matrix = returns_df.cov() * 252 + np.eye(num_assets) * 1e-6
+
     if min_wt * num_assets > 1.0: return {col: 1.0/num_assets for col in returns_df.columns}
 
     crypto_indices, low_risk_indices, tw_and_fund_indices = [], [], []
@@ -1695,7 +1723,7 @@ try:
 
         print("📊 正在從 Google Sheet 抓取自訂報價...", flush=True)
         sheet_prices = get_sheet_prices(db_record.get("settings", {}).get("sheetUrl", ""))
-        
+
         if all_tickers:
             tw_bench, us_bench = "^TWII", "SPY"
             download_list, yf_tickers = [tw_bench, us_bench], []
@@ -1706,7 +1734,7 @@ try:
                 if target and target not in download_list:
                     download_list.append(target)
 
-            print(f"⏳ 正在向 Yahoo Finance 請求 {len(download_list)} 檔標的歷史資料...", flush=True)        
+            print(f"⏳ 正在向 Yahoo Finance 請求 {len(download_list)} 檔標的歷史資料...", flush=True)
             # ==========================================
             # 🌟 方案 A: 延長歷史資料長度至 10 年，讓 EVT 與 JD 模型有足夠樣本配適
             # ==========================================
@@ -1727,11 +1755,11 @@ try:
             for tx in ledger_data:
                 t = normalize_ticker_symbol(tx.get("ticker"))
                 if not t: continue
-                
+
                 # 修正：阻絕 JSON Null 穿透
                 raw_shares = tx.get("shares")
                 s_val = float(raw_shares) if raw_shares not in [None, ""] else 0.0
-                
+
                 current_shares[t] = current_shares.get(t, 0) + (s_val * (-1 if str(tx.get("type", "buy")).lower() in ["sell", "賣出"] else 1))
 
             ledger_active_tickers = [t for t, s in current_shares.items() if s > 0.0001]
@@ -1780,7 +1808,7 @@ try:
                 )
             ticker_to_yf = dict(zip(all_tickers, yf_tickers))
             valid_investable = [yf_t for t in active_tickers if (yf_t := ticker_to_yf.get(t)) and yf_t in returns.columns and yf_t not in [tw_bench, us_bench]]
-            
+
             print(f"✅ 篩選完成：庫存共有 {len(valid_investable)} 檔標的進入最佳化引擎。")
 
             target_weights = {}
@@ -1806,7 +1834,7 @@ try:
                     target_weights = get_optimal_weights(optimizer_returns, stock_meta, min_wt=dynamic_min, max_wt=1.0 if num_assets < 5 else 0.20)
                 else:
                     print(f"⚠️ 最佳化有效完整樣本不足: {len(optimizer_returns)} < 30", flush=True)
-                
+
                 # ==========================================
                 # Cross-asset factor model: FF5 + Momentum + TW market + Crypto
                 # Current-holdings proxy is weighted by CURRENT TWD MARKET VALUE, never share count.
@@ -2019,20 +2047,20 @@ try:
                 yf_ticker = ticker_to_yf.get(original_ticker, "")
                 if original_ticker in sheet_prices:
                     stock_meta[original_ticker]["last_price"] = sheet_prices[original_ticker]
-                
+
                 if yf_ticker in returns.columns:
                     stock_close = prices_df[yf_ticker].dropna()
                     if len(stock_close) < 60: continue
-                    
+
                     bench = tw_bench if yf_ticker.endswith(".TW") else us_bench
                     aligned = pd.concat([returns[yf_ticker], returns[bench]], axis=1).dropna()
                     if len(aligned) < 30: continue
-                    
+
                     bench_var = aligned.iloc[:,1].var()
                     beta_val = round(aligned.iloc[:,0].cov(aligned.iloc[:,1]) / bench_var if bench_var > 0 else 1.0, 2)
                     std_val = round(np.sqrt(aligned.iloc[:,0].var() * 252) * 100, 2)
                     tw_val = float(target_weights.get(yf_ticker, 0.0))
-                    
+
                     rsi_series = ta.rsi(stock_close)
                     macd_frame = ta.macd(stock_close)
 
@@ -2197,7 +2225,7 @@ try:
                 "jd_crash_prob": tail_meta.get("jd_crash_prob"),
                 "jd_tail_loss": tail_meta.get("jd_tail_loss"),
                 "jd_horizon_weeks": tail_meta.get("jd_horizon_weeks")
-            } 
+            }
 
             chaos_packet["evt_tail"] = {
                 "evt_var95": tail_meta.get("evt_var95"),
@@ -2217,34 +2245,34 @@ try:
             # 🌟 [START] 再平衡引擎 & Buffer Floor 斷路器機制
             # ==========================================
             print(f"\n💰 當前投資組合總淨值估算: {portfolio_value:,.2f}")
-            
+
             rebalance_signals = []
             blocked_buy_signals = []
-            
+
             if portfolio_value > 0:
                 buffer_floor_wt = max(0.0, min(float(liquidity_buffer_ratio or 0.0) / 100.0, 0.80))
-            
+
                 available_buffer_names = [t for t in all_tickers if is_hard_buffer_ticker(t)]
                 if not available_buffer_names:
                     available_buffer_names = ["SHY", "BOXX"]
-            
+
                 current_buffer_value = sum(asset_values.get(t, 0.0) for t in available_buffer_names)
                 current_buffer_wt = current_buffer_value / portfolio_value if portfolio_value > 0 else 0.0
-            
+
                 buffer_gap_wt = max(0.0, buffer_floor_wt - current_buffer_wt)
                 buffer_gap_value = portfolio_value * buffer_gap_wt
-            
+
                 per_buffer_fill_wt = (buffer_gap_wt / len(available_buffer_names)) if available_buffer_names else 0.0
-            
+
                 print(
                     f"🛡️ Buffer Floor 檢查 -> 目標: {buffer_floor_wt*100:.1f}%, "
                     f"目前: {current_buffer_wt*100:.1f}%, 缺口: {buffer_gap_wt*100:.1f}%"
                 )
-            
+
                 sell_signals = []
                 buffer_buy_signals = []
                 risk_buy_signals = []
-            
+
                 stale_meta_tickers = sorted([
                     t for t in all_tickers
                     if t not in active_tickers and not is_hard_buffer_ticker(t)
@@ -2284,7 +2312,7 @@ try:
                     delta_w = effective_tw - cw
                     if abs(delta_w) <= 0.01:
                         continue
-            
+
                     direction = "ADD" if delta_w > 0 else "TRIM"
                     action_str = "BUY (加碼)" if direction == "ADD" else "SELL (減碼)"
                     trade_amount = round((portfolio_value * effective_tw) - asset_values.get(t, 0.0), 2)
@@ -2331,7 +2359,7 @@ try:
                     print(f"   [{t}] {direction} -> 目標: {effective_tw*100:.1f}%, 當前: {cw*100:.1f}%")
 
                 rebalance_signals = sell_signals + buffer_buy_signals + risk_buy_signals
-            
+
                 rebalance_meta = {
                     "buffer_floor_pct": round(buffer_floor_wt * 100, 2),
                     "current_buffer_pct": round(current_buffer_wt * 100, 2),
@@ -2398,35 +2426,46 @@ try:
                 Economic dust excluded: {json.dumps(economic_dust_tickers, ensure_ascii=False)}
                 Buffer Status: Gap {rebalance_meta['buffer_gap_pct']}%, Blocks Risk Buys: {rebalance_meta['buffer_blocking_risk_buys']}
 
-                [OUTPUT_SCHEMA]
+                [EVIDENCE_GUARDRAILS]
+            Quantitative evidence outranks narrative. Follow these rules strictly:
+            - Sys Corr < 0.30 means low cross-asset correlation / stronger diversification. Never call it correlation collapse, market-structure breakdown, or Beta failure.
+            - Sys Corr alone can never establish Beta failure. Only discuss Beta/factor failure when explicit beta or factor-model diagnostics support it.
+            - If Alpha p-value is absent OR p >= 0.10, do not claim an Alpha edge, persistent Alpha, high-Alpha opportunity, or ability to extract Alpha. If an estimate is supplied, call it an unproven point estimate.
+            - If factor-model R-squared >= 0.80, do not describe Beta/systematic factors as ineffective or failed.
+            - Z-score language: abs(Z) < 1 = near normal; 1 <= abs(Z) < 2 = elevated; abs(Z) >= 2 = unusually high/extreme. A single Z-score never proves forced liquidation, deleveraging, or a carry unwind.
+            - Forced liquidation / deleveraging / carry unwind requires at least TWO independent confirming stress signals. Otherwise say risk is elevated or consistent with stress, not that liquidation is occurring.
+            - Relative momentum is relative performance, not an absolute crash. Do not use bloodbath/crash language unless an absolute drawdown metric confirms it.
+            - Positive RSP/SPY means improving market breadth / equal-weight leadership. Do not automatically call it small-cap leadership.
+            - Use measured language. Avoid 崩潰、失效、強行榨取、血洗、暴力殺盤 unless the supplied quantitative evidence explicitly meets the rules above.
+            [OUTPUT_SCHEMA]
                 {{
                     "execution_summary": "<string_1_sentence_rationale_linking_macro_to_trades_in_traditional_chinese_with_strict_financial_logic>",
                     "priority_trades": [ {{"ticker": "<string>", "reason": "<string_short_rationale>"}} ]
                 }}
                 """
-                
+
                 ai_success = False
                 # 依序降級測試模型，避免 503 導致報告難產
-                for model_name in ["gemini-3-flash-preview", "gemini-2.5-flash", "gemini-2.0-flash"]:
+                for model_name in ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-2.5-flash"]:
                     try:
                         print(f"   嘗試使用 {model_name} 生成報告...", flush=True)
                         res = client.models.generate_content(model=model_name, contents=rebalance_prompt)
                         rb_match = re.search(r'\{.*\}', res.text, re.DOTALL)
-                        
+
                         if rb_match:
                             rebalance_meta["signals"] = rebalance_signals
                             rebalance_meta["ai_execution_plan"] = json.loads(rb_match.group(0))
-                            
+
                             supabase.table("portfolio_db").update({
                                 "rebalance_meta": rebalance_meta
                             }).eq("id", target_id).execute()
-                            
+
                             print(f"✅ 再平衡交易清單與 AI 執行報告已成功同步至 Supabase！({model_name})")
                             ai_success = True
                             break
-                    except Exception as e: 
+                    except Exception as e:
                         print(f"   ⚠️ {model_name} 生成失敗: {e}")
-                
+
                 # 如果所有模型都因 503 失敗，確保基本交易訊號仍能寫入資料庫
                 if not ai_success:
                     print("⚠️ 所有模型皆因負載問題無法生成報告，僅上傳基礎交易訊號至 Supabase。")

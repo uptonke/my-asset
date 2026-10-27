@@ -22,7 +22,7 @@ SUPABASE_TABLE = os.getenv("SUPABASE_TABLE", "portfolio_db")
 PORTFOLIO_ROW_ID = int(os.getenv("PORTFOLIO_ROW_ID", "1"))
 FRED_API_KEY = os.getenv("FRED_API_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 
 YAHOO_SYMBOLS = [
     "SPY", "QQQ", "RSP", "IWM", "HYG", "JNK", "LQD", "TLT", "IEF", "SHY",
@@ -862,8 +862,19 @@ def build_gemini_data_deep_analysis(
 """.strip()
     try:
         from google import genai
+        from google.genai import types
         client = genai.Client(api_key=GEMINI_API_KEY)
-        response = client.models.generate_content(model=GEMINI_MODEL, contents=prompt)
+        if str(GEMINI_MODEL).startswith(("gemini-3", "gemini-4")):
+            gemini_config = types.GenerateContentConfig(
+                response_mime_type="application/json",
+                thinking_config=types.ThinkingConfig(thinking_level="high"),
+            )
+        else:
+            gemini_config = types.GenerateContentConfig(
+                response_mime_type="application/json",
+                thinking_config=types.ThinkingConfig(thinking_budget=-1),
+            )
+        response = client.models.generate_content(model=GEMINI_MODEL, contents=prompt, config=gemini_config)
         parsed = _safe_json_from_text(getattr(response, "text", "") or "")
         result = {
             "title": "AI 數據深度分析",
