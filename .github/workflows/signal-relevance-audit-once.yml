@@ -19,6 +19,22 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fix patcher literal replacement escaping
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/patch_signal_relevance_audit_once.py')
+          s = p.read_text(encoding='utf-8')
+          old = "    out, count = re.subn(pattern, repl, text, count=1, flags=flags)"
+          new = "    compiled = re.compile(pattern, flags)\n    out, count = compiled.subn(lambda _match: repl, text, count=1)"
+          if old not in s:
+              raise SystemExit('sub_once anchor missing')
+          s = s.replace(old, new, 1)
+          s = s.replace('re.fullmatch(r"\\d{4,6}[A-Z]?", t)', 're.fullmatch(r"[0-9]{4,6}[A-Z]?", t)')
+          p.write_text(s, encoding='utf-8')
+          PY
+
       - name: Apply portfolio relevance and compact audit patch
         run: python scripts/patch_signal_relevance_audit_once.py
 
@@ -88,7 +104,6 @@ jobs:
           assert len(top) == 4
           assert by_key['move_index']['priority'] == 3.1
           assert by_key['move_index']['selection_score'] > by_key['move_index']['priority']
-          # Same base signal strength inside breadth: higher portfolio relevance must win.
           assert by_key['soxx_spy_mom']['priority'] == by_key['rsp_spy_mom']['priority'] == 2.0
           assert by_key['soxx_spy_mom']['selection_score'] > by_key['rsp_spy_mom']['selection_score']
           assert 'soxx_spy_mom' in top and 'rsp_spy_mom' not in top
