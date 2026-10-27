@@ -2,9 +2,9 @@ const { createApp, ref, computed, onMounted, watch, nextTick } = Vue;
 
 createApp({
     setup() {
-        const blViews = ref([]); 
-        const cloudRebalanceMeta = ref(null); 
-        
+        const blViews = ref([]);
+        const cloudRebalanceMeta = ref(null);
+
         const mcAvailableAssets = computed(() => {
             const list = [];
             for (const cat in groupedHoldings.value) {
@@ -360,7 +360,7 @@ ${JSON.stringify(payload, null, 2)}
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             contents: [{ parts: [{ text: promptText }] }],
-                            generationConfig: { temperature: 0.2 } 
+                            generationConfig: { temperature: 0.2 }
                         })
                     });
 
@@ -369,18 +369,18 @@ ${JSON.stringify(payload, null, 2)}
                     if (data.candidates && data.candidates[0] && data.candidates[0].content) {
                         resultText = data.candidates[0].content.parts[0].text;
                         success = true;
-                        
+
                         const parsedInsight = resultText.split('\n')
                             .filter(line => line.trim().length > 0)
                             .map(line => line.replace(/^[\*\-]\s*/, '').replace(/\*\*/g, ''));
-                        
+
                         croInsight.value = parsedInsight;
-                        await supabase.from('portfolio_db').update({ 
+                        await supabase.from('portfolio_db').update({
                             cro_insight: parsedInsight,
                             cro_last_update: new Date().toISOString()
                         }).eq('id', 1);
 
-                        break; 
+                        break;
                     } else {
                         throw new Error("回傳格式異常");
                     }
@@ -398,7 +398,7 @@ ${JSON.stringify(payload, null, 2)}
             if (!success) alert('所有 AI 模型皆無回應或發生錯誤，請稍後再試。');
             isCroThinking.value = false;
         }
-        
+
         function generateAutoViews() {
             const assets = [...mcAvailableAssets.value];
             if (assets.length < 2) {
@@ -412,7 +412,7 @@ ${JSON.stringify(payload, null, 2)}
             const weakest = assets[assets.length - 1];
 
             const expectedOutperformance = ((strongest.stdDev + weakest.stdDev) / 2) * 0.5;
-            
+
             blViews.value.push({
                 type: 'relative',
                 asset1: strongest.ticker,
@@ -425,11 +425,11 @@ ${JSON.stringify(payload, null, 2)}
                 const rf = riskParams.value.rf;
                 const rm = riskParams.value.rm;
                 const expectedReturn = rf + secondStrongest.beta * (rm - rf) + 3.0;
-                
+
                 blViews.value.push({
                     type: 'absolute',
                     asset1: secondStrongest.ticker,
-                    asset2: strongest.ticker, 
+                    asset2: strongest.ticker,
                     value: parseFloat(expectedReturn.toFixed(1))
                 });
             }
@@ -437,23 +437,23 @@ ${JSON.stringify(payload, null, 2)}
 
         const currentTab = ref('summary');
         const analyticsViewMode = ref('risk');
-        const isAiExpanded = ref(false); 
+        const isAiExpanded = ref(false);
         const isHistoryExpanded = ref(false);
-        
+
         const supabaseUrl = 'https://yrccanqxzrcoknzabifz.supabase.co';
         const supabaseKey = 'sb_publishable_lDfwRDxgMhzRwVk0-Qu3vg_9HTmTFZy';
         const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-        const isAppReady = ref(false); 
-        const showMCModal = ref(false); 
-        const mcOptimal = ref(null); 
+        const isAppReady = ref(false);
+        const showMCModal = ref(false);
+        const mcOptimal = ref(null);
 
         const expandedCardTicker = ref(null);
         function toggleCard(ticker) {
             if (expandedCardTicker.value === ticker) {
                 expandedCardTicker.value = null;
             } else {
-                expandedCardTicker.value = ticker; 
+                expandedCardTicker.value = ticker;
             }
         }
 
@@ -466,7 +466,7 @@ ${JSON.stringify(payload, null, 2)}
         const checkAuth = async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (session) isLoggedIn.value = true;
-            else isAppReady.value = true; 
+            else isAppReady.value = true;
         };
 
         const handleLogin = async () => {
@@ -484,17 +484,17 @@ ${JSON.stringify(payload, null, 2)}
         };
 
         onMounted(() => { checkAuth(); });
-        
-        const isDbSyncing = ref(false); 
+
+        const isDbSyncing = ref(false);
         const showHistoryModal = ref(false);
         const isUpdating = ref(false);
         const lastUpdate = ref(null);
-        
+
         const exchangeRate = ref(32.5);
         const sheetUrl = ref('');
         const liquidityBufferRatio = ref(0);
         const chaosMeta = ref(null);
-        
+
         const cloudAiAnalysis = ref(null);
         const correlationMatrix = ref(null);
         const sysCorr = ref(0);
@@ -508,22 +508,22 @@ ${JSON.stringify(payload, null, 2)}
         ]);
 
         const riskParams = ref({ rf: 1.5, beta: 1.0, rm: 10.0, sm: 15.0 });
-        const quantStartDate = ref(''); 
+        const quantStartDate = ref('');
         const dataFrequency = ref('Weekly');
-        const snapshotDate = ref(new Date().toISOString().split('T')[0]); 
+        const snapshotDate = ref(new Date().toISOString().split('T')[0]);
 
         const transactions = ref([]);
         const realHistoryData = ref([]);
         const priceMap = ref({});
         const stockMeta = ref({});
 
-        const stats = ref({ 
+        const stats = ref({
             annRet:'0.00', annLogRet:'0.00', mwr:'0.00', annVol:'0.00', sharpe:'0.00', psr: '-',
             psrSampleN: 0, psrMinTrl95: '-', psrMinTrl95Years: '-', psrMinTrl95Remaining: '-', psrMinTrl95Met: false,
-            sortino:'0.00', treynor:'0.00', 
-            alpha:'0.00', var95:'0.00', cvar95:'0.00', mdd:'0.00', calmar:'0.00', skew:'0.00', kurt:'0.00', 
-            tuw: '0', ulcer: '0.00', omega: '0.00', profitFactor: '0.00', 
-            ff_alpha: '-', ff_mkt_beta: '-', ff_smb: '-', ff_hml: '-', 
+            sortino:'0.00', treynor:'0.00',
+            alpha:'0.00', var95:'0.00', cvar95:'0.00', mdd:'0.00', calmar:'0.00', skew:'0.00', kurt:'0.00',
+            tuw: '0', ulcer: '0.00', omega: '0.00', profitFactor: '0.00',
+            ff_alpha: '-', ff_mkt_beta: '-', ff_smb: '-', ff_hml: '-',
             ff_rmw: '-', ff_cma: '-', ff_wml: '-', ff_r_squared: '-', ff_adj_r_squared: '-',
             ff_alpha_t_stat: '-', ff_alpha_p_value: '-', ff_alpha_ci95_low: '-', ff_alpha_ci95_high: '-',
             ff_alpha_evidence: 'unavailable', ff_alpha_inference_method: '-', ff_hac_maxlags: '-',
@@ -704,7 +704,7 @@ ${JSON.stringify(payload, null, 2)}
             else if (type === 'Expense' || type === 'Income') txFlowMode.value = 'adjustment';
             else txFlowMode.value = 'internal';
         }, { immediate: true });
-        
+
         const historyForm = ref({
             date: new Date().toISOString().split('T')[0],
             assets: null,
@@ -741,7 +741,7 @@ ${JSON.stringify(payload, null, 2)}
             if (matchGid && matchGid[1]) gid = matchGid[1];
             isUpdating.value = true;
             const gvizUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${gid}`;
-            
+
             const processCSV = async (csvText) => {
                 Papa.parse(csvText, {
                     header: false,
@@ -751,10 +751,10 @@ ${JSON.stringify(payload, null, 2)}
                             if (row.length >= 2) {
                                 const t = row[0]?.toString().toUpperCase().trim();
                                 const p = parseFloat(row[1]);
-                                if (t && !isNaN(p)) { 
-                                   priceMap.value[t] = p; 
+                                if (t && !isNaN(p)) {
+                                   priceMap.value[t] = p;
                                    if(t.includes(':')) { const parts = t.split(':'); if(parts.length > 1) priceMap.value[parts[1].trim()] = p; }
-                                   count++; 
+                                   count++;
                                 }
                             }
                         });
@@ -780,13 +780,13 @@ ${JSON.stringify(payload, null, 2)}
             const map = {};
             transactions.value.forEach(tx => {
                 // 🟢 此處設計會自動略過 Deposit 與 Withdraw，確保總成本計算不受影響
-                if(!tx.ticker) return; 
+                if(!tx.ticker) return;
                 const t = tx.ticker.toUpperCase();
                 if(!map[t]) map[t] = { ticker: t, category: tx.category || '台股', shares: 0, totalCostTwd: 0 };
                 if(tx.type === 'Buy') { map[t].shares += tx.shares; map[t].totalCostTwd += Math.abs(tx.totalCashFlow); }
-                else if(tx.type === 'Sell') { 
-                    const avgCost = map[t].shares ? map[t].totalCostTwd / map[t].shares : 0; 
-                    map[t].shares -= tx.shares; map[t].totalCostTwd -= avgCost * tx.shares; 
+                else if(tx.type === 'Sell') {
+                    const avgCost = map[t].shares ? map[t].totalCostTwd / map[t].shares : 0;
+                    map[t].shares -= tx.shares; map[t].totalCostTwd -= avgCost * tx.shares;
                 }
             });
             return Object.values(map).filter(h => h.shares > 0.0001);
@@ -794,15 +794,15 @@ ${JSON.stringify(payload, null, 2)}
 
         const groupedHoldings = computed(() => {
             const groups = {};
-            let grandTotal = 0; 
+            let grandTotal = 0;
             const holdingDaysMap = {};
             const today = new Date();
-            
+
             transactions.value.forEach(tx => {
                 if(!tx.ticker || tx.type !== 'Buy') return;
                 const t = tx.ticker.toUpperCase();
                 const txDate = new Date(tx.date);
-                const 日Held = Math.max(1, (today - txDate) / (1000 * 60 * 60 * 24)); 
+                const 日Held = Math.max(1, (today - txDate) / (1000 * 60 * 60 * 24));
                 const investedAmount = Math.abs(tx.totalCashFlow);
 
                 if (!holdingDaysMap[t]) holdingDaysMap[t] = { totalInvested: 0, weightedDaysSum: 0 };
@@ -817,15 +817,15 @@ ${JSON.stringify(payload, null, 2)}
                 const currentPriceTwd = effectiveNativePrice * (isUSD ? exchangeRate.value : 1);
                 let mvTwd = h.shares * currentPriceTwd;
 
-                grandTotal += mvTwd; 
+                grandTotal += mvTwd;
                 if (!groups[h.category]) groups[h.category] = { totalValue: 0, totalCost: 0, items: [] };
-                
+
                 const meta = stockMeta.value[h.ticker] || {};
                 const cumulativeReturn = h.totalCostTwd ? (mvTwd - h.totalCostTwd) / h.totalCostTwd : 0;
-                
-                let annualizedReturn = cumulativeReturn; 
+
+                let annualizedReturn = cumulativeReturn;
                 let avgDaysHeld = 0;
-                
+
                 if (holdingDaysMap[h.ticker] && holdingDaysMap[h.ticker].totalInvested > 0) {
                     avgDaysHeld = holdingDaysMap[h.ticker].weightedDaysSum / holdingDaysMap[h.ticker].totalInvested;
                     if (avgDaysHeld > 7) {
@@ -833,7 +833,7 @@ ${JSON.stringify(payload, null, 2)}
                         annualizedReturn = Math.pow(1 + cumulativeReturn, 1 / yearsHeld) - 1;
                     }
                 }
-                
+
                 if (annualizedReturn > 5) annualizedReturn = 5;
                 if (annualizedReturn < -1) annualizedReturn = -1;
 
@@ -940,22 +940,22 @@ ${JSON.stringify(payload, null, 2)}
 
                 groups[cat].items.forEach(item => {
                     item.totalWeight = grandTotal > 0 ? (item.marketValueTwd / grandTotal) : 0;
-                    item.isOverweight = item.totalWeight > 0.20; 
-                    item.weightGap = item.blendedWeight - (item.totalWeight * 100); 
+                    item.isOverweight = item.totalWeight > 0.20;
+                    item.weightGap = item.blendedWeight - (item.totalWeight * 100);
 
                     if (holdingDaysMap[item.ticker]) {
                         groupTotalInvested += holdingDaysMap[item.ticker].totalInvested;
                         groupWeightedDaysSum += holdingDaysMap[item.ticker].weightedDaysSum;
                     }
                 });
-                
+
                 groups[cat].items.sort((a,b) => b.marketValueTwd - a.marketValueTwd);
                 groups[cat].unrealizedPL = groups[cat].totalValue - groups[cat].totalCost;
-                
+
                 const groupCumulativeReturn = groups[cat].totalCost > 0 ? (groups[cat].unrealizedPL / groups[cat].totalCost) : 0;
                 groups[cat].returnRate = groupCumulativeReturn * 100;
 
-                let groupAnnualizedReturn = groupCumulativeReturn; 
+                let groupAnnualizedReturn = groupCumulativeReturn;
                 if (groupTotalInvested > 0) {
                     const groupAvgDaysHeld = groupWeightedDaysSum / groupTotalInvested;
                     if (groupAvgDaysHeld > 7) {
@@ -963,7 +963,7 @@ ${JSON.stringify(payload, null, 2)}
                         groupAnnualizedReturn = Math.pow(1 + groupCumulativeReturn, 1 / groupYearsHeld) - 1;
                     }
                 }
-                
+
                 if (groupAnnualizedReturn > 5) groupAnnualizedReturn = 5;
                 if (groupAnnualizedReturn < -1) groupAnnualizedReturn = -1;
 
@@ -1125,7 +1125,7 @@ const isCashAlert = computed(() => isCashNegative.value || isCashTooHigh.value);
         const totalStockCostTwd = computed(() => holdingsFlat.value.reduce((sum, h) => sum + h.totalCostTwd, 0));
         const totalStockUnrealizedPL = computed(() => totalStockValueTwd.value - totalStockCostTwd.value);
         const totalStockReturnRate = computed(() => totalStockCostTwd.value ? ((totalStockUnrealizedPL.value/totalStockCostTwd.value)*100).toFixed(2) : 0);
-        
+
         // 🟢 修正 3：讓 Ledger (交易流水帳) 正確依據日期排序，避免順序錯亂
         const reversedTransactions = computed(() => {
             return [...transactions.value].sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -1255,8 +1255,8 @@ const isCashAlert = computed(() => isCashNegative.value || isCashTooHigh.value);
         }
 
         watch([enrichedHistory, riskParams, dataFrequency], () => {
-             const h = [...enrichedHistory.value].reverse(); 
-             
+             const h = [...enrichedHistory.value].reverse();
+
              if (h.length < 3) return;
 
              const returns = h.slice(1).map(item => item.dailyReturn);
@@ -1266,14 +1266,14 @@ let peakDate = new Date(h[0].date); let maxTuwDays = 0; let sqDrawdownSum = 0;
 
 returns.forEach((r, idx) => {
     cumIndex = cumIndex * (1 + r);
-    const currentDate = new Date(h[idx + 1].date); 
-    if (cumIndex > peakIndex) { peakIndex = cumIndex; peakDate = currentDate; } 
+    const currentDate = new Date(h[idx + 1].date);
+    if (cumIndex > peakIndex) { peakIndex = cumIndex; peakDate = currentDate; }
     else {
         const tuw = (currentDate - peakDate) / (1000 * 60 * 60 * 24);
         if (tuw > maxTuwDays) maxTuwDays = tuw;
     }
     const dd = peakIndex > 0 ? (peakIndex - cumIndex) / peakIndex : 0;
-    if (dd > maxDrawdown) maxDrawdown = dd; 
+    if (dd > maxDrawdown) maxDrawdown = dd;
     sqDrawdownSum += Math.pow(dd * 100, 2);
 });
 
@@ -1325,7 +1325,7 @@ if (h.length >= 2) {
     cashflows.forEach(cf => {
         consolidated[cf.date] = (consolidated[cf.date] || 0) + cf.amount;
     });
-    
+
     const finalCf = Object.keys(consolidated).map(d => ({ date: d, amount: consolidated[d] }));
 
     mwr = xirr(finalCf, 0.10);
@@ -1395,10 +1395,10 @@ if (isNaN(skewVal)) skewVal = 0;
 if (isNaN(kurtVal)) kurtVal = 0;
 
 const sampleN = returns.length;
-const periodSharpe = sharpe / factor; 
+const periodSharpe = sharpe / factor;
 
 const psr_hist = computePSR({
-    sr: periodSharpe, 
+    sr: periodSharpe,
     srBenchmark: 0,
     skew: skewVal,
     exKurt: kurtVal,
@@ -1417,32 +1417,32 @@ const minTrl95Remaining = minTrl95Finite ? Math.max(0, minTrl95Obs - sampleN) : 
 const minTrl95Met = minTrl95Finite ? sampleN >= minTrl95Obs : false;
 const minTrl95Years = minTrl95Finite && periodsPerYear > 0 ? minTrl95Obs / periodsPerYear : null;
 
-             stats.value = { 
-                 annRet: (annRet*100).toFixed(2), 
-                 annLogRet: (annLogRet*100).toFixed(2), 
-                 mwr: mwr === null ? '-' : (mwr * 100).toFixed(2),            
-                 annVol: (annVol*100).toFixed(2), 
-                 sharpe: sharpe.toFixed(2), 
+             stats.value = {
+                 annRet: (annRet*100).toFixed(2),
+                 annLogRet: (annLogRet*100).toFixed(2),
+                 mwr: mwr === null ? '-' : (mwr * 100).toFixed(2),
+                 annVol: (annVol*100).toFixed(2),
+                 sharpe: sharpe.toFixed(2),
                  psr: psr_hist === null ? '-' : (psr_hist * 100).toFixed(2),
                  psrSampleN: sampleN,
                  psrMinTrl95: minTrl95Obs === Infinity ? '∞' : (minTrl95Finite ? String(minTrl95Obs) : '-'),
                  psrMinTrl95Years: Number.isFinite(minTrl95Years) ? minTrl95Years.toFixed(2) : '-',
                  psrMinTrl95Remaining: Number.isFinite(minTrl95Remaining) ? String(minTrl95Remaining) : '-',
                  psrMinTrl95Met: minTrl95Met,
-                 sortino: sortino.toFixed(2), 
-                 treynor: treynor.toFixed(4),            
+                 sortino: sortino.toFixed(2),
+                 treynor: treynor.toFixed(4),
                  alpha: (alpha * 100).toFixed(2),
                  var95: (var95 * 100).toFixed(2),
-                 cvar95: (cvar95 * 100).toFixed(2), 
-                 mdd: (maxDrawdown * 100).toFixed(2), 
-                 calmar: calmar.toFixed(2), 
+                 cvar95: (cvar95 * 100).toFixed(2),
+                 mdd: (maxDrawdown * 100).toFixed(2),
+                 calmar: calmar.toFixed(2),
                  skew: skewVal.toFixed(2),
                  kurt: kurtVal.toFixed(2),
                  tuw: Math.round(maxTuwDays).toString(),
                  ulcer: ulcerIndex.toFixed(2),
                  omega: omegaRatio > 100 ? '∞' : Number(omegaRatio).toFixed(2),
                  profitFactor: profitFactor > 100 ? '∞' : Number(profitFactor).toFixed(2),
-                 
+
                  ff_alpha: stats.value.ff_alpha ?? '-',
                  ff_alpha_t_stat: stats.value.ff_alpha_t_stat ?? '-',
                  ff_alpha_p_value: stats.value.ff_alpha_p_value ?? '-',
@@ -1470,21 +1470,21 @@ const minTrl95Years = minTrl95Finite && periodsPerYear > 0 ? minTrl95Obs / perio
              // 【CRO 防禦機制：資料異常監控】
              nextTick(() => {
                  let warningMsgs = [];
-             
+
                  // 2. 暴增/暴跌的報酬率檢測
                  if (h.length >= 2) {
                      const latestReturn = h[h.length - 1].dailyReturn;
-                     if (latestReturn > 0.15) { 
+                     if (latestReturn > 0.15) {
                          warningMsgs.push(`🚨 偵測到單期異常暴漲 (+${(latestReturn*100).toFixed(1)}%)！請檢查快照是否遺漏了交易紀錄。`);
-                     } else if (latestReturn < -0.15) { 
+                     } else if (latestReturn < -0.15) {
                          warningMsgs.push(`🚨 偵測到單期異常暴跌 (${(latestReturn*100).toFixed(1)}%)！請檢查快照是否遺漏了交易紀錄。`);
                      }
                  }
-             
+
                  // 觸發警報
                  if (warningMsgs.length > 0) {
                      console.warn("CRO System Warning:", warningMsgs);
-                     alert("🤖 CRO 風控系統警告：\n\n" + warningMsgs.join('\n\n')); 
+                     alert("🤖 CRO 風控系統警告：\n\n" + warningMsgs.join('\n\n'));
                  }
              });
 
@@ -3129,9 +3129,11 @@ if (backendTail && (
 
         const aiInsights = computed(() => {
             const val = totalStockValueTwd.value;
-            if (val === 0) return { summary: '尚無庫存資料，請先新增交易紀錄。', details: [] };
+            if (val === 0) return { summary: '尚無庫存資料，請先新增交易紀錄。', details: [], secondarySignals: [], auditSignals: [] };
 
             let finalSummary = ""; const finalDetails = [];
+            const auditSignals = Array.isArray(cloudAiAnalysis.value?.signal_audit) ? cloudAiAnalysis.value.signal_audit : [];
+            const secondarySignals = Array.isArray(cloudAiAnalysis.value?.secondary_signals) ? cloudAiAnalysis.value.secondary_signals : auditSignals.filter(row => !row?.selected_top4).slice(0, 6);
             if (cloudAiAnalysis.value && cloudAiAnalysis.value.summary) {
                 finalSummary = `🤖 【宏觀診斷】` + cloudAiAnalysis.value.summary;
                 cloudAiAnalysis.value.details.forEach(d => finalDetails.push(d));
@@ -3160,7 +3162,7 @@ if (backendTail && (
                  finalDetails.push({ icon: '📊', color: 'text-gray-400', title: '系統提示', desc: '目前的 AI 診斷與最佳權重正在背景運算中，請稍候。' });
             }
 
-            return { summary: finalSummary, details: finalDetails };
+            return { summary: finalSummary, details: finalDetails, secondarySignals, auditSignals };
         });
 
         function addFireTarget() {
@@ -3259,18 +3261,18 @@ if (backendTail && (
 
         async function manualUpdate(stock) { if(stock.manualPrice) { priceMap.value[stock.ticker] = stock.manualPrice; saveData(); } }
 
-        function removeTransaction(txToRemove) { 
-            if(confirm('確認刪除此筆交易?')) { 
+        function removeTransaction(txToRemove) {
+            if(confirm('確認刪除此筆交易?')) {
                 const idx = transactions.value.indexOf(txToRemove);
                 if (idx > -1) { transactions.value.splice(idx, 1); saveData(); updateCharts(); }
-            } 
-        }
-        
-        function removeHistoryByDate(date) { 
-            if(confirm('確定刪除此快照?')) { realHistoryData.value = realHistoryData.value.filter(h=>h.date!==date); saveData(); updateCharts(); } 
+            }
         }
 
-        
+        function removeHistoryByDate(date) {
+            if(confirm('確定刪除此快照?')) { realHistoryData.value = realHistoryData.value.filter(h=>h.date!==date); saveData(); updateCharts(); }
+        }
+
+
         let syncTimer = null;
 async function saveData() {
     await localforage.setItem('ledgerData', JSON.stringify(transactions.value));
@@ -3748,7 +3750,7 @@ async function saveData() {
                 saveData(); updateCharts(); alert('匯入成功，已同步至雲端');
             }; reader.readAsText(file);
         }
-        
+
         const ledgerDraftPreview = computed(() => {
     const { type, ticker, price, shares, amount } = txForm.value;
     const output = {
@@ -3917,14 +3919,14 @@ async function saveData() {
              return Math.ceil((end - start) / (1000 * 60 * 60 * 24));
         });
 
-        function addHistoryRecord() { 
-            const { date, assets, cost } = historyForm.value; 
-            realHistoryData.value.push({ date, assets, cost }); 
-            saveData(); updateCharts(); 
+        function addHistoryRecord() {
+            const { date, assets, cost } = historyForm.value;
+            realHistoryData.value.push({ date, assets, cost });
+            saveData(); updateCharts();
         }
 
         function openMonteCarlo() {
-            showMCModal.value = true; mcOptimal.value = null; 
+            showMCModal.value = true; mcOptimal.value = null;
             if (cloudAiAnalysis.value) {
                 const fullAiText = JSON.stringify(cloudAiAnalysis.value).toLowerCase();
                 if (fullAiText.includes('通膨') || fullAiText.includes('inflation') || fullAiText.includes('升息') || fullAiText.includes('cpi')) enableInflation.value = true; else enableInflation.value = false;
@@ -3978,8 +3980,8 @@ async function nudgeLiquidityBuffer(delta) {
 
             views.forEach((v, k) => {
                 const idx1 = assets.findIndex(a => a.ticker === v.asset1);
-                if (idx1 < 0) return; 
-                if (v.type === 'absolute') { P[k][idx1] = 1; Q.push((v.value / 100) - rf); } 
+                if (idx1 < 0) return;
+                if (v.type === 'absolute') { P[k][idx1] = 1; Q.push((v.value / 100) - rf); }
                 else if (v.type === 'relative') {
                     const idx2 = assets.findIndex(a => a.ticker === v.asset2);
                     if (idx2 >= 0) { P[k][idx1] = 1; P[k][idx2] = -1; Q.push(v.value / 100); }
@@ -4547,7 +4549,7 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
     if (enableInflation.value) {
         final_rf_effective = rf - 0.025;
     }
-    
+
     const optRetExcess = bestPort.ret - final_rf_effective;
     const optVar = Math.pow(bestPort.vol, 2);
 
@@ -4555,13 +4557,13 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
     let halfKelly = fullKelly / 2;
 
     if (bestPort.skew < -0.5 || safeJumpTailLoss > 0.05) {
-        halfKelly = halfKelly * 0.8; 
+        halfKelly = halfKelly * 0.8;
     }
 
     let recommendedBuffer = (1 - halfKelly) * 100;
     recommendedBuffer = Math.max(0, Math.min(80, recommendedBuffer));
 
-    if (fullKelly < 0) recommendedBuffer = 100; 
+    if (fullKelly < 0) recommendedBuffer = 100;
 
     mcOptimal.value = {
     ret: (bestPort.ret * 100).toFixed(2),
@@ -4588,7 +4590,7 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
     bufferFloorRespected: bestPort.hardBufferCurrentWeight >= bestPort.hardBufferTargetWeight - 1e-6,
 
     jumpTailLossPct: (safeJumpTailLoss * 100).toFixed(2),
-    
+
     // 新增 Kelly 輸出
     fullKelly: (fullKelly * 100).toFixed(1),
     halfKelly: (halfKelly * 100).toFixed(1),
@@ -7242,28 +7244,28 @@ chartCML.data.datasets = [
             return { finalFlow, projectedCashAfter, errors, blockers, warnings, estimatedAmount: tradeAmount };
         });
 
-        return { 
+        return {
             filteredHoldingsGroups, holdingsVisibleStats, analyticsViewMode, holdingsActionFilter, holdingsViewOptions, holdingsActionSummary, goToTab, historyIntegrityRisk, historyIntegrityBadge, alertCenterItems, alertCenterSections, tradeBufferBasePct, tradeBufferPresets, tradeBufferProfile, applyTradeBuffer, nudgeTradeBuffer, rebalanceCockpitRows, rebalanceCockpitBuckets, tradeBufferSummary, rebalancePostTradeEstimate, txPreview,
             currentTab, showHistoryModal, isUpdating,
-            transactions, groupedHoldings, filteredGroupedHoldings, categoryTotals, riskTotals, portfolioStats, 
-            totalStockValueTwd, totalStockCostTwd, totalStockUnrealizedPL, totalStockReturnRate, 
-            reversedTransactions, txForm, historyForm, riskParams, stats, exchangeRate, 
+            transactions, groupedHoldings, filteredGroupedHoldings, categoryTotals, riskTotals, portfolioStats,
+            totalStockValueTwd, totalStockCostTwd, totalStockUnrealizedPL, totalStockReturnRate,
+            reversedTransactions, txForm, historyForm, riskParams, stats, exchangeRate,
             holdingsSearch, holdingsView, holdingsSort, filteredHoldingsCount, holdingsAlertCount, holdingsVisibleStats,
             txFlowMode, txIntent, txTypeOptions, setTxIntent, ledgerDraftPreview,
             sheetUrl, addTransaction, addHistoryRecord,
-            removeTransaction, removeHistoryByDate, manualUpdate, updateMeta, fetchPrices, 
+            removeTransaction, removeHistoryByDate, manualUpdate, updateMeta, fetchPrices,
             exportAll, exportHoldingsCsv, exportPortfolioPdf, exportAiPortfolioJson, importData, getTypeColor, getCategoryColorCode, formatNumber, formatQuantity, formatCurrency, formatPercent,
-            lastUpdate, displayHistory, enrichedHistory, quantStartDate, dataFrequency, 
-            snapshotToHistory, snapshotDate, isDbSyncing, 
+            lastUpdate, displayHistory, enrichedHistory, quantStartDate, dataFrequency,
+            snapshotToHistory, snapshotDate, isDbSyncing,
             isAppReady, showMCModal, mcOptimal, openMonteCarlo, aiInsights, isAiExpanded, quantDays,
-            fireTargets, activeFireStageIndex, activeFireTarget, isLoggedIn, loginEmail, loginPassword, loginError, 
-            isAuthenticating, handleLogin, handleLogout, checkAuth, fireProgress, 
+            fireTargets, activeFireStageIndex, activeFireTarget, isLoggedIn, loginEmail, loginPassword, loginError,
+            isAuthenticating, handleLogin, handleLogout, checkAuth, fireProgress,
             updateCharts, addFireTarget, macroRegime, enableBlackSwan, mcRisk, blViews, mcAvailableAssets, addBlView, enableInflation,
             generateAutoViews, runMonteCarlo, stressTestResults,
             expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr, navOverlayMode, navOverlayOptions, setNavOverlayMode, navMaConfig, riskRegimeStrip, navTrendSummary,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
-            xrayStats, rebalanceMonitor, tailStatsLite, alphaRegressionStats, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerConstraintRules, optimizerConstraintPolicySummaries, selectedOptimizerConstraintPolicy, selectedOptimizerConstraintRows, selectedOptimizerConstraintIssues, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, optimizerStressOutput, optimizerStressError, optimizerStressScenarios, optimizerStressRows, optimizerStressWorstRows, optimizerStressBestWorst, optimizerStressMostFragile, selectedStressScenarioKey, selectedStressScenario, selectedStressScenarioRows, setStressScenario, loadOptimizerStressOutput, humanApprovalLayer, humanApprovalLayerError, humanApprovalTickets, humanApprovalSummary, humanApprovalVisibleTickets, loadHumanApprovalLayer, actionAuditTrail, actionAuditTrailError, actionAuditSummary, actionAuditEvents, loadActionAuditTrail, regimeAwareOptimizer, regimeAwareError, regimeAwareSummary, regimeAwareRegime, regimeAwareActivePolicy, regimeAwareCovariancePolicy, regimeAwareDrafts, regimeAwareVisibleDrafts, loadRegimeAwareOptimizer, blackLittermanSandbox, blackLittermanError, blackLittermanSummary, blackLittermanViewEngine, blackLittermanViews, blackLittermanPosteriorCandidates, loadBlackLittermanSandbox, expectedReturnModel, expectedReturnError, expectedReturnSummary, expectedReturnPolicy, expectedReturnBucketPriors, expectedReturnAssetPriors, expectedReturnVisibleBuckets, expectedReturnVisibleAssets, loadExpectedReturnModel, walkForwardBacktest, walkForwardError, walkForwardSummary, walkForwardAggregate, walkForwardVisibleRows, loadWalkForwardBacktest, modelGovernanceDashboard, modelGovernanceError, modelGovernanceSummary, modelGovernanceRegistry, modelGovernanceFlags, modelGovernanceVisibleRegistry, modelGovernanceVisibleFlags, loadModelGovernanceDashboard, forecastFeatureStore, forecastFeatureError, forecastFeatureSummary, forecastFeatureSample, forecastFeatureRows, forecastFeatureVisibleRows, loadForecastFeatureStore, alphaResearchSandbox, alphaResearchError, alphaResearchSummary, alphaResearchPolicy, alphaResearchRows, alphaResearchVisibleRows, loadAlphaResearchSandbox, rebalanceCandidateRanking, rebalanceRankingError, rebalanceRankingSummary, rebalanceRankingPolicy, rebalanceRankingRows, rebalanceRankingVisibleRows, loadRebalanceCandidateRanking, alphaValidationGate, alphaValidationError, alphaValidationSummary, alphaValidationGates, alphaValidationVisibleGates, loadAlphaValidationGate, manualRebalanceProposal, manualProposalError, manualProposalSummary, manualProposalRows, manualProposalVisibleRows, loadManualRebalanceProposal, executionReadyDraft, executionDraftError, executionDraftSummary, executionDraftRows, executionDraftVisibleRows, loadExecutionReadyDraft, formalDraftPassConditions, formalDraftPassError, formalDraftPassSummary, loadFormalDraftPassConditions, tradingConstraintsSnapshot, tradingConstraintsError, tradingConstraintsSummary, tradingConstraintsRows, tradingConstraintsVisibleRows, loadTradingConstraintsSnapshot, paperTradeTracker, paperTradeError, paperTradeSummary, paperTradeRows, paperTradeVisibleRows, loadPaperTradeTracker, tradeSizingDiagnostics, tradeSizingDiagnosticsError, tradeSizingDiagnosticsSummary, tradeSizingDiagnosticsIssues, tradeSizingDiagnosticsVisibleIssues, tradeSizingDiagnosticsNextActions, loadTradeSizingDiagnostics, manualApprovalConsole, manualApprovalConsoleError, manualApprovalConsoleLoading, manualApprovalConsoleLastLoadedAt, manualApprovalConsoleReloadMessage, manualApprovalConsoleSummary, manualApprovalMissingInputs, loadManualApprovalConsole, paperTradePerformanceEvaluator, paperTradePerformanceError, paperTradePerformanceLoading, paperTradePerformanceLastLoadedAt, paperTradePerformanceReloadMessage, paperTradePerformanceSummary, paperTradePerformanceRows, paperTradePerformanceVisibleRows, loadPaperTradePerformanceEvaluator, tradeTicketExplainability, tradeTicketExplainabilityError, tradeTicketExplainabilityLoading, tradeTicketExplainabilityLastLoadedAt, tradeTicketExplainabilityReloadMessage, tradeTicketExplainabilitySummary, tradeTicketExplainabilityRows, tradeTicketExplainabilityVisibleRows, loadTradeTicketExplainability, nativeTargetThesis, nativeTargetThesisError, nativeTargetThesisSummary, nativeTargetThesisRows, nativeTargetThesisVisibleRows, nativeTargetThesisAgreementCounts, loadNativeTargetThesis, delegatedTargetWeightDraft, delegatedTargetWeightDraftError, delegatedTargetWeightDraftSummary, delegatedTargetRows, delegatedTargetVisibleRows, delegatedDraftLines, delegatedDraftVisibleLines, delegatedDraftWarnings, delegatedDraftVisibleWarnings, loadDelegatedTargetWeightDraft, dailyQuantReference, dailyQuantReferenceError, dailyQuantReferenceSummary, loadDailyQuantReference, delegatedDraftMonteCarloCheck, delegatedDraftMonteCarloCheckError, delegatedDraftMonteCarloSummary, delegatedDraftMonteCarloChecks, delegatedDraftMonteCarloVisibleChecks, delegatedDraftMonteCarloRiskNotes, delegatedDraftMonteCarloVisibleRiskNotes, loadDelegatedDraftMonteCarloCheck, humanConfirmedTradeTicket, humanConfirmedTradeTicketError, humanConfirmedTradeTicketSummary, humanConfirmedTicketRows, humanConfirmedTicketVisibleRows, humanConfirmedTicketBlockers, humanConfirmedTicketVisibleBlockers, loadHumanConfirmedTradeTicket, optimizerDataReloading, optimizerDataLastLoadedAt, optimizerDataReloadMessage, reloadAllOptimizerData, formalRebalanceDraftGate, formalDraftGateError, formalDraftGateSummary, formalDraftRows, formalDraftVisibleRows, loadFormalRebalanceDraftGate, manualTradeTicket, manualTradeTicketError, manualTradeTicketSummary, manualTradeTicketRows, manualTradeTicketVisibleRows, loadManualTradeTicket, approvalBadgeClass, machineReviewLabel, machineReviewReason, machineReviewBadgeClass, zhText, zhList, zhBool, selectedOptimizerExplainKey, optimizerExplainabilityCandidates, selectedOptimizerExplainability, setOptimizerExplainCandidate, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert            
+            xrayStats, rebalanceMonitor, tailStatsLite, alphaRegressionStats, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerConstraintRules, optimizerConstraintPolicySummaries, selectedOptimizerConstraintPolicy, selectedOptimizerConstraintRows, selectedOptimizerConstraintIssues, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, optimizerStressOutput, optimizerStressError, optimizerStressScenarios, optimizerStressRows, optimizerStressWorstRows, optimizerStressBestWorst, optimizerStressMostFragile, selectedStressScenarioKey, selectedStressScenario, selectedStressScenarioRows, setStressScenario, loadOptimizerStressOutput, humanApprovalLayer, humanApprovalLayerError, humanApprovalTickets, humanApprovalSummary, humanApprovalVisibleTickets, loadHumanApprovalLayer, actionAuditTrail, actionAuditTrailError, actionAuditSummary, actionAuditEvents, loadActionAuditTrail, regimeAwareOptimizer, regimeAwareError, regimeAwareSummary, regimeAwareRegime, regimeAwareActivePolicy, regimeAwareCovariancePolicy, regimeAwareDrafts, regimeAwareVisibleDrafts, loadRegimeAwareOptimizer, blackLittermanSandbox, blackLittermanError, blackLittermanSummary, blackLittermanViewEngine, blackLittermanViews, blackLittermanPosteriorCandidates, loadBlackLittermanSandbox, expectedReturnModel, expectedReturnError, expectedReturnSummary, expectedReturnPolicy, expectedReturnBucketPriors, expectedReturnAssetPriors, expectedReturnVisibleBuckets, expectedReturnVisibleAssets, loadExpectedReturnModel, walkForwardBacktest, walkForwardError, walkForwardSummary, walkForwardAggregate, walkForwardVisibleRows, loadWalkForwardBacktest, modelGovernanceDashboard, modelGovernanceError, modelGovernanceSummary, modelGovernanceRegistry, modelGovernanceFlags, modelGovernanceVisibleRegistry, modelGovernanceVisibleFlags, loadModelGovernanceDashboard, forecastFeatureStore, forecastFeatureError, forecastFeatureSummary, forecastFeatureSample, forecastFeatureRows, forecastFeatureVisibleRows, loadForecastFeatureStore, alphaResearchSandbox, alphaResearchError, alphaResearchSummary, alphaResearchPolicy, alphaResearchRows, alphaResearchVisibleRows, loadAlphaResearchSandbox, rebalanceCandidateRanking, rebalanceRankingError, rebalanceRankingSummary, rebalanceRankingPolicy, rebalanceRankingRows, rebalanceRankingVisibleRows, loadRebalanceCandidateRanking, alphaValidationGate, alphaValidationError, alphaValidationSummary, alphaValidationGates, alphaValidationVisibleGates, loadAlphaValidationGate, manualRebalanceProposal, manualProposalError, manualProposalSummary, manualProposalRows, manualProposalVisibleRows, loadManualRebalanceProposal, executionReadyDraft, executionDraftError, executionDraftSummary, executionDraftRows, executionDraftVisibleRows, loadExecutionReadyDraft, formalDraftPassConditions, formalDraftPassError, formalDraftPassSummary, loadFormalDraftPassConditions, tradingConstraintsSnapshot, tradingConstraintsError, tradingConstraintsSummary, tradingConstraintsRows, tradingConstraintsVisibleRows, loadTradingConstraintsSnapshot, paperTradeTracker, paperTradeError, paperTradeSummary, paperTradeRows, paperTradeVisibleRows, loadPaperTradeTracker, tradeSizingDiagnostics, tradeSizingDiagnosticsError, tradeSizingDiagnosticsSummary, tradeSizingDiagnosticsIssues, tradeSizingDiagnosticsVisibleIssues, tradeSizingDiagnosticsNextActions, loadTradeSizingDiagnostics, manualApprovalConsole, manualApprovalConsoleError, manualApprovalConsoleLoading, manualApprovalConsoleLastLoadedAt, manualApprovalConsoleReloadMessage, manualApprovalConsoleSummary, manualApprovalMissingInputs, loadManualApprovalConsole, paperTradePerformanceEvaluator, paperTradePerformanceError, paperTradePerformanceLoading, paperTradePerformanceLastLoadedAt, paperTradePerformanceReloadMessage, paperTradePerformanceSummary, paperTradePerformanceRows, paperTradePerformanceVisibleRows, loadPaperTradePerformanceEvaluator, tradeTicketExplainability, tradeTicketExplainabilityError, tradeTicketExplainabilityLoading, tradeTicketExplainabilityLastLoadedAt, tradeTicketExplainabilityReloadMessage, tradeTicketExplainabilitySummary, tradeTicketExplainabilityRows, tradeTicketExplainabilityVisibleRows, loadTradeTicketExplainability, nativeTargetThesis, nativeTargetThesisError, nativeTargetThesisSummary, nativeTargetThesisRows, nativeTargetThesisVisibleRows, nativeTargetThesisAgreementCounts, loadNativeTargetThesis, delegatedTargetWeightDraft, delegatedTargetWeightDraftError, delegatedTargetWeightDraftSummary, delegatedTargetRows, delegatedTargetVisibleRows, delegatedDraftLines, delegatedDraftVisibleLines, delegatedDraftWarnings, delegatedDraftVisibleWarnings, loadDelegatedTargetWeightDraft, dailyQuantReference, dailyQuantReferenceError, dailyQuantReferenceSummary, loadDailyQuantReference, delegatedDraftMonteCarloCheck, delegatedDraftMonteCarloCheckError, delegatedDraftMonteCarloSummary, delegatedDraftMonteCarloChecks, delegatedDraftMonteCarloVisibleChecks, delegatedDraftMonteCarloRiskNotes, delegatedDraftMonteCarloVisibleRiskNotes, loadDelegatedDraftMonteCarloCheck, humanConfirmedTradeTicket, humanConfirmedTradeTicketError, humanConfirmedTradeTicketSummary, humanConfirmedTicketRows, humanConfirmedTicketVisibleRows, humanConfirmedTicketBlockers, humanConfirmedTicketVisibleBlockers, loadHumanConfirmedTradeTicket, optimizerDataReloading, optimizerDataLastLoadedAt, optimizerDataReloadMessage, reloadAllOptimizerData, formalRebalanceDraftGate, formalDraftGateError, formalDraftGateSummary, formalDraftRows, formalDraftVisibleRows, loadFormalRebalanceDraftGate, manualTradeTicket, manualTradeTicketError, manualTradeTicketSummary, manualTradeTicketRows, manualTradeTicketVisibleRows, loadManualTradeTicket, approvalBadgeClass, machineReviewLabel, machineReviewReason, machineReviewBadgeClass, zhText, zhList, zhBool, selectedOptimizerExplainKey, optimizerExplainabilityCandidates, selectedOptimizerExplainability, setOptimizerExplainCandidate, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert
         };
     }
 }).mount('#app');

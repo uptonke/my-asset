@@ -268,6 +268,124 @@ def score_aud_jpy(v): return 2 if _num(v)>3 else 1 if _num(v)>0 else -2 if _num(
 def score_pcr(v, z=0): return -2 if _num(v)>1.2 or _num(z)>2.0 else -1 if _num(v)>1.0 or _num(z)>1.0 else 2 if _num(v)<0.8 else 1
 def score_sys_corr(v): return -3 if _num(v)>0.85 else -1 if _num(v)>0.70 else 2 if _num(v)<0.30 else 0
 
+
+MACRO_SIGNAL_SPECS = {
+    "move_index": {"label": "利率隱含波動率（MOVE）", "raw": "move_index", "z": "move_z", "domain": "rates", "domain_label": "利率", "unit": ""},
+    "yield_curve": {"label": "殖利率曲線", "raw": "yield_curve", "domain": "rates", "domain_label": "利率", "unit": "pp"},
+    "sys_corr": {"label": "跨資產系統相關性", "raw": "sys_corr", "domain": "correlation", "domain_label": "相關性", "unit": ""},
+    "vix": {"label": "權益隱含波動率（VIX）", "raw": "vix", "z": "vix_z", "domain": "volatility", "domain_label": "波動率", "unit": ""},
+    "vxn": {"label": "Nasdaq 隱含波動率（VXN）", "raw": "vxn", "z": "vxn_z", "domain": "volatility", "domain_label": "波動率", "unit": ""},
+    "vvix": {"label": "波動率的波動率（VVIX）", "raw": "vvix", "z": "vvix_z", "domain": "volatility", "domain_label": "波動率", "unit": ""},
+    "put_call_ratio": {"label": "Put/Call Ratio", "raw": "put_call_ratio", "z": "pcr_z", "domain": "volatility", "domain_label": "波動率", "unit": ""},
+    "rsp_spy_mom": {"label": "市場廣度（RSP/SPY）", "raw": "rsp_spy_mom", "domain": "breadth", "domain_label": "市場廣度", "unit": "%"},
+    "soxx_spy_mom": {"label": "半導體相對動能（SOXX/SPY）", "raw": "soxx_spy_mom", "domain": "breadth", "domain_label": "市場廣度", "unit": "%"},
+    "iwm_spy_mom": {"label": "小型股相對動能（IWM/SPY）", "raw": "iwm_spy_mom", "domain": "breadth", "domain_label": "市場廣度", "unit": "%"},
+    "kre_spy_mom": {"label": "區域銀行相對動能（KRE/SPY）", "raw": "kre_spy_mom", "domain": "breadth", "domain_label": "市場廣度", "unit": "%"},
+    "xlu_xly_mom": {"label": "防禦/循環相對動能（XLU/XLY）", "raw": "xlu_xly_mom", "domain": "breadth", "domain_label": "市場廣度", "unit": "%"},
+    "hy_spread": {"label": "高收益債信用利差", "raw": "hy_spread", "domain": "credit", "domain_label": "信用", "unit": "%"},
+    "hyg_tlt_mom": {"label": "信用/長債相對動能（HYG/TLT）", "raw": "hyg_tlt_mom", "domain": "credit", "domain_label": "信用", "unit": "%"},
+    "liquidity_spread": {"label": "流動性利差", "raw": "liquidity_spread", "domain": "liquidity", "domain_label": "流動性/美元", "unit": ""},
+    "dxy": {"label": "美元指數（DXY）", "raw": "dxy", "domain": "liquidity", "domain_label": "流動性/美元", "unit": ""},
+    "aud_jpy_mom": {"label": "風險貨幣動能（AUD/JPY）", "raw": "aud_jpy_mom", "domain": "liquidity", "domain_label": "流動性/美元", "unit": "%"},
+    "oil_price": {"label": "原油價格", "raw": "oil_price", "domain": "growth", "domain_label": "成長/通膨", "unit": ""},
+    "dbc_mom": {"label": "商品動能（DBC）", "raw": "dbc_mom", "domain": "growth", "domain_label": "成長/通膨", "unit": "%"},
+    "copper_gold_ratio": {"label": "銅金比", "raw": "copper_gold_ratio", "domain": "growth", "domain_label": "成長/通膨", "unit": ""},
+    "btc_1m_mom": {"label": "比特幣 1M 動能", "raw": "btc_1m_mom", "domain": "crypto", "domain_label": "加密資產", "unit": "%"},
+}
+
+MACRO_DOMAIN_ORDER = {"rates": 0, "correlation": 1, "volatility": 2, "breadth": 3, "credit": 4, "liquidity": 5, "growth": 6, "crypto": 7}
+
+def _signal_status(key, value, z_score, score):
+    if key == "sys_corr" and value is not None:
+        if value < 0.30:
+            return "低相關・分散較強"
+        if value > 0.85:
+            return "高相關・集中風險"
+        if value > 0.70:
+            return "相關性偏高"
+        return "相關性中性"
+    if z_score is not None:
+        if z_score >= 2:
+            return "異常偏高"
+        if z_score >= 1:
+            return "偏高"
+        if z_score <= -2:
+            return "異常偏低"
+        if z_score <= -1:
+            return "偏低"
+    if score >= 2:
+        return "模型偏正向（強）"
+    if score == 1:
+        return "模型偏正向"
+    if score == 0:
+        return "模型中性"
+    if score == -1:
+        return "模型偏壓力"
+    return "模型壓力高"
+
+def build_signal_audit(raw, scores):
+    rows = []
+    for key, spec in MACRO_SIGNAL_SPECS.items():
+        value = _num(raw.get(spec["raw"]))
+        if value is None:
+            continue
+        z_score = _num(raw.get(spec.get("z"))) if spec.get("z") else None
+        score = float(scores.get(key, 0) or 0)
+        priority = abs(score) + (min(abs(z_score), 3.0) if z_score is not None else 0.0)
+        unit = spec.get("unit", "")
+        rows.append({
+            "key": key,
+            "label": spec["label"],
+            "domain": spec["domain"],
+            "domain_label": spec["domain_label"],
+            "value": round(value, 6),
+            "value_display": f"{value:.2f}{unit}",
+            "z_score": None if z_score is None else round(z_score, 3),
+            "model_score": score,
+            "priority": round(priority, 3),
+            "status": _signal_status(key, value, z_score, score),
+            "selected_top4": False,
+            "selection_rank": None,
+            "selection_reason": "",
+        })
+
+    domain_best = {}
+    for row in sorted(rows, key=lambda r: (-r["priority"], -abs(r["model_score"]), r["label"])):
+        domain_best.setdefault(row["domain"], row)
+
+    representatives = sorted(
+        domain_best.values(),
+        key=lambda r: (-r["priority"], MACRO_DOMAIN_ORDER.get(r["domain"], 99), r["label"]),
+    )
+    selected = representatives[:4]
+    selected_keys = [row["key"] for row in selected]
+    selected_by_domain = {row["domain"]: row for row in selected}
+    cutoff = selected[-1]["priority"] if selected else 0
+
+    for rank, row in enumerate(selected, 1):
+        row["selected_top4"] = True
+        row["selection_rank"] = rank
+        row["selection_reason"] = f"Top {rank}：{row['domain_label']}類別代表訊號，priority={row['priority']:.2f}"
+
+    for row in rows:
+        if row["selected_top4"]:
+            continue
+        peer = selected_by_domain.get(row["domain"])
+        if peer:
+            row["selection_reason"] = f"未選入：同類別由「{peer['label']}」代表，避免重複計票。"
+        else:
+            row["selection_reason"] = f"未選入：priority {row['priority']:.2f} 低於本輪 Top 4 門檻 {cutoff:.2f}。"
+
+    rows = sorted(
+        rows,
+        key=lambda r: (0 if r["selected_top4"] else 1, r["selection_rank"] or 99, -r["priority"], r["label"]),
+    )
+    secondary_keys = [
+        r["key"]
+        for r in sorted((r for r in rows if not r["selected_top4"]), key=lambda r: (-r["priority"], r["label"]))[:6]
+    ]
+    return rows, selected_keys, secondary_keys
+
 def choose_stage(scores):
     vals = list(scores.values())
     total = sum(vals)
@@ -314,7 +432,8 @@ def build_regime_packet(macro_payload):
         "put_call_ratio": score_pcr(raw["put_call_ratio"], raw["pcr_z"]), "sys_corr": score_sys_corr(raw["sys_corr"])
     }
     stage = choose_stage(scores)
-    return {"raw": raw, "scores": scores, "stage_candidate": stage, "total_score": sum(scores.values()), "confidence_hint": 0.85}
+    signal_audit, top_signal_keys, secondary_signal_keys = build_signal_audit(raw, scores)
+    return {"raw": raw, "scores": scores, "stage_candidate": stage, "total_score": sum(scores.values()), "confidence_hint": 0.85, "top_signal_keys": top_signal_keys, "secondary_signal_keys": secondary_signal_keys, "signal_audit": signal_audit}
 
 DEFAULT_MACRO = {
     "y10": 4.2,
@@ -1494,17 +1613,18 @@ try:
             client = genai.Client(api_key=GEMINI_API_KEY)
             prompt = f"""
             [SYSTEM_DIRECTIVE]
-            Task: Transform deterministic macro signals into aggressive tactical trading metadata.
-            Tone: High-Alpha Quant, Contrarian, Extreme Aggressive (Risk = Opportunity). Focus deeply on Z-Scores and `sys_corr`.
+            Task: Transform deterministic macro signals into evidence-grounded portfolio diagnostic metadata.
+            Tone: Institutional Quant, evidence-first, concise, non-sensational. Quantitative evidence outranks narrative.
             Language: STRICTLY Traditional Chinese. ONLY output RAW JSON.
 
             [TRANSFORMATION_RULES]
             1. STAGE: Translate `stage_candidate` to Traditional Chinese.
-            2. SUMMARY: 1 sentence. MUST START WITH "[目前總經形勢: 翻譯後的STAGE]". Map stage to a max-alpha strategy.
-            3. DETAILS.TITLE: Traditional Chinese metric name.
-            4. DETAILS.DESC: Max 35 chars. Explicitly cite specific numeric values (Z-Scores).
-            5. DETAILS.COLOR: "text-green-400", "text-red-400", "text-gray-400".
-            6. DETAILS.ICON: Single emoji.
+            2. SUMMARY: 1 sentence. MUST START WITH "[目前總經形勢: 翻譯後的STAGE]". Describe diagnosis and portfolio implications only; do not invent trades or mispricing.
+            3. DETAILS: Return EXACTLY 4 items, one for each key in `top_signal_keys`, in the same order. Include `signal_key`.
+            4. DETAILS.TITLE: Traditional Chinese metric name.
+            5. DETAILS.DESC: Max 45 chars. Cite the supplied raw value and Z-score when available. Do not infer facts not present in INPUT_DATA.
+            6. DETAILS.COLOR: "text-green-400", "text-red-400", "text-gray-400".
+            7. DETAILS.ICON: Single emoji.
 
             [INPUT_DATA]
             {json.dumps(regime_packet, ensure_ascii=False)}
@@ -1520,16 +1640,38 @@ try:
             - Relative momentum is relative performance, not an absolute crash. Do not use bloodbath/crash language unless an absolute drawdown metric confirms it.
             - Positive RSP/SPY means improving market breadth / equal-weight leadership. Do not automatically call it small-cap leadership.
             - Use measured language. Avoid 崩潰、失效、強行榨取、血洗、暴力殺盤 unless the supplied quantitative evidence explicitly meets the rules above.
+            - Diagnostic signals alone cannot justify overweight, pair trades, arbitrage, mispricing, or Alpha-seeking actions without explicit portfolio/ranking/valuation evidence.
             [OUTPUT_SCHEMA]
-            {{"summary": "<string>", "details": [{{"icon": "<emoji>", "color": "<string_class>", "title": "<string>", "desc": "<string>"}}]}}
+            {{"summary": "<string>", "details": [{{"signal_key": "<one_of_top_signal_keys>", "icon": "<emoji>", "color": "<string_class>", "title": "<string>", "desc": "<string>"}}]}}
             """
             for model_name in ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-2.5-flash"]:
                 try:
                     res = generate_gemini_json(client, model_name, prompt)
                     match = re.search(r'\{.*\}', res.text, re.DOTALL)
                     if match:
-                        macro_payload['ai_analysis'] = json.loads(match.group(0))
-                        macro_payload['ai_analysis']['calculated_stage'] = regime_packet["stage_candidate"]
+                        parsed_ai = json.loads(match.group(0))
+                        audit_by_key = {row['key']: row for row in regime_packet['signal_audit']}
+                        raw_details = parsed_ai.get('details') if isinstance(parsed_ai.get('details'), list) else []
+                        detail_by_key = {str(d.get('signal_key')): d for d in raw_details if isinstance(d, dict) and d.get('signal_key')}
+                        ordered_details = []
+                        for signal_key in regime_packet['top_signal_keys']:
+                            row = audit_by_key[signal_key]
+                            detail = detail_by_key.get(signal_key) or {
+                                'signal_key': signal_key,
+                                'icon': '📊',
+                                'color': 'text-green-400' if row['model_score'] > 0 else ('text-red-400' if row['model_score'] < 0 else 'text-gray-400'),
+                                'title': row['label'],
+                                'desc': f"{row['value_display']}；{row['status']}",
+                            }
+                            detail['signal_key'] = signal_key
+                            ordered_details.append(detail)
+                        parsed_ai['details'] = ordered_details
+                        parsed_ai['signal_audit'] = regime_packet['signal_audit']
+                        parsed_ai['secondary_signals'] = [audit_by_key[k] for k in regime_packet['secondary_signal_keys'] if k in audit_by_key]
+                        parsed_ai['selection_method'] = 'deterministic_domain_dedup_priority_v1'
+                        parsed_ai['calculated_stage'] = regime_packet['stage_candidate']
+                        parsed_ai['model_name'] = model_name
+                        macro_payload['ai_analysis'] = parsed_ai
                         print(f"✅ AI 格式轉換成功！(使用模型: {model_name})")
                         break
                 except: continue

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>投資組合儀表板 v11.7（穩定版）</title>
-    
+
     <link rel="stylesheet" href="assets/css/tailwind-built.css">
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
@@ -15,7 +15,7 @@
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
+
     <link rel="stylesheet" href="assets/css/00-base.css">
     <link rel="stylesheet" href="assets/css/10-components.css">
     <link rel="stylesheet" href="assets/css/20-dashboard.css">
@@ -28,9 +28,9 @@
 <link rel="icon" href="data:,">
 </head>
 <body class="min-h-screen flex flex-col text-sm bg-[#0f172a]">
-    
+
 <div id="app" class="min-h-screen flex flex-col transition-colors duration-500 bg-[#0f172a]">
-    
+
     <div v-if="!isLoggedIn" class="fixed inset-0 z-[1000] bg-[#000] flex items-center justify-center p-4 transition-opacity duration-500">
         <div class="glass p-8 rounded-3xl w-full max-w-sm border border-white/20 shadow-2xl">
             <div class="text-center mb-8">
@@ -55,7 +55,7 @@
             </form>
         </div>
     </div>
-    
+
     <div v-if="!isAppReady" class="fixed inset-0 z-[999] bg-[#0f172a] flex flex-col items-center justify-center text-white">
         <i class="fas fa-circle-notch fa-spin text-4xl text-yellow-500 mb-4"></i>
         <p class="text-lg font-bold tracking-widest animate-pulse">系統初始化中（Supabase 同步中）...</p>
@@ -64,7 +64,7 @@
     <header class="sticky top-0 z-50 flex-none shadow-lg backdrop-blur-xl border-b border-white/10 transition-colors duration-500 glass">
     <div class="px-4 md:px-6 py-3 border-b border-white/10">
         <div class="max-w-[1820px] 2xl:max-w-[2100px] mx-auto flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-            
+
             <div class="flex items-center gap-3 min-w-0">
                 <div class="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center shrink-0">
                     <i class="fas fa-database text-yellow-500"></i>
@@ -127,7 +127,7 @@
 
     <div class="px-4 md:px-6 py-3">
         <div class="max-w-[1820px] 2xl:max-w-[2100px] mx-auto flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
-            
+
             <nav class="flex gap-2 overflow-x-auto whitespace-nowrap no-scrollbar rounded-2xl bg-black/15 border border-white/10 p-1.5">
     <button @click="currentTab='summary'"
             :class="currentTab==='summary' ? 'bg-white text-slate-900 shadow font-bold' : 'text-gray-300 hover:text-white hover:bg-white/5'"
@@ -209,7 +209,7 @@
             <!-- ===== Summary Tab ===== -->
             <section v-show="currentTab === 'summary'" class="animate-fade-in space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-5">
-                    
+
                     <!-- 1. 總資產淨值 (NAV) -->
                     <div class="glass p-5 rounded-2xl border border-white/10 hover:border-yellow-500/30 transition-all duration-300">
                         <div class="flex items-center justify-between mb-3">
@@ -858,6 +858,42 @@
             </ul>
         </div>
 
+        <div v-if="(aiInsights?.secondarySignals || []).length > 0" class="mt-4 rounded-2xl border border-white/10 bg-black/20 overflow-hidden">
+            <div class="px-4 py-3 border-b border-white/10 bg-white/[0.03] flex items-center justify-between">
+                <div class="text-sm font-bold text-white flex items-center gap-2"><i class="fas fa-list-check text-cyan-400"></i>次要訊號</div>
+                <div class="text-[11px] text-gray-500">未列入 Top 4</div>
+            </div>
+            <div class="p-4 flex flex-wrap gap-2">
+                <div v-for="signal in (aiInsights?.secondarySignals || [])" :key="'secondary-' + signal.key" class="rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2 text-xs">
+                    <div class="font-bold text-gray-200">{{ signal.label }}</div>
+                    <div class="mt-1 text-gray-400"><span class="font-mono text-cyan-300">{{ signal.value_display }}</span><span v-if="signal.z_score !== null && signal.z_score !== undefined"> · Z {{ Number(signal.z_score).toFixed(2) }}</span> · {{ signal.status }}</div>
+                </div>
+            </div>
+        </div>
+
+        <details v-if="(aiInsights?.auditSignals || []).length > 0" class="mt-4 rounded-2xl border border-indigo-500/20 bg-indigo-950/10 overflow-hidden">
+            <summary class="cursor-pointer px-4 py-3 flex items-center justify-between gap-3 text-sm font-bold text-indigo-200 hover:text-white">
+                <span class="flex items-center gap-2"><i class="fas fa-magnifying-glass-chart"></i>查看全部量化依據</span>
+                <span class="text-[11px] text-gray-500 font-normal">{{ (aiInsights?.auditSignals || []).length }} signals · deterministic audit</span>
+            </summary>
+            <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3 border-t border-white/10">
+                <div v-for="signal in (aiInsights?.auditSignals || [])" :key="'audit-' + signal.key" class="rounded-xl border px-3 py-3" :class="signal.selected_top4 ? 'border-indigo-400/30 bg-indigo-500/10' : 'border-white/10 bg-white/[0.02]'">
+                    <div class="flex items-start justify-between gap-2">
+                        <div class="font-bold text-sm text-white">{{ signal.label }}</div>
+                        <span v-if="signal.selected_top4" class="text-[10px] px-2 py-0.5 rounded-full border border-indigo-400/30 text-indigo-300">Top {{ signal.selection_rank }}</span>
+                    </div>
+                    <div class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-gray-400">
+                        <div>原始值 <span class="font-mono text-gray-200">{{ signal.value_display }}</span></div>
+                        <div>Z-score <span class="font-mono text-gray-200">{{ signal.z_score === null || signal.z_score === undefined ? '—' : Number(signal.z_score).toFixed(2) }}</span></div>
+                        <div>模型分數 <span class="font-mono text-gray-200">{{ signal.model_score }}</span></div>
+                        <div>Priority <span class="font-mono text-gray-200">{{ Number(signal.priority).toFixed(2) }}</span></div>
+                    </div>
+                    <div class="mt-2 text-xs text-gray-300">{{ signal.status }}</div>
+                    <div class="mt-1 text-[11px] leading-relaxed text-gray-500">{{ signal.selection_reason }}</div>
+                </div>
+            </div>
+        </details>
+
         <div v-else class="rounded-2xl border border-dashed border-white/10 bg-black/10 px-5 py-8 text-center">
             <div class="w-12 h-12 mx-auto rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-3">
                 <i class="fas fa-brain text-indigo-400 text-lg"></i>
@@ -868,7 +904,7 @@
     </div>
 </div>
 
-                <div class="glass p-5 rounded-2xl relative min-h-[300px] md:h-[450px] flex flex-col border-t-4 transition-colors duration-500" 
+                <div class="glass p-5 rounded-2xl relative min-h-[300px] md:h-[450px] flex flex-col border-t-4 transition-colors duration-500"
                      :class="sysCorr > 0.85 ? 'border-red-600 bg-red-900/10' : 'border-gray-500'">
                     <div class="flex justify-between items-start mb-2">
                         <div>
@@ -877,7 +913,7 @@
                             </h4>
                             <p class="text-xs text-gray-400">衡量庫存標的齊漲齊跌程度。深綠代表正相關，深紅代表負相關（具避險效果）。</p>
                         </div>
-                        
+
                         <div v-if="sysCorr > 0.85" class="bg-red-600 text-white text-xs font-bold px-3 py-1 rounded-full animate-pulse flex items-center gap-1 shadow-[0_0_15px_rgba(220,38,38,0.5)]">
                             <i class="fas fa-skull-crossbones"></i> 雷曼時刻 (系統風險極高)
                         </div>
@@ -1005,7 +1041,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="overflow-visible flex-1 p-2 md:p-0 bg-[#0f172a]/50"> 
+                    <div class="overflow-visible flex-1 p-2 md:p-0 bg-[#0f172a]/50">
                         <div class="hidden md:block rounded-b-2xl relative">
     <!-- 表頭固定於主導覽列下方 -->
     <div class="holdings-fake-header-anchor">
@@ -1247,11 +1283,11 @@
         </div>
     </div>
 </div>
-                                
-                                <div v-for="stock in group.items" :key="'mob-'+stock.ticker" 
+
+                                <div v-for="stock in group.items" :key="'mob-'+stock.ticker"
                                      class="bg-gray-800/60 border border-gray-700/60 rounded-xl overflow-hidden shadow-lg transition-all duration-300"
                                      :class="expandedCardTicker === stock.ticker ? 'border-blue-500/50 ring-1 ring-blue-500/20' : ''">
-                                    
+
                                     <div class="p-3 cursor-pointer" @click="toggleCard(stock.ticker)">
                                         <div class="flex justify-between items-start mb-2">
                                             <div class="flex items-center gap-2">
@@ -1291,7 +1327,7 @@
                                             <i class="fas fa-chevron-down text-gray-500 text-xs transition-transform duration-300" :class="{'rotate-180 text-blue-400': expandedCardTicker === stock.ticker}"></i>
                                         </div>
                                     </div>
-                                    
+
                                     <div v-show="expandedCardTicker === stock.ticker" class="bg-gray-900/80 p-3 border-t border-gray-700 text-xs space-y-3">
                                         <div class="flex justify-between items-center bg-black/30 p-2 rounded-lg">
                                             <div class="flex flex-col">
@@ -1300,7 +1336,7 @@
                                             </div>
                                             <div class="flex flex-col items-end">
                                                 <span class="text-gray-500 mb-1">自訂/獲取現價</span>
-                                                <input v-model.number="stock.manualPrice" @change="manualUpdate(stock)" 
+                                                <input v-model.number="stock.manualPrice" @change="manualUpdate(stock)"
                                                        class="w-20 bg-transparent text-right outline-none border-b border-gray-600 text-yellow-400 font-mono font-bold focus:border-blue-400"
                                                        :placeholder="stock.fetchedPrice">
                                             </div>
@@ -1358,7 +1394,7 @@
         </div>
     </div>
 </div>
-                                        
+
                                         <div class="grid grid-cols-2 gap-2">
                                             <div class="bg-black/30 p-2 rounded-lg flex flex-col items-center">
                                                 <span class="text-gray-500 mb-1">Beta (β)</span>
@@ -1388,7 +1424,7 @@
                                                 </span>
                                             </div>
                                         </div>
-                                        
+
                                         <div class="flex justify-between items-center bg-black/30 p-2 rounded-lg">
                                              <div class="flex flex-col">
                                                 <span class="text-gray-500 mb-1">技術訊號 (RSI / MACD)</span>
@@ -1418,7 +1454,7 @@
 
             <!-- ===== Advanced Tab / 分析 ===== -->
             <section v-show="currentTab === 'advanced'" class="flex flex-col space-y-6 animate-fade-in">
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div class="glass p-5 rounded-2xl flex flex-col justify-center">
                         <h4 class="text-white font-bold mb-3 border-l-4 border-blue-500 pl-3">1. 風險屬性分佈</h4>
@@ -1493,7 +1529,7 @@
                             <span v-if="stats?.ff_status === 'available'">目前持倉以 TWD 市值加權重建報酬 proxy；週頻 OLS，Alpha 推論採 HAC/Newey-West({{ stats?.ff_hac_maxlags ?? 4 }})。R² = {{ stats?.ff_r_squared ?? '-' }}，Adj R² = {{ stats?.ff_adj_r_squared ?? '-' }}，n = {{ stats?.ff_sample_count || 0 }}。</span>
                             <span v-else class="text-amber-300">模型暫不可用：{{ stats?.ff_reason || '尚未產生有效迴歸結果' }}</span>
                         </p>
-                        
+
                         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                             <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-700/50">
                                 <div class="text-[10px] text-gray-500 mb-1" title="與美股脫鉤的台股系統風險">台股因子 (TW Mkt)</div>
@@ -1572,10 +1608,10 @@
                 </div>
 
             </section>
-            
+
             <!-- ===== Analytics Tab / 量化 ===== -->
             <section v-show="currentTab === 'analytics'" class="flex flex-col space-y-6 animate-fade-in">
-                
+
                 <div class="p-4 rounded-xl flex flex-wrap items-center justify-between gap-4 border transition-colors duration-500 glass border-white/5 analytics-command-toolbar">
                     <div class="flex flex-col md:flex-row gap-6 w-full md:w-auto">
                         <div>
@@ -1630,11 +1666,11 @@
                         <button @click="snapshotToHistory" class="btn-gold px-3 py-2 rounded text-xs font-bold shadow hover:scale-105 transition flex items-center gap-1 h-[30px]" title="紀錄當下淨值與成本">
                             <i class="fas fa-camera"></i> 快照
                         </button>
-                        
+
                         <button @click="openMonteCarlo" class="bg-purple-600 hover:bg-purple-500 px-3 py-2 rounded text-xs text-white font-bold shadow transition flex items-center gap-1 h-[30px]">
                             <i class="fas fa-random"></i> MC 最佳化
                         </button>
-                        
+
                         <button @click="showHistoryModal = true" class="text-blue-400 hover:text-white text-xs border border-blue-500/50 px-3 py-2 rounded h-[30px]">補登</button>
                     </div>
                 </div>
@@ -5163,18 +5199,18 @@
                         <div class="quant-label text-blue-300" title="連續複利 LN(1+TWR)">Log Return</div>
                         <div class="quant-value text-white">{{ stats.annLogRet }}%</div>
                     </div>
-                    
+
                     <div class="quant-card">
                         <div class="quant-label text-gray-400">年化標準差 (Vol)</div>
                         <div class="quant-value text-white">{{ stats.annVol }}%</div>
                     </div>
-                    
+
                     <!-- 夏普與 PSR 卡片 -->
                     <div class="quant-card relative overflow-hidden group">
                         <div class="quant-label text-yellow-400" title="風險調整後報酬 (搭配 PSR 檢定)">夏普 (Sharpe)</div>
                         <div class="quant-value text-white flex items-center justify-center gap-2">
                             <span>{{ stats.sharpe }}</span>
-                            <span v-if="stats.psr !== '-'" 
+                            <span v-if="stats.psr !== '-'"
                                   class="text-[10px] font-mono px-1.5 py-0.5 rounded border shadow-sm flex items-center"
                                   :class="parseFloat(stats.psr) >= 95 ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800/50' : (parseFloat(stats.psr) >= 80 ? 'bg-blue-900/30 text-blue-400 border-blue-800/50' : 'bg-red-900/30 text-red-400 border-red-800/50')"
                                   title="Probabilistic Sharpe Ratio：估計真實 Sharpe 高於基準 0 的機率／信心水準">
@@ -5276,7 +5312,7 @@
                     </div>
                 </div>
 
-                
+
 
                 <div class="glass rounded-xl flex flex-col mt-4 transition-all duration-300 border border-gray-700/50 hover:border-gray-500/50">
                     <div class="p-4 cursor-pointer flex justify-between items-center bg-gray-800/30 hover:bg-gray-800/60 transition-colors" @click="isHistoryExpanded = !isHistoryExpanded">
@@ -5364,7 +5400,7 @@
                     <div class="flex-1 relative"><canvas id="rollingChart"></canvas></div>
                 </div>
 
-            
+
 
 <div class="glass panel-card analytics-hierarchy-strip overflow-hidden border-white/10">
     <div class="p-4 md:p-5 border-b border-white/10 bg-white/[0.025] flex items-center justify-between gap-3">
@@ -5854,7 +5890,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                    <div class="glass panel-card border-orange-500/20 overflow-hidden xl:col-span-1 flex flex-col">
     <div class="p-5 md:p-6 border-b border-white/10 bg-orange-500/5">
         <div class="flex flex-col gap-2">
@@ -5937,7 +5973,7 @@
                 </div>
             </div>
 
-            
+
             <div class="col-span-2 border-b border-white/5 my-1"></div>
 
             <div class="col-span-2 rounded-xl border border-orange-500/20 bg-orange-500/10 p-3">
@@ -6117,7 +6153,7 @@
     <div class="text-[10px] text-gray-400 mb-2 leading-relaxed">
         MC = risky sleeve allocator，不是 whole-portfolio veto layer。
     </div>
-    
+
     <div class="flex justify-between text-xs text-gray-300 mb-1">
         <span title="追求極限複利成長，但風險極高">Full Kelly（理論極限）</span>
         <span class="font-mono text-white">{{ mcOptimal?.fullKelly ?? '-' }}%</span>
@@ -6126,10 +6162,10 @@
         <span class="text-indigo-400 font-bold" title="實務黃金標準，兼顧成長與避險">Half-Kelly（實務建議）</span>
         <span class="font-mono text-indigo-300 font-bold">{{ mcOptimal?.halfKelly ?? '-' }}%</span>
     </div>
-    
+
     <div class="mt-2 pt-2 border-t border-indigo-800/30 flex items-center justify-between">
         <span class="text-[11px] text-gray-400">依據 Half-Kelly 推算之<br>最佳現金緩衝（Buffer）</span>
-        <button v-if="mcOptimal?.recommendedBuffer" @click="applyLiquidityBuffer(mcOptimal.recommendedBuffer)" 
+        <button v-if="mcOptimal?.recommendedBuffer" @click="applyLiquidityBuffer(mcOptimal.recommendedBuffer)"
                 class="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-2.5 py-1 rounded transition shadow-sm">
             套用 {{ mcOptimal.recommendedBuffer }}%
         </button>
@@ -6368,13 +6404,13 @@
                     <div class="absolute -right-4 -top-4 opacity-5 pointer-events-none">
                         <i class="fas fa-biohazard text-9xl text-red-500"></i>
                     </div>
-                    
+
                     <div class="relative z-10">
                         <h4 class="text-white text-lg font-bold mb-1 flex items-center gap-2">
                             <i class="fas fa-radiation text-red-500 animate-pulse"></i> 歷史極端情境壓力測試 (Stress Testing)
                         </h4>
                         <p class="text-xs text-gray-400 mb-5">基於當前投資組合系統性風險曝險 (<span class="text-yellow-400 font-bold">β = {{ portfolioStats.beta }}</span>)，映射至歷史黑天鵝事件之預期最大回撤 (MDD)。</p>
-                        
+
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div v-for="scenario in stressTestResults" :key="scenario.name" class="bg-gray-900/60 p-4 rounded-xl border border-gray-700/50 hover:border-red-900/50 transition-colors">
                                 <div class="flex justify-between items-end mb-2">
@@ -6389,12 +6425,12 @@
                                         </span>
                                     </div>
                                 </div>
-                                
+
                                 <div class="w-full bg-gray-800 rounded-full h-2.5 overflow-hidden relative mb-2">
                                     <div class="absolute top-0 bottom-0 bg-gray-400 w-[2px] z-10" :style="{ left: Math.abs(scenario.benchDrop) + '%' }" title="當時大盤跌幅"></div>
                                     <div class="bg-gradient-to-r from-red-500 to-red-900 h-full transition-all duration-1000" :style="{ width: Math.min(Math.abs(scenario.portDrop), 100) + '%' }"></div>
                                 </div>
-                                
+
                                 <div class="text-[10px] flex justify-between">
                                     <span class="text-gray-500">大盤同期: <span class="text-gray-400">{{ scenario.benchDrop }}%</span></span>
                                     <span class="text-red-400 font-bold tracking-wider">預估蒸發: NT$ -{{ formatNumber(scenario.valueLost) }}</span>
@@ -6687,7 +6723,7 @@
                     <label class="block text-[11px] text-gray-400 mb-1">Cost / 持倉成本</label>
                     <input v-model.number="historyForm.cost" type="number" placeholder="Cost" class="input-dark p-2 rounded w-full">
                 </div>
-                
+
                 <div>
                     <label class="block text-[11px] text-gray-400 mb-1">外部現金流</label>
                     <input v-model.number="historyForm.externalFlow" type="number" placeholder="入金正 / 出金負" class="input-dark p-2 rounded w-full text-cyan-300">
@@ -6709,7 +6745,7 @@
         </button>
     </div>
 </div>
-            
+
             <div v-if="showMCModal" class="fixed inset-0 bg-black/95 flex items-center justify-center z-[100] p-4">
                 <div class="glass p-4 md:p-6 rounded-xl w-full max-w-5xl h-[90vh] md:h-[85vh] flex flex-col">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 border-b border-gray-700 pb-3 gap-3 relative">
@@ -6723,7 +6759,7 @@
                         </div>
                         <button @click="showMCModal=false" class="text-gray-400 hover:text-white absolute top-0 right-0 md:static p-2"><i class="fas fa-times text-xl"></i></button>
                     </div>
-                    
+
                     <div class="flex flex-col xl:flex-row flex-wrap gap-3 mb-4 bg-gray-800/50 p-3 rounded-lg border border-gray-700 items-start xl:items-center justify-between shadow-inner">
     <div class="flex items-center gap-2 w-full xl:w-auto">
         <span class="text-xs text-gray-400 font-bold">
@@ -6818,7 +6854,7 @@
         </button>
     </div>
 </div>
-                    
+
                     <div class="flex-1 flex flex-col md:flex-row gap-4 overflow-hidden">
                         <div class="flex-1 bg-gray-900 rounded-xl relative p-2 md:p-4 border border-gray-700 min-h-[40vh] md:min-h-0">
                             <canvas id="mcChart"></canvas>
@@ -6869,7 +6905,7 @@
     <span>超額峭度 (Ex. Kurt)</span>
     <span class="font-mono text-orange-400">{{ mcOptimal.kurt }}</span>
 </div>
-                                
+
                                  <div class="mt-4 p-3 bg-slate-900/40 border border-slate-700 rounded-lg">
     <h5 class="text-[10px] text-gray-400 uppercase tracking-wider mb-3 border-b border-slate-700 pb-1">
         Liquidity Buffer / Jump Risk
@@ -6921,7 +6957,7 @@
     <h5 class="text-[10px] text-indigo-300 uppercase tracking-wider mb-2 border-b border-indigo-800/50 pb-1 flex items-center gap-2">
         <i class="fas fa-scale-balanced"></i> Kelly 準則曝險建議
     </h5>
-    
+
     <div class="flex justify-between text-xs text-gray-300 mb-1">
         <span title="追求極限複利成長，但風險極高">Full Kelly（理論極限）</span>
         <span class="font-mono text-white">{{ mcOptimal.fullKelly }}%</span>
@@ -6930,10 +6966,10 @@
         <span class="text-indigo-400 font-bold" title="實務黃金標準，兼顧成長與避險">Half-Kelly（實務建議）</span>
         <span class="font-mono text-indigo-300 font-bold">{{ mcOptimal.halfKelly }}%</span>
     </div>
-    
+
     <div class="mt-2 pt-2 border-t border-indigo-800/30 flex items-center justify-between">
         <span class="text-[11px] text-gray-400">依據 Half-Kelly 推算之<br>最佳現金緩衝（Buffer）</span>
-        <button v-if="mcOptimal.recommendedBuffer" @click="applyLiquidityBuffer(mcOptimal.recommendedBuffer)" 
+        <button v-if="mcOptimal.recommendedBuffer" @click="applyLiquidityBuffer(mcOptimal.recommendedBuffer)"
                 class="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-2.5 py-1 rounded transition shadow-sm">
             套用 {{ mcOptimal.recommendedBuffer }}%
         </button>
@@ -6976,7 +7012,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=factor-alpha-hac-v1"></script>
+<script src="assets/js/app.bundle.js?v=ai-signal-audit-v1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
