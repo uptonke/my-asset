@@ -37,18 +37,11 @@ jobs:
                   raise SystemExit(f'{label}: anchor not found')
               return text.replace(old, new)
 
-          main = replace_required(
-              main,
-              'from google import genai\n',
-              'from google import genai\nfrom google.genai import types\n',
-              'main google.genai import',
-          )
+          main = replace_required(main, 'from google import genai\n', 'from google import genai\nfrom google.genai import types\n', 'main google.genai import')
 
           helper_anchor = "warnings.filterwarnings('ignore')\n"
           helper_lines = [
-              "warnings.filterwarnings('ignore')",
-              "",
-              "",
+              "warnings.filterwarnings('ignore')", "", "",
               "def generate_gemini_json(client, model_name, prompt):",
               "    \"\"\"Generate JSON with model-compatible reasoning controls.\"\"\"",
               "    if str(model_name).startswith((\"gemini-3\", \"gemini-4\")):",
@@ -95,7 +88,6 @@ jobs:
               '- Positive RSP/SPY means improving market breadth / equal-weight leadership. Do not automatically call it small-cap leadership.',
               '- Use measured language. Avoid 崩潰、失效、強行榨取、血洗、暴力殺盤 unless the supplied quantitative evidence explicitly meets the rules above.',
               '',
-              '            ',
           ]
           guardrails = '\n            '.join(guardrail_lines)
           if '[EVIDENCE_GUARDRAILS]' not in main:
@@ -103,12 +95,7 @@ jobs:
                   raise SystemExit('No OUTPUT_SCHEMA prompt anchors found')
               main = main.replace('[OUTPUT_SCHEMA]', guardrails + '[OUTPUT_SCHEMA]')
 
-          compass = replace_required(
-              compass,
-              'GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")',
-              'GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")',
-              'market compass default model',
-          )
+          compass = replace_required(compass, 'GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")', 'GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")', 'market compass default model')
           old_compass_call = '        from google import genai\n        client = genai.Client(api_key=GEMINI_API_KEY)\n        response = client.models.generate_content(model=GEMINI_MODEL, contents=prompt)'
           new_compass_call = '\n'.join([
               '        from google import genai',
@@ -128,6 +115,8 @@ jobs:
           ])
           compass = replace_required(compass, old_compass_call, new_compass_call, 'market compass Gemini call')
 
+          main = '\n'.join(line.rstrip() for line in main.splitlines()) + '\n'
+          compass = '\n'.join(line.rstrip() for line in compass.splitlines()) + '\n'
           main_path.write_text(main, encoding='utf-8')
           compass_path.write_text(compass, encoding='utf-8')
           PY
