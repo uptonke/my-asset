@@ -47,7 +47,7 @@ jobs:
           assert "signal.portfolio_relevance === null || signal.portfolio_relevance === undefined ? '—'" in index
 
           tree = ast.parse(main)
-          wanted = {'_num', '_clamp01', 'normalize_ticker_symbol', '_portfolio_relevance_from_row'}
+          wanted = {'_is_missing', '_num', '_clamp01', 'normalize_ticker_symbol', '_portfolio_relevance_from_row'}
           nodes = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name in wanted]
           ns = {'re': re}
           exec(compile(ast.Module(body=nodes, type_ignores=[]), '<relevance-source-test>', 'exec'), ns)
