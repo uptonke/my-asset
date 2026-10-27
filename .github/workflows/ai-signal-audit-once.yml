@@ -35,6 +35,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           import ast
+          import math
 
           main = Path('main.py').read_text(encoding='utf-8')
           src = Path('assets/js/src/app.bundle.source.js').read_text(encoding='utf-8')
@@ -59,7 +60,7 @@ jobs:
                       nodes.append(node)
               elif isinstance(node, ast.FunctionDef) and node.name in wanted_funcs:
                   nodes.append(node)
-          ns = {}
+          ns = {'math': math}
           exec(compile(ast.Module(body=nodes, type_ignores=[]), '<signal-audit-test>', 'exec'), ns)
           raw = {'move_index': 102.19, 'move_z': 2.10, 'sys_corr': 0.24, 'vix': 18.41, 'vix_z': -0.13, 'vxn': 20.0, 'vxn_z': 0.70, 'rsp_spy_mom': 3.63, 'soxx_spy_mom': -12.27, 'hy_spread': 2.4, 'btc_1m_mom': 4.0}
           scores = {'move_index': -1, 'sys_corr': 2, 'vix': 1, 'vxn': 1, 'rsp_spy_mom': 2, 'soxx_spy_mom': -2, 'hy_spread': 1, 'btc_1m_mom': 1}
