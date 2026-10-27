@@ -374,7 +374,7 @@ def build_signal_audit(raw, scores):
         if peer:
             row["selection_reason"] = f"未選入：同類別由「{peer['label']}」代表，避免重複計票。"
         else:
-            row["selection_reason"] = f"未選入：priority {row['priority']:.2f} 低於本輪 Top 4 門檻 {cutoff:.2f}。"
+            row["selection_reason"] = f"未選入：priority {row['priority']:.2f}；本輪 Top 4 門檻/排序基準 {cutoff:.2f}，未進入前四。"
 
     rows = sorted(
         rows,

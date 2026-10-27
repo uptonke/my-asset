@@ -894,7 +894,7 @@
             </div>
         </details>
 
-        <div v-else class="rounded-2xl border border-dashed border-white/10 bg-black/10 px-5 py-8 text-center">
+        <div v-if="(aiInsights?.details || []).length === 0" class="rounded-2xl border border-dashed border-white/10 bg-black/10 px-5 py-8 text-center">
             <div class="w-12 h-12 mx-auto rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-3">
                 <i class="fas fa-brain text-indigo-400 text-lg"></i>
             </div>
