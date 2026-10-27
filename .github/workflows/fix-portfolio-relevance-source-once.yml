@@ -1,0 +1,119 @@
+name: One-time portfolio relevance source fix
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-portfolio-relevance-source-once.yml'
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  patch-test-cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply resilient portfolio relevance patch
+        run: python scripts/fix_portfolio_relevance_source_once.py
+
+      - name: Validate source fallback and unavailable semantics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile main.py scripts/fix_portfolio_relevance_source_once.py
+          python scripts/build_frontend_bundle.py --check
+          node --check assets/js/src/app.bundle.source.js
+          node --check assets/js/app.bundle.js
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          import ast
+          import re
+
+          main = Path('main.py').read_text(encoding='utf-8')
+          index = Path('index.html').read_text(encoding='utf-8')
+
+          assert 'deterministic_domain_dedup_signal_strength_plus_portfolio_relevance_v3_resilient_weights' in main
+          assert 'synthetic_risk_coverage_current_weight_pct' in main
+          assert 'stock_meta_market_value_twd' in main
+          assert 'ledger_last_price_fx_fallback' in main
+          assert '持倉關聯資料不足，本輪不加分' in main
+          assert "signal.portfolio_relevance === null || signal.portfolio_relevance === undefined ? '—'" in index
+
+          tree = ast.parse(main)
+          wanted = {'_num', '_clamp01', 'normalize_ticker_symbol', '_portfolio_relevance_from_row'}
+          nodes = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name in wanted]
+          ns = {'re': re}
+          exec(compile(ast.Module(body=nodes, type_ignores=[]), '<relevance-source-test>', 'exec'), ns)
+          build = ns['_portfolio_relevance_from_row']
+
+          row = {
+              'settings': {'exchangeRate': 32.5},
+              'ledger_data': [
+                  {'ticker': 'QQQ', 'type': 'Buy', 'shares': 10, 'category': '美股'},
+                  {'ticker': 'AVUV', 'type': 'Buy', 'shares': 10, 'category': '美股'},
+                  {'ticker': 'BTC-USD', 'type': 'Buy', 'shares': 0.1, 'category': '加密貨幣'},
+                  {'ticker': 'BOXX', 'type': 'Buy', 'shares': 10, 'category': '美股'},
+              ],
+              'stock_meta': {
+                  'QQQ': {'category': '美股'},
+                  'AVUV': {'category': '美股'},
+                  'BTC-USD': {'category': '加密貨幣'},
+                  'BOXX': {'category': '美股'},
+                  '__synthetic_portfolio_risk__': {
+                      'coverage': {'by_asset': [
+                          {'ticker': 'QQQ', 'current_weight_pct': 70.0},
+                          {'ticker': 'AVUV', 'current_weight_pct': 10.0},
+                          {'ticker': 'BTC-USD', 'current_weight_pct': 10.0},
+                          {'ticker': 'BOXX', 'current_weight_pct': 10.0},
+                      ]}
+                  },
+              },
+          }
+          ctx = build(row)
+          assert ctx['available'] is True
+          assert ctx['source'] == 'synthetic_risk_coverage_current_weight_pct'
+          assert ctx['covered_asset_count'] == 4
+          assert ctx['signal_relevance']['soxx_spy_mom']['score'] > ctx['signal_relevance']['rsp_spy_mom']['score']
+          assert ctx['signal_relevance']['move_index']['score'] > 0
+
+          # If risk coverage is missing, per-ticker market values must be used.
+          row2 = {
+              'ledger_data': [
+                  {'ticker': 'QQQ', 'type': 'Buy', 'shares': 1, 'category': '美股'},
+                  {'ticker': 'BOXX', 'type': 'Buy', 'shares': 1, 'category': '美股'},
+              ],
+              'stock_meta': {
+                  'QQQ': {'market_value_twd': 80000, 'category': '美股'},
+                  'BOXX': {'market_value_twd': 20000, 'category': '美股'},
+              },
+          }
+          ctx2 = build(row2)
+          assert ctx2['available'] is True
+          assert ctx2['source'] == 'stock_meta_market_value_twd'
+
+          # Total source failure must remain unavailable, not become a false 0% relevance.
+          row3 = {'ledger_data': [{'ticker': 'QQQ', 'type': 'Buy', 'shares': 1, 'category': '美股'}], 'stock_meta': {}}
+          ctx3 = build(row3)
+          assert ctx3['available'] is False
+          assert ctx3['signal_relevance'] == {}
+          print('portfolio relevance source tests passed:', ctx['source'], ctx2['source'], ctx3['source'])
+          PY
+
+      - name: Commit final fix and remove one-time files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -f .github/workflows/fix-portfolio-relevance-source-once.yml scripts/fix_portfolio_relevance_source_once.py
+          git add main.py index.html
+          git diff --cached --check
+          git commit -m 'Fix portfolio relevance weight sourcing'
+          git push origin HEAD:main
