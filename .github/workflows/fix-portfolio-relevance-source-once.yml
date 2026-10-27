@@ -34,6 +34,7 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           import ast
+          import math
           import re
 
           main = Path('main.py').read_text(encoding='utf-8')
@@ -49,7 +50,7 @@ jobs:
           tree = ast.parse(main)
           wanted = {'_is_missing', '_num', '_clamp01', 'normalize_ticker_symbol', '_portfolio_relevance_from_row'}
           nodes = [n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name in wanted]
-          ns = {'re': re}
+          ns = {'math': math, 're': re}
           exec(compile(ast.Module(body=nodes, type_ignores=[]), '<relevance-source-test>', 'exec'), ns)
           build = ns['_portfolio_relevance_from_row']
 
@@ -83,7 +84,6 @@ jobs:
           assert ctx['signal_relevance']['soxx_spy_mom']['score'] > ctx['signal_relevance']['rsp_spy_mom']['score']
           assert ctx['signal_relevance']['move_index']['score'] > 0
 
-          # If risk coverage is missing, per-ticker market values must be used.
           row2 = {
               'ledger_data': [
                   {'ticker': 'QQQ', 'type': 'Buy', 'shares': 1, 'category': '美股'},
@@ -98,7 +98,6 @@ jobs:
           assert ctx2['available'] is True
           assert ctx2['source'] == 'stock_meta_market_value_twd'
 
-          # Total source failure must remain unavailable, not become a false 0% relevance.
           row3 = {'ledger_data': [{'ticker': 'QQQ', 'type': 'Buy', 'shares': 1, 'category': '美股'}], 'stock_meta': {}}
           ctx3 = build(row3)
           assert ctx3['available'] is False
