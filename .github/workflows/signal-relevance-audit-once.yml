@@ -32,6 +32,7 @@ jobs:
               raise SystemExit('sub_once anchor missing')
           s = s.replace(old, new, 1)
           s = s.replace('re.fullmatch(r"\\d{4,6}[A-Z]?", t)', 're.fullmatch(r"[0-9]{4,6}[A-Z]?", t)')
+          s = s.replace("\n\ndef build_signal_audit''',", "\n\n''',", 1)
           p.write_text(s, encoding='utf-8')
           PY
 
