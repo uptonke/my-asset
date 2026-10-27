@@ -1,0 +1,59 @@
+name: One-time Gemini rebalance helper patch
+
+on:
+  push:
+    paths:
+      - '.github/workflows/gemini38-rebalance-helper-once.yml'
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  patch-test-cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Route rebalance Gemini call through reasoning helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('main.py')
+          text = path.read_text(encoding='utf-8')
+          old = 'res = client.models.generate_content(model=model_name, contents=rebalance_prompt)'
+          new = 'res = generate_gemini_json(client, model_name, rebalance_prompt)'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one direct rebalance call, found {text.count(old)}')
+          text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Validate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile main.py
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('main.py').read_text(encoding='utf-8')
+          assert 'generate_gemini_json(client, model_name, rebalance_prompt)' in text
+          assert 'client.models.generate_content(model=model_name, contents=rebalance_prompt)' not in text
+          print('Rebalance Gemini helper assertion passed')
+          PY
+      - name: Commit and clean up
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -f .github/workflows/gemini38-rebalance-helper-once.yml
+          git add main.py
+          git diff --cached --check
+          git commit -m 'Use Gemini reasoning helper for rebalance report'
+          git push origin HEAD:main
