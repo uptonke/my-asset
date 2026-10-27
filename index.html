@@ -874,23 +874,39 @@
         <details v-if="(aiInsights?.auditSignals || []).length > 0" class="mt-4 rounded-2xl border border-indigo-500/20 bg-indigo-950/10 overflow-hidden">
             <summary class="cursor-pointer px-4 py-3 flex items-center justify-between gap-3 text-sm font-bold text-indigo-200 hover:text-white">
                 <span class="flex items-center gap-2"><i class="fas fa-magnifying-glass-chart"></i>查看全部量化依據</span>
-                <span class="text-[11px] text-gray-500 font-normal">{{ (aiInsights?.auditSignals || []).length }} signals · deterministic audit</span>
+                <span class="text-[11px] text-gray-500 font-normal">{{ (aiInsights?.auditSignals || []).length }} signals · 點選查看細節</span>
             </summary>
-            <div class="p-4 grid grid-cols-1 md:grid-cols-2 gap-3 border-t border-white/10">
-                <div v-for="signal in (aiInsights?.auditSignals || [])" :key="'audit-' + signal.key" class="rounded-xl border px-3 py-3" :class="signal.selected_top4 ? 'border-indigo-400/30 bg-indigo-500/10' : 'border-white/10 bg-white/[0.02]'">
-                    <div class="flex items-start justify-between gap-2">
-                        <div class="font-bold text-sm text-white">{{ signal.label }}</div>
-                        <span v-if="signal.selected_top4" class="text-[10px] px-2 py-0.5 rounded-full border border-indigo-400/30 text-indigo-300">Top {{ signal.selection_rank }}</span>
+            <div class="p-3 space-y-2 border-t border-white/10">
+                <details v-for="signal in (aiInsights?.auditSignals || [])"
+                         :key="'audit-' + signal.key"
+                         class="group rounded-xl border overflow-hidden"
+                         :class="signal.selected_top4 ? 'border-indigo-400/30 bg-indigo-500/10' : 'border-white/10 bg-white/[0.02]'">
+                    <summary class="cursor-pointer list-none px-3 py-3 flex items-center justify-between gap-3">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-bold text-sm text-white">{{ signal.label }}</span>
+                                <span v-if="signal.selected_top4" class="text-[10px] px-2 py-0.5 rounded-full border border-indigo-400/30 text-indigo-300">Top {{ signal.selection_rank }}</span>
+                            </div>
+                            <div class="mt-1 text-[11px] text-gray-400 truncate">{{ signal.status }}</div>
+                        </div>
+                        <div class="shrink-0 text-right">
+                            <div class="font-mono text-xs text-indigo-200">Sel {{ Number(signal.selection_score ?? signal.priority ?? 0).toFixed(2) }}</div>
+                            <div class="mt-0.5 text-[10px] text-gray-500">展開</div>
+                        </div>
+                    </summary>
+                    <div class="px-3 pb-3 pt-1 border-t border-white/8">
+                        <div class="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-gray-400 mt-2">
+                            <div>原始值 <span class="font-mono text-gray-200">{{ signal.value_display }}</span></div>
+                            <div>Z-score <span class="font-mono text-gray-200">{{ signal.z_score === null || signal.z_score === undefined ? '—' : Number(signal.z_score).toFixed(2) }}</span></div>
+                            <div>模型分數 <span class="font-mono text-gray-200">{{ signal.model_score }}</span></div>
+                            <div>訊號強度 <span class="font-mono text-gray-200">{{ Number(signal.priority ?? 0).toFixed(2) }}</span></div>
+                            <div>持倉關聯 <span class="font-mono text-cyan-300">{{ Math.round(Number(signal.portfolio_relevance ?? 0) * 100) }}%</span></div>
+                            <div>選擇分數 <span class="font-mono text-indigo-200">{{ Number(signal.selection_score ?? signal.priority ?? 0).toFixed(2) }}</span></div>
+                        </div>
+                        <div v-if="signal.portfolio_relevance_reason" class="mt-2 text-[11px] leading-relaxed text-cyan-200/70">{{ signal.portfolio_relevance_reason }}</div>
+                        <div class="mt-2 text-[11px] leading-relaxed text-gray-500">{{ signal.selection_reason }}</div>
                     </div>
-                    <div class="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-gray-400">
-                        <div>原始值 <span class="font-mono text-gray-200">{{ signal.value_display }}</span></div>
-                        <div>Z-score <span class="font-mono text-gray-200">{{ signal.z_score === null || signal.z_score === undefined ? '—' : Number(signal.z_score).toFixed(2) }}</span></div>
-                        <div>模型分數 <span class="font-mono text-gray-200">{{ signal.model_score }}</span></div>
-                        <div>Priority <span class="font-mono text-gray-200">{{ Number(signal.priority).toFixed(2) }}</span></div>
-                    </div>
-                    <div class="mt-2 text-xs text-gray-300">{{ signal.status }}</div>
-                    <div class="mt-1 text-[11px] leading-relaxed text-gray-500">{{ signal.selection_reason }}</div>
-                </div>
+                </details>
             </div>
         </details>
 
