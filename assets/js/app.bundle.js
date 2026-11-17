@@ -5041,7 +5041,7 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
     headerScroll.scrollLeft = event.target.scrollLeft;
 }
 
-        let chartSML, chartCML, chartAlloc, chartHist, chartRolling, chartMC, chartFire, chartCorr;
+        let chartSML, chartCML, chartAlloc, chartHist, chartDetrend, chartRolling, chartMC, chartFire, chartCorr;
         let chartUpdateFrame = null;
         let chartResizeTimer1 = null;
         let chartResizeTimer2 = null;
@@ -5049,6 +5049,7 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
     return [
         chartAlloc,
         chartHist,
+        chartDetrend,
         chartSML,
         chartCML,
         chartRolling,
@@ -5156,6 +5157,40 @@ function resizeAllCharts() {
             Chart.defaults.color = '#94a3b8'; Chart.defaults.borderColor = '#334155';
             const allocCtx = document.getElementById('allocationChart'); if(allocCtx && !chartAlloc) chartAlloc = new Chart(allocCtx, { type: 'doughnut', data: { labels: [], datasets: [{data:[]}] }, options: { responsive: true, maintainAspectRatio: false } });
             const histCtx = document.getElementById('historyChart'); if(histCtx && !chartHist) chartHist = new Chart(histCtx, { type: 'line', data: { labels: [], datasets: [{data:[]},{data:[]}] }, options: { responsive: true, maintainAspectRatio: false } });
+            const detrendCtx = document.getElementById('twrDetrendChart');
+            if (detrendCtx && !chartDetrend) {
+                chartDetrend = new Chart(detrendCtx, {
+                    type: 'line',
+                    data: { labels: [], datasets: [] },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { labels: { color: '#cbd5e1' } },
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => {
+                                        const value = Number(ctx.raw);
+                                        if (!Number.isFinite(value)) return `${ctx.dataset.label}: N/A`;
+                                        return `${ctx.dataset.label}: ${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }
+                            },
+                            y: {
+                                title: { display: true, text: 'TWR 偏離 12M 趨勢 (%)' },
+                                ticks: { callback: (value) => `${Number(value).toFixed(0)}%` }
+                            }
+                        }
+                    }
+                });
+            }
             const smlCtx = document.getElementById('smlChart');
 if (smlCtx && !chartSML) {
     chartSML = new Chart(smlCtx, {
@@ -5337,6 +5372,39 @@ if (cmlCtx && !chartCML) {
                 }
             };
             chartHist.update();
+        }
+
+        if (chartDetrend) {
+            const detrendPoints = navTrendDetrendPoints();
+            const labels = detrendPoints.map((point) => new Date(point.ts).toISOString().slice(0, 10));
+            const deviations = detrendPoints.map((point) => Number((point.deviation * 100).toFixed(4)));
+            const zeroLine = detrendPoints.map(() => 0);
+
+            chartDetrend.data.labels = labels;
+            chartDetrend.data.datasets = [
+                {
+                    label: 'TWR 去趨勢偏離',
+                    data: deviations,
+                    borderColor: '#22d3ee',
+                    backgroundColor: 'rgba(34,211,238,0.10)',
+                    fill: true,
+                    tension: 0.2,
+                    pointRadius: 2,
+                    pointHoverRadius: 4,
+                    borderWidth: 2
+                },
+                {
+                    label: '12M 趨勢基準',
+                    data: zeroLine,
+                    borderColor: '#64748b',
+                    borderDash: [6, 6],
+                    fill: false,
+                    tension: 0,
+                    pointRadius: 0,
+                    borderWidth: 1.5
+                }
+            ];
+            chartDetrend.update();
         }
 
         if (chartFire) {
@@ -6449,6 +6517,7 @@ chartCML.data.datasets = [
         });
 
         watch([exchangeRate, sheetUrl, riskParams, quantStartDate, dataFrequency, fireTargets, correlationMatrix], () => updateCharts(), { deep: true });
+        watch([displayHistory, transactions], () => updateCharts(), { deep: true });
         watch(liquidityBufferRatio, async (newVal, oldVal) => {
     const clamped = clampLiquidityBuffer(newVal);
     if (clamped !== newVal) {
@@ -6727,6 +6796,53 @@ chartCML.data.datasets = [
             return durationMs > 0 ? weightedValueMs / durationMs : null;
         }
 
+        function navTrendDetrendPoints() {
+            const points = navTrendTwrIndexPoints();
+            if (!points.length) return [];
+
+            const out = [];
+            points.forEach((point) => {
+                const trend = navTrendMovingAverage(points, point.ts, 12);
+                if (!Number.isFinite(trend) || trend <= 0 || !Number.isFinite(point.value)) return;
+                const deviation = point.value / trend - 1;
+                if (!Number.isFinite(deviation)) return;
+                out.push({
+                    ...point,
+                    trend,
+                    deviation
+                });
+            });
+            return out;
+        }
+
+        function navTrendDeviationWindowStats(points, endTs, months = 12) {
+            if (!Array.isArray(points) || !points.length || !Number.isFinite(endTs)) return null;
+            const startTs = navTrendShiftMonths(endTs, -months);
+            const windowPoints = points.filter((point) =>
+                Number.isFinite(point?.ts) &&
+                Number.isFinite(point?.deviation) &&
+                point.ts >= startTs &&
+                point.ts <= endTs
+            );
+            if (windowPoints.length < 8) return null;
+
+            const values = windowPoints.map((point) => point.deviation);
+            const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+            const variance = values.length > 1
+                ? values.reduce((sum, value) => sum + Math.pow(value - mean, 2), 0) / (values.length - 1)
+                : 0;
+            const std = Math.sqrt(Math.max(0, variance));
+            const latest = windowPoints[windowPoints.length - 1];
+            const z = std > 1e-12 ? (latest.deviation - mean) / std : 0;
+
+            return {
+                count: windowPoints.length,
+                mean,
+                std,
+                z
+            };
+        }
+
         function navTrendFormatRatio(ratio, suffix = '') {
             if (!Number.isFinite(ratio)) return 'N/A';
             const pct = ratio * 100;
@@ -6776,6 +6892,55 @@ chartCML.data.datasets = [
                     : 'N/A',
                 overlayModeLabel: modeMap[navOverlayMode.value] || 'Raw NAV',
                 basis: 'Flow-adjusted TWR index'
+            };
+        });
+
+        const twrDetrendSummary = computed(() => {
+            const points = navTrendDetrendPoints();
+            const latest = points.length ? points[points.length - 1] : null;
+
+            if (!latest) {
+                return {
+                    available: false,
+                    twrIndex: 'N/A',
+                    trendIndex: 'N/A',
+                    deviation: 'N/A',
+                    deviationZ: 'N/A',
+                    sampleCount: 0,
+                    statusLabel: '至少需要約 12 個月歷史',
+                    statusClass: 'border-slate-500/30 bg-slate-500/10 text-slate-300'
+                };
+            }
+
+            const deviationStats = navTrendDeviationWindowStats(points, latest.ts, 12);
+            const z = deviationStats?.z;
+            const absZ = Number.isFinite(z) ? Math.abs(z) : null;
+            let statusLabel = '接近長期趨勢';
+            let statusClass = 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300';
+
+            if (absZ === null) {
+                statusLabel = 'Z-score 樣本不足';
+                statusClass = 'border-amber-500/30 bg-amber-500/10 text-amber-300';
+            } else if (absZ >= 2) {
+                statusLabel = z > 0 ? '顯著高於長期趨勢' : '顯著低於長期趨勢';
+                statusClass = 'border-red-500/30 bg-red-500/10 text-red-300';
+            } else if (absZ >= 1) {
+                statusLabel = z > 0 ? '中度高於長期趨勢' : '中度低於長期趨勢';
+                statusClass = 'border-amber-500/30 bg-amber-500/10 text-amber-300';
+            }
+
+            return {
+                available: true,
+                twrIndex: latest.value.toFixed(2),
+                trendIndex: latest.trend.toFixed(2),
+                deviation: navTrendFormatRatio(latest.deviation),
+                deviationZ: Number.isFinite(z)
+                    ? `${z > 0 ? '+' : ''}${z.toFixed(2)}`
+                    : 'N/A',
+                sampleCount: deviationStats?.count || points.length,
+                statusLabel,
+                statusClass,
+                basis: 'Flow-adjusted TWR index ÷ 12M time-weighted MA − 1'
             };
         });
 
@@ -7262,7 +7427,7 @@ chartCML.data.datasets = [
             isAuthenticating, handleLogin, handleLogout, checkAuth, fireProgress,
             updateCharts, addFireTarget, macroRegime, enableBlackSwan, mcRisk, blViews, mcAvailableAssets, addBlView, enableInflation,
             generateAutoViews, runMonteCarlo, stressTestResults,
-            expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr, navOverlayMode, navOverlayOptions, setNavOverlayMode, navMaConfig, riskRegimeStrip, navTrendSummary,
+            expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr, navOverlayMode, navOverlayOptions, setNavOverlayMode, navMaConfig, riskRegimeStrip, navTrendSummary, twrDetrendSummary,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
             xrayStats, rebalanceMonitor, tailStatsLite, alphaRegressionStats, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerConstraintRules, optimizerConstraintPolicySummaries, selectedOptimizerConstraintPolicy, selectedOptimizerConstraintRows, selectedOptimizerConstraintIssues, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, optimizerStressOutput, optimizerStressError, optimizerStressScenarios, optimizerStressRows, optimizerStressWorstRows, optimizerStressBestWorst, optimizerStressMostFragile, selectedStressScenarioKey, selectedStressScenario, selectedStressScenarioRows, setStressScenario, loadOptimizerStressOutput, humanApprovalLayer, humanApprovalLayerError, humanApprovalTickets, humanApprovalSummary, humanApprovalVisibleTickets, loadHumanApprovalLayer, actionAuditTrail, actionAuditTrailError, actionAuditSummary, actionAuditEvents, loadActionAuditTrail, regimeAwareOptimizer, regimeAwareError, regimeAwareSummary, regimeAwareRegime, regimeAwareActivePolicy, regimeAwareCovariancePolicy, regimeAwareDrafts, regimeAwareVisibleDrafts, loadRegimeAwareOptimizer, blackLittermanSandbox, blackLittermanError, blackLittermanSummary, blackLittermanViewEngine, blackLittermanViews, blackLittermanPosteriorCandidates, loadBlackLittermanSandbox, expectedReturnModel, expectedReturnError, expectedReturnSummary, expectedReturnPolicy, expectedReturnBucketPriors, expectedReturnAssetPriors, expectedReturnVisibleBuckets, expectedReturnVisibleAssets, loadExpectedReturnModel, walkForwardBacktest, walkForwardError, walkForwardSummary, walkForwardAggregate, walkForwardVisibleRows, loadWalkForwardBacktest, modelGovernanceDashboard, modelGovernanceError, modelGovernanceSummary, modelGovernanceRegistry, modelGovernanceFlags, modelGovernanceVisibleRegistry, modelGovernanceVisibleFlags, loadModelGovernanceDashboard, forecastFeatureStore, forecastFeatureError, forecastFeatureSummary, forecastFeatureSample, forecastFeatureRows, forecastFeatureVisibleRows, loadForecastFeatureStore, alphaResearchSandbox, alphaResearchError, alphaResearchSummary, alphaResearchPolicy, alphaResearchRows, alphaResearchVisibleRows, loadAlphaResearchSandbox, rebalanceCandidateRanking, rebalanceRankingError, rebalanceRankingSummary, rebalanceRankingPolicy, rebalanceRankingRows, rebalanceRankingVisibleRows, loadRebalanceCandidateRanking, alphaValidationGate, alphaValidationError, alphaValidationSummary, alphaValidationGates, alphaValidationVisibleGates, loadAlphaValidationGate, manualRebalanceProposal, manualProposalError, manualProposalSummary, manualProposalRows, manualProposalVisibleRows, loadManualRebalanceProposal, executionReadyDraft, executionDraftError, executionDraftSummary, executionDraftRows, executionDraftVisibleRows, loadExecutionReadyDraft, formalDraftPassConditions, formalDraftPassError, formalDraftPassSummary, loadFormalDraftPassConditions, tradingConstraintsSnapshot, tradingConstraintsError, tradingConstraintsSummary, tradingConstraintsRows, tradingConstraintsVisibleRows, loadTradingConstraintsSnapshot, paperTradeTracker, paperTradeError, paperTradeSummary, paperTradeRows, paperTradeVisibleRows, loadPaperTradeTracker, tradeSizingDiagnostics, tradeSizingDiagnosticsError, tradeSizingDiagnosticsSummary, tradeSizingDiagnosticsIssues, tradeSizingDiagnosticsVisibleIssues, tradeSizingDiagnosticsNextActions, loadTradeSizingDiagnostics, manualApprovalConsole, manualApprovalConsoleError, manualApprovalConsoleLoading, manualApprovalConsoleLastLoadedAt, manualApprovalConsoleReloadMessage, manualApprovalConsoleSummary, manualApprovalMissingInputs, loadManualApprovalConsole, paperTradePerformanceEvaluator, paperTradePerformanceError, paperTradePerformanceLoading, paperTradePerformanceLastLoadedAt, paperTradePerformanceReloadMessage, paperTradePerformanceSummary, paperTradePerformanceRows, paperTradePerformanceVisibleRows, loadPaperTradePerformanceEvaluator, tradeTicketExplainability, tradeTicketExplainabilityError, tradeTicketExplainabilityLoading, tradeTicketExplainabilityLastLoadedAt, tradeTicketExplainabilityReloadMessage, tradeTicketExplainabilitySummary, tradeTicketExplainabilityRows, tradeTicketExplainabilityVisibleRows, loadTradeTicketExplainability, nativeTargetThesis, nativeTargetThesisError, nativeTargetThesisSummary, nativeTargetThesisRows, nativeTargetThesisVisibleRows, nativeTargetThesisAgreementCounts, loadNativeTargetThesis, delegatedTargetWeightDraft, delegatedTargetWeightDraftError, delegatedTargetWeightDraftSummary, delegatedTargetRows, delegatedTargetVisibleRows, delegatedDraftLines, delegatedDraftVisibleLines, delegatedDraftWarnings, delegatedDraftVisibleWarnings, loadDelegatedTargetWeightDraft, dailyQuantReference, dailyQuantReferenceError, dailyQuantReferenceSummary, loadDailyQuantReference, delegatedDraftMonteCarloCheck, delegatedDraftMonteCarloCheckError, delegatedDraftMonteCarloSummary, delegatedDraftMonteCarloChecks, delegatedDraftMonteCarloVisibleChecks, delegatedDraftMonteCarloRiskNotes, delegatedDraftMonteCarloVisibleRiskNotes, loadDelegatedDraftMonteCarloCheck, humanConfirmedTradeTicket, humanConfirmedTradeTicketError, humanConfirmedTradeTicketSummary, humanConfirmedTicketRows, humanConfirmedTicketVisibleRows, humanConfirmedTicketBlockers, humanConfirmedTicketVisibleBlockers, loadHumanConfirmedTradeTicket, optimizerDataReloading, optimizerDataLastLoadedAt, optimizerDataReloadMessage, reloadAllOptimizerData, formalRebalanceDraftGate, formalDraftGateError, formalDraftGateSummary, formalDraftRows, formalDraftVisibleRows, loadFormalRebalanceDraftGate, manualTradeTicket, manualTradeTicketError, manualTradeTicketSummary, manualTradeTicketRows, manualTradeTicketVisibleRows, loadManualTradeTicket, approvalBadgeClass, machineReviewLabel, machineReviewReason, machineReviewBadgeClass, zhText, zhList, zhBool, selectedOptimizerExplainKey, optimizerExplainabilityCandidates, selectedOptimizerExplainability, setOptimizerExplainCandidate, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert

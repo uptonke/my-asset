@@ -1002,6 +1002,54 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="glass chart-card p-5 md:p-6">
+                        <div class="flex flex-col gap-5">
+                            <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
+                                <div>
+                                    <h4 class="panel-title">
+                                        <i class="fas fa-wave-square text-cyan-400"></i>
+                                        TWR 去趨勢診斷（12M）
+                                    </h4>
+                                    <p class="panel-subtitle">用 Flow-adjusted TWR index 相對 12M time-weighted MA 的偏離觀察績效是否暫時脫離長期軌道；0% 代表貼近長期趨勢。</p>
+                                </div>
+                                <span class="terminal-chip shrink-0" :class="twrDetrendSummary?.statusClass || 'border-slate-500/30 bg-slate-500/10 text-slate-300'">
+                                    {{ twrDetrendSummary?.statusLabel || '等待資料' }}
+                                </span>
+                            </div>
+
+                            <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                                <div class="terminal-mini-stat soft">
+                                    <div class="terminal-mini-label">目前 TWR Index</div>
+                                    <div class="terminal-mini-value">{{ twrDetrendSummary?.twrIndex || 'N/A' }}</div>
+                                </div>
+                                <div class="terminal-mini-stat soft">
+                                    <div class="terminal-mini-label">12M Trend</div>
+                                    <div class="terminal-mini-value">{{ twrDetrendSummary?.trendIndex || 'N/A' }}</div>
+                                </div>
+                                <div class="terminal-mini-stat soft">
+                                    <div class="terminal-mini-label">偏離長期趨勢</div>
+                                    <div class="terminal-mini-value">{{ twrDetrendSummary?.deviation || 'N/A' }}</div>
+                                </div>
+                                <div class="terminal-mini-stat soft">
+                                    <div class="terminal-mini-label">偏離 Z-score</div>
+                                    <div class="terminal-mini-value">{{ twrDetrendSummary?.deviationZ || 'N/A' }}</div>
+                                </div>
+                            </div>
+
+                            <div class="text-[11px] text-gray-500 leading-relaxed">
+                                Z-score 以最近 12 個月可用的去趨勢偏離樣本估計；至少需要 8 個有效偏離樣本。這是診斷工具，不是買賣訊號。
+                                <span v-if="twrDetrendSummary?.sampleCount">目前 Z 樣本：{{ twrDetrendSummary.sampleCount }}。</span>
+                            </div>
+
+                            <div class="relative min-h-[280px] md:min-h-[340px] rounded-2xl border border-white/5 bg-black/10 p-2 md:p-3">
+                                <canvas id="twrDetrendChart"></canvas>
+                                <div v-if="!twrDetrendSummary?.available" class="absolute inset-0 flex items-center justify-center text-gray-500 text-xs bg-gray-900/40 rounded-2xl">
+                                    <p>需要約 12 個月以上的 Flow-adjusted TWR 歷史才能建立去趨勢序列</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -7028,7 +7076,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=ai-signal-audit-v1"></script>
+<script src="assets/js/app.bundle.js?v=twr-detrend-v1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
