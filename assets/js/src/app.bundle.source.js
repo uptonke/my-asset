@@ -52,13 +52,15 @@ createApp({
         tail_comparison_horizon_weeks: tailStatsLite.value.jdHorizonWeeks
     },
     return_metrics: {
-        time_weighted_return_twr_annualized: stats.value.annRet + '%',
+        modified_dietz_return_annualized: stats.value.annRet + '%',
+        modified_dietz_method: 'weekly_NAV_snapshots_with_time_weighted_external_cash_flows',
+        strict_twr_available: false,
         money_weighted_return_mwr_xirr_annualized: stats.value.mwr === '-' ? 'N/A' : stats.value.mwr + '%',
-        mwr_minus_twr_percentage_points: Number.isFinite(twrNum) && Number.isFinite(mwrNum)
+        mwr_minus_modified_dietz_percentage_points: Number.isFinite(twrNum) && Number.isFinite(mwrNum)
             ? (mwrNum - twrNum).toFixed(2) + 'pp'
             : 'N/A',
         capm_alpha_proxy: stats.value.alpha + '%',
-        capm_alpha_method: 'annualized_TWR_minus_[rf_plus_current_metadata_beta_times_market_risk_premium]',
+        capm_alpha_method: 'annualized_modified_dietz_minus_[rf_plus_current_metadata_beta_times_market_risk_premium]',
         realized_jensen_alpha_method: alphaRegressionStats.value.method || 'N/A',
         realized_jensen_benchmark_policy: alphaRegressionStats.value.benchmarkPolicy || 'N/A',
         realized_jensen_vs_spy: {
@@ -82,7 +84,11 @@ createApp({
             evidence_5pct: alphaRegressionStats.value.twii.evidence
         },
         realized_jensen_benchmark_alpha_spread_pp: alphaRegressionStats.value.benchmarkAlphaSpreadPp,
-        alpha_selection_attribution: 'Not isolated: realized Jensen alpha combines security selection, asset allocation, and timing effects after external cash-flow adjustment.'
+        realized_jensen_analysis_currency: alphaRegressionStats.value.analysisCurrency || 'N/A',
+        realized_jensen_fx_source: alphaRegressionStats.value.fxSource || 'N/A',
+        opportunity_cost_label: alphaRegressionStats.value.opportunityCostLabel || 'N/A',
+        rolling_12m_excess_return_latest: alphaRegressionStats.value.rolling12mLatest || null,
+        alpha_selection_attribution: 'Not isolated: realized Jensen alpha combines security selection, asset allocation, and timing effects after Modified Dietz cash-flow adjustment.'
     },
     risk_efficiency: {
         portfolio_beta: riskParams.value.beta,
@@ -316,7 +322,7 @@ Constraint: Output strictly in Traditional Chinese. Maximum 8 bullets. No pleasa
 - Under the material-ledger universe policy, sheet-only research candidates and economic-dust remnants are intentionally excluded. Do not recommend reopening them because of stale target metadata.
 - volatility_drag_30d_approx / 90d use 0.5*sigma^2*time and measure volatility drag. Do not call this leverage drag unless independent evidence of actual leverage is present.
 - Historical PSR uses benchmark Sharpe 0. Interpret PSR as the estimated probability/confidence that the true Sharpe exceeds 0 under the PSR model. A value below 95% means it has not met a strict 95% credibility threshold. Use MinTRL95 to state whether the current observation count is long enough under the same moment-adjusted PSR assumptions; if current n < MinTRL95, say the track record is still too short for that 95% threshold. MinTRL95 is model-based and does not guarantee persistence or future performance. Never describe PSR as a test of whether returns are random, and do not infer survivor bias from it.
-- MWR > TWR may indicate favorable cash-flow timing. It does not prove security selection skill.
+- MWR > Modified Dietz return may indicate favorable cash-flow timing. It does not prove security selection skill.
 - capm_alpha_proxy is not regression-estimated Jensen alpha and has no t-stat. Do not claim persistent selection alpha from the proxy.
 - realized_jensen_vs_spy and realized_jensen_vs_twii are OLS CAPM regressions on realized cash-flow-adjusted NAV snapshot returns with HAC/Newey-West inference. Treat alpha as benchmark-dependent. If the 95% CI includes zero or HAC p-value >= 0.05, say alpha is not statistically distinguishable from zero under that benchmark. Even when significant, do not call it pure security-selection skill because allocation and timing effects remain inside realized portfolio returns.
 - Compare SPY and ^TWII results. A material benchmark alpha spread is evidence of benchmark sensitivity/model specification risk, not a second independent alpha signal.
@@ -331,7 +337,7 @@ Constraint: Output strictly in Traditional Chinese. Maximum 8 bullets. No pleasa
 - Do not infer "discipline failure" from a single snapshot. Describe observed drift and the rule that triggered it.
 
 [ANALYSIS TASKS]
-1. 【資金效率 / Alpha】Compare TWR, MWR, the CAPM alpha proxy, and realized Jensen alpha vs SPY / ^TWII. Report HAC t-stat, p-value and 95% CI when available; explicitly discuss benchmark sensitivity and do not equate regression alpha with pure selection skill.
+1. 【資金效率 / Alpha】Compare Modified Dietz return, MWR, the CAPM alpha proxy, and realized Jensen alpha vs SPY / ^TWII. Report HAC t-stat, p-value and 95% CI when available; explicitly discuss benchmark sensitivity and do not equate regression alpha with pure selection skill.
 2. 【風險報酬可信度】Assess Sharpe, PSR/DSR, volatility, Sortino and Treynor. State PSR as confidence/probability that the true Sharpe exceeds its benchmark; never phrase it as confirming that returns are non-random.
 3. 【Portfolio X-Ray】Assess concentration, risk contribution, PCA, USD exposure and look-through coverage. Explicitly distinguish covariance-based concentration from constituent overlap: PCA/MRC do not directly measure shared ETF holdings. Use "risk concentration" rather than "leverage" unless actual leverage exists.
 4. 【再平衡監控】Distinguish Trim, Add, general drift and concentration candidates. State the exact direction of major alerts. When trade_plan_method is available, treat planned_trade_pct / planned_trade_twd and post_trade_weight_pct as the executable buffer-aware plan; do not report the full target drift as the trade size. If self_financing_within_005pp is true and target_cash_pct is near zero, explain that trim proceeds are reallocated to ADD legs rather than intentionally retained as cash.
@@ -1137,41 +1143,82 @@ const isCashAlert = computed(() => isCashNegative.value || isCashTooHigh.value);
             return data.filter(h => new Date(h.date) >= new Date(quantStartDate.value));
         });
 
-        // 🟢 修正 4: 終極 TWR 計算 (完全從 Ledger 讀取現金流，不需手動輸入)
+        // 週頻估值無法形成嚴格 TWR；以 Modified Dietz 按現金流在區間內的剩餘時間加權。
+        function modifiedDietzPeriod(startValue, endValue, startTs, endTs) {
+            const start = Number(startValue);
+            const end = Number(endValue);
+            const startMs = Number(startTs);
+            const endMs = Number(endTs);
+            const periodMs = endMs - startMs;
+
+            if (!Number.isFinite(start) || start <= 0 || !Number.isFinite(end) ||
+                !Number.isFinite(startMs) || !Number.isFinite(endMs) || periodMs <= 0) {
+                return null;
+            }
+
+            let totalFlow = 0;
+            let weightedFlow = 0;
+            let flowCount = 0;
+
+            (transactions.value || []).forEach((tx) => {
+                if (tx?.type !== 'Deposit' && tx?.type !== 'Withdraw') return;
+                const txMs = new Date(tx?.date).getTime();
+                const amount = Number(tx?.totalCashFlow || 0);
+                if (!Number.isFinite(txMs) || !Number.isFinite(amount)) return;
+                if (txMs <= startMs || txMs > endMs) return;
+
+                const weight = Math.max(0, Math.min(1, (endMs - txMs) / periodMs));
+                totalFlow += amount;
+                weightedFlow += amount * weight;
+                flowCount += 1;
+            });
+
+            const denominator = start + weightedFlow;
+            if (!Number.isFinite(denominator) || denominator <= 0) return null;
+
+            const periodReturn = (end - start - totalFlow) / denominator;
+            if (!Number.isFinite(periodReturn) || periodReturn <= -1) return null;
+
+            return { periodReturn, totalFlow, weightedFlow, denominator, flowCount };
+        }
+
+        // Modified Dietz 週期報酬：符合目前「每週 NAV 快照 + Ledger 日期」的資料粒度。
         const enrichedHistory = computed(() => {
             const sorted = [...filteredHistory.value].sort((a, b) => new Date(a.date) - new Date(b.date));
 
             return sorted.map((item, index) => {
                 let dailyReturn = null;
                 let periodExternalFlow = 0;
+                let weightedExternalFlow = 0;
+                let dietzDenominator = null;
+                let externalFlowCount = 0;
 
                 if (index > 0) {
                     const prev = sorted[index - 1];
-                    const prevDate = new Date(prev.date);
-                    const currDate = new Date(item.date);
-
-                    // 自動掃描 Ledger，找出這段期間內的真實外部出入金
-                    transactions.value.forEach(tx => {
-                        if (tx.type === 'Deposit' || tx.type === 'Withdraw') {
-                            const txDate = new Date(tx.date);
-                            // 若這筆出入金發生在前一次快照(不含)與本次快照(含)之間
-                            if (txDate > prevDate && txDate <= currDate) {
-                                periodExternalFlow += Number(tx.totalCashFlow || 0);
-                            }
-                        }
-                    });
-
-                    // 真正純淨的 TWR：期末 NAV 扣除此期間的外部淨流入後，去除以期初 NAV
-                    dailyReturn = prev.assets > 0
-                        ? ((item.assets - periodExternalFlow) / prev.assets) - 1
-                        : 0;
+                    const result = modifiedDietzPeriod(
+                        Number(prev.assets),
+                        Number(item.assets),
+                        new Date(prev.date).getTime(),
+                        new Date(item.date).getTime()
+                    );
+                    if (result) {
+                        dailyReturn = result.periodReturn;
+                        periodExternalFlow = result.totalFlow;
+                        weightedExternalFlow = result.weightedFlow;
+                        dietzDenominator = result.denominator;
+                        externalFlowCount = result.flowCount;
+                    }
                 }
 
                 return {
                     ...item,
                     dailyReturn,
-                    withdrawal: -periodExternalFlow, // 為了相容你的 UI 欄位
-                    computedFlow: periodExternalFlow
+                    withdrawal: -periodExternalFlow,
+                    computedFlow: periodExternalFlow,
+                    weightedExternalFlow,
+                    dietzDenominator,
+                    externalFlowCount,
+                    returnMethod: 'modified_dietz'
                 };
             }).reverse();
         });
@@ -2541,21 +2588,81 @@ function normalizeAlphaRegressionResult(row) {
 const alphaRegressionStats = computed(() => {
     const raw = chaosMeta.value?.alpha_regression || {};
     const benchmarks = raw.benchmarks && typeof raw.benchmarks === 'object' ? raw.benchmarks : {};
+    const rolling12m = Array.isArray(raw.rolling_12m_excess_return_twd)
+        ? raw.rolling_12m_excess_return_twd.map((row) => ({
+            date: row?.date || '',
+            portfolio12mPct: Number.isFinite(Number(row?.portfolio_12m_pct)) ? Number(row.portfolio_12m_pct) : null,
+            opportunity12mPct: Number.isFinite(Number(row?.opportunity_cost_12m_pct)) ? Number(row.opportunity_cost_12m_pct) : null,
+            excess12mPct: Number.isFinite(Number(row?.excess_12m_pct)) ? Number(row.excess_12m_pct) : null,
+            n: Number(row?.n || 0),
+            windowDays: Number(row?.window_days || 0)
+        })).filter((row) => row.date && row.excess12mPct !== null)
+        : [];
+    const rawLatest = raw.rolling_12m_latest && typeof raw.rolling_12m_latest === 'object'
+        ? raw.rolling_12m_latest
+        : null;
+    const rolling12mLatest = rawLatest ? {
+        date: rawLatest.date || '',
+        portfolio12mPct: Number.isFinite(Number(rawLatest.portfolio_12m_pct)) ? Number(rawLatest.portfolio_12m_pct) : null,
+        opportunity12mPct: Number.isFinite(Number(rawLatest.opportunity_cost_12m_pct)) ? Number(rawLatest.opportunity_cost_12m_pct) : null,
+        excess12mPct: Number.isFinite(Number(rawLatest.excess_12m_pct)) ? Number(rawLatest.excess_12m_pct) : null,
+        n: Number(rawLatest.n || 0),
+        windowDays: Number(rawLatest.window_days || 0)
+    } : null;
+
     return {
         status: raw.status || 'unavailable',
         method: raw.method || '',
         portfolioReturnSource: raw.portfolio_return_source || '',
         benchmarkPolicy: raw.benchmark_policy || '',
+        analysisCurrency: raw.analysis_currency || '',
+        fxSource: raw.fx_source || '',
         riskFreeSource: raw.risk_free_source || '',
         riskFreeMethod: raw.risk_free_method || '',
+        opportunityCostLabel: raw.opportunity_cost_label || '',
         generatedAt: raw.generated_at || '',
         portfolioPeriodCount: Number(raw.portfolio_period_count || 0),
         benchmarkAlphaSpreadPp: Number.isFinite(Number(raw.benchmark_alpha_spread_pp)) ? Number(raw.benchmark_alpha_spread_pp) : null,
         spy: normalizeAlphaRegressionResult(benchmarks.SPY),
         twii: normalizeAlphaRegressionResult(benchmarks['^TWII']),
+        rolling12m,
+        rolling12mLatest,
+        rolling12mMethod: raw.rolling_12m_method || '',
         limitations: Array.isArray(raw.limitations) ? raw.limitations : [],
         refreshStatus: raw.refresh_status || '',
         refreshError: raw.refresh_error || ''
+    };
+});
+
+const rollingExcessSummary = computed(() => {
+    const latest = alphaRegressionStats.value?.rolling12mLatest;
+    const fmt = (value) => {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return 'N/A';
+        return `${n > 0 ? '+' : ''}${n.toFixed(1)}%`;
+    };
+    if (!latest || latest.excess12mPct === null) {
+        return {
+            available: false,
+            portfolio: 'N/A',
+            opportunityCost: 'N/A',
+            excess: 'N/A',
+            asOf: '',
+            statusLabel: '等待 Jensen / Excess Return 刷新',
+            statusClass: 'border-slate-500/30 bg-slate-500/10 text-slate-300'
+        };
+    }
+    const excess = Number(latest.excess12mPct);
+    return {
+        available: true,
+        portfolio: fmt(latest.portfolio12mPct),
+        opportunityCost: fmt(latest.opportunity12mPct),
+        excess: fmt(excess),
+        asOf: latest.date || '',
+        statusLabel: excess >= 0 ? '12M 超額報酬為正' : '12M 超額報酬為負',
+        statusClass: excess >= 0
+            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+            : 'border-red-500/30 bg-red-500/10 text-red-300'
     };
 });
 
@@ -5041,7 +5148,7 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
     headerScroll.scrollLeft = event.target.scrollLeft;
 }
 
-        let chartSML, chartCML, chartAlloc, chartHist, chartDetrend, chartRolling, chartMC, chartFire, chartCorr;
+        let chartSML, chartCML, chartAlloc, chartHist, chartDetrend, chartExcess, chartRolling, chartMC, chartFire, chartCorr;
         let chartUpdateFrame = null;
         let chartResizeTimer1 = null;
         let chartResizeTimer2 = null;
@@ -5050,6 +5157,7 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
         chartAlloc,
         chartHist,
         chartDetrend,
+        chartExcess,
         chartSML,
         chartCML,
         chartRolling,
@@ -5184,7 +5292,41 @@ function resizeAllCharts() {
                                 ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }
                             },
                             y: {
-                                title: { display: true, text: 'TWR 偏離 12M 趨勢 (%)' },
+                                title: { display: true, text: 'Modified Dietz 偏離 12M 趨勢 (%)' },
+                                ticks: { callback: (value) => `${Number(value).toFixed(0)}%` }
+                            }
+                        }
+                    }
+                });
+            }
+            const excessCtx = document.getElementById('rollingExcessChart');
+            if (excessCtx && !chartExcess) {
+                chartExcess = new Chart(excessCtx, {
+                    type: 'line',
+                    data: { labels: [], datasets: [] },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { labels: { color: '#cbd5e1' } },
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => {
+                                        const value = Number(ctx.raw);
+                                        if (!Number.isFinite(value)) return `${ctx.dataset.label}: N/A`;
+                                        return `${ctx.dataset.label}: ${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }
+                            },
+                            y: {
+                                title: { display: true, text: 'Rolling 12M Excess Return (%)' },
                                 ticks: { callback: (value) => `${Number(value).toFixed(0)}%` }
                             }
                         }
@@ -5333,7 +5475,7 @@ if (cmlCtx && !chartCML) {
                 drawdownByTs.set(point.ts, ddPct);
             });
             const drawdownDataset = {
-                label: 'TWR Drawdown',
+                label: 'Dietz Drawdown',
                 data: sorted.map((h) => drawdownByTs.get(navTrendParseDate(h.date)) ?? null),
                 borderColor: '#f59e0b',
                 backgroundColor: 'rgba(245,158,11,0.08)',
@@ -5368,7 +5510,7 @@ if (cmlCtx && !chartCML) {
                     max: 0,
                     grid: { drawOnChartArea: false },
                     ticks: { callback: (value) => `${Number(value).toFixed(0)}%` },
-                    title: { display: navOverlayMode.value !== 'nav', text: 'TWR Drawdown' }
+                    title: { display: navOverlayMode.value !== 'nav', text: 'Dietz Drawdown' }
                 }
             };
             chartHist.update();
@@ -5383,7 +5525,7 @@ if (cmlCtx && !chartCML) {
             chartDetrend.data.labels = labels;
             chartDetrend.data.datasets = [
                 {
-                    label: 'TWR 去趨勢偏離',
+                    label: 'Dietz 去趨勢偏離',
                     data: deviations,
                     borderColor: '#22d3ee',
                     backgroundColor: 'rgba(34,211,238,0.10)',
@@ -5394,7 +5536,7 @@ if (cmlCtx && !chartCML) {
                     borderWidth: 2
                 },
                 {
-                    label: '12M 趨勢基準',
+                    label: '相對 12M MA 的零偏離線',
                     data: zeroLine,
                     borderColor: '#64748b',
                     borderDash: [6, 6],
@@ -5405,6 +5547,35 @@ if (cmlCtx && !chartCML) {
                 }
             ];
             chartDetrend.update();
+        }
+
+        if (chartExcess) {
+            const rows = alphaRegressionStats.value?.rolling12m || [];
+            chartExcess.data.labels = rows.map((row) => row.date);
+            chartExcess.data.datasets = [
+                {
+                    label: 'Rolling 12M Excess Return',
+                    data: rows.map((row) => row.excess12mPct),
+                    borderColor: '#a78bfa',
+                    backgroundColor: 'rgba(167,139,250,0.10)',
+                    fill: true,
+                    tension: 0.2,
+                    pointRadius: 2,
+                    pointHoverRadius: 4,
+                    borderWidth: 2
+                },
+                {
+                    label: '零超額報酬線',
+                    data: rows.map(() => 0),
+                    borderColor: '#64748b',
+                    borderDash: [6, 6],
+                    fill: false,
+                    tension: 0,
+                    pointRadius: 0,
+                    borderWidth: 1.5
+                }
+            ];
+            chartExcess.update();
         }
 
         if (chartFire) {
@@ -6517,6 +6688,7 @@ chartCML.data.datasets = [
         });
 
         watch([exchangeRate, sheetUrl, riskParams, quantStartDate, dataFrequency, fireTargets, correlationMatrix], () => updateCharts(), { deep: true });
+        watch(chaosMeta, () => updateCharts(), { deep: true });
         watch([displayHistory, transactions], () => updateCharts(), { deep: true });
         watch(liquidityBufferRatio, async (newVal, oldVal) => {
     const clamped = clampLiquidityBuffer(newVal);
@@ -6644,8 +6816,8 @@ chartCML.data.datasets = [
         const navOverlayMode = ref('nav');
         const navOverlayOptions = [
             { value: 'nav', label: 'Raw NAV' },
-            { value: 'drawdown', label: 'TWR 回撤' },
-            { value: 'both', label: 'NAV + TWR 回撤' }
+            { value: 'drawdown', label: 'Dietz 回撤' },
+            { value: 'both', label: 'NAV + Dietz 回撤' }
         ];
         const setNavOverlayMode = (mode) => {
             const allowed = new Set(navOverlayOptions.map(opt => opt.value));
@@ -6659,7 +6831,7 @@ chartCML.data.datasets = [
         const navMaConfig = computed(() => ({
             monthLabel: '績效短期：3M MA',
             yearLabel: '績效長期：12M MA',
-            frequencyNote: '趨勢卡與回撤採 Flow-adjusted TWR；主圖 Raw NAV / Cost 保留資產規模變化'
+            frequencyNote: '趨勢卡與回撤採 Modified Dietz；主圖 Raw NAV / Cost 保留資產規模變化'
         }));
         const riskRegimeStrip = computed(() => {
             const sr = syntheticRiskMeta?.value || null;
@@ -6700,18 +6872,6 @@ chartCML.data.datasets = [
             return Number.isFinite(fallback) ? fallback : NaN;
         }
 
-        function navTrendExternalFlow(prevTs, currTs) {
-            let flow = 0;
-            (transactions.value || []).forEach((tx) => {
-                if (tx?.type !== 'Deposit' && tx?.type !== 'Withdraw') return;
-                const txTs = navTrendParseDate(tx?.date);
-                const amount = Number(tx?.totalCashFlow || 0);
-                if (!Number.isFinite(txTs) || !Number.isFinite(amount)) return;
-                if (txTs > prevTs && txTs <= currTs) flow += amount;
-            });
-            return flow;
-        }
-
         function navTrendTwrIndexPoints() {
             const byTimestamp = new Map();
             (displayHistory.value || []).forEach((row) => {
@@ -6728,12 +6888,9 @@ chartCML.data.datasets = [
             for (let i = 1; i < raw.length; i += 1) {
                 const prev = raw[i - 1];
                 const curr = raw[i];
-                const externalFlow = navTrendExternalFlow(prev.ts, curr.ts);
-                const periodReturn = prev.nav > 0
-                    ? ((curr.nav - externalFlow) / prev.nav) - 1
-                    : NaN;
+                const dietz = modifiedDietzPeriod(prev.nav, curr.nav, prev.ts, curr.ts);
+                const periodReturn = dietz?.periodReturn;
 
-                // A <= -100% subperiod or invalid NAV/flow relation makes a chained TWR index unreliable.
                 if (!Number.isFinite(periodReturn) || periodReturn <= -1) return [];
                 twrIndex *= (1 + periodReturn);
                 if (!Number.isFinite(twrIndex) || twrIndex <= 0) return [];
@@ -6742,7 +6899,9 @@ chartCML.data.datasets = [
                     value: twrIndex,
                     rawNav: curr.nav,
                     periodReturn,
-                    externalFlow,
+                    externalFlow: dietz?.totalFlow ?? 0,
+                    weightedExternalFlow: dietz?.weightedFlow ?? 0,
+                    returnMethod: 'modified_dietz'
                 });
             }
             return out;
@@ -6853,8 +7012,8 @@ chartCML.data.datasets = [
         const navTrendSummary = computed(() => {
             const modeMap = {
                 nav: 'Raw NAV',
-                drawdown: 'TWR Drawdown',
-                both: 'Raw NAV + TWR Drawdown'
+                drawdown: 'Dietz Drawdown',
+                both: 'Raw NAV + Dietz Drawdown'
             };
             const points = navTrendTwrIndexPoints();
             const latest = points.length ? points[points.length - 1] : null;
@@ -6867,7 +7026,7 @@ chartCML.data.datasets = [
                     yearSlope: 'N/A',
                     currentDrawdown: 'N/A',
                     overlayModeLabel: modeMap[navOverlayMode.value] || 'Raw NAV',
-                    basis: 'Flow-adjusted TWR index'
+                    basis: 'Modified Dietz performance index'
                 };
             }
 
@@ -6891,7 +7050,7 @@ chartCML.data.datasets = [
                     ? navTrendFormatRatio(latest.value / peakIndex - 1)
                     : 'N/A',
                 overlayModeLabel: modeMap[navOverlayMode.value] || 'Raw NAV',
-                basis: 'Flow-adjusted TWR index'
+                basis: 'Modified Dietz performance index'
             };
         });
 
@@ -6915,19 +7074,24 @@ chartCML.data.datasets = [
             const deviationStats = navTrendDeviationWindowStats(points, latest.ts, 12);
             const z = deviationStats?.z;
             const absZ = Number.isFinite(z) ? Math.abs(z) : null;
-            let statusLabel = '接近長期趨勢';
+            const positionLabel = latest.deviation > 0
+                ? '高於 12M MA'
+                : (latest.deviation < 0 ? '低於 12M MA' : '貼近 12M MA');
+            let anomalyLabel = '一般偏離';
             let statusClass = 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300';
 
             if (absZ === null) {
-                statusLabel = 'Z-score 樣本不足';
+                anomalyLabel = 'Z-score 樣本不足';
                 statusClass = 'border-amber-500/30 bg-amber-500/10 text-amber-300';
             } else if (absZ >= 2) {
-                statusLabel = z > 0 ? '顯著高於長期趨勢' : '顯著低於長期趨勢';
+                anomalyLabel = '顯著偏離';
                 statusClass = 'border-red-500/30 bg-red-500/10 text-red-300';
             } else if (absZ >= 1) {
-                statusLabel = z > 0 ? '中度高於長期趨勢' : '中度低於長期趨勢';
+                anomalyLabel = '中度偏離';
                 statusClass = 'border-amber-500/30 bg-amber-500/10 text-amber-300';
             }
+
+            const statusLabel = positionLabel + ' · ' + anomalyLabel;
 
             return {
                 available: true,
@@ -6938,9 +7102,11 @@ chartCML.data.datasets = [
                     ? `${z > 0 ? '+' : ''}${z.toFixed(2)}`
                     : 'N/A',
                 sampleCount: deviationStats?.count || points.length,
+                positionLabel,
+                anomalyLabel,
                 statusLabel,
                 statusClass,
-                basis: 'Flow-adjusted TWR index ÷ 12M time-weighted MA − 1'
+                basis: 'Modified Dietz performance index ÷ 12M time-weighted MA − 1'
             };
         });
 
@@ -7427,7 +7593,7 @@ chartCML.data.datasets = [
             isAuthenticating, handleLogin, handleLogout, checkAuth, fireProgress,
             updateCharts, addFireTarget, macroRegime, enableBlackSwan, mcRisk, blViews, mcAvailableAssets, addBlView, enableInflation,
             generateAutoViews, runMonteCarlo, stressTestResults,
-            expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr, navOverlayMode, navOverlayOptions, setNavOverlayMode, navMaConfig, riskRegimeStrip, navTrendSummary, twrDetrendSummary,
+            expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr, navOverlayMode, navOverlayOptions, setNavOverlayMode, navMaConfig, riskRegimeStrip, navTrendSummary, twrDetrendSummary, rollingExcessSummary,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
             xrayStats, rebalanceMonitor, tailStatsLite, alphaRegressionStats, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerConstraintRules, optimizerConstraintPolicySummaries, selectedOptimizerConstraintPolicy, selectedOptimizerConstraintRows, selectedOptimizerConstraintIssues, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, optimizerStressOutput, optimizerStressError, optimizerStressScenarios, optimizerStressRows, optimizerStressWorstRows, optimizerStressBestWorst, optimizerStressMostFragile, selectedStressScenarioKey, selectedStressScenario, selectedStressScenarioRows, setStressScenario, loadOptimizerStressOutput, humanApprovalLayer, humanApprovalLayerError, humanApprovalTickets, humanApprovalSummary, humanApprovalVisibleTickets, loadHumanApprovalLayer, actionAuditTrail, actionAuditTrailError, actionAuditSummary, actionAuditEvents, loadActionAuditTrail, regimeAwareOptimizer, regimeAwareError, regimeAwareSummary, regimeAwareRegime, regimeAwareActivePolicy, regimeAwareCovariancePolicy, regimeAwareDrafts, regimeAwareVisibleDrafts, loadRegimeAwareOptimizer, blackLittermanSandbox, blackLittermanError, blackLittermanSummary, blackLittermanViewEngine, blackLittermanViews, blackLittermanPosteriorCandidates, loadBlackLittermanSandbox, expectedReturnModel, expectedReturnError, expectedReturnSummary, expectedReturnPolicy, expectedReturnBucketPriors, expectedReturnAssetPriors, expectedReturnVisibleBuckets, expectedReturnVisibleAssets, loadExpectedReturnModel, walkForwardBacktest, walkForwardError, walkForwardSummary, walkForwardAggregate, walkForwardVisibleRows, loadWalkForwardBacktest, modelGovernanceDashboard, modelGovernanceError, modelGovernanceSummary, modelGovernanceRegistry, modelGovernanceFlags, modelGovernanceVisibleRegistry, modelGovernanceVisibleFlags, loadModelGovernanceDashboard, forecastFeatureStore, forecastFeatureError, forecastFeatureSummary, forecastFeatureSample, forecastFeatureRows, forecastFeatureVisibleRows, loadForecastFeatureStore, alphaResearchSandbox, alphaResearchError, alphaResearchSummary, alphaResearchPolicy, alphaResearchRows, alphaResearchVisibleRows, loadAlphaResearchSandbox, rebalanceCandidateRanking, rebalanceRankingError, rebalanceRankingSummary, rebalanceRankingPolicy, rebalanceRankingRows, rebalanceRankingVisibleRows, loadRebalanceCandidateRanking, alphaValidationGate, alphaValidationError, alphaValidationSummary, alphaValidationGates, alphaValidationVisibleGates, loadAlphaValidationGate, manualRebalanceProposal, manualProposalError, manualProposalSummary, manualProposalRows, manualProposalVisibleRows, loadManualRebalanceProposal, executionReadyDraft, executionDraftError, executionDraftSummary, executionDraftRows, executionDraftVisibleRows, loadExecutionReadyDraft, formalDraftPassConditions, formalDraftPassError, formalDraftPassSummary, loadFormalDraftPassConditions, tradingConstraintsSnapshot, tradingConstraintsError, tradingConstraintsSummary, tradingConstraintsRows, tradingConstraintsVisibleRows, loadTradingConstraintsSnapshot, paperTradeTracker, paperTradeError, paperTradeSummary, paperTradeRows, paperTradeVisibleRows, loadPaperTradeTracker, tradeSizingDiagnostics, tradeSizingDiagnosticsError, tradeSizingDiagnosticsSummary, tradeSizingDiagnosticsIssues, tradeSizingDiagnosticsVisibleIssues, tradeSizingDiagnosticsNextActions, loadTradeSizingDiagnostics, manualApprovalConsole, manualApprovalConsoleError, manualApprovalConsoleLoading, manualApprovalConsoleLastLoadedAt, manualApprovalConsoleReloadMessage, manualApprovalConsoleSummary, manualApprovalMissingInputs, loadManualApprovalConsole, paperTradePerformanceEvaluator, paperTradePerformanceError, paperTradePerformanceLoading, paperTradePerformanceLastLoadedAt, paperTradePerformanceReloadMessage, paperTradePerformanceSummary, paperTradePerformanceRows, paperTradePerformanceVisibleRows, loadPaperTradePerformanceEvaluator, tradeTicketExplainability, tradeTicketExplainabilityError, tradeTicketExplainabilityLoading, tradeTicketExplainabilityLastLoadedAt, tradeTicketExplainabilityReloadMessage, tradeTicketExplainabilitySummary, tradeTicketExplainabilityRows, tradeTicketExplainabilityVisibleRows, loadTradeTicketExplainability, nativeTargetThesis, nativeTargetThesisError, nativeTargetThesisSummary, nativeTargetThesisRows, nativeTargetThesisVisibleRows, nativeTargetThesisAgreementCounts, loadNativeTargetThesis, delegatedTargetWeightDraft, delegatedTargetWeightDraftError, delegatedTargetWeightDraftSummary, delegatedTargetRows, delegatedTargetVisibleRows, delegatedDraftLines, delegatedDraftVisibleLines, delegatedDraftWarnings, delegatedDraftVisibleWarnings, loadDelegatedTargetWeightDraft, dailyQuantReference, dailyQuantReferenceError, dailyQuantReferenceSummary, loadDailyQuantReference, delegatedDraftMonteCarloCheck, delegatedDraftMonteCarloCheckError, delegatedDraftMonteCarloSummary, delegatedDraftMonteCarloChecks, delegatedDraftMonteCarloVisibleChecks, delegatedDraftMonteCarloRiskNotes, delegatedDraftMonteCarloVisibleRiskNotes, loadDelegatedDraftMonteCarloCheck, humanConfirmedTradeTicket, humanConfirmedTradeTicketError, humanConfirmedTradeTicketSummary, humanConfirmedTicketRows, humanConfirmedTicketVisibleRows, humanConfirmedTicketBlockers, humanConfirmedTicketVisibleBlockers, loadHumanConfirmedTradeTicket, optimizerDataReloading, optimizerDataLastLoadedAt, optimizerDataReloadMessage, reloadAllOptimizerData, formalRebalanceDraftGate, formalDraftGateError, formalDraftGateSummary, formalDraftRows, formalDraftVisibleRows, loadFormalRebalanceDraftGate, manualTradeTicket, manualTradeTicketError, manualTradeTicketSummary, manualTradeTicketRows, manualTradeTicketVisibleRows, loadManualTradeTicket, approvalBadgeClass, machineReviewLabel, machineReviewReason, machineReviewBadgeClass, zhText, zhList, zhBool, selectedOptimizerExplainKey, optimizerExplainabilityCandidates, selectedOptimizerExplainability, setOptimizerExplainCandidate, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert

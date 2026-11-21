@@ -5,13 +5,13 @@ import math
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Iterable, List, Mapping, Sequence
 
-import numpy as np
 import pandas as pd
 import requests
 import statsmodels.api as sm
 
 DEFAULT_BENCHMARKS = ("SPY", "^TWII")
 DEFAULT_RF_TICKER = "^IRX"
+DEFAULT_FX_TICKER = "TWD=X"
 
 
 def _num(value: Any, default: float | None = None) -> float | None:
@@ -27,7 +27,6 @@ def _utc_now() -> str:
 
 
 def fetch_yahoo_chart_close(symbol: str, days: int = 1600, timeout: int = 25) -> pd.Series:
-    """Fetch daily closes through Yahoo's chart endpoint without yfinance state/cache."""
     now = datetime.now(timezone.utc)
     start = now - timedelta(days=days)
     url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
@@ -68,7 +67,7 @@ def build_cash_flow_adjusted_period_returns(
     history_data: Sequence[Mapping[str, Any]],
     ledger_data: Sequence[Mapping[str, Any]],
 ) -> pd.DataFrame:
-    """Reproduce the dashboard's cash-flow-adjusted TWR period return logic."""
+    """Build Modified Dietz returns from weekly NAV snapshots and dated external cash flows."""
     history: List[Dict[str, Any]] = []
     for row in history_data or []:
         try:
@@ -102,19 +101,37 @@ def build_cash_flow_adjusted_period_returns(
         days = int((curr_date - prev_date).days)
         if days <= 0:
             continue
-        external_flow = sum(
-            item["flow"] for item in flows
+
+        period_flows = [
+            item for item in flows
             if item["date"] > prev_date and item["date"] <= curr_date
-        )
-        period_return = ((curr["assets"] - external_flow) / prev["assets"]) - 1.0
+        ]
+        external_flow = float(sum(item["flow"] for item in period_flows))
+        weighted_flow = 0.0
+        for item in period_flows:
+            remaining_days = max(0, int((curr_date - item["date"]).days))
+            weight = min(1.0, max(0.0, remaining_days / days))
+            weighted_flow += item["flow"] * weight
+
+        denominator = float(prev["assets"]) + weighted_flow
+        if not math.isfinite(denominator) or denominator <= 0:
+            continue
+        period_return = (
+            float(curr["assets"]) - float(prev["assets"]) - external_flow
+        ) / denominator
         if not math.isfinite(period_return) or period_return <= -1.0:
             continue
+
         rows.append({
             "prev_date": prev_date,
             "date": curr_date,
             "period_days": days,
-            "portfolio_return": float(period_return),
-            "external_flow": float(external_flow),
+            "portfolio_return_twd": float(period_return),
+            "external_flow": external_flow,
+            "weighted_external_flow": float(weighted_flow),
+            "dietz_denominator": denominator,
+            "external_flow_count": len(period_flows),
+            "return_method": "modified_dietz",
         })
 
     return pd.DataFrame(rows)
@@ -131,8 +148,16 @@ def _close_on_or_before(series: pd.Series, when: pd.Timestamp) -> float | None:
     return float(value) if value is not None and value > 0 else None
 
 
+def _interval_price_return(series: pd.Series, start: pd.Timestamp, end: pd.Timestamp) -> float | None:
+    start_px = _close_on_or_before(series, start)
+    end_px = _close_on_or_before(series, end)
+    if start_px is None or end_px is None or start_px <= 0:
+        return None
+    out = end_px / start_px - 1.0
+    return float(out) if math.isfinite(out) and out > -1.0 else None
+
+
 def _interval_rf_return(irx_yield_pct: pd.Series, start: pd.Timestamp, end: pd.Timestamp) -> float | None:
-    """Approximate period RF return from ^IRX annualized yield observations."""
     days = int((pd.Timestamp(end).normalize() - pd.Timestamp(start).normalize()).days)
     if days <= 0:
         return None
@@ -152,34 +177,131 @@ def _interval_rf_return(irx_yield_pct: pd.Series, start: pd.Timestamp, end: pd.T
     return float((1.0 + annual_rate) ** (days / 365.25) - 1.0)
 
 
+def _combine_returns(asset_return: float, fx_return: float) -> float:
+    return float((1.0 + asset_return) * (1.0 + fx_return) - 1.0)
+
+
+def _remove_fx_from_twd_return(twd_return: float, fx_return: float) -> float | None:
+    denom = 1.0 + fx_return
+    if denom <= 0:
+        return None
+    out = (1.0 + twd_return) / denom - 1.0
+    return float(out) if math.isfinite(out) and out > -1.0 else None
+
+
+def _twd_opportunity_cost_return(
+    irx_yield_pct: pd.Series,
+    fx_close: pd.Series,
+    start: pd.Timestamp,
+    end: pd.Timestamp,
+) -> float | None:
+    """Unhedged USD T-bill proxy translated to TWD; not a domestic TWD risk-free rate."""
+    rf_usd = _interval_rf_return(irx_yield_pct, start, end)
+    fx_ret = _interval_price_return(fx_close, start, end)
+    if rf_usd is None or fx_ret is None:
+        return None
+    out = _combine_returns(rf_usd, fx_ret)
+    return out if math.isfinite(out) and out > -1.0 else None
+
+
+def _benchmark_return_usd(
+    benchmark_close: pd.Series,
+    fx_close: pd.Series,
+    start: pd.Timestamp,
+    end: pd.Timestamp,
+    benchmark_currency: str,
+) -> float | None:
+    market_local = _interval_price_return(benchmark_close, start, end)
+    if market_local is None:
+        return None
+    if benchmark_currency.upper() == "USD":
+        return market_local
+    fx_ret = _interval_price_return(fx_close, start, end)
+    if fx_ret is None:
+        return None
+    return _remove_fx_from_twd_return(market_local, fx_ret)
+
+
+def _build_rolling_12m_excess(
+    periods: pd.DataFrame,
+    irx_yield_pct: pd.Series,
+    fx_close: pd.Series,
+) -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = []
+    for rec in periods.to_dict("records"):
+        start = pd.Timestamp(rec["prev_date"])
+        end = pd.Timestamp(rec["date"])
+        opportunity_twd = _twd_opportunity_cost_return(irx_yield_pct, fx_close, start, end)
+        port_ret = _num(rec.get("portfolio_return_twd"))
+        if opportunity_twd is None or port_ret is None:
+            continue
+        rows.append({
+            "prev_date": start,
+            "date": end,
+            "portfolio_return_twd": float(port_ret),
+            "opportunity_cost_return_twd": float(opportunity_twd),
+        })
+
+    if not rows:
+        return []
+
+    aligned = pd.DataFrame(rows).sort_values("date")
+    output: List[Dict[str, Any]] = []
+    for _, endpoint in aligned.iterrows():
+        end = pd.Timestamp(endpoint["date"])
+        cutoff = end - pd.Timedelta(days=365)
+        window = aligned[(aligned["date"] > cutoff) & (aligned["date"] <= end)].copy()
+        if window.empty:
+            continue
+        window_days = int((end - pd.Timestamp(window["prev_date"].iloc[0])).days)
+        if len(window) < 40 or window_days < 330:
+            continue
+        portfolio_growth = float((1.0 + window["portfolio_return_twd"].astype(float)).prod())
+        opportunity_growth = float((1.0 + window["opportunity_cost_return_twd"].astype(float)).prod())
+        if portfolio_growth <= 0 or opportunity_growth <= 0:
+            continue
+        portfolio_12m = portfolio_growth - 1.0
+        opportunity_12m = opportunity_growth - 1.0
+        output.append({
+            "date": end.date().isoformat(),
+            "portfolio_12m_pct": round(portfolio_12m * 100.0, 4),
+            "opportunity_cost_12m_pct": round(opportunity_12m * 100.0, 4),
+            "excess_12m_pct": round((portfolio_12m - opportunity_12m) * 100.0, 4),
+            "n": int(len(window)),
+            "window_days": window_days,
+        })
+    return output
+
+
 def _regress_one_benchmark(
     periods: pd.DataFrame,
     benchmark_close: pd.Series,
     irx_yield_pct: pd.Series,
+    fx_close: pd.Series,
     benchmark: str,
+    benchmark_currency: str,
     hac_lags: int = 4,
 ) -> Dict[str, Any]:
     rows: List[Dict[str, Any]] = []
     for rec in periods.to_dict("records"):
         start = pd.Timestamp(rec["prev_date"])
         end = pd.Timestamp(rec["date"])
-        start_px = _close_on_or_before(benchmark_close, start)
-        end_px = _close_on_or_before(benchmark_close, end)
-        rf_ret = _interval_rf_return(irx_yield_pct, start, end)
-        if start_px is None or end_px is None or rf_ret is None:
+        fx_ret = _interval_price_return(fx_close, start, end)
+        rf_usd = _interval_rf_return(irx_yield_pct, start, end)
+        market_usd = _benchmark_return_usd(
+            benchmark_close, fx_close, start, end, benchmark_currency
+        )
+        port_twd = float(rec["portfolio_return_twd"])
+        if fx_ret is None or rf_usd is None or market_usd is None:
             continue
-        market_ret = (end_px / start_px) - 1.0
-        port_ret = float(rec["portfolio_return"])
-        if not all(math.isfinite(v) for v in (market_ret, port_ret, rf_ret)):
+        port_usd = _remove_fx_from_twd_return(port_twd, fx_ret)
+        if port_usd is None:
             continue
         rows.append({
             "date": end,
             "period_days": int(rec["period_days"]),
-            "portfolio_excess": port_ret - rf_ret,
-            "market_excess": market_ret - rf_ret,
-            "portfolio_return": port_ret,
-            "market_return": market_ret,
-            "rf_return": rf_ret,
+            "portfolio_excess": port_usd - rf_usd,
+            "market_excess": market_usd - rf_usd,
         })
 
     aligned = pd.DataFrame(rows).sort_values("date")
@@ -188,6 +310,8 @@ def _regress_one_benchmark(
         return {
             "status": "insufficient_sample",
             "benchmark": benchmark,
+            "benchmark_currency_original": benchmark_currency,
+            "analysis_currency": "USD",
             "n": n,
             "minimum_required": 26,
         }
@@ -195,7 +319,11 @@ def _regress_one_benchmark(
     y = aligned["portfolio_excess"].astype(float)
     X = sm.add_constant(aligned[["market_excess"]].astype(float), has_constant="add")
     maxlags = max(0, min(int(hac_lags), max(0, n - 2)))
-    fit = sm.OLS(y, X).fit(cov_type="HAC", cov_kwds={"maxlags": maxlags, "use_correction": True}, use_t=True)
+    fit = sm.OLS(y, X).fit(
+        cov_type="HAC",
+        cov_kwds={"maxlags": maxlags, "use_correction": True},
+        use_t=True,
+    )
 
     alpha_period = float(fit.params["const"])
     beta = float(fit.params["market_excess"])
@@ -223,6 +351,10 @@ def _regress_one_benchmark(
     return {
         "status": "available",
         "benchmark": benchmark,
+        "benchmark_currency_original": benchmark_currency,
+        "analysis_currency": "USD",
+        "benchmark_fx_translation": "none" if benchmark_currency.upper() == "USD" else "TWD_return_deflated_by_USDTWD_return",
+        "portfolio_fx_translation": "TWD_Modified_Dietz_return_deflated_by_USDTWD_return",
         "n": n,
         "sample_start": pd.Timestamp(aligned["date"].iloc[0]).date().isoformat(),
         "sample_end": pd.Timestamp(aligned["date"].iloc[-1]).date().isoformat(),
@@ -252,30 +384,37 @@ def compute_jensen_alpha_regression(
     ledger_data: Sequence[Mapping[str, Any]],
     benchmarks: Iterable[str] = DEFAULT_BENCHMARKS,
     rf_ticker: str = DEFAULT_RF_TICKER,
+    fx_ticker: str = DEFAULT_FX_TICKER,
     fetch_days: int = 1600,
     hac_lags: int = 4,
 ) -> Dict[str, Any]:
-    """CAPM Jensen alpha from realized cash-flow-adjusted NAV snapshot returns.
-
-    Both SPY and ^TWII are reported by default. This intentionally avoids presenting
-    a single benchmark choice as uniquely correct for a mixed global/TWD portfolio.
-    """
+    """CAPM Jensen alpha using common USD returns plus TWD rolling opportunity cost."""
     base: Dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "status": "unavailable",
         "generated_at": _utc_now(),
-        "method": "realized_cash_flow_adjusted_NAV_CAPM_OLS_with_HAC_Newey_West",
-        "portfolio_return_source": "history_data_cash_flow_adjusted_TWR_periods",
-        "benchmark_policy": "report_multiple_benchmarks_no_single_benchmark_skill_claim",
+        "method": "realized_modified_dietz_common_USD_CAPM_OLS_with_HAC_Newey_West",
+        "portfolio_return_source": "weekly_NAV_modified_dietz_period_returns_TWD_converted_to_USD_for_CAPM",
+        "portfolio_return_method": "Modified Dietz; strict TWR unavailable without valuation at each external cash-flow timestamp",
+        "analysis_currency": "USD",
+        "benchmark_policy": "report_multiple_benchmarks_after_common_currency_alignment_no_single_benchmark_skill_claim",
+        "fx_source": f"YahooChart:{fx_ticker}",
         "risk_free_source": rf_ticker,
-        "risk_free_method": "interval_compounding_from_average_annualized_^IRX_yield_proxy",
+        "risk_free_method": "USD_^IRX_interval_compounding_for_CAPM",
+        "opportunity_cost_label": "USD 3M T-bill proxy translated to TWD with unhedged USD/TWD FX; opportunity-cost proxy, not domestic TWD risk-free",
+        "rolling_12m_method": "compounded Modified Dietz TWD return minus compounded TWD-translated USD T-bill opportunity-cost proxy over trailing ~12 months",
         "hac_lags_requested": int(hac_lags),
         "benchmarks": {},
+        "rolling_12m_excess_return_twd": [],
+        "rolling_12m_latest": None,
         "limitations": [
+            "Weekly NAV snapshots cannot produce strict TWR; Modified Dietz is used instead.",
+            "Jensen CAPM uses a common USD numeraire: TWD portfolio returns and ^TWII returns are translated to USD using USD/TWD, while SPY and ^IRX remain USD.",
+            "Rolling 12M Excess Return is separately shown in TWD against an unhedged USD T-bill opportunity-cost proxy translated through USD/TWD; that proxy contains FX risk and is not a domestic TWD risk-free asset.",
             "Single-factor CAPM alpha is benchmark-dependent for a mixed cross-asset portfolio.",
-            "Alpha captures the realized portfolio outcome after cash-flow adjustment; it does not isolate security-selection skill from allocation, timing, or other factors.",
-            "HAC/Newey-West adjusts standard errors for heteroskedasticity/autocorrelation but does not fix benchmark misspecification.",
-            "^IRX is used as an annualized short-rate proxy rather than an exact realized risk-free total-return series.",
+            "Alpha does not isolate security-selection skill from allocation, timing, or other effects.",
+            "HAC/Newey-West does not fix benchmark misspecification.",
+            "^IRX is an annualized yield proxy rather than an exact realized total-return series.",
         ],
     }
 
@@ -289,28 +428,33 @@ def compute_jensen_alpha_regression(
     symbols = list(dict.fromkeys([str(x) for x in benchmarks if str(x).strip()]))
     try:
         rf_series = fetch_yahoo_chart_close(rf_ticker, days=fetch_days)
+        fx_series = fetch_yahoo_chart_close(fx_ticker, days=fetch_days)
     except Exception as exc:
-        base["status"] = "risk_free_source_unavailable"
+        base["status"] = "risk_free_or_fx_source_unavailable"
         base["error"] = f"{type(exc).__name__}: {exc}"
         return base
+
+    rolling = _build_rolling_12m_excess(periods, rf_series, fx_series)
+    base["rolling_12m_excess_return_twd"] = rolling
+    base["rolling_12m_latest"] = rolling[-1] if rolling else None
 
     errors: Dict[str, str] = {}
     results: Dict[str, Dict[str, Any]] = {}
     for benchmark in symbols:
+        benchmark_currency = "TWD" if benchmark == "^TWII" else "USD"
         try:
             bench_series = fetch_yahoo_chart_close(benchmark, days=fetch_days)
             results[benchmark] = _regress_one_benchmark(
-                periods=periods,
-                benchmark_close=bench_series,
-                irx_yield_pct=rf_series,
-                benchmark=benchmark,
-                hac_lags=hac_lags,
+                periods, bench_series, rf_series, fx_series,
+                benchmark, benchmark_currency, hac_lags
             )
         except Exception as exc:
             errors[benchmark] = f"{type(exc).__name__}: {exc}"
             results[benchmark] = {
                 "status": "fetch_or_regression_failed",
                 "benchmark": benchmark,
+                "benchmark_currency_original": benchmark_currency,
+                "analysis_currency": "USD",
                 "error": errors[benchmark],
             }
 

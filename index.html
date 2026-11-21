@@ -949,7 +949,7 @@
         <i class="fas fa-chart-line text-emerald-400"></i>
         資產規模 / 績效趨勢
     </h4>
-    <p class="panel-subtitle">主圖用 Raw NAV / Cost 看資產規模；趨勢卡與回撤用 Flow-adjusted TWR index 看投資績效。</p>
+    <p class="panel-subtitle">主圖用 Raw NAV / Cost 看資產規模；趨勢卡與回撤用 Modified Dietz performance index 看投資績效。</p>
     <div class="terminal-inline-note mt-3 flex flex-wrap items-center gap-2 text-[11px]">
         <span class="terminal-chip">{{ navMaConfig?.monthLabel || '短期趨勢：N/A' }}</span>
         <span class="terminal-chip">{{ navMaConfig?.yearLabel || '長期趨勢：N/A' }}</span>
@@ -965,14 +965,14 @@
             {{ opt?.label || '疊圖' }}
         </button>
     </div>
-    <div class="text-[11px] text-gray-500 mt-2 leading-relaxed">TWR 回撤＝Flow-adjusted TWR index 相對自身歷史高點的跌幅；Deposit / Withdraw 不會直接被誤判為投資虧損。</div>
+    <div class="text-[11px] text-gray-500 mt-2 leading-relaxed">Dietz 回撤＝Modified Dietz performance index 相對自身歷史高點的跌幅；Deposit / Withdraw 不會直接被誤判為投資虧損。</div>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
         <div class="terminal-mini-stat soft">
-            <div class="terminal-mini-label">TWR vs 3M MA</div>
+            <div class="terminal-mini-label">Dietz vs 3M MA</div>
             <div class="terminal-mini-value">{{ navTrendSummary?.navVsMonth || 'N/A' }}</div>
         </div>
         <div class="terminal-mini-stat soft">
-            <div class="terminal-mini-label">TWR vs 12M MA</div>
+            <div class="terminal-mini-label">Dietz vs 12M MA</div>
             <div class="terminal-mini-value">{{ navTrendSummary?.navVsYear || 'N/A' }}</div>
         </div>
         <div class="terminal-mini-stat soft">
@@ -984,7 +984,7 @@
             <div class="terminal-mini-value">{{ navTrendSummary?.yearSlope || 'N/A' }}</div>
         </div>
         <div class="terminal-mini-stat soft sm:col-span-2">
-            <div class="terminal-mini-label">TWR 目前回撤</div>
+            <div class="terminal-mini-label">Dietz 目前回撤</div>
             <div class="terminal-mini-value">{{ navTrendSummary?.currentDrawdown || 'N/A' }}</div>
         </div>
     </div>
@@ -1009,9 +1009,9 @@
                                 <div>
                                     <h4 class="panel-title">
                                         <i class="fas fa-wave-square text-cyan-400"></i>
-                                        TWR 去趨勢診斷（12M）
+                                        Modified Dietz 去趨勢診斷（12M）
                                     </h4>
-                                    <p class="panel-subtitle">用 Flow-adjusted TWR index 相對 12M time-weighted MA 的偏離觀察績效是否暫時脫離長期軌道；0% 代表貼近長期趨勢。</p>
+                                    <p class="panel-subtitle">用 Modified Dietz performance index 相對 12M time-weighted MA 的偏離觀察績效是否暫時脫離長期軌道；0% 代表貼近長期趨勢。</p>
                                 </div>
                                 <span class="terminal-chip shrink-0" :class="twrDetrendSummary?.statusClass || 'border-slate-500/30 bg-slate-500/10 text-slate-300'">
                                     {{ twrDetrendSummary?.statusLabel || '等待資料' }}
@@ -1020,7 +1020,7 @@
 
                             <div class="grid grid-cols-2 lg:grid-cols-4 gap-2">
                                 <div class="terminal-mini-stat soft">
-                                    <div class="terminal-mini-label">目前 TWR Index</div>
+                                    <div class="terminal-mini-label">目前 Dietz Index</div>
                                     <div class="terminal-mini-value">{{ twrDetrendSummary?.twrIndex || 'N/A' }}</div>
                                 </div>
                                 <div class="terminal-mini-stat soft">
@@ -1038,14 +1038,59 @@
                             </div>
 
                             <div class="text-[11px] text-gray-500 leading-relaxed">
-                                Z-score 以最近 12 個月可用的去趨勢偏離樣本估計；至少需要 8 個有效偏離樣本。這是診斷工具，不是買賣訊號。
+                                位置由偏離值正負判斷（高於 / 低於 12M MA）；Z-score 只衡量相對最近 12 個月偏離分布的異常程度。至少需要 8 個有效偏離樣本。這是診斷工具，不是買賣訊號。
                                 <span v-if="twrDetrendSummary?.sampleCount">目前 Z 樣本：{{ twrDetrendSummary.sampleCount }}。</span>
                             </div>
 
                             <div class="relative min-h-[280px] md:min-h-[340px] rounded-2xl border border-white/5 bg-black/10 p-2 md:p-3">
                                 <canvas id="twrDetrendChart"></canvas>
                                 <div v-if="!twrDetrendSummary?.available" class="absolute inset-0 flex items-center justify-center text-gray-500 text-xs bg-gray-900/40 rounded-2xl">
-                                    <p>需要約 12 個月以上的 Flow-adjusted TWR 歷史才能建立去趨勢序列</p>
+                                    <p>需要約 12 個月以上的 Modified Dietz 歷史才能建立去趨勢序列</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass chart-card p-5 md:p-6">
+                        <div class="flex flex-col gap-5">
+                            <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
+                                <div>
+                                    <h4 class="panel-title">
+                                        <i class="fas fa-scale-balanced text-violet-400"></i>
+                                        Rolling 12M Excess Return（TWD）
+                                    </h4>
+                                    <p class="panel-subtitle">比較 Modified Dietz 投組報酬與美元 3M T-bill（^IRX）經 USD/TWD 換算後的 TWD 機會成本。它是同幣別比較基準，但含匯率風險，不等同台灣本國無風險利率。</p>
+                                </div>
+                                <span class="terminal-chip shrink-0" :class="rollingExcessSummary?.statusClass || 'border-slate-500/30 bg-slate-500/10 text-slate-300'">
+                                    {{ rollingExcessSummary?.statusLabel || '等待資料' }}
+                                </span>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                <div class="terminal-mini-stat soft">
+                                    <div class="terminal-mini-label">Portfolio 12M</div>
+                                    <div class="terminal-mini-value">{{ rollingExcessSummary?.portfolio || 'N/A' }}</div>
+                                </div>
+                                <div class="terminal-mini-stat soft">
+                                    <div class="terminal-mini-label">Opportunity Cost 12M</div>
+                                    <div class="terminal-mini-value">{{ rollingExcessSummary?.opportunityCost || 'N/A' }}</div>
+                                </div>
+                                <div class="terminal-mini-stat soft">
+                                    <div class="terminal-mini-label">Excess Return 12M</div>
+                                    <div class="terminal-mini-value">{{ rollingExcessSummary?.excess || 'N/A' }}</div>
+                                </div>
+                            </div>
+
+                            <div class="text-[11px] text-gray-500 leading-relaxed">
+                                0% 代表投組過去 12 個月報酬等於此 TWD 機會成本代理；正值代表超越、負值代表落後。
+                                <span v-if="rollingExcessSummary?.asOf">資料截至 {{ rollingExcessSummary.asOf }}。</span>
+                                Jensen Alpha 另採共同 USD numeraire，避免把含匯率風險的 TWD 機會成本誤當 CAPM 無風險利率。
+                            </div>
+
+                            <div class="relative min-h-[280px] md:min-h-[340px] rounded-2xl border border-white/5 bg-black/10 p-2 md:p-3">
+                                <canvas id="rollingExcessChart"></canvas>
+                                <div v-if="!rollingExcessSummary?.available" class="absolute inset-0 flex items-center justify-center text-gray-500 text-xs bg-gray-900/40 rounded-2xl">
+                                    <p>等待新版 Jensen / Rolling Excess Return 資料刷新</p>
                                 </div>
                             </div>
                         </div>
@@ -5252,7 +5297,7 @@
                     <div class="p-4 space-y-6">
                 <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-6 gap-3 mt-4">
                     <div class="quant-card">
-                        <div class="quant-label text-blue-400" title="時間加權報酬 (評估選股能力)">年化 TWR</div>
+                        <div class="quant-label text-blue-400" title="Modified Dietz 年化報酬（週頻估值下的現金流時間加權近似）">年化 Dietz</div>
                         <div class="quant-value text-white">{{ stats.annRet }}%</div>
                     </div>
                     <div class="quant-card border-blue-900/30 bg-blue-900/10">
@@ -5260,7 +5305,7 @@
                         <div class="quant-value text-white">{{ stats.mwr }}%</div>
                     </div>
                     <div class="quant-card border-blue-900/30 bg-blue-900/10">
-                        <div class="quant-label text-blue-300" title="連續複利 LN(1+TWR)">Log Return</div>
+                        <div class="quant-label text-blue-300" title="連續複利 LN(1+Dietz)">Log Return</div>
                         <div class="quant-value text-white">{{ stats.annLogRet }}%</div>
                     </div>
 
@@ -5317,7 +5362,7 @@
                         <div class="quant-value text-white">{{ riskParams.beta }}</div>
                     </div>
                     <div class="quant-card">
-                        <div class="quant-label text-green-400" title="非迴歸：年化 TWR 減去以目前 metadata beta 推算的 CAPM 預期報酬">CAPM Alpha Proxy</div>
+                        <div class="quant-label text-green-400" title="非迴歸：年化 Dietz 報酬減去以目前 metadata beta 推算的 CAPM 預期報酬">CAPM Alpha Proxy</div>
                         <div class="quant-value text-white">{{ stats.alpha }}%</div>
                         <div class="text-[10px] text-gray-500 mt-1">非 Jensen 迴歸估計</div>
                     </div>
@@ -6694,7 +6739,7 @@
             <ul class="space-y-2 text-gray-300">
                 <li>• 把買入記成入金 → 成本與倉位會失真</li>
                 <li>• 把賣出記成出金 → 持股不會正確減少</li>
-                <li>• 用 History 手動補外部現金流 → TWR / MWR 會歪</li>
+                <li>• 用 History 手動補外部現金流 → Dietz / MWR 會歪</li>
             </ul>
         </div>
     </div>
@@ -7076,7 +7121,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=twr-detrend-v1"></script>
+<script src="assets/js/app.bundle.js?v=dietz-usd-alpha-twd-excess-v1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
