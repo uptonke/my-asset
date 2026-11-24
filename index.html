@@ -7086,6 +7086,49 @@
 </div>
 <!-- 👆 新增結束 👆 -->
 
+<div v-if="mcOptimal?.pathSimulation" class="mt-4 p-3 bg-violet-950/30 border border-violet-700/40 rounded-lg">
+    <h5 class="text-[10px] text-violet-300 uppercase tracking-wider mb-2 border-b border-violet-800/50 pb-1 flex items-center gap-2">
+        <i class="fas fa-route"></i> 52W Path Simulation
+    </h5>
+    <div class="text-[10px] text-gray-400 mb-3 leading-relaxed">
+        同一組 diffusion shock 下比較純 GBM baseline 與額外加入 Poisson downside jumps 的 stress path；固定使用本次最佳組合權重。
+        {{ mcOptimal.pathSimulation.nSims }} paths · seed {{ mcOptimal.pathSimulation.seed }}。
+    </div>
+
+    <div class="grid grid-cols-2 gap-2 text-[10px]">
+        <div class="rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-2">
+            <div class="font-bold text-cyan-300 mb-2">GBM Baseline</div>
+            <div class="space-y-1 text-gray-300">
+                <div class="flex justify-between"><span>P5 terminal</span><span class="font-mono">{{ mcOptimal.pathSimulation.baseline.p5 }}%</span></div>
+                <div class="flex justify-between"><span>Median</span><span class="font-mono">{{ mcOptimal.pathSimulation.baseline.p50 }}%</span></div>
+                <div class="flex justify-between"><span>P95 terminal</span><span class="font-mono">{{ mcOptimal.pathSimulation.baseline.p95 }}%</span></div>
+                <div class="flex justify-between"><span>P(loss)</span><span class="font-mono">{{ mcOptimal.pathSimulation.baseline.lossProb }}%</span></div>
+                <div class="flex justify-between"><span>P(MDD ≤ -20%)</span><span class="font-mono">{{ mcOptimal.pathSimulation.baseline.mdd20Prob }}%</span></div>
+                <div class="flex justify-between"><span>ES95 terminal</span><span class="font-mono">{{ mcOptimal.pathSimulation.baseline.es95 }}%</span></div>
+            </div>
+        </div>
+
+        <div class="rounded-lg border border-red-500/20 bg-red-500/5 p-2">
+            <div class="font-bold text-red-300 mb-2">Jump Stress</div>
+            <div class="space-y-1 text-gray-300">
+                <div class="flex justify-between"><span>P5 terminal</span><span class="font-mono">{{ mcOptimal.pathSimulation.jumpStress.p5 }}%</span></div>
+                <div class="flex justify-between"><span>Median</span><span class="font-mono">{{ mcOptimal.pathSimulation.jumpStress.p50 }}%</span></div>
+                <div class="flex justify-between"><span>P95 terminal</span><span class="font-mono">{{ mcOptimal.pathSimulation.jumpStress.p95 }}%</span></div>
+                <div class="flex justify-between"><span>P(loss)</span><span class="font-mono">{{ mcOptimal.pathSimulation.jumpStress.lossProb }}%</span></div>
+                <div class="flex justify-between"><span>P(MDD ≤ -20%)</span><span class="font-mono">{{ mcOptimal.pathSimulation.jumpStress.mdd20Prob }}%</span></div>
+                <div class="flex justify-between"><span>ES95 terminal</span><span class="font-mono">{{ mcOptimal.pathSimulation.jumpStress.es95 }}%</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-2 pt-2 border-t border-violet-800/40 text-[9px] text-gray-500 leading-relaxed">
+        Inputs：μ {{ mcOptimal.pathSimulation.inputs.muAnnualPct }}% · σ {{ mcOptimal.pathSimulation.inputs.sigmaAnnualPct }}% ·
+        λ {{ mcOptimal.pathSimulation.inputs.jumpLambdaAnnual }}/年 · jump μ {{ mcOptimal.pathSimulation.inputs.jumpMeanPct }}% ·
+        jump σ {{ mcOptimal.pathSimulation.inputs.jumpStdPct }}%。
+        GBM 是常態世界 baseline，不是預測；Jump Stress 刻意不做 jump drift compensation，用來量化額外尾部損失。
+    </div>
+</div>
+
                                 <h5 class="text-[10px] text-gray-400 uppercase tracking-wider mb-2 mt-4 border-b border-gray-700 pb-1">再平衡具體調整清單</h5>
                                 <div v-for="item in mcOptimal.weights" :key="item.ticker" class="mb-3 bg-gray-900/50 p-2 rounded border border-gray-700/50">
                                     <div class="flex justify-between text-xs mb-1">
@@ -7121,7 +7164,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=dietz-usd-alpha-twd-excess-v1"></script>
+<script src="assets/js/app.bundle.js?v=gbm-path-sim-v1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
