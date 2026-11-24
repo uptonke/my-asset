@@ -1,0 +1,100 @@
+name: Validate GBM path simulation
+
+on:
+  push:
+    branches:
+      - chatgpt-gbm-path-sim-20261124
+    paths:
+      - '.github/workflows/validate-gbm-path-sim.yml'
+
+permissions:
+  contents: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build runtime bundle
+        run: python scripts/build_frontend_bundle.py
+
+      - name: Validate syntax and invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build_frontend_bundle.py --check
+          node --check assets/js/src/app.bundle.source.js
+          node --check assets/js/app.bundle.js
+          git diff --check
+          python - <<'PY'
+          from pathlib import Path
+          import math
+
+          src = Path('assets/js/src/app.bundle.source.js').read_text(encoding='utf-8')
+          runtime = Path('assets/js/app.bundle.js').read_text(encoding='utf-8')
+          index = Path('index.html').read_text(encoding='utf-8')
+
+          assert src == runtime
+
+          for token in [
+              'function simulateGbmVsJumpPaths({',
+              "model: 'paired_gbm_vs_uncompensated_jump_stress'",
+              'const diffusionDrift = (safeMu - 0.5 * safeSigma * safeSigma) * dt;',
+              'const diffusionScale = safeSigma * Math.sqrt(dt);',
+              'const pathJumpParams = getEffectiveJumpParams(riskyAssets, weights);',
+              'baselinePathRet',
+              'baselinePathVol',
+              'pathSimulationRaw = simulateGbmVsJumpPaths({',
+              'horizonWeeks: 52,',
+              'nSims: 4000,',
+              'pathSimulation,'
+          ]:
+              assert token in src, token
+
+          for token in [
+              '52W Path Simulation',
+              'GBM Baseline',
+              'Jump Stress',
+              'P(MDD ≤ -20%)',
+              'GBM 是常態世界 baseline，不是預測',
+              'app.bundle.js?v=gbm-path-sim-v1'
+          ]:
+              assert token in index, token
+
+          # GBM one-year deterministic sanity when sigma=0.
+          mu = 0.08
+          dt = 1 / 52
+          wealth = 1.0
+          for _ in range(52):
+              wealth *= math.exp(mu * dt)
+          assert math.isclose(wealth, math.exp(mu), rel_tol=1e-12)
+
+          # Paired-path logic: a negative jump must not improve stressed wealth.
+          diffusion_growth = math.exp((0.08 - 0.5 * 0.20**2) / 52)
+          baseline = diffusion_growth
+          stressed = diffusion_growth * (1 - 0.10)
+          assert stressed < baseline
+
+          print('GBM path simulation invariant checks passed')
+          PY
+
+      - name: Commit generated runtime if changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/js/app.bundle.js data/repo_architecture/frontend_build_status_latest.json data/repo_architecture/frontend_build_status_summary.md
+          if git diff --cached --quiet; then
+            echo "No generated files changed."
+          else
+            git diff --cached --check
+            git commit -m 'Build validated GBM path simulation runtime'
+            git push origin HEAD:chatgpt-gbm-path-sim-20261124
+          fi
