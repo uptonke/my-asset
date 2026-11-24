@@ -468,19 +468,47 @@ ${JSON.stringify(payload, null, 2)}
         const loginPassword = ref('');
         const loginError = ref('');
         const isAuthenticating = ref(false);
+        const cloudHydrated = ref(false);
+        const cloudBaselineHadPortfolioData = ref(false);
 
         const checkAuth = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) isLoggedIn.value = true;
-            else isAppReady.value = true;
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
+                if (error) throw error;
+
+                if (session) {
+                    isLoggedIn.value = true;
+                    isAppReady.value = false;
+                    await loadDataFromCloud();
+                } else {
+                    isLoggedIn.value = false;
+                    isAppReady.value = true;
+                }
+            } catch (err) {
+                console.error('❌ Supabase Auth 初始化失敗', err);
+                isLoggedIn.value = false;
+                cloudHydrated.value = false;
+                isAppReady.value = true;
+            }
         };
 
         const handleLogin = async () => {
             isAuthenticating.value = true;
             loginError.value = '';
-            const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail.value, password: loginPassword.value });
-            if (error) loginError.value = 'Access Denied: ' + error.message;
-            else { isLoggedIn.value = true; isAppReady.value = true; }
+
+            const { error } = await supabase.auth.signInWithPassword({
+                email: loginEmail.value,
+                password: loginPassword.value
+            });
+
+            if (error) {
+                loginError.value = 'Access Denied: ' + error.message;
+            } else {
+                isLoggedIn.value = true;
+                isAppReady.value = false;
+                await loadDataFromCloud();
+            }
+
             isAuthenticating.value = false;
         };
 
@@ -539,12 +567,25 @@ ${JSON.stringify(payload, null, 2)}
         });
 
         async function loadDataFromCloud() {
+            cloudHydrated.value = false;
+            cloudBaselineHadPortfolioData.value = false;
             isDbSyncing.value = true;
-            try {
-                const { data, error } = await supabase.from('portfolio_db').select('*').eq('id', 1).single();
-                if (error && error.code !== 'PGRST116') throw error;
 
-                if (data) {
+            try {
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                if (sessionError) throw sessionError;
+                if (!session) throw new Error('Supabase session unavailable; cloud read blocked.');
+
+                const { data, error } = await supabase
+                    .from('portfolio_db')
+                    .select('*')
+                    .eq('id', 1)
+                    .single();
+
+                if (error) throw error;
+                if (!data) throw new Error('portfolio_db id=1 not found.');
+
+                {
                     transactions.value = data.ledger_data || [];
                     realHistoryData.value = data.history_data || [];
                     stockMeta.value = data.stock_meta || {};
@@ -622,6 +663,11 @@ ${JSON.stringify(payload, null, 2)}
                             liquidityBufferRatio.value = parseFloat(data.settings.liquidityBufferRatio) || 0;
                         }
                     }
+
+                    cloudBaselineHadPortfolioData.value =
+                        transactions.value.length > 0 ||
+                        realHistoryData.value.length > 0 ||
+                        Object.keys(stockMeta.value || {}).length > 0;
                 }
 
                 await localforage.setItem('ledgerData', JSON.stringify(transactions.value));
@@ -636,7 +682,11 @@ ${JSON.stringify(payload, null, 2)}
                     liquidityBufferRatio: liquidityBufferRatio.value
                 }));
 
+                cloudHydrated.value = true;
             } catch (err) {
+                cloudHydrated.value = false;
+                cloudBaselineHadPortfolioData.value = false;
+                console.error('❌ Supabase 載入失敗，僅使用本機快取；雲端寫入已鎖定', err);
                 transactions.value = JSON.parse(await localforage.getItem('ledgerData') || '[]');
                 realHistoryData.value = JSON.parse(await localforage.getItem('historyData') || '[]');
                 stockMeta.value = JSON.parse(await localforage.getItem('stockMeta') || '{}');
@@ -3394,11 +3444,53 @@ async function saveData() {
         liquidityBufferRatio: liquidityBufferRatio.value
     }));
 
+    if (syncTimer) {
+        clearTimeout(syncTimer);
+        syncTimer = null;
+    }
+
+    if (!cloudHydrated.value) {
+        console.warn('⛔ 已阻擋 Supabase 寫入：尚未成功完成雲端 hydration。');
+        return;
+    }
+
+    const isFullyEmptyPortfolioState =
+        transactions.value.length === 0 &&
+        realHistoryData.value.length === 0 &&
+        Object.keys(stockMeta.value || {}).length === 0;
+
+    if (cloudBaselineHadPortfolioData.value && isFullyEmptyPortfolioState) {
+        console.error('⛔ 已阻擋破壞性 Supabase 寫入：已載入過非空投資組合，但目前 state 突然全空。');
+        return;
+    }
+
     isDbSyncing.value = true;
-    if (syncTimer) clearTimeout(syncTimer);
 
     syncTimer = setTimeout(async () => {
         try {
+            if (!cloudHydrated.value) {
+                console.warn('⛔ 已取消 Supabase 寫入：排程期間 hydration 狀態失效。');
+                return;
+            }
+
+            const destructiveEmptyState =
+                cloudBaselineHadPortfolioData.value &&
+                transactions.value.length === 0 &&
+                realHistoryData.value.length === 0 &&
+                Object.keys(stockMeta.value || {}).length === 0;
+
+            if (destructiveEmptyState) {
+                console.error('⛔ 已取消破壞性 Supabase 寫入：投資組合 state 在同步前變成全空。');
+                return;
+            }
+
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            if (sessionError) throw sessionError;
+            if (!session) {
+                console.warn('⛔ 已取消 Supabase 寫入：目前沒有 authenticated session。');
+                return;
+            }
+
             const { error } = await supabase.from('portfolio_db').upsert({
                 id: 1,
                 ledger_data: transactions.value,
@@ -3414,10 +3506,16 @@ async function saveData() {
             }, { onConflict: 'id' });
 
             if (error) throw error;
+
+            cloudBaselineHadPortfolioData.value =
+                transactions.value.length > 0 ||
+                realHistoryData.value.length > 0 ||
+                Object.keys(stockMeta.value || {}).length > 0;
         } catch (e) {
             console.error("❌ Supabase 同步失敗", e);
         } finally {
             isDbSyncing.value = false;
+            syncTimer = null;
         }
     }, 1500);
 }
@@ -6851,7 +6949,6 @@ chartCML.data.datasets = [
             updateStickyHeaderOffsets();
 
     window.addEventListener('resize', updateStickyHeaderOffsets);
-    loadDataFromCloud();
     reloadAllOptimizerData({ initial: true });
 
     window.addEventListener('resize', () => {
