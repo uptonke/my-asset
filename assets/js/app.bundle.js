@@ -4307,6 +4307,145 @@ function simulateJumpDiffusionMoments({
         es05
     };
 }
+
+function simulateGbmVsJumpPaths({
+    muAnnual,
+    sigmaAnnual,
+    jumpLambdaAnnual,
+    jumpMean,
+    jumpStd,
+    horizonWeeks = 52,
+    nSims = 4000,
+    seed = 20261124
+}) {
+    const safeMu = Number(muAnnual);
+    const safeSigma = Math.max(0, Number(sigmaAnnual));
+    const safeLambda = Math.max(0, Number(jumpLambdaAnnual) || 0);
+    const safeJumpMean = Number(jumpMean) || 0;
+    const safeJumpStd = Math.max(0, Number(jumpStd) || 0);
+
+    if (!Number.isFinite(safeMu) || !Number.isFinite(safeSigma) || safeSigma <= 0) return null;
+
+    const rng = (() => {
+        let state = (Number(seed) >>> 0) || 1;
+        return () => {
+            state = (state * 1664525 + 1013904223) >>> 0;
+            return state / 4294967296;
+        };
+    })();
+
+    function randn() {
+        let u = 0;
+        let v = 0;
+        while (u <= Number.EPSILON) u = rng();
+        while (v <= Number.EPSILON) v = rng();
+        return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+    }
+
+    function poisson(lambda) {
+        if (!Number.isFinite(lambda) || lambda <= 0) return 0;
+        const threshold = Math.exp(-lambda);
+        let product = 1;
+        let count = 0;
+        do {
+            count += 1;
+            product *= rng();
+        } while (product > threshold && count < 100);
+        return count - 1;
+    }
+
+    function quantile(sorted, q) {
+        if (!sorted.length) return null;
+        const pos = (sorted.length - 1) * q;
+        const lo = Math.floor(pos);
+        const hi = Math.ceil(pos);
+        if (lo === hi) return sorted[lo];
+        const weight = pos - lo;
+        return sorted[lo] * (1 - weight) + sorted[hi] * weight;
+    }
+
+    function summarize(terminalReturns, maxDrawdowns) {
+        const sorted = [...terminalReturns].sort((a, b) => a - b);
+        const sortedMdd = [...maxDrawdowns].sort((a, b) => a - b);
+        const tailCount = Math.max(1, Math.ceil(sorted.length * 0.05));
+        const es95 = sorted.slice(0, tailCount).reduce((sum, value) => sum + value, 0) / tailCount;
+        const lossProb = terminalReturns.filter((value) => value < 0).length / terminalReturns.length;
+        const mdd10Prob = maxDrawdowns.filter((value) => value <= -0.10).length / maxDrawdowns.length;
+        const mdd20Prob = maxDrawdowns.filter((value) => value <= -0.20).length / maxDrawdowns.length;
+
+        return {
+            p5: quantile(sorted, 0.05),
+            p50: quantile(sorted, 0.50),
+            p95: quantile(sorted, 0.95),
+            es95,
+            lossProb,
+            mdd10Prob,
+            mdd20Prob,
+            medianMdd: quantile(sortedMdd, 0.50)
+        };
+    }
+
+    const dt = 1 / 52;
+    const diffusionDrift = (safeMu - 0.5 * safeSigma * safeSigma) * dt;
+    const diffusionScale = safeSigma * Math.sqrt(dt);
+    const lambdaWeekly = safeLambda * dt;
+    const baselineTerminal = [];
+    const stressedTerminal = [];
+    const baselineMdd = [];
+    const stressedMdd = [];
+
+    for (let sim = 0; sim < nSims; sim += 1) {
+        let baselineWealth = 1;
+        let stressedWealth = 1;
+        let baselinePeak = 1;
+        let stressedPeak = 1;
+        let baselineWorstDrawdown = 0;
+        let stressedWorstDrawdown = 0;
+
+        for (let week = 0; week < horizonWeeks; week += 1) {
+            const z = randn();
+            const diffusionGrowth = Math.exp(diffusionDrift + diffusionScale * z);
+            baselineWealth *= diffusionGrowth;
+            stressedWealth *= diffusionGrowth;
+
+            const jumpCount = poisson(lambdaWeekly);
+            if (jumpCount > 0) {
+                const jumpComponent =
+                    jumpCount * safeJumpMean +
+                    Math.sqrt(jumpCount) * safeJumpStd * randn();
+                const jumpGrowth = Math.max(0.05, 1 + jumpComponent);
+                stressedWealth *= jumpGrowth;
+            }
+
+            baselinePeak = Math.max(baselinePeak, baselineWealth);
+            stressedPeak = Math.max(stressedPeak, stressedWealth);
+            baselineWorstDrawdown = Math.min(baselineWorstDrawdown, baselineWealth / baselinePeak - 1);
+            stressedWorstDrawdown = Math.min(stressedWorstDrawdown, stressedWealth / stressedPeak - 1);
+        }
+
+        baselineTerminal.push(baselineWealth - 1);
+        stressedTerminal.push(stressedWealth - 1);
+        baselineMdd.push(baselineWorstDrawdown);
+        stressedMdd.push(stressedWorstDrawdown);
+    }
+
+    return {
+        horizonWeeks,
+        nSims,
+        seed,
+        model: 'paired_gbm_vs_uncompensated_jump_stress',
+        baseline: summarize(baselineTerminal, baselineMdd),
+        jumpStress: summarize(stressedTerminal, stressedMdd),
+        inputs: {
+            muAnnual: safeMu,
+            sigmaAnnual: safeSigma,
+            jumpLambdaAnnual: safeLambda,
+            jumpMean: safeJumpMean,
+            jumpStd: safeJumpStd
+        }
+    };
+}
+
 function normCdf(x) {
     const t = 1 / (1 + 0.2316419 * Math.abs(x));
     const d = 0.3989423 * Math.exp(-x * x / 2);
@@ -4514,9 +4653,12 @@ function computeDSR({ sr, skew = 0, exKurt = 0, nObs = 0, nTrials = 1 }) {
         let p_kurt_ex = (Math.pow(p_beta, 4) * Math.pow(sm, 4) * m_kurt_ex) / Math.pow(p_vol, 4);
 
         let jumpTailLoss = 0;
+        let baselinePathRet = p_ret;
+        let baselinePathVol = p_vol;
+        const pathJumpParams = getEffectiveJumpParams(riskyAssets, weights);
 
             if (enableBlackSwan.value) {
-                const jp = getEffectiveJumpParams(riskyAssets, weights);
+                const jp = pathJumpParams;
 
                 // 【解析解 (Analytical Moments) 替換原本的內部 MC 模擬】
                 // 計算 Merton 模型下的跳躍補償期望值與變異數 (年化)
@@ -4544,6 +4686,8 @@ function computeDSR({ sr, skew = 0, exKurt = 0, nObs = 0, nTrials = 1 }) {
         if (enableInflation.value) {
             p_ret -= 0.025;
             p_vol = Math.sqrt(Math.pow(p_vol, 2) + Math.pow(0.015, 2));
+            baselinePathRet -= 0.025;
+            baselinePathVol = Math.sqrt(Math.pow(baselinePathVol, 2) + Math.pow(0.015, 2));
             rf_effective = rf - 0.025;
         }
 
@@ -4585,6 +4729,9 @@ if (Number.isFinite(currentScore)) {
             kurt: p_kurt_ex,
             weights,
             jumpTailLoss,
+            baselinePathRet,
+            baselinePathVol,
+            pathJumpParams,
             hardBufferTargetWeight: targetHardBufferWeight,
             hardBufferCurrentWeight: currentHardBufferWeight,
             defensiveCurrentWeight: currentDefensiveWeight
@@ -4648,6 +4795,56 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
     ? 0
     : Math.abs(bestPort.jumpTailLoss);
 
+const pathSimulationRaw = simulateGbmVsJumpPaths({
+    muAnnual: bestPort.baselinePathRet,
+    sigmaAnnual: bestPort.baselinePathVol,
+    jumpLambdaAnnual: bestPort.pathJumpParams?.lambda || 0,
+    jumpMean: bestPort.pathJumpParams?.mean || 0,
+    jumpStd: bestPort.pathJumpParams?.std || 0,
+    horizonWeeks: 52,
+    nSims: 4000,
+    seed: 20261124
+});
+
+const formatPathMetricPct = (value, digits = 1) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? (n * 100).toFixed(digits) : '-';
+};
+
+const pathSimulation = pathSimulationRaw ? {
+    horizonWeeks: pathSimulationRaw.horizonWeeks,
+    nSims: pathSimulationRaw.nSims,
+    seed: pathSimulationRaw.seed,
+    model: pathSimulationRaw.model,
+    baseline: {
+        p5: formatPathMetricPct(pathSimulationRaw.baseline.p5),
+        p50: formatPathMetricPct(pathSimulationRaw.baseline.p50),
+        p95: formatPathMetricPct(pathSimulationRaw.baseline.p95),
+        es95: formatPathMetricPct(pathSimulationRaw.baseline.es95),
+        lossProb: formatPathMetricPct(pathSimulationRaw.baseline.lossProb),
+        mdd10Prob: formatPathMetricPct(pathSimulationRaw.baseline.mdd10Prob),
+        mdd20Prob: formatPathMetricPct(pathSimulationRaw.baseline.mdd20Prob),
+        medianMdd: formatPathMetricPct(pathSimulationRaw.baseline.medianMdd)
+    },
+    jumpStress: {
+        p5: formatPathMetricPct(pathSimulationRaw.jumpStress.p5),
+        p50: formatPathMetricPct(pathSimulationRaw.jumpStress.p50),
+        p95: formatPathMetricPct(pathSimulationRaw.jumpStress.p95),
+        es95: formatPathMetricPct(pathSimulationRaw.jumpStress.es95),
+        lossProb: formatPathMetricPct(pathSimulationRaw.jumpStress.lossProb),
+        mdd10Prob: formatPathMetricPct(pathSimulationRaw.jumpStress.mdd10Prob),
+        mdd20Prob: formatPathMetricPct(pathSimulationRaw.jumpStress.mdd20Prob),
+        medianMdd: formatPathMetricPct(pathSimulationRaw.jumpStress.medianMdd)
+    },
+    inputs: {
+        muAnnualPct: formatPathMetricPct(pathSimulationRaw.inputs.muAnnual),
+        sigmaAnnualPct: formatPathMetricPct(pathSimulationRaw.inputs.sigmaAnnual),
+        jumpLambdaAnnual: Number(pathSimulationRaw.inputs.jumpLambdaAnnual).toFixed(2),
+        jumpMeanPct: formatPathMetricPct(pathSimulationRaw.inputs.jumpMean),
+        jumpStdPct: formatPathMetricPct(pathSimulationRaw.inputs.jumpStd)
+    }
+} : null;
+
     // ==========================================
     // 🎲 凱利公式 (Kelly Criterion) 曝險建議
     // ==========================================
@@ -4697,6 +4894,7 @@ const safeJumpTailLoss = Math.abs(bestPort.jumpTailLoss) < 1e-8
     bufferFloorRespected: bestPort.hardBufferCurrentWeight >= bestPort.hardBufferTargetWeight - 1e-6,
 
     jumpTailLossPct: (safeJumpTailLoss * 100).toFixed(2),
+    pathSimulation,
 
     // 新增 Kelly 輸出
     fullKelly: (fullKelly * 100).toFixed(1),
