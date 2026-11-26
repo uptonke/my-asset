@@ -1227,6 +1227,29 @@
                         </template><div v-else class="text-xs">等待更新</div>
                     </div>
                     <div class="glass chart-card p-5 md:p-6 space-y-3">
+                        <h4 class="panel-title">Attribution Quality Diagnostics · v2.6.1</h4>
+                        <template v-if="performanceAttribution?.quality_diagnostics">
+                            <div class="text-xs" v-for="(r,k) in performanceAttribution.quality_diagnostics.windows" :key="k">{{ k }} 週｜初篩 {{ r.passed }} / {{ r.expected }}｜合格 {{ r.eligible }}｜全區間通過 {{ performancePct(r.pass_pct_all) }}</div>
+                            <div class="text-xs" v-for="(v,k) in performanceAttribution.quality_diagnostics.reason_counts" :key="k">{{ k }}：{{ v }} 期</div>
+                            <details class="text-xs"><summary>依嚴重度排序（排除優先）</summary><div class="max-h-[250px] overflow-y-auto"><div v-for="r in performanceAttribution.quality_diagnostics.priority" :key="r.start">{{ r.start }} ～ {{ r.end }}｜{{ r.reasons.join(', ') }}｜門檻倍數 {{ r.severity?.toFixed(2) ?? '—' }}</div></div></details>
+                            <details class="text-xs"><summary>品質通過連續區段（日期不同不可直接比較）</summary><div v-for="r in performanceAttribution.quality_diagnostics.quality_segments" :key="r.start">{{ r.start }} ～ {{ r.end }}｜{{ r.period_count }} 期｜NAV {{ performancePct(r.portfolio_return_pct) }}｜基準 {{ performancePct(r.benchmark_return_pct) }}｜主動 {{ r.active_return_pp.toFixed(3) }} pp</div></details>
+                            <details class="text-xs"><summary>月份／交易類型／標的關聯（非因果）</summary><div class="max-h-[250px] overflow-y-auto"><div v-for="r in performanceAttribution.quality_diagnostics.cohorts" :key="r.group">{{ r.group }}｜待審／排除 {{ r.review_or_excluded }} / {{ r.intervals }}</div></div></details>
+                        </template><div v-else class="text-xs">等待更新</div>
+                    </div>
+                    <div class="glass chart-card p-5 md:p-6 space-y-3">
+                        <h4 class="panel-title">Security Dividend &amp; Cash Flow Attribution · v2.8 / v2.9</h4>
+                        <p class="panel-subtitle">只使用已入帳並明確分類的現金流；股息依標的連結，不推算漏記股息，不重複計入 P&amp;L。未分類收入不等於零股息。</p>
+                        <template v-if="performanceAttribution?.cashflow_attribution">
+                            <details class="text-xs" v-for="(r,k) in performanceAttribution.cashflow_attribution.windows" :key="k" :open="k==='SI'">
+                                <summary>{{ k }}｜{{ r.start }} ～ {{ r.end }}｜已連結股息 {{ formatNumber(r.linked_dividend_twd ?? 0) }} TWD</summary>
+                                <div v-if="r.status==='UNAVAILABLE'">無法核對</div>
+                                <div v-for="(v,t) in r.totals_twd" :key="t">{{ t }}：{{ formatNumber(v) }} TWD｜Dietz {{ r.other_dietz_pp?.[t]?.toFixed(3) ?? '—' }} pp</div>
+                                <div v-for="s in (r.security_rows || []).filter(s=>s.recorded_net_dividend_twd!==0)" :key="s.ticker">{{ s.ticker }}｜股息 {{ formatNumber(s.recorded_net_dividend_twd) }}｜含股息損益 {{ s.pnl_including_dividend_twd===null ? '—' : formatNumber(s.pnl_including_dividend_twd) }}</div>
+                                <div>未分類／未連結事件 {{ r.unclassified?.length ?? 0 }} 筆｜核對差 {{ r.identity_error_twd?.toFixed(6) ?? '—' }} TWD</div>
+                            </details>
+                        </template><div v-else class="text-xs">等待更新</div>
+                    </div>
+                    <div class="glass chart-card p-5 md:p-6 space-y-3">
                         <h4 class="panel-title">Historical Brinson-Fachler · v2.3.3</h4>
                         <p class="panel-subtitle">歷史 NAV、流水帳及價格重建；研究用非正式基準。採交易日收盤切段與多期 Carino 主動報酬連結。現金為流水帳推算，非銀行核對；不跨缺漏區間，不回填原始 NAV。微額負現金 ≤ NT$1 僅在研究估值歸零；保留原始差額。</p>
                         <div class="text-xs text-amber-300">{{ performanceAttribution?.historical_brinson?.status || '等待新版歸因更新' }}｜{{ performanceAttribution?.historical_brinson?.reason || '' }}</div>
@@ -6907,6 +6930,15 @@
 
            <template v-else>
                <div class="mb-2">
+                   <div v-if="['Income','Expense'].includes(txForm.type)" class="space-y-2 mb-2">
+                       <label class="text-[10px] text-gray-500 block">現金流分類（依實際帳單；未知留空）</label>
+                       <select v-model="txForm.cashFlowKind" class="w-full input-dark p-2 rounded text-xs">
+                           <option value="">未分類</option>
+                           <template v-if="txForm.type==='Income'"><option value="dividend">股息／配息（實收）</option><option value="interest">利息</option><option value="other_income">其他收入</option></template>
+                           <template v-else><option value="fee">獨立費用</option><option value="tax">獨立稅款</option><option value="correction">現金校正</option><option value="other_expense">其他支出</option></template>
+                       </select>
+                       <input v-if="txForm.type==='Income' && txForm.cashFlowKind==='dividend'" v-model="txForm.cashFlowTicker" placeholder="股息標的代號（未知留空）" class="w-full input-dark p-2 rounded text-xs">
+                   </div>
                    <label class="text-[10px] text-gray-500 block">金額 (TWD)</label>
                    <input
                        v-model.number="txForm.amount"
