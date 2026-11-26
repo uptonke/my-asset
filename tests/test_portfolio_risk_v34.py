@@ -48,6 +48,7 @@ class PortfolioRiskTests(unittest.TestCase):
         self.market["assets"]["BTC"]["price"]=p.drop(self.dates[-4])
         f,r,latest,issues=weekly_marks(e,self.market,10)
         self.assertIn(str(self.dates[-4].date()),issues)
+        self.assertEqual(f.attrs["missing_by_ticker"],{"BTC":1})
         self.assertEqual(len(latest),2)
         self.assertTrue(pd.isna(r.loc[self.dates[-4],"BTC"]))
         self.assertTrue(pd.isna(r.loc[self.dates[-3],"BTC"]))
@@ -78,6 +79,14 @@ class PortfolioRiskTests(unittest.TestCase):
         self.assertAlmostEqual(r["pnl_twd"],-1440.)
         self.assertEqual(next(x for x in r["rows"] if x["ticker"]==CASH)["pnl_twd"],0.)
         self.assertAlmostEqual(sum(x["contribution_pp"] for x in r["rows"]),r["return_pct"])
+    def test_usd_cashlike_is_not_twd_cash(self):
+        e={"model_nav_twd":100.,"holdings":[{"ticker":"BOXX","bucket":"cash","currency":"USD","weight":.5,"market_value_twd":50.},
+            {"ticker":CASH,"bucket":"cash","currency":"TWD","weight":.5,"market_value_twd":50.}]}
+        s={"id":"fx","label":"fx","local_price_shocks":dict.fromkeys(BUCKETS,0.),"usd_twd_shock":-.10}
+        r=hypothetical(e,s)
+        self.assertAlmostEqual(r["return_pct"],-5.)
+        self.assertAlmostEqual(next(x for x in r["rows"] if x["ticker"]=="BOXX")["return_pct"],-10.)
+        self.assertEqual(next(x for x in r["rows"] if x["ticker"]==CASH)["return_pct"],0.)
     def test_scenarios_survive_insufficient_history(self):
         e=self.exp()
         c={"history_weeks":2,"scenarios":[{"id":"s","label":"s","local_price_shocks":dict.fromkeys(BUCKETS,0.),"usd_twd_shock":-.1}],

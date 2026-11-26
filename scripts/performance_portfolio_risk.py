@@ -10,8 +10,8 @@ from zoneinfo import ZoneInfo
 from datetime import datetime
 import numpy as np
 import pandas as pd
-from performance_coverage import quote,prepare_subscriptions
-from performance_calendar import required_session,DOMESTIC_FUNDS
+from performance_coverage import quote,prepare_subscriptions,CoverageIssue
+from performance_calendar import DOMESTIC_FUNDS
 
 CONFIG=Path(__file__).resolve().parents[1]/"config/portfolio_risk_v34.json"
 CASH="__TWD_CASH__"
@@ -78,7 +78,9 @@ def exposure(nav,tx,categories,market,captured,today=None):
             if not h or h["currency"]!=expected or abs(h["shares"]-n)>1e-5 or h.get("instrument_id")!=m.get("instrument_id"):
                 raise RiskBlocked("CAPTURED_MARK_INVENTORY_MISMATCH")
             mv=float(h["market_value_twd"])
-        else:mv=n*mark(t,m,market["fx"],cutoff)
+        else:
+            try:mv=n*mark(t,m,market["fx"],cutoff)
+            except CoverageIssue as e:raise RiskBlocked(e.detail["code"]+": "+t) from e
         if not math.isfinite(mv) or mv<=0:raise RiskBlocked("INVALID_MARKET_VALUE")
         vals[t]={"ticker":t,"bucket":m["bucket"],"currency":expected,"market_value_twd":mv,
                  "source":"captured_daily_mark" if exact else m.get("source","unknown")}
@@ -110,10 +112,16 @@ def common_marks(ex,market,d):
 def weekly_marks(ex,market,max_weeks=104):
     """Whole fixed seven-day observations. Record all holes; do not bridge."""
     end=pd.Timestamp(ex["cutoff"]);dates=pd.date_range(end-pd.Timedelta(weeks=max_weeks),end,freq="7D")
-    rows=[];issues=[]
+    rows=[];issues=[];missing_by_ticker={}
     for d in dates:
-        try:rows.append({"date":d,**common_marks(ex,market,d)})
-        except Exception:issues.append(str(d.date()))
+        row={"date":d};failed=False
+        for h in ex["holdings"]:
+            t=h["ticker"]
+            try:row[t]=1. if t==CASH else mark(t,market["assets"][t],market["fx"],d)
+            except Exception:
+                failed=True;missing_by_ticker[t]=missing_by_ticker.get(t,0)+1
+        if failed:issues.append(str(d.date()))
+        else:rows.append(row)
     cols=[h["ticker"] for h in ex["holdings"]]
     frame=pd.DataFrame(rows).set_index("date").reindex(dates)[cols] if rows else pd.DataFrame(index=dates,columns=cols,dtype=float)
     # Missing row remains NaN on both adjacent returns.
@@ -124,6 +132,7 @@ def weekly_marks(ex,market,max_weeks=104):
     start=len(ret)
     while start>0 and not ret.iloc[start-1].isna().any():start-=1
     latest=ret.iloc[start:]
+    frame.attrs["missing_by_ticker"]=missing_by_ticker
     return frame,ret,latest,issues
 
 def risk_contributions(returns,ex):
@@ -246,7 +255,7 @@ def build_portfolio_risk(nav,tx,categories,market,captured,config=None,today=Non
     try:
         frame,ret,latest,issues=weekly_marks(ex,market,int(config["history_weeks"]))
         out["coverage"]={"expected_weeks":len(ret),"valid_weeks":len(ret.dropna()),"latest_contiguous_weeks":len(latest),
-                         "missing_mark_dates":issues}
+                         "missing_mark_dates":issues,"missing_by_ticker":frame.attrs.get("missing_by_ticker",{})}
         for n in (26,52,104):
             if len(latest)<n:out["risk_windows"][str(n)]={"status":"INSUFFICIENT_SAMPLE","available":len(latest),"required":n}
             else:
