@@ -13,7 +13,7 @@ import pandas as pd
 FACTORS = ["Mkt-RF","SMB","HML","RMW","CMA","Mom","TW_Mkt_RF","Crypto_RF"]
 WINDOWS = {"1W":7,"1M":30,"3M":91,"YTD":None,"12M":365,"SI":None}
 EPS=1e-8
-ENGINE_VERSION='v2.2-historical-bf'
+ENGINE_VERSION='v2.3-coverage'
 
 
 def number(x):
@@ -62,7 +62,7 @@ def parse_inputs(row):
         elif t in ("deposit","withdraw"):
             if (t=="deposit" and flow<0) or (t=="withdraw" and flow>0):
                 raise ValueError("Invalid external flow sign")
-        tx.append({"date":d,"type":t,"ticker":ticker,"qty":q,"flow":flow,"category":str(x.get("category") or "")})
+        tx.append({"date":d,"type":t,"ticker":ticker,"qty":q,"flow":flow,"category":str(x.get("category") or ""),**({"subscription":x["subscription"]} if "subscription" in x else {})})
     return dict(sorted(nav.items())),sorted(tx,key=lambda x:x["date"]),categories
 
 
