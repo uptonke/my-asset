@@ -13,6 +13,7 @@ import pandas as pd
 FACTORS = ["Mkt-RF","SMB","HML","RMW","CMA","Mom","TW_Mkt_RF","Crypto_RF"]
 WINDOWS = {"1W":7,"1M":30,"3M":91,"YTD":None,"12M":365,"SI":None}
 EPS=1e-8
+ENGINE_VERSION='v1.1'
 
 
 def number(x):
@@ -134,10 +135,16 @@ def window_pnl(nav,tx,categories,market,start,end):
     flows=[x for x in tx if start<x["date"]<=end]
     external=sum(x["flow"] for x in flows if x["type"] in ("deposit","withdraw"))
     total=nav[end]-nav[start]-external
-    rows=[]; missing=[]
+    rows=[]; missing=[]; historical_issues=[]
     for t,cat in sorted(categories.items()):
         rel=[x for x in tx if x["ticker"]==t and x["qty"]!=0 and x["date"]<=end]
         opening=sum(x["qty"] for x in rel if x["date"]<=start)
+        if t in market.get("quarantined",{}):
+            active=any(x["date"]>start for x in rel)
+            if abs(opening)>=EPS or active:
+                missing.append({"ticker":t,"reason":market["quarantined"][t],"historical_only_no_window_trades":not active})
+                if not active: historical_issues.append(t)
+            continue
         if abs(opening)<EPS and not any(x["date"]>start for x in rel): continue
         try:
             m=market["assets"][t]
@@ -156,6 +163,7 @@ def window_pnl(nav,tx,categories,market,start,end):
     groups={}
     for r in rows: groups[r["bucket"]]=groups.get(r["bucket"],0.)+r["pnl_twd"]
     return {"status":"PARTIAL" if missing or abs(residual)>max(10.,abs(nav[start])*.001) else "RECONCILED_WITH_RESIDUAL",
+        "historical_issues_no_window_trades":historical_issues,
         "start":str(start.date()),"end":str(end.date()),"start_nav_twd":nav[start],"end_nav_twd":nav[end],
         "external_flow_twd":external,"actual_pnl_twd":total,"asset_pnl_twd":asset_total,
         "explicit_other_cashflow_twd":explicit,"unexplained_twd":residual,
@@ -199,13 +207,13 @@ def load_market(categories,earliest):
                                       auto_adjust=False,actions=True,raise_errors=True)
             if h.empty or "Close" not in h or "Stock Splits" not in h:
                 raise ValueError("Close or corporate actions unavailable")
-            px=series(h["Close"]);splits=list(series(h["Stock Splits"])[lambda x:x!=0].index)
+            px=series(h["Close"]);split_ratios=series(h["Stock Splits"])[lambda x:x!=0].to_dict();splits=list(split_ratios)
             foreign=q.is_foreign_currency_asset(t,cat)
             # Confirm quote currency rather than assuming all foreign assets are USD.
             currency=str(yf.Ticker(sym).fast_info.currency or "").upper()
             if currency!=("USD" if foreign else "TWD"):
                 raise ValueError("Quote currency does not match ledger classification")
-            out[t]={"price":px,"splits":splits,"foreign":foreign,"bucket":q.classify_asset_bucket(t,cat),"source":"Yahoo Close (no dividend adjustment)"}
+            out[t]={"price":px,"splits":splits,"split_ratios":split_ratios,"foreign":foreign,"bucket":q.classify_asset_bucket(t,cat),"source":"Yahoo Close (no dividend adjustment)","instrument_id":sym,"currency":currency}
         except Exception as exc:
             out[t]={"error":str(exc)[:180]}
     return {"assets":out,"fx":fx}
@@ -349,16 +357,27 @@ def clean_json(x):
 
 def build(row,market=None,factor_data=None):
     nav,tx,categories=parse_inputs(row)
+    from performance_data_quality import reconcile_transactions,cash_reconciliation
     earliest=min(nav)
-    market=load_market(categories,earliest) if market is None else market
-    pnl={label:window_pnl(nav,tx,categories,market,start,end) for label,start,end in windows_for(list(nav))}
+    earliest_trade=min([x["date"] for x in tx]+[earliest])
+    market=load_market(categories,earliest_trade) if market is None else market
+    # Copy metadata only; no mutation of raw ledger, NAV or source prices.
+    market={**market,"assets":{t:dict(m) for t,m in market["assets"].items()}}
+    adjusted,diagnostics,quarantined=reconcile_transactions(tx,categories,market,close)
+    market["quarantined"]=quarantined
+    pnl={label:window_pnl(nav,adjusted,categories,market,start,end) for label,start,end in windows_for(list(nav))}
+    quality={"version":"v1.1","inventory":diagnostics,"quarantined_count":len(quarantined),
+             "cash_reconciliation":cash_reconciliation(nav,tx,pnl),
+             "notes":["Unknown opening cash balance; cumulative ledger flows are not an independently observed bank balance.",
+                      "Split normalization is an inferred diagnostic, never a ledger edit. Ambiguous cases remain quarantined.",
+                      "Negative historical inventory with no current-period trades is flagged separately, not silently assigned zero exposure."]}
     try:
         ff,tw,btc=load_factors(earliest) if factor_data is None else factor_data
         periods,skipped=factor_periods(nav,tx,market["fx"],ff,tw,btc)
         factor=factor_report(periods,skipped,nav)
     except Exception as exc:
         factor={"status":"UNAVAILABLE","reason":str(exc)[:200],"windows":{}}
-    return clean_json({"version":"v1.0","generated_at":datetime.now(timezone.utc).isoformat(),
+    return clean_json({"version":"v1.0","engine_version":ENGINE_VERSION,"quality":quality,"generated_at":datetime.now(timezone.utc).isoformat(),
         "nav_as_of":str(list(nav)[-1].date()),"ledger_count":len(tx),"history_count":len(nav),
         "pnl":pnl,"factor":factor,"execution_permission":False,
         "notes":["NAV and external flows are recorded data; per-asset P&L is reconstructed, not broker-certified.",
@@ -372,7 +391,7 @@ def refresh_reason(row, now=None):
     """Skip intact fresh reports; trigger clears them on any source edit."""
     now = now or datetime.now(timezone.utc)
     report = row.get("performance_attribution")
-    if not isinstance(report, dict) or report.get("version") != "v1.0":
+    if not isinstance(report, dict) or report.get("version") != "v1.0" or report.get("engine_version") != ENGINE_VERSION:
         return "missing_or_invalidated"
     try:
         nav, tx, _ = parse_inputs(row)

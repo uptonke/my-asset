@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"scripts"))
-from build_performance_attribution import asset_pnl,window_pnl,carino,parse_inputs,factor_report,FACTORS
+from build_performance_attribution import asset_pnl,window_pnl,carino,parse_inputs,factor_report,FACTORS,ENGINE_VERSION
 
 class AttributionTests(unittest.TestCase):
     def setUp(self):
@@ -75,7 +75,7 @@ class RefreshGuardTests(unittest.TestCase):
         self.now = datetime(2026,11,26,tzinfo=timezone.utc)
         self.row = {"history_data":[{"date":"2026-11-14","assets":100},{"date":"2026-11-21","assets":90}],
                     "ledger_data":[],
-                    "performance_attribution":{"version":"v1.0","nav_as_of":"2026-11-21","ledger_count":0,"history_count":2,
+                    "performance_attribution":{"version":"v1.0","engine_version":ENGINE_VERSION,"nav_as_of":"2026-11-21","ledger_count":0,"history_count":2,
                         "generated_at":"2026-11-25T00:00:00+00:00","pnl":{"1W":{}},"factor":{"status":"OK"}}}
     def reason(self):
         from build_performance_attribution import refresh_reason
@@ -98,4 +98,33 @@ class RefreshGuardTests(unittest.TestCase):
         self.row["performance_attribution"]["generated_at"]="bad"
         self.assertEqual(self.reason(),"invalid_report_metadata")
 
+class QualityTests(unittest.TestCase):
+    def test_split_inference(self):
+        from performance_data_quality import split_basis
+        from build_performance_attribution import close
+        a,b,c=pd.to_datetime(["2025-01-02","2025-02-03","2025-03-03"])
+        price=pd.Series([25.,26.],index=[a,c])
+        tx=[{"date":a,"qty":10.,"flow":-1000.},{"date":c,"qty":-40.,"flow":1040.}]
+        chosen,basis=split_basis(tx,{b:4.},price,None,False,close)
+        self.assertEqual(basis,"inferred_as_traded_converted")
+        self.assertEqual(chosen[0]["qty"],40.)
+        self.assertEqual(tx[0]["qty"],10.)
+        normalized=[{"date":a,"qty":40.,"flow":-1000.},tx[1]]
+        self.assertEqual(split_basis(normalized,{b:4.},price,None,False,close)[1],"inferred_already_split_normalized")
+    def test_quarantine_and_cash(self):
+        from performance_data_quality import reconcile_transactions,cash_reconciliation
+        from build_performance_attribution import close
+        a,b,c=pd.to_datetime(["2025-01-02","2025-02-03","2025-03-03"])
+        tx=[{"date":a,"ticker":"X","qty":2.,"flow":-20.,"type":"buy"},{"date":b,"ticker":"X","qty":-3.,"flow":30.,"type":"sell"}]
+        m={"assets":{},"fx":None}
+        adjusted,diag,excluded=reconcile_transactions(tx,{"X":"TW"},m,close)
+        self.assertEqual(diag[0]["raw_inventory"]["ending_shares"],-1.)
+        m["quarantined"]=excluded
+        nav={b:100.,c:95.}
+        p=window_pnl(nav,adjusted,{"X":"TW"},m,b,c)
+        self.assertEqual(p["historical_issues_no_window_trades"],["X"])
+        self.assertEqual(p["unexplained_twd"],-5.)
+        r=cash_reconciliation(nav,tx,{"1M":p})["1M"]
+        self.assertFalse(r["opening_cash_balance_verified"])
+        self.assertAlmostEqual(r["bridge_error_twd"],0.)
 if __name__=="__main__":unittest.main()
