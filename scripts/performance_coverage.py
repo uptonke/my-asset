@@ -1,6 +1,7 @@
 """Private historical coverage diagnostics. Never impute missing market prices."""
 import math
 import pandas as pd
+from performance_calendar import required_session, benchmark_calendar
 
 CASH_TOLERANCE_TWD=1.
 EPS=1e-8
@@ -10,13 +11,24 @@ class CoverageIssue(ValueError):
         super().__init__(reason)
         self.detail={"code":code,"ticker":ticker,"date":str(date.date()),"reason":reason,**extra}
 
-def quote(s,d,age,t,source,kind="PRICE"):
+def quote(s,d,age,t,source,kind="PRICE",calendar=None):
     s=s if s is not None else pd.Series(dtype=float)
     before=s.loc[:d] if len(s) else s
     extra={"source":source,"first_available":str(s.index[0].date()) if len(s) else None,
            "last_available":str(s.index[-1].date()) if len(s) else None,
            "last_on_or_before":str(before.index[-1].date()) if len(before) else None,"max_age_days":age}
-    if before.empty or (d-before.index[-1]).days>age:
+    if calendar:
+        try:expected=required_session(calendar,d)
+        except Exception as e:
+            raise CoverageIssue("CALENDAR_UNAVAILABLE",t,d,"Exchange calendar unavailable: "+t,calendar=calendar,source=source) from e
+        extra.update(calendar=calendar,expected_session=str(expected.date()))
+        if expected not in s.index:
+            code="BEFORE_FIRST_QUOTE" if kind=="PRICE" and len(s) and expected<s.index[0] else "MISSING_SESSION_"+kind
+            raise CoverageIssue(code,t,d,"Missing required session: "+t+" @ "+str(expected.date()),**extra)
+        if len(before) and before.index[-1]!=expected:
+            raise CoverageIssue("CALENDAR_QUOTE_CONFLICT",t,d,"Quote conflicts with exchange calendar: "+t,**extra)
+        before=s.loc[:expected]
+    if before.empty or (not calendar and (d-before.index[-1]).days>age):
         code="BEFORE_FIRST_QUOTE" if kind=="PRICE" and len(s) and d<s.index[0] else "MISSING_"+kind
         raise CoverageIssue(code,t,d,"Missing or stale valuation: "+t+" @ "+str(d.date()),**extra)
     v=float(before.iloc[-1])
@@ -64,7 +76,7 @@ def asset_mark(t,n,d,market):
     if lot and lot["paid"]<=d<lot["switch"]:
         if abs(n-lot["qty"])>EPS:raise CoverageIssue("SUBSCRIPTION_QUANTITY",t,d,"Subscription quantity mismatch: "+t)
         return lot["amount"],True
-    p=quote(m.get("price"),d,7,t,m.get("source","unknown"))
+    p=quote(m.get("price"),d,7,t,m.get("source","unknown"),calendar=m.get("calendar"))
     f=quote(market.get("fx"),d,4,"USD/TWD","portfolio FX","FX") if m.get("foreign") else 1.
     return n*p*f,False
 
@@ -95,7 +107,7 @@ def interval_diagnostics(a,b,tx,categories,market,config,bmarket):
             except CoverageIssue as e:record(e)
         if benchmark:
             for g in config["weights"]:
-                try:quote(bp.get(g),d,7,"BENCHMARK:"+g,"benchmark close","BENCHMARK")
+                try:quote(bp.get(g),d,7,"BENCHMARK:"+g,"benchmark close","BENCHMARK",benchmark_calendar(config,g))
                 except CoverageIssue as e:record(e)
                 if config["currency"][g]=="USD":
                     try:quote(bfx,d,4,"BENCHMARK:USD/TWD","benchmark FX","FX")
@@ -111,3 +123,27 @@ def interval_diagnostics(a,b,tx,categories,market,config,bmarket):
     return {"issues":list(problems.values()),"minimum_ledger_cash_twd":float(minimum),
             "micro_cash_tolerance_used":-CASH_TOLERANCE_TWD<=minimum<0,
             "pending_subscription_tickers":sorted(pending)}
+
+
+def cash_trace(tx):
+    daily={}
+    for x in tx:daily.setdefault(x["date"],[]).append(x["flow"])
+    balance=0.;minimum=0.;negative=[]
+    for d,flows in sorted(daily.items()):
+        flow=math.fsum(flows)
+        balance=math.fsum([balance,flow]);minimum=min(minimum,balance)
+        if balance < -EPS:
+            negative.append({"date":str(d.date()),"daily_flow_twd":flow,"cash_twd":balance,
+                             "status":"MATERIAL" if balance < -CASH_TOLERANCE_TWD else "MICRO"})
+    return {"opening_cash_verified":False,"minimum_cash_twd":minimum,"material_negative_days":sum(r["status"]=="MATERIAL" for r in negative),"negative_days":negative}
+
+def fund_coverage(market):
+    rows=[]
+    for t,m in market["assets"].items():
+        if not m.get("fund"):continue
+        s=m.get("price")
+        rows.append({"ticker":t,"status":m.get("historical_recovery_status","UNKNOWN"),
+                     "source":m.get("source","unknown"),"observations":len(s) if s is not None else 0,
+                     "first_available":str(s.index[0].date()) if s is not None and len(s) else None,
+                     "last_available":str(s.index[-1].date()) if s is not None and len(s) else None})
+    return rows

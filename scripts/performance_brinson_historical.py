@@ -4,7 +4,8 @@ import json
 import numpy as np
 import pandas as pd
 from performance_brinson import CONFIG, effects, benchmark_prices
-from performance_coverage import CASH_TOLERANCE_TWD, asset_mark, prepare_subscriptions, interval_diagnostics
+from performance_coverage import CASH_TOLERANCE_TWD, asset_mark, prepare_subscriptions, interval_diagnostics, quote, cash_trace, fund_coverage
+from performance_calendar import benchmark_calendar
 
 EPS=1e-8
 NAMES=("allocation","selection","interaction","execution_other","nav_bridge")
@@ -31,7 +32,6 @@ def active_link(rp,rb,components):
 
 
 def historical_interval(a,b,nav,tx,categories,market,config,bmarket):
-    from build_performance_attribution import close
     groups=list(config["weights"]); idx={g:i for i,g in enumerate(groups)}
     wb=np.array([config["weights"][g] for g in groups],dtype=float)
     bp,bfx=bmarket
@@ -51,7 +51,7 @@ def historical_interval(a,b,nav,tx,categories,market,config,bmarket):
             out[idx[g]]+=mark
         return out
     def bench(d):
-        return np.array([close(bp[g],d,7)*(close(bfx,d,4) if config["currency"][g]=="USD" else 1.) for g in groups])
+        return np.array([quote(bp[g],d,7,"BENCHMARK:"+g,"benchmark close","BENCHMARK",benchmark_calendar(config,g))*(quote(bfx,d,4,"BENCHMARK:USD/TWD","benchmark FX","FX") if config["currency"][g]=="USD" else 1.) for g in groups])
     q=dict.fromkeys(categories,0.)
     cash=0.
     for x in tx:
@@ -125,14 +125,16 @@ def build_historical(nav,tx,categories,market,config=None,bmarket=None):
     groups=list(config["weights"])
     pending,subscription_errors=prepare_subscriptions(tx,market)
     market={**market,"subscriptions":pending,"subscription_errors":subscription_errors}
-    out={"version":"v2.3","status":"NO_ELIGIBLE_INTERVAL","benchmark":config,"execution_permission":False,
+    out={"version":"v2.3.1","status":"NO_ELIGIBLE_INTERVAL","benchmark":config,"execution_permission":False,
         "expected_intervals":max(0,len(nav)-1),"periods":[],"skipped":[],"segments":[],
+        "cash_trace":cash_trace(tx),"market_recovery":fund_coverage(market),
         "coverage_diagnostics":{"reason_interval_counts":{},"ticker_interval_counts":{},"micro_cash_intervals":0,"pending_subscription_intervals":0,"cash_tolerance_twd":CASH_TOLERANCE_TWD,"subscription_errors":subscription_errors},
         "notes":["Historical reconstruction only; recorded NAV remains unchanged. Ledger-implied cash is not independently verified.",
                  "Same-date or earlier unadjusted closes, current-vintage data, asynchronous markets; not total returns or point-in-time marks.",
                  "End-of-day ledger events; trade execution and other recorded cash flow effects separate from allocation, selection and interaction.",
                  "Reference policy reset at each NAV boundary, drift within interval. Actual portfolio uses Modified Dietz; NAV bridge also includes methodology differences.",
                  "No linking across skipped intervals. No formal trade permission.",
+                 "Listed TW/US price marks require the latest scheduled exchange session, including holidays. Fund NAV, FX and crypto retain their separate age rules. Calendar data are versioned research inputs, not proof of actual quote publication.",
                  "Cash deficits up to TWD 1 are clamped only for research valuation; raw balance and residual retained. Verified paid subscriptions are claims until the exact confirmed first valuation date; classified in intended equity bucket."]}
     if bmarket is None:
         try:bmarket=benchmark_prices(config,min(nav))
