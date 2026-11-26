@@ -1237,14 +1237,13 @@
                         </template><div v-else class="text-xs">等待更新</div>
                     </div>
                     <div class="glass chart-card p-5 md:p-6 space-y-3">
-                        <h4 class="panel-title">Security Dividend &amp; Cash Flow Attribution · v2.8 / v2.9</h4>
-                        <p class="panel-subtitle">只使用已入帳並明確分類的現金流；股息依標的連結，不推算漏記股息，不重複計入 P&amp;L。未分類收入不等於零股息。</p>
+                        <h4 class="panel-title">Cash Flow Classification · v2.9.1</h4>
+                        <p class="panel-subtitle">僅分類已入帳現金流，不新增個券股息歸因，不改變原始 NAV 或持倉損益。</p>
                         <template v-if="performanceAttribution?.cashflow_attribution">
                             <details class="text-xs" v-for="(r,k) in performanceAttribution.cashflow_attribution.windows" :key="k" :open="k==='SI'">
-                                <summary>{{ k }}｜{{ r.start }} ～ {{ r.end }}｜已連結股息 {{ formatNumber(r.linked_dividend_twd ?? 0) }} TWD</summary>
+                                <summary>{{ k }}｜{{ r.start }} ～ {{ r.end }}｜其他現金流 {{ formatNumber(r.explicit_other_cashflow_twd ?? 0) }} TWD</summary>
                                 <div v-if="r.status==='UNAVAILABLE'">無法核對</div>
                                 <div v-for="(v,t) in r.totals_twd" :key="t">{{ t }}：{{ formatNumber(v) }} TWD｜Dietz {{ r.other_dietz_pp?.[t]?.toFixed(3) ?? '—' }} pp</div>
-                                <div v-for="s in (r.security_rows || []).filter(s=>s.recorded_net_dividend_twd!==0)" :key="s.ticker">{{ s.ticker }}｜股息 {{ formatNumber(s.recorded_net_dividend_twd) }}｜含股息損益 {{ s.pnl_including_dividend_twd===null ? '—' : formatNumber(s.pnl_including_dividend_twd) }}</div>
                                 <div>未分類／未連結事件 {{ r.unclassified?.length ?? 0 }} 筆｜核對差 {{ r.identity_error_twd?.toFixed(6) ?? '—' }} TWD</div>
                             </details>
                         </template><div v-else class="text-xs">等待更新</div>
@@ -6950,10 +6949,9 @@
                        <label class="text-[10px] text-gray-500 block">現金流分類（依實際帳單；未知留空）</label>
                        <select v-model="txForm.cashFlowKind" class="w-full input-dark p-2 rounded text-xs">
                            <option value="">未分類</option>
-                           <template v-if="txForm.type==='Income'"><option value="dividend">股息／配息（實收）</option><option value="interest">利息</option><option value="other_income">其他收入</option></template>
+                           <template v-if="txForm.type==='Income'"><option value="interest">利息</option><option value="other_income">其他收入</option></template>
                            <template v-else><option value="fee">獨立費用</option><option value="tax">獨立稅款</option><option value="correction">現金校正</option><option value="other_expense">其他支出</option></template>
                        </select>
-                       <input v-if="txForm.type==='Income' && txForm.cashFlowKind==='dividend'" v-model="txForm.cashFlowTicker" placeholder="股息標的代號（未知留空）" class="w-full input-dark p-2 rounded text-xs">
                    </div>
                    <label class="text-[10px] text-gray-500 block">金額 (TWD)</label>
                    <input
