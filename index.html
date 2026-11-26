@@ -2988,7 +2988,7 @@
                                                                 <td class="px-3 py-2 text-right" :class="(row.vol_delta_vs_current_pct || 0) <= 0 ? 'text-emerald-300' : 'text-red-300'">
                                                                     {{ row.vol_delta_vs_current_pct ?? '-' }}%
                                                                 </td>
-                                                                <td class="px-3 py-2 text-right" :class="(row.es_delta_vs_current_pct || 0) <= 0 ? 'text-emerald-300' : 'text-red-300'">
+                                                                <td class="px-3 py-2 text-right" :class="row.es_delta_vs_current_pct == null ? 'text-gray-500' : row.es_delta_vs_current_pct < 0 ? 'text-emerald-300' : row.es_delta_vs_current_pct > 0 ? 'text-red-300' : 'text-gray-300'">
                                                                     {{ row.es_delta_vs_current_pct ?? '-' }}%
                                                                 </td>
                                                                 <td class="px-3 py-2 text-right" :class="(row.mdd_delta_vs_current_pct || 0) >= 0 ? 'text-emerald-300' : 'text-red-300'">
@@ -3119,6 +3119,10 @@
                                     </div>
 
                                     <template v-else>
+                                        <div class="rounded-xl border border-white/10 p-3 text-xs" :class="optimizerComparisonBasis.comparable ? 'text-gray-300' : 'text-amber-300'">
+                                            {{ optimizerComparisonBasis.reason }}｜skfolio：{{ optimizerComparisonBasis.as_of || '-' }}｜Riskfolio：{{ optimizerComparisonBasis.other_as_of || '-' }}
+                                            <div>歷史樣本比較不等於即時調倉；HRP-lite 暫無共同樣本 ES/VaR/MDD，不參與排名。</div>
+                                        </div>
                                         <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
                                             <div class="quant-card border-fuchsia-500/20 bg-fuchsia-500/10">
                                                 <div class="quant-label text-fuchsia-300">統一候選數</div>
@@ -3188,7 +3192,7 @@
                                                             <td class="px-3 py-2 text-right text-red-300">{{ row.var95_pct ?? '-' }}%</td>
                                                             <td class="px-3 py-2 text-right text-red-300">{{ row.es95_pct ?? '-' }}%</td>
                                                             <td class="px-3 py-2 text-right text-orange-300">{{ row.max_drawdown_pct ?? '-' }}%</td>
-                                                            <td class="px-3 py-2 text-right" :class="(row.es_delta_vs_current_pct || 0) <= 0 ? 'text-emerald-300' : 'text-red-300'">
+                                                            <td class="px-3 py-2 text-right" :class="row.es_delta_vs_current_pct == null ? 'text-gray-500' : row.es_delta_vs_current_pct < 0 ? 'text-emerald-300' : row.es_delta_vs_current_pct > 0 ? 'text-red-300' : 'text-gray-300'">
                                                                 {{ row.es_delta_vs_current_pct ?? '-' }}%
                                                             </td>
                                                             <td class="px-3 py-2 text-right text-cyan-300">{{ row.turnover_vs_current_pct ?? '-' }}%</td>
@@ -3324,7 +3328,7 @@
                                                 <div class="quant-value text-white">{{ optimizerRobustnessOutput?.sample?.strict_sample ?? '-' }}</div>
                                             </div>
                                             <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
-                                                <div class="quant-label text-emerald-300">最穩定方法</div>
+                                                <div class="quant-label text-emerald-300">最穩定最佳化方法</div>
                                                 <div class="quant-value text-white text-lg">{{ zhText(optimizerMostStableMethod?.key) }}</div>
                                             </div>
                                             <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
@@ -3572,6 +3576,13 @@
                                                         緩衝後換手率：{{ selectedOptimizerBufferCandidate?.buffer_turnover_pct ?? '-' }}%
                                                         （減少 {{ selectedOptimizerBufferCandidate?.turnover_reduction_pct ?? '-' }}%）
                                                     </div>
+                                                </div>
+                                                <div v-if="selectedOptimizerBufferCandidate?.funding" class="px-3 py-3 text-xs border-b border-white/10" :class="selectedOptimizerBufferCandidate.funding.status === 'BLOCKED' ? 'text-amber-300' : 'text-emerald-300'">
+                                                    資金檢查：{{ selectedOptimizerBufferCandidate.funding.reason }}｜
+                                                    擬買入 NT$ {{ selectedOptimizerBufferCandidate.funding.buy_twd == null ? '-' : formatNumber(selectedOptimizerBufferCandidate.funding.buy_twd) }}｜
+                                                    擬賣出 NT$ {{ selectedOptimizerBufferCandidate.funding.sell_twd == null ? '-' : formatNumber(selectedOptimizerBufferCandidate.funding.sell_twd) }}｜
+                                                    擬交易後現金 NT$ {{ selectedOptimizerBufferCandidate.funding.closing_cash_twd == null ? '-' : formatNumber(selectedOptimizerBufferCandidate.funding.closing_cash_twd) }}｜
+                                                    投資權重 {{ selectedOptimizerBufferCandidate.funding.buffered_weight_pct?.toFixed(3) ?? '-' }}%；新增現金權重 {{ selectedOptimizerBufferCandidate.funding.cash_residual_pct?.toFixed(3) ?? '-' }}%（原投資資產分母；費用未計）
                                                 </div>
                                                 <div class="overflow-x-auto max-h-[520px]">
                                                     <table class="w-full text-[11px]">
@@ -7171,7 +7182,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=auth-hydration-guard-v1"></script>
+<script src="assets/js/app.bundle.js?v=optimizer-basis-guard-v1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>

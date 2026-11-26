@@ -1,0 +1,26 @@
+name: Validate Optimizer Phase 1
+on:
+  push:
+    paths:
+      - 'assets/js/src/app.bundle.source.js'
+      - 'assets/js/app.bundle.js'
+      - 'index.html'
+      - 'scripts/run_*optimizer*.py'
+      - 'scripts/run_skfolio_sandbox.py'
+      - 'scripts/run_riskfolio_sandbox.py'
+      - 'tests/test_optimizer_phase1.mjs'
+      - '.github/workflows/validate-optimizer-phase1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --check assets/js/app.bundle.js
+      - run: node tests/test_optimizer_phase1.mjs
+      - run: python scripts/build_frontend_bundle.py --check
