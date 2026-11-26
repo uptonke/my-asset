@@ -29,6 +29,10 @@ def main():
         # Derived private report must not be copied to the GitHub backup.
         data = [{k: v for k, v in row.items() if k != 'performance_attribution'}
                 for row in (response.data or [])]
+        # Captured valuation details are private; retain legacy NAV/date/cost only.
+        for row in data:
+            if isinstance(row.get('history_data'), list):
+                row['history_data'] = [{k:v for k,v in h.items() if k != 'valuation'} for h in row['history_data']]
 
         if not data:
             print("⚠️ 資料庫為空，無資料可備份。")

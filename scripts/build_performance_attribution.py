@@ -13,7 +13,7 @@ import pandas as pd
 FACTORS = ["Mkt-RF","SMB","HML","RMW","CMA","Mom","TW_Mkt_RF","Crypto_RF"]
 WINDOWS = {"1W":7,"1M":30,"3M":91,"YTD":None,"12M":365,"SI":None}
 EPS=1e-8
-ENGINE_VERSION='v2.0'
+ENGINE_VERSION='v2.1'
 
 
 def number(x):
@@ -62,7 +62,7 @@ def parse_inputs(row):
         elif t in ("deposit","withdraw"):
             if (t=="deposit" and flow<0) or (t=="withdraw" and flow>0):
                 raise ValueError("Invalid external flow sign")
-        tx.append({"date":d,"type":t,"ticker":ticker,"qty":q,"flow":flow})
+        tx.append({"date":d,"type":t,"ticker":ticker,"qty":q,"flow":flow,"category":str(x.get("category") or "")})
     return dict(sorted(nav.items())),sorted(tx,key=lambda x:x["date"]),categories
 
 
@@ -381,6 +381,8 @@ def build(row,market=None,factor_data=None):
     adjusted,diagnostics,quarantined=reconcile_transactions(tx,categories,market,close)
     market["quarantined"]=quarantined
     pnl={label:window_pnl(nav,adjusted,categories,market,start,end) for label,start,end in windows_for(list(nav))}
+    from performance_pit_nav import build_pit
+    pit, captured=build_pit(row.get("history_data") or [],tx,nav,pnl)
     quality={"version":"v1.1","inventory":diagnostics,"quarantined_count":len(quarantined),
              "cash_reconciliation":cash_reconciliation(nav,tx,pnl),
              "notes":["Unknown opening cash balance; cumulative ledger flows are not an independently observed bank balance.",
@@ -398,7 +400,7 @@ def build(row,market=None,factor_data=None):
     except Exception as exc:
         factor={"status":"UNAVAILABLE","reason":str(exc)[:200],"windows":{}}
         rolling={"status":"UNAVAILABLE","reason":str(exc)[:200],"rows":[],"windows":{}}
-    return clean_json({"version":"v1.0","engine_version":ENGINE_VERSION,"quality":quality,"generated_at":datetime.now(timezone.utc).isoformat(),
+    return clean_json({"version":"v1.0","engine_version":ENGINE_VERSION,"quality":quality,"point_in_time":pit,"generated_at":datetime.now(timezone.utc).isoformat(),
         "nav_as_of":str(list(nav)[-1].date()),"ledger_count":len(tx),"history_count":len(nav),
         "pnl":pnl,"factor":factor,"rolling_factor":rolling,"execution_permission":False,
         "notes":["NAV and external flows are recorded data; per-asset P&L is reconstructed, not broker-certified.",

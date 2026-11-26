@@ -1171,6 +1171,22 @@
                             </template>
                         </template>
                     </div>
+                    <div class="glass chart-card p-5 md:p-6 space-y-3">
+                        <h4 class="panel-title">Point-in-Time NAV Reconciliation · v2.1</h4>
+                        <p class="panel-subtitle">新建即時 NAV 保存當時的估值明細、股數、匯率、現金及擷取時間；歷史手動 NAV 不回填。擷取時間不等於交易所報價時間。</p>
+                        <div v-if="!performanceAttribution?.point_in_time" class="text-xs text-gray-400">等待新版歸因更新。</div>
+                        <template v-else>
+                            <div class="text-xs text-gray-300">有效快照 {{ performanceAttribution.point_in_time.valid_count }} / {{ performanceAttribution.history_count }}｜精確快照配對 {{ performanceAttribution.point_in_time.pair_count }}</div>
+                            <div v-for="(p,k) in performanceAttribution.point_in_time.windows" :key="k" class="border border-white/10 rounded-lg p-3 text-xs">
+                                <div>{{ k }}｜{{ p.status }}｜{{ p.start }} ～ {{ p.end }}</div>
+                                <div v-if="p.status==='OK'" class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
+                                    <div>帳載損益 {{ performanceAmount(p.actual_pnl_twd) }}</div><div>估值損益 {{ performanceAmount(p.asset_pnl_twd) }}</div><div>現金橋接 {{ performanceAmount(p.cash_bridge_twd) }}</div><div>四捨五入差 {{ performanceAmount(p.rounding_bridge_twd) }}</div>
+                                </div>
+                                <div v-else class="text-amber-300">{{ p.reason }}</div>
+                            </div>
+                            <details class="text-xs"><summary class="cursor-pointer">快照診斷</summary><div class="max-h-[250px] overflow-y-auto"><div v-for="r in performanceAttribution.point_in_time.snapshots" :key="r.date">{{ r.date }}｜{{ r.status }}｜{{ r.reason || r.captured_at || '' }}</div></div></details>
+                        </template>
+                    </div>
                 </div>
             </section>
 
@@ -7320,7 +7336,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=private-attribution-v2"></script>
+<script src="assets/js/app.bundle.js?v=pit-attribution-v21"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>

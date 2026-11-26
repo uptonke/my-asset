@@ -187,4 +187,21 @@ class ArchiveTests(unittest.TestCase):
             self.assertEqual(len(merge_fund_archive("安聯台灣科技",recent,p)),2)
             p.write_text("ticker,fund_id,currency,date,nav,source\n安聯台灣科技,WRONG,TWD,2025-01-02,50,official\n",encoding="utf-8")
             with self.assertRaises(ValueError):merge_fund_archive("安聯台灣科技",recent,p)
+class PITTests(unittest.TestCase):
+    def test_captured_pair(self):
+        from performance_pit_nav import build_pit
+        a,b=pd.to_datetime(["2026-11-14","2026-11-21"])
+        tx=[{"date":a,"type":"deposit","ticker":"","qty":0.,"flow":1000.},
+            {"date":a,"type":"buy","ticker":"X","qty":2.,"flow":-200.,"category":"台股"}]
+        def rec(d,p):
+            nav=800+2*p
+            return {"date":str(d.date()),"assets":nav,"valuation":{"version":"v1","date":str(d.date()),"captured_at":str(d.date())+"T10:00:00+08:00","ledger_count":2,"cash_twd":800,"nav_cash_twd":800,"fx_usdtwd":32,"invested_twd":2*p,"nav_unrounded_twd":nav,"holdings":[{"ticker":"X","category":"台股","currency":"TWD","shares":2,"native_price":p,"fx_to_twd":1,"market_value_twd":2*p,"price_source":"price_map"}]}}
+        r=[rec(a,100),rec(b,105)]
+        w={"1W":{"start":str(a.date()),"end":str(b.date())}}
+        out,_=build_pit(r,tx,{a:1000,b:1010},w)
+        self.assertEqual(out["pair_count"],1)
+        self.assertEqual(out["windows"]["1W"]["asset_pnl_twd"],10)
+        r[0].pop("valuation")
+        out,_=build_pit(r,tx,{a:1000,b:1010},w)
+        self.assertEqual(out["pair_count"],0)
 if __name__=="__main__":unittest.main()

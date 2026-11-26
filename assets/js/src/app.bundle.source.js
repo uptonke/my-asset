@@ -567,7 +567,7 @@ ${JSON.stringify(payload, null, 2)}
         const riskParams = ref({ rf: 1.5, beta: 1.0, rm: 10.0, sm: 15.0 });
         const quantStartDate = ref('');
         const dataFrequency = ref('Weekly');
-        const snapshotDate = ref(new Date().toISOString().split('T')[0]);
+        const snapshotDate = ref(new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()));
 
         const transactions = ref([]);
         const realHistoryData = ref([]);
@@ -4224,20 +4224,48 @@ async function saveData() {
     updateCharts();
 }
 
-        function snapshotToHistory() {
-    const date = snapshotDate.value || new Date().toISOString().split('T')[0];
+        function buildNavValuation(date, now, groups, cash, fx, ledger, nav) {
+    const today = new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
+    if (date !== today) throw new Error('即時估值只可保存為台北當日日期；歷史日期請使用手動 NAV。');
+    if (!Number.isFinite(cash) || cash < -0.01 || !Number.isFinite(fx) || fx <= 0 || !Number.isFinite(nav) || nav <= 0) throw new Error('現金、匯率或 NAV 無效。');
+    if (ledger.some(t=>!t.date || String(t.date).slice(0,10)>date)) throw new Error('流水帳含未來日期或缺失日期，不可建立即時快照。');
+    const holdings = Object.values(groups).flatMap(g=>g.items).map(h=>{
+        const source=h.manualPrice?'manual':priceMap.value[h.ticker]?'price_map':'cost_fallback';
+        const row={ticker:String(h.ticker),category:String(h.category),currency:h.isUSD?'USD':'TWD',
+            shares:Number(h.shares),native_price:Number(h.fetchedPrice),fx_to_twd:h.isUSD?fx:1,
+            market_value_twd:Number(h.marketValueTwd),price_source:source,quote_as_of:null};
+        if (![row.shares,row.native_price,row.fx_to_twd,row.market_value_twd].every(v=>Number.isFinite(v)&&v>0) ||
+            Math.abs(row.shares*row.native_price*row.fx_to_twd-row.market_value_twd)>0.01) throw new Error('持倉估值無效：'+row.ticker);
+        return row;
+    });
+    if (new Set(holdings.map(h=>h.ticker)).size!==holdings.length) throw new Error('重複標的。');
+    const invested=holdings.reduce((a,h)=>a+h.market_value_twd,0);
+    if (Math.abs(invested+Math.max(0,cash)-nav)>0.01) throw new Error('估值加總與 NAV 不一致。');
+    return {version:'v1',captured_at:now.toISOString(),timezone:'Asia/Taipei',date,holdings,
+        cash_twd:cash,nav_cash_twd:Math.max(0,cash),fx_usdtwd:fx,invested_twd:invested,nav_unrounded_twd:nav,
+        ledger_count:ledger.length,quote_timestamps_verified:false};
+}
+
+function snapshotToHistory() {
+    const now = new Date();
+    const date = snapshotDate.value || new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Taipei'}).format(now);
     const assets = Math.round(totalPortfolioNav.value);
     const cost = Math.round(totalStockCostTwd.value);
+    let valuation;
+    try {
+        if (!cloudHydrated.value) throw new Error('尚未完成雲端資料載入。');
+        valuation=buildNavValuation(date,now,groupedHoldings.value,cashBalance.value,exchangeRate.value,transactions.value,totalPortfolioNav.value);
+    } catch(e) { alert(e.message); return; }
 
     const idx = realHistoryData.value.findIndex(h => h.date === date);
     if (idx >= 0) {
         if (confirm(`日期 (${date}) 已有紀錄，要覆蓋嗎？`)) {
-            realHistoryData.value[idx] = { date, assets, cost };
+            realHistoryData.value[idx] = { date, assets, cost, valuation };
         } else {
             return;
         }
     } else {
-        realHistoryData.value.push({ date, assets, cost });
+        realHistoryData.value.push({ date, assets, cost, valuation });
     }
 
     saveData();
