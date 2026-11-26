@@ -224,6 +224,13 @@ jobs:
           set -euo pipefail
           python scripts/build_expected_return_model.py
 
+      - name: Build Phase 3 BL scenario and cost-aware optimizer
+        if: ${{ github.event.inputs.task == 'all_optimizer_outputs' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/run_cost_aware_optimizer.py
+
       - name: Build Walk-forward Backtest v3.3
         shell: bash
         run: |

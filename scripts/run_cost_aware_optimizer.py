@@ -196,7 +196,7 @@ def build(returns,current,meta,prior,bl,c):
                      "Hard turnover cap and policy constraints never relax automatically. No formal trade or Supabase write."]}
     if meta.get("skipped"):
         result["reason"]="Incomplete or stale asset universe";return result
-    if prior.get("snapshot_id")!=sid or bl.get("snapshot_id")!=sid or prior.get("status")!="OK" or bl.get("status")!="OK":
+    if prior.get("snapshot_id")!=sid or prior.get("bl_source_snapshot_id")!=sid or bl.get("snapshot_id")!=sid or prior.get("status")!="OK" or bl.get("status")!="OK":
         result["reason"]="Expected-return / BL source snapshot mismatch or unavailable";return result
     rows=prior.get("asset_expected_return_priors",[])
     buckets=meta["asset_buckets"]
@@ -256,8 +256,7 @@ def main():
     tmp.write_text(json.dumps(report,ensure_ascii=False,indent=2,allow_nan=False),encoding="utf-8")
     tmp.replace(report_path)
     print("Phase 3:",phase["status"],phase.get("reason",""),{k:v["status"] for k,v in phase["portfolios"].items()})
-    if phase["status"]=="BLOCKED":
-        raise RuntimeError("Phase 3 inputs failed validation")
+    # Publish BLOCKED status explicitly instead of keeping a stale successful report.
 
 
 if __name__=="__main__":

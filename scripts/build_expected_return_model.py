@@ -267,6 +267,8 @@ def build() -> Dict[str, Any]:
 
     return {
         "version": VERSION,
+        "snapshot_id": skfolio.get("sample", {}).get("snapshot_id"),
+        "bl_source_snapshot_id": bl.get("snapshot_id"),
         "status": "OK",
         "generated_at": now_utc(),
         "mode": "conservative_expected_return_model",

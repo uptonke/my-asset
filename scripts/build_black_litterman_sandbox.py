@@ -306,6 +306,7 @@ def main() -> None:
     selected_regime = ((regime_payload.get("regime") or {}).get("selected_regime")) or "unknown"
     payload = {
         "version": VERSION,
+        "snapshot_id": skfolio.get("sample", {}).get("snapshot_id"),
         "status": "OK" if candidates else "NO_POSTERIOR_CANDIDATES",
         "generated_at": generated_at,
         "mode": "bayesian_black_litterman_sandbox",

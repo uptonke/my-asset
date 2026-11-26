@@ -45,7 +45,7 @@ class Phase3(unittest.TestCase):
         self.assertFalse(out["execution_permission"])
     def test_full_report(self):
         meta={"snapshot_id":"x","asset_buckets":self.buckets,"skipped":[]}
-        prior={"snapshot_id":"x","status":"OK","asset_expected_return_priors":self.priors}
+        prior={"snapshot_id":"x","bl_source_snapshot_id":"x","status":"OK","asset_expected_return_priors":self.priors}
         out=build(self.r,self.w,meta,prior,{"snapshot_id":"x","status":"OK"},self.cfg)
         self.assertFalse(out["execution_permission"]);self.assertEqual(len(out["portfolios"]),3)
         self.assertEqual(len(out["sensitivity"]),7)
