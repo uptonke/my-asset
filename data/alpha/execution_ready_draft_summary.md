@@ -1,6 +1,6 @@
 # v8.0 Execution-Ready Draft
 
-- Generated: `2026-11-26T08:51:22+00:00`
+- Generated: `2026-11-26T11:35:31+00:00`
 - Readiness status: **blocked_by_alpha_validation_gate**
 - Draft count: `0`
 - Broker submission enabled: `False`

@@ -8,8 +8,8 @@
 
 | Portfolio | Status | Ann Vol | VaR95 | ES95 | MDD | Turnover vs Current |
 |---|---:|---:|---:|---:|---:|---:|
-| current_weight | OK | 12.15% | 1.045% | 1.856% | -15.1% | 0.0% |
-| inverse_vol_baseline | OK | 9.36% | 0.864% | 1.483% | -9.81% | 27.64% |
-| scipy_min_variance_fallback | OK | 4.68% | 0.365% | 0.718% | -2.97% | 80.21% |
-| skfolio_min_variance | OK | 4.68% | 0.356% | 0.717% | -2.97% | 80.14% |
-| skfolio_cvar_minimize | OK | 4.82% | 0.34% | 0.707% | -2.84% | 77.97% |
+| current_weight | OK | 12.14% | 1.044% | 1.855% | -15.09% | 0.0% |
+| inverse_vol_baseline | OK | 9.36% | 0.864% | 1.483% | -9.81% | 27.62% |
+| scipy_min_variance_fallback | OK | 4.68% | 0.365% | 0.718% | -2.97% | 80.19% |
+| skfolio_min_variance | OK | 4.68% | 0.356% | 0.717% | -2.97% | 80.13% |
+| skfolio_cvar_minimize | OK | 4.82% | 0.34% | 0.707% | -2.84% | 77.96% |
