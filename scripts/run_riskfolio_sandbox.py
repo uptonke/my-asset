@@ -270,90 +270,8 @@ def run_riskfolio_optimization(returns: pd.DataFrame, kind: str) -> Tuple[Option
 
 
 def load_strict_returns_and_weights() -> Tuple[pd.DataFrame, pd.Series, Dict[str, Any]]:
-    import update_stock_meta as q
-
-    client = q.connect_supabase()
-    row = q.fetch_portfolio_row(client)
-    ledger = row.get("ledger_data") or []
-    holdings = q.active_holdings_from_ledger(ledger)
-
-    if not holdings:
-        raise RuntimeError("No active holdings found.")
-
-    settings = row.get("settings") if isinstance(row.get("settings"), dict) else {}
-    static_fx = finite_float(settings.get("exchangeRate"), 31.5) or 31.5
-    fx_series, fx_source = q.fetch_usdtwd_series(static_fx)
-
-    asset_prices_twd: Dict[str, pd.Series] = {}
-    asset_values: Dict[str, float] = {}
-    sources: Dict[str, str] = {}
-    skipped: List[Dict[str, Any]] = []
-
-    for ticker, h in sorted(holdings.items()):
-        shares = finite_float(h.get("shares"), 0.0) or 0.0
-        if shares <= 0:
-            continue
-
-        category = str(h.get("category") or "")
-
-        try:
-            df, source, extras = q.fetch_history(ticker, category)
-            price = q.clean_price_series(df)
-            if len(price) < 40:
-                skipped.append({"ticker": ticker, "reason": f"insufficient_price_rows:{len(price)}"})
-                continue
-
-            if q.is_foreign_currency_asset(ticker, category):
-                if not fx_series.empty:
-                    aligned_fx = fx_series.reindex(price.index).ffill().bfill()
-                    price_twd = price * aligned_fx
-                else:
-                    price_twd = price * static_fx
-            else:
-                price_twd = price
-
-            price_twd = pd.to_numeric(price_twd, errors="coerce").dropna()
-            if len(price_twd) < 40:
-                skipped.append({"ticker": ticker, "reason": f"insufficient_twd_rows:{len(price_twd)}"})
-                continue
-
-            market_value = float(price_twd.iloc[-1]) * shares
-            if market_value <= 0:
-                skipped.append({"ticker": ticker, "reason": "non_positive_market_value"})
-                continue
-
-            asset_prices_twd[ticker] = price_twd
-            asset_values[ticker] = market_value
-            sources[ticker] = source
-        except Exception as exc:
-            skipped.append({"ticker": ticker, "reason": str(exc)[:300]})
-
-    if len(asset_prices_twd) < 2:
-        raise RuntimeError("Less than 2 assets with usable price history.")
-
-    total_mv = sum(asset_values.values())
-    current_weights = normalize_weights({t: v / total_mv for t, v in asset_values.items()}, list(asset_prices_twd.keys()))
-
-    prices = pd.concat(asset_prices_twd, axis=1).sort_index().ffill()
-    strict_prices = prices.dropna(how="any")
-    returns = strict_prices.pct_change().dropna(how="any")
-
-    if len(returns) < 60:
-        raise RuntimeError(f"Strict returns sample too short: {len(returns)}")
-
-    current_weights = current_weights.reindex(returns.columns).fillna(0.0)
-    current_weights = current_weights / float(current_weights.sum())
-
-    meta = {
-        "sources": sources,
-        "skipped": skipped,
-        "fx_source": fx_source,
-        "strict_sample": int(len(returns)),
-        "strict_start": str(returns.index.min().date()),
-        "strict_end": str(returns.index.max().date()),
-    }
-
-    return returns, current_weights, meta
+    from run_skfolio_sandbox import load_strict_returns_and_weights as common_loader
+    return common_loader()
 
 
 def add_portfolio(portfolios: Dict[str, Dict[str, Any]], key: str, weights: Optional[pd.Series], current_weights: pd.Series, returns: pd.DataFrame, method: Dict[str, Any]) -> None:
@@ -363,7 +281,7 @@ def add_portfolio(portfolios: Dict[str, Dict[str, Any]], key: str, weights: Opti
 
     portfolios[key] = {
         "status": "OK",
-        "weights": weight_table(weights, current_weights, top_n=25),
+        "weights": weight_table(weights, current_weights, top_n=max(25, len(current_weights))),
         "metrics": portfolio_metrics(returns, weights, key),
         "turnover_vs_current_pct": round(turnover(weights, current_weights) * 100.0, 2),
         "method": method,
@@ -428,6 +346,9 @@ def main() -> None:
             "strict_end": meta["strict_end"],
             "asset_count": int(len(returns.columns)),
             "fx_source": meta["fx_source"],
+            "snapshot_id": meta["snapshot_id"],
+            "currency": meta["currency"],
+            "weight_basis": meta["weight_basis"],
         },
         "portfolios": portfolios,
         "riskfolio_statuses": riskfolio_statuses,

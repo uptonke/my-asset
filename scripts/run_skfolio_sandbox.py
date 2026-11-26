@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import os
@@ -234,6 +235,18 @@ def skfolio_meanrisk_weights(X: pd.DataFrame, risk: str = "VARIANCE") -> Tuple[O
         return None, {"status": "IMPORT_OR_API_FAILED", "library": "skfolio", "class": "MeanRisk", "risk": risk, "error": str(exc)[:500]}
 
 
+def optimizer_snapshot_id(returns, weights, fx_source, sources):
+    """Fingerprint exact return matrix, dates, ticker universe and weights."""
+    canonical = returns.sort_index().sort_index(axis=1)
+    w = weights.reindex(canonical.columns)
+    payload = json.dumps({"fx_source": fx_source, "sources": sources,
+                          "weight_basis": "invested_assets_only", "currency": "TWD"}, sort_keys=True)
+    digest = hashlib.sha256(payload.encode("utf-8"))
+    digest.update(canonical.to_csv(float_format="%.17g").encode("utf-8"))
+    digest.update(w.to_csv(float_format="%.17g").encode("utf-8"))
+    return digest.hexdigest()
+
+
 def load_strict_returns_and_weights() -> Tuple[pd.DataFrame, pd.Series, Dict[str, Any]]:
     import update_stock_meta as q
 
@@ -251,6 +264,7 @@ def load_strict_returns_and_weights() -> Tuple[pd.DataFrame, pd.Series, Dict[str
 
     asset_prices_twd: Dict[str, pd.Series] = {}
     asset_values: Dict[str, float] = {}
+    asset_shares: Dict[str, float] = {}
     sources: Dict[str, str] = {}
     skipped: List[Dict[str, Any]] = []
 
@@ -270,7 +284,7 @@ def load_strict_returns_and_weights() -> Tuple[pd.DataFrame, pd.Series, Dict[str
 
             if q.is_foreign_currency_asset(ticker, category):
                 if not fx_series.empty:
-                    aligned_fx = fx_series.reindex(price.index).ffill().bfill()
+                    aligned_fx = fx_series.reindex(fx_series.index.union(price.index)).sort_index().ffill().reindex(price.index)
                     price_twd = price * aligned_fx
                 else:
                     price_twd = price * static_fx
@@ -289,6 +303,7 @@ def load_strict_returns_and_weights() -> Tuple[pd.DataFrame, pd.Series, Dict[str
 
             asset_prices_twd[ticker] = price_twd
             asset_values[ticker] = market_value
+            asset_shares[ticker] = shares
             sources[ticker] = source
         except Exception as exc:
             skipped.append({"ticker": ticker, "reason": str(exc)[:300]})
@@ -306,8 +321,16 @@ def load_strict_returns_and_weights() -> Tuple[pd.DataFrame, pd.Series, Dict[str
     if len(returns) < 60:
         raise RuntimeError(f"Strict returns sample too short: {len(returns)}")
 
-    current_weights = current_weights.reindex(returns.columns).fillna(0.0)
-    current_weights = current_weights / float(current_weights.sum())
+    end_date = returns.index[-1]
+    for ticker, series in asset_prices_twd.items():
+        if (end_date - series.index[-1]).days > 7:
+            skipped.append({"ticker": ticker, "reason": "stale_price_at_valuation_date"})
+
+    # Value all assets at the final common observation.
+    valuation = strict_prices.loc[returns.index[-1]]
+    values = {t: float(valuation[t]) * asset_shares[t] for t in returns.columns}
+    current_weights = normalize_weights(values, list(returns.columns))
+    snapshot_id = optimizer_snapshot_id(returns, current_weights, fx_source, sources)
 
     meta = {
         "sources": sources,
@@ -316,6 +339,9 @@ def load_strict_returns_and_weights() -> Tuple[pd.DataFrame, pd.Series, Dict[str
         "strict_sample": int(len(returns)),
         "strict_start": str(returns.index.min().date()),
         "strict_end": str(returns.index.max().date()),
+        "snapshot_id": snapshot_id,
+        "currency": "TWD",
+        "weight_basis": "invested_assets_only",
     }
 
     return returns, current_weights, meta
@@ -331,7 +357,7 @@ def main() -> None:
 
     portfolios["current_weight"] = {
         "status": "OK",
-        "weights": weight_table(current_weights, current_weights, top_n=25),
+        "weights": weight_table(current_weights, current_weights, top_n=max(25, len(current_weights))),
         "metrics": portfolio_metrics(returns, current_weights, "current_weight"),
         "turnover_vs_current_pct": 0.0,
         "method": "current portfolio weights",
@@ -340,7 +366,7 @@ def main() -> None:
     inv_w = inverse_vol_weights(returns)
     portfolios["inverse_vol_baseline"] = {
         "status": "OK",
-        "weights": weight_table(inv_w, current_weights, top_n=25),
+        "weights": weight_table(inv_w, current_weights, top_n=max(25, len(current_weights))),
         "metrics": portfolio_metrics(returns, inv_w, "inverse_vol_baseline"),
         "turnover_vs_current_pct": round(turnover(inv_w, current_weights) * 100.0, 2),
         "method": "inverse daily volatility",
@@ -350,7 +376,7 @@ def main() -> None:
         scipy_w, scipy_info = scipy_min_variance_weights(returns)
         portfolios["scipy_min_variance_fallback"] = {
             "status": "OK",
-            "weights": weight_table(scipy_w, current_weights, top_n=25),
+            "weights": weight_table(scipy_w, current_weights, top_n=max(25, len(current_weights))),
             "metrics": portfolio_metrics(returns, scipy_w, "scipy_min_variance_fallback"),
             "turnover_vs_current_pct": round(turnover(scipy_w, current_weights) * 100.0, 2),
             "method": scipy_info,
@@ -362,7 +388,7 @@ def main() -> None:
     if skfolio_w is not None:
         portfolios["skfolio_min_variance"] = {
             "status": "OK",
-            "weights": weight_table(skfolio_w, current_weights, top_n=25),
+            "weights": weight_table(skfolio_w, current_weights, top_n=max(25, len(current_weights))),
             "metrics": portfolio_metrics(returns, skfolio_w, "skfolio_min_variance"),
             "turnover_vs_current_pct": round(turnover(skfolio_w, current_weights) * 100.0, 2),
             "method": skfolio_info,
@@ -374,7 +400,7 @@ def main() -> None:
     if skfolio_cvar_w is not None:
         portfolios["skfolio_cvar_minimize"] = {
             "status": "OK",
-            "weights": weight_table(skfolio_cvar_w, current_weights, top_n=25),
+            "weights": weight_table(skfolio_cvar_w, current_weights, top_n=max(25, len(current_weights))),
             "metrics": portfolio_metrics(returns, skfolio_cvar_w, "skfolio_cvar_minimize"),
             "turnover_vs_current_pct": round(turnover(skfolio_cvar_w, current_weights) * 100.0, 2),
             "method": skfolio_cvar_info,
@@ -395,6 +421,9 @@ def main() -> None:
             "strict_end": meta["strict_end"],
             "asset_count": int(len(returns.columns)),
             "fx_source": meta["fx_source"],
+            "snapshot_id": meta["snapshot_id"],
+            "currency": meta["currency"],
+            "weight_basis": meta["weight_basis"],
         },
         "portfolios": portfolios,
         "skipped": meta.get("skipped", []),

@@ -21,6 +21,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m py_compile scripts/run_skfolio_sandbox.py scripts/run_riskfolio_sandbox.py scripts/run_optimizer_robustness.py scripts/run_common_optimizer_snapshot.py
       - run: node --check assets/js/app.bundle.js
       - run: node tests/test_optimizer_phase1.mjs
       - run: python scripts/build_frontend_bundle.py --check

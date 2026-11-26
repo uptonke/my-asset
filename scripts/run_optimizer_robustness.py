@@ -66,7 +66,7 @@ def method_result(
         "method": method,
         "metrics": portfolio_metrics(returns, w, key),
         "turnover_vs_current_pct": round(turnover(w, cw) * 100.0, 2),
-        "weights": weight_table(w, cw, top_n=25),
+        "weights": weight_table(w, cw, top_n=max(25, len(cw))),
         "weight_vector": {t: round(float(w.get(t, 0.0)), 8) for t in returns.columns},
     }
 
@@ -254,7 +254,7 @@ def main() -> None:
     stable_candidates = [
         {"method": k, **v}
         for k, v in method_stability.items()
-        if v.get("status") == "OK"
+        if k != "current_weight" and v.get("status") == "OK" and v.get("avg_pairwise_weight_turnover_pct") is not None
     ]
     stable_candidates.sort(key=lambda x: (
         {"穩定": 0, "可觀察": 1, "不穩定": 2}.get(x.get("verdict"), 9),
@@ -274,6 +274,9 @@ def main() -> None:
             "strict_end": meta["strict_end"],
             "asset_count": int(len(full_returns.columns)),
             "fx_source": meta["fx_source"],
+            "snapshot_id": meta["snapshot_id"],
+            "currency": meta["currency"],
+            "weight_basis": meta["weight_basis"],
         },
         "windows": windows,
         "method_stability": method_stability,
