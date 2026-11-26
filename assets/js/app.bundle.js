@@ -756,7 +756,10 @@ ${JSON.stringify(payload, null, 2)}
                 { value: 'Deposit', label: '入金', hint: '外部資金匯入投資帳戶' },
                 { value: 'Withdraw', label: '出金', hint: '資金領回銀行 / 生活帳戶' }
             ]
-            : [
+            : txFlowMode.value === 'adjustment' ? [
+                { value: 'Income', label: '收入（股息／利息）' },
+                { value: 'Expense', label: '支出／校正' }
+            ] : [
                 { value: 'Buy', label: '買入', hint: '用帳上資金買資產' },
                 { value: 'Sell', label: '賣出', hint: '賣掉部位，現金留在投資帳戶' }
             ]
@@ -774,7 +777,7 @@ ${JSON.stringify(payload, null, 2)}
                 txForm.value.price = null;
                 txForm.value.shares = null;
             } else if (mode === 'adjustment') {
-                txForm.value.type = 'Expense';
+                if (!['Income','Expense'].includes(txForm.value.type)) txForm.value.type = 'Expense';
                 txForm.value.category = '校正 / 費用';
                 txForm.value.ticker = '';
                 txForm.value.price = null;
