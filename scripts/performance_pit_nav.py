@@ -121,5 +121,17 @@ def build_pit(history,tx,nav,windows):
     for k,w in windows.items():
         s,e=w["start"],w["end"]
         out[k]=pair(valid[s],valid[e],tx,nav) if s in valid and e in valid else {"status":"NO_CAPTURED_PAIR","start":s,"end":e,"reason":"Both endpoint marks required; historical reconstruction remains separate"}
-    return {"version":"v2.4","valid_count":len(valid),"pair_count":sum(p["status"]=="OK" for p in out.values()),
+    adjacent=[]
+    for a,b in zip(sorted(nav)[:-1],sorted(nav)[1:]):
+        s,e=str(a.date()),str(b.date())
+        if s not in valid or e not in valid:continue
+        if any(valid[d].get("capture_mode")!="automated_completed_daily_marks" for d in (s,e)):continue
+        try:
+            r=pair(valid[s],valid[e],tx,nav)
+            if abs(r["cash_bridge_twd"])>.02 or abs(r["rounding_bridge_twd"])>1.00002:
+                r["status"]="REVIEW_REQUIRED"
+            adjacent.append(r)
+        except Exception:
+            adjacent.append({"start":s,"end":e,"status":"FAILED"})
+    return {"version":"v2.4","adjacent_pairs":adjacent,"adjacent_pair_count":sum(r["status"]=="OK" for r in adjacent),"valid_count":len(valid),"pair_count":sum(p["status"]=="OK" for p in out.values()),
             "snapshots":diagnostics,"windows":out},valid

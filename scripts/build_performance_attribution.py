@@ -390,7 +390,7 @@ def build(row,market=None,factor_data=None):
     try:historical_brinson=build_historical(nav,adjusted,categories,market)
     except Exception as exc:historical_brinson={"status":"UNAVAILABLE","reason":str(exc)[:180],"periods":[]}
     from performance_total_return import build_total_return
-    total_return=build_total_return(nav,adjusted,categories,market,row.get("settings"),historical_brinson)
+    total_return=build_total_return(nav,adjusted,categories,market,{"attributionBenchmarkPolicy":row.get("attribution_benchmark_policy")},historical_brinson)
     quality={"version":"v1.1","inventory":diagnostics,"quarantined_count":len(quarantined),
              "cash_reconciliation":cash_reconciliation(nav,tx,pnl),
              "notes":["Unknown opening cash balance; cumulative ledger flows are not an independently observed bank balance.",
@@ -408,7 +408,9 @@ def build(row,market=None,factor_data=None):
     except Exception as exc:
         factor={"status":"UNAVAILABLE","reason":str(exc)[:200],"windows":{}}
         rolling={"status":"UNAVAILABLE","reason":str(exc)[:200],"rows":[],"windows":{}}
-    return clean_json({"version":"v1.0","engine_version":ENGINE_VERSION,"quality":quality,"point_in_time":pit,"brinson":brinson,"historical_brinson":historical_brinson,"total_return_attribution":total_return,"generated_at":datetime.now(timezone.utc).isoformat(),
+    from performance_quality_gate import quality_gate
+    gate=quality_gate(nav,historical_brinson,total_return,pit,quarantined)
+    return clean_json({"version":"v1.0","engine_version":ENGINE_VERSION,"quality":quality,"point_in_time":pit,"brinson":brinson,"historical_brinson":historical_brinson,"total_return_attribution":total_return,"attribution_quality_gate":gate,"generated_at":datetime.now(timezone.utc).isoformat(),
         "nav_as_of":str(list(nav)[-1].date()),"ledger_count":len(tx),"history_count":len(nav),
         "pnl":pnl,"factor":factor,"rolling_factor":rolling,"execution_permission":False,
         "notes":["NAV and external flows are recorded data; per-asset P&L is reconstructed, not broker-certified.",
@@ -464,8 +466,8 @@ def main():
         print("PERFORMANCE_ATTRIBUTION_REFRESH", reason)
     report=build(row)
     json.dumps(report,allow_nan=False)
-    result=client.rpc("publish_performance_attribution",{"p_row_id":int(q.PORTFOLIO_ROW_ID),
-        "p_ledger":row["ledger_data"],"p_history":row["history_data"],"p_report":report}).execute()
+    result=client.rpc("publish_performance_attribution_v27",{"p_row_id":int(q.PORTFOLIO_ROW_ID),
+        "p_ledger":row["ledger_data"],"p_history":row["history_data"],"p_policy":row.get("attribution_benchmark_policy"),"p_report":report}).execute()
     if result.data is not True:
         raise RuntimeError("Publish refused: source data changed or row unavailable")
     # Verify status without printing private financial values.

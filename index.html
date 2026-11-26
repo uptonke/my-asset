@@ -1176,7 +1176,7 @@
                         <p class="panel-subtitle">新建即時 NAV 保存當時的估值明細、股數、匯率、現金及擷取時間；歷史手動 NAV 不回填。擷取時間不等於交易所報價時間。每週六 10:15 台北時間自動擷取（需先部署 SQL）；使用已完成日線及來源日期，非同步即時價。自動快照不可覆寫，儲存前請重新整理網站。</p>
                         <div v-if="!performanceAttribution?.point_in_time" class="text-xs text-gray-400">等待新版歸因更新。</div>
                         <template v-else>
-                            <div class="text-xs text-gray-300">有效快照 {{ performanceAttribution.point_in_time.valid_count }} / {{ performanceAttribution.history_count }}｜精確快照配對 {{ performanceAttribution.point_in_time.pair_count }}</div>
+                            <div class="text-xs text-gray-300">有效快照 {{ performanceAttribution.point_in_time.valid_count }} / {{ performanceAttribution.history_count }}｜精確快照配對 {{ performanceAttribution.point_in_time.pair_count }}｜相鄰自動快照配對 {{ performanceAttribution.point_in_time.adjacent_pair_count ?? 0 }}</div>
                             <div v-for="(p,k) in performanceAttribution.point_in_time.windows" :key="k" class="border border-white/10 rounded-lg p-3 text-xs">
                                 <div>{{ k }}｜{{ p.status }}｜{{ p.start }} ～ {{ p.end }}</div>
                                 <div v-if="p.status==='OK'" class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
@@ -1197,6 +1197,34 @@
                         </div>
                         <div v-else class="text-xs text-gray-400">尚無合格配對，不使用歷史重建估值冒充正式歸因。</div>
                         <details v-if="performanceAttribution?.brinson?.skipped?.length" class="text-xs"><summary>排除區間</summary><div v-for="r in performanceAttribution.brinson.skipped" :key="r.end">{{ r.start }} ～ {{ r.end }}：{{ r.reason }}</div></details>
+                    </div>
+                    <div class="glass chart-card p-5 md:p-6 space-y-3">
+                        <h4 class="panel-title">Benchmark &amp; Total-return Comparison · v2.5</h4>
+                        <p class="panel-subtitle">ETF 配息調整基準、BTC 現貨、台幣換算。實際 NAV 使用 Dietz；持倉仍採未調整報價及帳載現金。非完整個券股息歸因，不是正式核准政策。</p>
+                        <template v-if="performanceAttribution?.total_return_attribution">
+                            <div class="text-xs">{{ performanceAttribution.total_return_attribution.status }}｜{{ performanceAttribution.total_return_attribution.benchmark?.approved ? '使用者核准權重' : '示範權重' }}｜合格 {{ performanceAttribution.total_return_attribution.eligible_intervals ?? 0 }} / {{ performanceAttribution.total_return_attribution.expected_intervals ?? '—' }}</div>
+                            <div class="text-xs">{{ performanceAttribution.total_return_attribution.reason || '' }}</div>
+                            <div v-if="performanceAttribution.total_return_attribution.latest_segment" class="text-xs space-y-1">
+                                <div>{{ performanceAttribution.total_return_attribution.latest_segment.start }} ～ {{ performanceAttribution.total_return_attribution.latest_segment.end }}｜NAV {{ performancePct(performanceAttribution.total_return_attribution.latest_segment.portfolio_return_pct) }}｜調整基準 {{ performancePct(performanceAttribution.total_return_attribution.latest_segment.benchmark_return_pct) }}｜主動 {{ performanceAttribution.total_return_attribution.latest_segment.active_return_pp.toFixed(3) }} pp</div>
+                                <div v-for="(v,k) in performanceAttribution.total_return_attribution.latest_segment.effects_pp" :key="k">{{ k }}：{{ v.toFixed(3) }} pp</div>
+                            </div>
+                            <details class="text-xs"><summary>同區段價格基準 vs 配息調整基準</summary>
+                                <div v-for="r in performanceAttribution.total_return_attribution.matched_price_comparison || []" :key="r.start">{{ r.start }} ～ {{ r.end }}｜價格 {{ performancePct(r.price_benchmark_return_pct) }}｜調整 {{ performancePct(r.adjusted_benchmark_return_pct) }}｜差 {{ r.distribution_adjustment_pp.toFixed(3) }} pp</div>
+                            </details>
+                            <details v-if="performanceAttribution.total_return_attribution.calibration" class="text-xs"><summary>權重校準：最近合格區間期初曝險（非最佳化）</summary>
+                                <div>{{ performanceAttribution.total_return_attribution.calibration.date }}｜單向權重距離 {{ performancePct(performanceAttribution.total_return_attribution.calibration.one_way_distance_pct) }}</div>
+                                <div v-for="r in performanceAttribution.total_return_attribution.calibration.weights" :key="r.bucket">{{ r.bucket }}｜投組 {{ performancePct(r.portfolio_pct) }}｜目標 {{ performancePct(r.target_pct) }}｜差 {{ r.gap_pp.toFixed(2) }} pp</div>
+                            </details>
+                        </template><div v-else class="text-xs">等待更新</div>
+                    </div>
+                    <div class="glass chart-card p-5 md:p-6 space-y-3">
+                        <h4 class="panel-title">Attribution Quality Gate · v2.6</h4>
+                        <p class="panel-subtitle">品質閘門只允許研究解讀；不授予正式歸因或交易權限。預設期末及期初差額上限 1%、方法橋接 0.5 pp。</p>
+                        <template v-if="performanceAttribution?.attribution_quality_gate">
+                            <div class="text-xs">{{ performanceAttribution.attribution_quality_gate.status }}｜{{ performanceAttribution.attribution_quality_gate.basis }}｜品質初篩通過 {{ performanceAttribution.attribution_quality_gate.screen_pass_intervals }} / {{ performanceAttribution.attribution_quality_gate.eligible_intervals }} 合格期（全部 {{ performanceAttribution.attribution_quality_gate.expected_intervals }} 期）</div>
+                            <div class="text-xs" v-for="r in performanceAttribution.attribution_quality_gate.reasons" :key="r">{{ r }}</div>
+                            <details class="text-xs"><summary>品質問題逐期診斷</summary><div class="max-h-[250px] overflow-y-auto"><div v-for="r in performanceAttribution.attribution_quality_gate.periods.filter(r=>r.status!=='RESEARCH_SCREEN_PASS')" :key="r.start">{{ r.start }} ～ {{ r.end }}｜{{ r.reasons.join(', ') }}｜估值差額 {{ performancePct(r.max_nav_gap_pct) }}｜方法差 {{ r.abs_nav_bridge_pp?.toFixed(3) ?? '—' }} pp</div></div></details>
+                        </template><div v-else class="text-xs">等待更新</div>
                     </div>
                     <div class="glass chart-card p-5 md:p-6 space-y-3">
                         <h4 class="panel-title">Historical Brinson-Fachler · v2.3.3</h4>
