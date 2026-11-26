@@ -69,4 +69,33 @@ class AttributionTests(unittest.TestCase):
     def test_duplicate_nav_rejected(self):
         with self.assertRaisesRegex(ValueError,"duplicate"):
             parse_inputs({"history_data":[{"date":"2025-01-01","assets":1},{"date":"2025-01-01","assets":2}]})
+class RefreshGuardTests(unittest.TestCase):
+    def setUp(self):
+        from datetime import datetime, timezone
+        self.now = datetime(2026,11,26,tzinfo=timezone.utc)
+        self.row = {"history_data":[{"date":"2026-11-14","assets":100},{"date":"2026-11-21","assets":90}],
+                    "ledger_data":[],
+                    "performance_attribution":{"version":"v1.0","nav_as_of":"2026-11-21","ledger_count":0,"history_count":2,
+                        "generated_at":"2026-11-25T00:00:00+00:00","pnl":{"1W":{}},"factor":{"status":"OK"}}}
+    def reason(self):
+        from build_performance_attribution import refresh_reason
+        return refresh_reason(self.row,self.now)
+    def test_fresh_skips(self):
+        self.assertIsNone(self.reason())
+    def test_invalidated_rebuilds(self):
+        self.row["performance_attribution"]=None
+        self.assertEqual(self.reason(),"missing_or_invalidated")
+    def test_changed_nav_rebuilds(self):
+        self.row["history_data"].append({"date":"2026-11-24","assets":95})
+        self.assertEqual(self.reason(),"source_mismatch")
+    def test_weekly_refresh(self):
+        self.row["performance_attribution"]["generated_at"]="2026-11-19T00:00:00+00:00"
+        self.assertEqual(self.reason(),"weekly_source_refresh")
+    def test_factor_error_retry(self):
+        self.row["performance_attribution"]["factor"]["status"]="UNAVAILABLE"
+        self.assertEqual(self.reason(),"retry_factor_source")
+    def test_invalid_timestamp(self):
+        self.row["performance_attribution"]["generated_at"]="bad"
+        self.assertEqual(self.reason(),"invalid_report_metadata")
+
 if __name__=="__main__":unittest.main()

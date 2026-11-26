@@ -26,7 +26,9 @@ def main():
     try:
         print("⏳ 正在下載量化系統資料庫...")
         response = supabase.table("portfolio_db").select("*").execute()
-        data = response.data
+        # Derived private report must not be copied to the GitHub backup.
+        data = [{k: v for k, v in row.items() if k != 'performance_attribution'}
+                for row in (response.data or [])]
 
         if not data:
             print("⚠️ 資料庫為空，無資料可備份。")

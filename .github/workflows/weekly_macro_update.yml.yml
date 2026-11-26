@@ -55,3 +55,13 @@ jobs:
           IMF_API_URLS: ${{ vars.IMF_API_URLS }}
           WORLD_BANK_INDICATORS: ${{ vars.WORLD_BANK_INDICATORS }}
         run: python scripts/update_weekly_official_meta.py
+
+  refresh-private-attribution:
+    needs: weekly-macro
+    permissions:
+      contents: read
+    uses: ./.github/workflows/update-private-performance-attribution.yml
+    secrets:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

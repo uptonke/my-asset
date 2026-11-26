@@ -368,12 +368,50 @@ def build(row,market=None,factor_data=None):
                  "Deposits and withdrawals follow the recorded classification. No inferred dividend or spending reclassification."]})
 
 
+def refresh_reason(row, now=None):
+    """Skip intact fresh reports; trigger clears them on any source edit."""
+    now = now or datetime.now(timezone.utc)
+    report = row.get("performance_attribution")
+    if not isinstance(report, dict) or report.get("version") != "v1.0":
+        return "missing_or_invalidated"
+    try:
+        nav, tx, _ = parse_inputs(row)
+        if (report.get("nav_as_of") != str(max(nav).date())
+                or report.get("ledger_count") != len(tx)
+                or report.get("history_count") != len(nav)
+                or not isinstance(report.get("pnl"), dict) or not report["pnl"]):
+            return "source_mismatch"
+        stamp = datetime.fromisoformat(str(report["generated_at"]).replace("Z", "+00:00"))
+        if stamp.tzinfo is None:
+            return "invalid_report_timestamp"
+        age = (now - stamp).total_seconds()
+        if age < 0:
+            return "invalid_report_timestamp"
+        # A weekly refresh catches delayed/revised factors and prices even
+        # without a new NAV. Failed factor downloads retry on the next check.
+        factor = report.get("factor")
+        if not isinstance(factor, dict) or factor.get("status") == "UNAVAILABLE":
+            if age >= 86400:
+                return "retry_factor_source"
+        if age >= 7 * 86400:
+            return "weekly_source_refresh"
+        return None
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return "invalid_report_metadata"
+
+
 def main():
     if not os.getenv("SUPABASE_SECRET_KEY") and os.getenv("SUPABASE_SERVICE_ROLE_KEY"):
         os.environ["SUPABASE_SECRET_KEY"]=os.environ["SUPABASE_SERVICE_ROLE_KEY"]
     import update_stock_meta as q
     client=q.connect_supabase()
     row=q.fetch_portfolio_row(client)
+    if os.getenv("ATTRIBUTION_IF_STALE", "false").lower() == "true":
+        reason = refresh_reason(row)
+        if reason is None:
+            print("PERFORMANCE_ATTRIBUTION_SKIPPED current report is fresh")
+            return
+        print("PERFORMANCE_ATTRIBUTION_REFRESH", reason)
     report=build(row)
     json.dumps(report,allow_nan=False)
     result=client.rpc("publish_performance_attribution",{"p_row_id":int(q.PORTFOLIO_ROW_ID),

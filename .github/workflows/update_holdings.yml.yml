@@ -142,3 +142,13 @@ jobs:
           SUPABASE_TABLE: portfolio_db
           PORTFOLIO_ROW_ID: '1'
         run: python scripts/update_jensen_alpha.py
+
+  refresh-private-attribution:
+    needs: refresh-holdings
+    permissions:
+      contents: read
+    uses: ./.github/workflows/update-private-performance-attribution.yml
+    secrets:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

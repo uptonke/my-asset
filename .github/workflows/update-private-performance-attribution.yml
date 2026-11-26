@@ -1,6 +1,14 @@
 name: Update Private Performance Attribution
 on:
   workflow_dispatch:
+  workflow_call:
+    secrets:
+      SUPABASE_URL:
+        required: true
+      SUPABASE_SECRET_KEY:
+        required: false
+      SUPABASE_SERVICE_ROLE_KEY:
+        required: false
 permissions:
   contents: read
 concurrency:
@@ -24,4 +32,8 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python -m unittest discover -s tests -p test_performance_attribution.py
       - name: Publish private report only
+        env:
+          # Manual workflow dispatch always rebuilds. Reusable callers
+          # are scheduled checks, including manually run parent pipelines.
+          ATTRIBUTION_IF_STALE: ${{ github.workflow == 'Update Private Performance Attribution' && 'false' || 'true' }}
         run: python scripts/build_performance_attribution.py
