@@ -73,11 +73,17 @@ def build_brinson(captured,tx,nav,config=None,market=None):
             if min(x.min(),y.min())<0 or x.sum()<=0 or not np.isclose(x.sum(),A["nav"],atol=.01) or not np.isclose(y.sum(),B["nav"],atol=.01):
                 raise ValueError("Captured bucket NAV mismatch")
             # Strict prior calendar date: no same-day close from after capture.
-            d0=a-pd.Timedelta(days=1);d1=b-pd.Timedelta(days=1)
+            def cutoff(snapshot,zone):
+                # End-of-local-date conservative: only completed market-local dates.
+                stamp=pd.Timestamp(snapshot['captured_at']).tz_convert(zone)
+                return stamp.tz_localize(None).normalize()-pd.Timedelta(days=1)
+            fx0,fx1=cutoff(A,'UTC'),cutoff(B,'UTC')
             rates=[]
             for g in groups:
+                zone="Asia/Taipei" if config["currency"][g]=="TWD" else "UTC" if g=="crypto" else "America/New_York"
+                d0,d1=cutoff(A,zone),cutoff(B,zone)
                 p0,p1=close(prices[g],d0,7),close(prices[g],d1,7)
-                f0,f1=(close(fx,d0,7),close(fx,d1,7)) if config["currency"][g]=="USD" else (1.,1.)
+                f0,f1=(close(fx,fx0,7),close(fx,fx1,7)) if config["currency"][g]=="USD" else (1.,1.)
                 rates.append(p1*f1/(p0*f0)-1)
             rb=np.array(rates);wp=x/x.sum()
             # Empty bucket: use benchmark return convention, selection + interaction cancel.

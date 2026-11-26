@@ -310,6 +310,8 @@ def write_md(result: Dict[str, Any]) -> str:
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     result = build()
+    from cost_walk_forward import build as build_cost_walk_forward
+    result["cost_aware_v3"] = build_cost_walk_forward()
     JSON_OUT.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
     MD_OUT.write_text(write_md(result), encoding="utf-8")
     print(f"Wrote {JSON_OUT}")

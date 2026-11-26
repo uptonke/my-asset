@@ -235,6 +235,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          python -m unittest discover -s tests -p test_cost_walk_forward.py
           python scripts/build_walk_forward_backtest.py
 
       - name: Build Model Governance Dashboard v3.4

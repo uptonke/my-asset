@@ -9,6 +9,10 @@ on:
       - 'scripts/performance_pit_nav.py'
       - 'scripts/performance_brinson.py'
       - 'config/attribution_benchmark.json'
+      - 'scripts/cost_walk_forward.py'
+      - 'config/cost_walk_forward.json'
+      - 'tests/test_cost_walk_forward.py'
+      - 'scripts/build_walk_forward_backtest.py'
       - 'tests/test_performance_attribution.py'
       - 'assets/js/src/app.bundle.source.js'
       - 'assets/js/app.bundle.js'
@@ -28,6 +32,7 @@ jobs:
           python-version: '3.11'
       - run: pip install numpy==2.2.6 pandas==2.3.2 scipy==1.13.1 'statsmodels>=0.14,<0.15' 'beautifulsoup4>=4.12,<5'
       - run: python -m unittest discover -s tests -p test_performance_attribution.py
+      - run: python -m unittest discover -s tests -p test_cost_walk_forward.py
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
