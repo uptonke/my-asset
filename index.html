@@ -1198,6 +1198,23 @@
                         <div v-else class="text-xs text-gray-400">尚無合格配對，不使用歷史重建估值冒充正式歸因。</div>
                         <details v-if="performanceAttribution?.brinson?.skipped?.length" class="text-xs"><summary>排除區間</summary><div v-for="r in performanceAttribution.brinson.skipped" :key="r.end">{{ r.start }} ～ {{ r.end }}：{{ r.reason }}</div></details>
                     </div>
+                    <div class="glass chart-card p-5 md:p-6 space-y-3">
+                        <h4 class="panel-title">Historical Brinson-Fachler · v2.2</h4>
+                        <p class="panel-subtitle">歷史 NAV、流水帳及價格重建；研究用非正式基準。採交易日收盤切段與多期 Carino 主動報酬連結。現金為流水帳推算，非銀行核對；不跨缺漏區間，不回填原始 NAV。</p>
+                        <div class="text-xs text-amber-300">{{ performanceAttribution?.historical_brinson?.status || '等待新版歸因更新' }}｜{{ performanceAttribution?.historical_brinson?.reason || '' }}</div>
+                        <template v-if="performanceAttribution?.historical_brinson">
+                            <div class="text-xs">合格 {{ performanceAttribution.historical_brinson.eligible_intervals ?? 0 }} / {{ performanceAttribution.historical_brinson.expected_intervals ?? '—' }} 區間｜覆蓋率 {{ performancePct(performanceAttribution.historical_brinson.coverage_pct) }}</div>
+                            <details v-if="performanceAttribution.historical_brinson.latest_segment" open class="text-xs space-y-2">
+                                <summary>最新連續區間（不跨缺口）</summary>
+                                <div>{{ performanceAttribution.historical_brinson.latest_segment.start }} ～ {{ performanceAttribution.historical_brinson.latest_segment.end }}｜{{ performanceAttribution.historical_brinson.latest_segment.period_count }} 期｜實際 NAV Dietz 連結 {{ performancePct(performanceAttribution.historical_brinson.latest_segment.portfolio_return_pct) }}｜基準 {{ performancePct(performanceAttribution.historical_brinson.latest_segment.benchmark_return_pct) }}｜主動 {{ performanceAttribution.historical_brinson.latest_segment.active_return_pp.toFixed(3) }} pp</div>
+                                <div v-for="(v,k) in performanceAttribution.historical_brinson.latest_segment.effects_pp" :key="k" class="flex justify-between"><span>{{ ({allocation:'配置',selection:'選擇',interaction:'交互',execution_other:'成交及其他現金流',nav_bridge:'NAV／方法差額'})[k] || k }}</span><span :class="performanceTone(v)">{{ v.toFixed(3) }} pp</span></div>
+                                <table class="w-full text-xs"><thead><tr><th class="text-left">類別</th><th class="text-right">配置 pp</th><th class="text-right">選擇 pp</th><th class="text-right">交互 pp</th></tr></thead><tbody><tr v-for="r in performanceAttribution.historical_brinson.latest_segment.rows" :key="r.bucket"><td>{{ r.bucket }}</td><td v-for="k in ['allocation_pp','selection_pp','interaction_pp']" :key="k" class="text-right">{{ r[k].toFixed(3) }}</td></tr></tbody></table>
+                                <div>連結核對差額 {{ performanceAttribution.historical_brinson.latest_segment.identity_error_pp.toExponential(2) }} pp</div>
+                            </details>
+                            <details class="text-xs"><summary>所有連續區段</summary><div v-for="r in performanceAttribution.historical_brinson.segments || []" :key="r.start">{{ r.start }} ～ {{ r.end }}｜{{ r.period_count }} 期｜主動 {{ r.active_return_pp.toFixed(3) }} pp</div></details>
+                            <details class="text-xs"><summary>逐期估值差額及排除區間</summary><div class="max-h-[320px] overflow-y-auto"><div v-for="r in performanceAttribution.historical_brinson.periods || []" :key="r.start"> {{ r.start }} ～ {{ r.end }}｜期初 / 期末 NAV 差額 {{ r.start_nav_gap_twd.toFixed(0) }} / {{ r.end_nav_gap_twd.toFixed(0) }} TWD｜方法差額 {{ r.effects_pp.nav_bridge.toFixed(3) }} pp</div><div v-for="r in performanceAttribution.historical_brinson.skipped || []" :key="r.start">{{ r.start }} ～ {{ r.end }}：{{ r.reason }}</div></div></details>
+                        </template>
+                    </div>
                 </div>
             </section>
 
