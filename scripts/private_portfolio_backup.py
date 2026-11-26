@@ -86,6 +86,10 @@ def backup(client,key):
 def recover(client,key,name,mode,confirm):
     if not OBJECT_RE.fullmatch(name):raise ValueError("Invalid backup object path")
     row=decrypt_row(private_bucket(client).download(name),key)
+    return recover_row(client,row,mode,confirm)
+
+def recover_row(client,row,mode,confirm):
+    validate_row(row)
     if row["id"]!=row_id():raise ValueError("Backup row mismatch")
     if mode=="verify":
         print("PRIVATE_BACKUP_VERIFIED");return
@@ -98,7 +102,7 @@ def recover(client,key,name,mode,confirm):
 
 def main():
     p=argparse.ArgumentParser()
-    p.add_argument("mode",choices=["backup","verify","restore-empty","verify-local"])
+    p.add_argument("mode",choices=["backup","verify","restore-empty","verify-local","restore-local-empty"])
     p.add_argument("--object",default="")
     p.add_argument("--file",default="")
     p.add_argument("--confirm",default="")
@@ -110,6 +114,7 @@ def main():
             print("PRIVATE_BACKUP_VERIFIED");return
         client=connect()
         if a.mode=="backup":backup(client,key)
+        elif a.mode=="restore-local-empty":recover_row(client,decrypt_row(Path(a.file).read_bytes(),key),"restore-empty",a.confirm)
         else:recover(client,key,a.object,a.mode,a.confirm)
     except Exception:
         # No provider response, decrypted content, key or traceback in public CI.

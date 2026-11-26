@@ -478,4 +478,7 @@ def main():
 
 
 if __name__=="__main__":
-    main()
+    try:main()
+    except Exception:
+        print("PERFORMANCE_ATTRIBUTION_BLOCKED: source, validation or database error; check migrations and credentials")
+        raise SystemExit(1)

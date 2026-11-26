@@ -17,7 +17,8 @@ from performance_coverage import quote
 # BOXX is USD cash-like exposure, not a TWD risk-free rate.
 def policy_config(settings, now=None):
     config=json.loads(CONFIG.read_text())
-    config.update(return_basis="provider_distribution_adjusted_proxy",rebalance="observed_NAV_boundaries",
+    config.update(description="Research benchmark, provider distribution-adjusted proxy returns in TWD",
+                  return_basis="provider_distribution_adjusted_proxy",rebalance="observed_NAV_boundaries",
                   approved=False,policy_source="illustrative",effective_date=None)
     p=(settings or {}).get("attributionBenchmarkPolicy")
     if p is None:return config
