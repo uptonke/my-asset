@@ -4282,6 +4282,7 @@ function snapshotToHistory() {
 
         function addHistoryRecord() {
             const { date, assets, cost } = historyForm.value;
+            if (realHistoryData.value.some(h => h.date === date)) { alert('此日期已存在；請先核對原紀錄，避免重複 NAV。'); return; }
             realHistoryData.value.push({ date, assets, cost });
             saveData(); updateCharts();
         }

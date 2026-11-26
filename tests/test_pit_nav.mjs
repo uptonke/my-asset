@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+const s=fs.readFileSync('assets/js/app.bundle.js','utf8');
+const start=s.indexOf('function buildNavValuation('),end=s.indexOf('function snapshotToHistory()',start);
+assert.ok(start>=0&&end>start);
+const ctx=vm.createContext({priceMap:{value:{X:10}}});
+vm.runInContext(s.slice(start,end)+'\nthis.capture=buildNavValuation;',ctx);
+const now=new Date('2026-11-27T00:00:00+08:00'),group={TW:{items:[{ticker:'X',category:'台股',shares:5,fetchedPrice:10,marketValueTwd:50,isUSD:false}]}};
+const ledger=[{date:'2026-11-26'}];
+const v=ctx.capture('2026-11-27',now,group,20,32,ledger,70);
+assert.equal(v.holdings[0].market_value_twd,50);
+assert.equal(v.holdings[0].quote_as_of,null);
+assert.equal(v.quote_timestamps_verified,false);
+assert.throws(()=>ctx.capture('2026-11-26',now,group,20,32,ledger,70));
+assert.throws(()=>ctx.capture('2026-11-27',now,group,20,32,ledger,71));
+assert.throws(()=>ctx.capture('2026-11-27',now,group,20,32,[{date:'2026-11-28'}],70));
+console.log('Captured NAV checks passed');

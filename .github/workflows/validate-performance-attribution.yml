@@ -12,6 +12,10 @@ on:
       - 'scripts/cost_walk_forward.py'
       - 'config/cost_walk_forward.json'
       - 'tests/test_cost_walk_forward.py'
+      - 'tests/test_pit_nav.mjs'
+      - 'scripts/run_cost_aware_optimizer.py'
+      - 'scripts/run_constrained_optimizer.py'
+      - 'config/optimizer_phase3.json'
       - 'scripts/build_walk_forward_backtest.py'
       - 'tests/test_performance_attribution.py'
       - 'assets/js/src/app.bundle.source.js'
@@ -37,4 +41,5 @@ jobs:
         with:
           node-version: '24'
       - run: node --check assets/js/app.bundle.js
+      - run: node tests/test_pit_nav.mjs
       - run: cmp assets/js/src/app.bundle.source.js assets/js/app.bundle.js

@@ -4732,6 +4732,21 @@
                                         </div>
                                     </div>
 
+                                    <div class="rounded-xl border border-white/10 bg-black/20 p-3 space-y-3">
+                                        <div class="text-sm font-bold text-white">Cost-Aware Walk-forward Backtest · v3.0</div>
+                                        <div class="text-[11px] text-gray-400">研究用固定投資池、TWD 調整後收盤價、126 筆訓練及 21 筆持有；先訓練後執行，逐期權重漂移與自融資成本。非實際帳戶，非歷史 BL 觀點回測，存在事後選樣及跨市場收盤時間差。</div>
+                                        <div v-if="!walkForwardBacktest?.cost_aware_v3" class="text-xs text-amber-300">尚未產生；執行 Optimizer Lab → all_optimizer_outputs。</div>
+                                        <template v-else>
+                                            <div class="text-xs text-gray-300">{{ walkForwardBacktest.cost_aware_v3.status }}｜{{ walkForwardBacktest.cost_aware_v3.reason || '' }}｜共同估值 {{ walkForwardBacktest.cost_aware_v3.sample?.common_marks ?? '—' }} 筆</div>
+                                            <details v-for="scenario in walkForwardBacktest.cost_aware_v3.scenarios || []" :key="scenario.cost_multiplier" :open="scenario.cost_multiplier===1" class="border border-white/10 rounded-lg p-2">
+                                                <summary class="text-xs text-white cursor-pointer">成本 {{ scenario.cost_multiplier }}×｜{{ scenario.start }} ～ {{ scenario.end }}｜{{ scenario.folds.length }} 折</summary>
+                                                <div class="overflow-x-auto mt-2"><table class="w-full text-[11px]"><thead class="text-gray-400"><tr><th class="p-2 text-left">方法</th><th class="p-2 text-right">毛報酬%</th><th class="p-2 text-right">淨報酬%</th><th class="p-2 text-right">淨 CAGR%</th><th class="p-2 text-right">淨波動%</th><th class="p-2 text-right">ES95 / 觀察值%</th><th class="p-2 text-right">最大回撤%</th><th class="p-2 text-right">成本 / 初始 NAV%</th><th class="p-2 text-right">平均名目單向換手%</th><th class="p-2 text-right">失敗折</th></tr></thead><tbody><tr v-for="(r,m) in scenario.aggregate" :key="m" class="border-t border-white/5"><td class="p-2 text-white">{{ m }}</td><td v-for="k in ['gross_return_pct','net_return_pct','net_cagr_pct','net_vol_pct','net_es95_per_observation_pct','net_max_drawdown_pct','paid_cost_pct_initial_nav','avg_nominal_oneway_turnover_pct']" :key="k" class="p-2 text-right">{{ r[k]?.toFixed(3) ?? '—' }}</td><td class="p-2 text-right" :class="r.failed_rebalances?'text-amber-300':'text-gray-300'">{{ r.failed_rebalances }}</td></tr></tbody></table></div>
+                                                <details class="text-xs mt-2"><summary class="cursor-pointer">逐折交易與成本</summary><div class="overflow-x-auto max-h-[350px]"><table class="w-full text-[11px]"><thead><tr><th class="p-1 text-left">訓練截止</th><th class="p-1 text-left">執行日</th><th class="p-1 text-left">測試截止</th><th class="p-1 text-left">方法</th><th class="p-1 text-left">狀態</th><th class="p-1 text-right">成本%</th><th class="p-1 text-right">淨報酬%</th></tr></thead><tbody><template v-for="fold in scenario.folds" :key="fold.execution_date"><tr v-for="(r,m) in fold.methods" :key="m" class="border-t border-white/5"><td class="p-1">{{ fold.train_end }}</td><td class="p-1">{{ fold.execution_date }}</td><td class="p-1">{{ fold.test_end }}</td><td class="p-1">{{ m }}</td><td class="p-1" :title="r.message">{{ r.status }}</td><td class="p-1 text-right">{{ r.oneoff_cost_pct.toFixed(3) }}</td><td class="p-1 text-right">{{ r.net_return_pct.toFixed(3) }}</td></tr></template></tbody></table></div></details>
+                                            </details>
+                                            <div class="text-[11px] text-amber-200">研究限定：失敗折保留原漂移權重，不代表通過配置限制。沒有自動升級候選或執行權限。成本以每側成交金額估計，不含個別券商費率、稅費、整股與最低手續費。</div>
+                                        </template>
+                                    </div>
+
                                     <div class="rounded-xl border border-red-500/20 bg-red-500/[0.04] p-3 text-[11px] text-gray-400 leading-relaxed">
                                         <span class="font-bold text-red-200">安全邊界：</span>
                                         v3.2 不輸出絕對 alpha，不允許最大夏普；v3.3 若樣本不足只能作驗證參考；v3.4 若出現 critical 旗標，所有候選維持 blocked / 僅觀察。全流程仍不是交易指令。
@@ -7347,7 +7362,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=pit-bf-attribution-v21"></script>
+<script src="assets/js/app.bundle.js?v=pit-bf-cost-wf-v3"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
