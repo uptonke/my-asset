@@ -3121,7 +3121,7 @@
                                     <template v-else>
                                         <div class="rounded-xl border border-white/10 p-3 text-xs" :class="optimizerComparisonBasis.comparable ? 'text-gray-300' : 'text-amber-300'">
                                             {{ optimizerComparisonBasis.reason }}｜skfolio：{{ optimizerComparisonBasis.as_of || '-' }}｜Riskfolio：{{ optimizerComparisonBasis.other_as_of || '-' }}
-                                            <div>歷史樣本比較不等於即時調倉；HRP-lite 暫無共同樣本 ES/VaR/MDD，不參與排名。</div>
+                                            <div>歷史樣本比較不等於即時調倉；只有重算後且快照一致的 HRP-lite 才參與理論排名。</div>
                                         </div>
                                         <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
                                             <div class="quant-card border-fuchsia-500/20 bg-fuchsia-500/10">
@@ -3129,7 +3129,7 @@
                                                 <div class="quant-value text-white">{{ unifiedOptimizerComparison?.length ?? 0 }}</div>
                                             </div>
                                             <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
-                                                <div class="quant-label text-emerald-300">最低 ES95</div>
+                                                <div class="quant-label text-emerald-300">最低 ES95（理論）</div>
                                                 <div class="quant-value text-white text-lg">{{ zhText(unifiedOptimizerBestByES?.label) }}</div>
                                             </div>
                                             <div class="quant-card border-emerald-500/20 bg-emerald-500/10">
@@ -3202,6 +3202,36 @@
                                             </div>
                                         </div>
 
+                                        <div class="rounded-xl border border-white/10 bg-black/20 p-3 space-y-3">
+                                            <div class="text-sm font-bold text-white">約束式最佳化 v2.0 · 共同樣本診斷</div>
+                                            <div class="text-xs text-gray-400">僅沙盒，不進入交易草案。單檔≤20%、台股≤30%、加密≤15%、類現金8–20%、黃金3–7%、單一主題≤10%、加密＋指定主題≤35%。不含預期報酬及交易費用。</div>
+                                            <div v-if="!optimizerPhase2Rows.length" class="text-xs text-amber-300">尚無新版資料：請執行 Optimizer Lab → all_optimizer_outputs。</div>
+                                            <template v-else>
+                                                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                                    <div class="quant-card"><div class="quant-label">最低約束 ES95</div><div class="quant-value text-white text-sm">{{ optimizerPhase2Best?.label ?? '-' }}</div></div>
+                                                    <div class="quant-card"><div class="quant-label">ES95</div><div class="quant-value text-white">{{ optimizerPhase2Best?.es95_pct == null ? '-' : optimizerPhase2Best.es95_pct + '%' }}</div></div>
+                                                    <div class="quant-card"><div class="quant-label">歷史年化報酬（非預測）</div><div class="quant-value text-white">{{ optimizerPhase2Best?.annual_return_pct == null ? '-' : optimizerPhase2Best.annual_return_pct + '%' }}</div></div>
+                                                    <div class="quant-card"><div class="quant-label">快照</div><div class="quant-value text-white text-sm">{{ optimizerSandboxOutput?.phase2?.snapshot_id?.slice(0,12) ?? '-' }}</div></div>
+                                                </div>
+                                                <div class="grid grid-cols-1 xl:grid-cols-3 gap-3">
+                                                    <div v-for="p in optimizerPhase2Rows" :key="p.key" class="rounded-lg border border-white/10 overflow-hidden">
+                                                        <div class="p-2 border-b border-white/10 text-sm font-bold text-white">{{ p.label }}</div>
+                                                        <div class="p-2 text-xs" :class="p.status !== 'OK' || !p.comparison_eligible ? 'text-amber-300' : 'text-gray-300'">
+                                                            {{ p.status }} · {{ p.constraint_validated ? '約束通過' : '無約束或未驗證' }} · {{ p.comparison_eligible ? '共同樣本' : '不可比' }}
+                                                            <div v-if="p.method?.message">{{ p.method.message }}</div>
+                                                            <div v-if="p.method?.ewma_vol_pct != null">EWMA Vol（另計）：{{ p.method.ewma_vol_pct }}%</div>
+                                                        </div>
+                                                        <div class="overflow-x-auto max-h-[420px]">
+                                                            <table class="w-full text-[11px]">
+                                                                <thead class="text-gray-400"><tr><th class="text-left px-2 py-1">標的</th><th class="text-right px-2 py-1">目前%</th><th class="text-right px-2 py-1">模型%</th><th class="text-right px-2 py-1">差距 pp</th></tr></thead>
+                                                                <tbody><tr v-for="w in p.weights" :key="w.ticker" class="border-t border-white/5"><td class="px-2 py-1 text-white">{{ w.ticker }}</td><td class="text-right px-2 py-1">{{ w.current_weight_pct }}</td><td class="text-right px-2 py-1 text-indigo-300">{{ w.weight_pct }}</td><td class="text-right px-2 py-1" :class="w.delta_vs_current_pct > 0 ? 'text-emerald-300' : w.delta_vs_current_pct < 0 ? 'text-red-300' : 'text-gray-400'">{{ w.delta_vs_current_pct }}</td></tr></tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                            <div class="text-[11px] text-gray-500">類現金為投資資產中的類現金證券，不是流水帳現金。CVaR LP 與歷史分位數 ES 的尾部取樣在邊界可能不同；共同比較採相同歷史指標口徑。</div>
+                                        </div>
                                         <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
                                             <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                                 <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
@@ -7182,7 +7212,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=optimizer-basis-guard-v1"></script>
+<script src="assets/js/app.bundle.js?v=optimizer-phase2-constrained-v1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>

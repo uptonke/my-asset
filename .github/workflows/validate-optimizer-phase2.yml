@@ -6,6 +6,10 @@ on:
       - 'scripts/run_skfolio_sandbox.py'
       - 'scripts/update_stock_meta.py'
       - 'tests/test_constrained_optimizer.py'
+      - 'tests/test_optimizer_phase2.mjs'
+      - 'assets/js/src/app.bundle.source.js'
+      - 'assets/js/app.bundle.js'
+      - 'index.html'
       - '.github/workflows/validate-optimizer-phase2.yml'
   workflow_dispatch:
 permissions:
@@ -21,3 +25,8 @@ jobs:
       - run: pip install numpy==2.2.6 pandas==2.3.2 scipy==1.13.1 requests yfinance==0.2.66 'supabase>=2.7,<3'
       - run: python -m py_compile scripts/run_constrained_optimizer.py scripts/run_skfolio_sandbox.py
       - run: python -m unittest discover -s tests -p test_constrained_optimizer.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --check assets/js/app.bundle.js
+      - run: node tests/test_optimizer_phase2.mjs
