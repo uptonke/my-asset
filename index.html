@@ -1250,6 +1250,27 @@
                         </template><div v-else class="text-xs">等待更新</div>
                     </div>
                     <div class="glass chart-card p-5 md:p-6 space-y-3">
+                        <h4 class="panel-title">Regime-aware Optimization &amp; Factor Risk Budget · v3.1 / v3.2</h4>
+                        <p class="panel-subtitle">固定研究標的，不代表實際持倉；同樣本、成本及限制的 walk-forward 比較。市場狀態只用訓練期 VOO 台幣報酬，風險預算為示範，無交易權限。</p>
+                        <template v-if="performanceAttribution?.regime_factor_research">
+                            <div class="text-xs">{{ performanceAttribution.regime_factor_research.status }}｜{{ performanceAttribution.regime_factor_research.reason || '' }}</div>
+                            <div v-if="performanceAttribution.regime_factor_research.comparison" class="text-xs space-y-1">
+                                <div>{{ performanceAttribution.regime_factor_research.comparison.start }} ～ {{ performanceAttribution.regime_factor_research.comparison.end }}</div>
+                                <div v-for="(r,k) in performanceAttribution.regime_factor_research.comparison.aggregate" :key="k">{{ k }}｜淨報酬 {{ performancePct(r.net_return_pct) }}｜CAGR {{ performancePct(r.net_cagr_pct) }}｜波動 {{ performancePct(r.net_vol_pct) }}｜MDD {{ performancePct(r.net_max_drawdown_pct) }}｜成本/初始 NAV {{ performancePct(r.paid_cost_pct_initial_nav) }}｜失敗 {{ r.failed_rebalances }} / {{ r.fold_count }}</div>
+                                <div>最近已完成測試折市場狀態：{{ performanceAttribution.regime_factor_research.latest_fold?.methods?.regime_aware?.model?.regime || '—' }}</div>
+                                <details class="text-xs"><summary>最近研究折的因子風險預算（非即時配置）</summary>
+                                    <div v-for="r in performanceAttribution.regime_factor_research.latest_fold?.methods?.factor_budget?.model?.risk_shares || []" :key="r.factor">{{ r.factor }}｜原 {{ performancePct(r.before_pct) }}｜候選 {{ performancePct(r.candidate_pct) }}｜示範 {{ performancePct(r.target_pct) }}</div>
+                                    <div>預算誤差 RMSE {{ performanceAttribution.regime_factor_research.latest_fold?.methods?.factor_budget?.model?.budget_match_rmse_pp?.toFixed(3) ?? '—' }} pp</div>
+                                </details>
+                            </div>
+                        </template><div v-else class="text-xs">等待更新</div>
+                        <template v-if="performanceAttribution?.factor_risk_budget">
+                            <h5 class="font-medium text-sm">實際 NAV 因子風險診斷（USD 超額報酬）</h5>
+                            <div class="text-xs">{{ performanceAttribution.factor_risk_budget.status }}｜{{ performanceAttribution.factor_risk_budget.observations ?? 0 }} 個七日樣本</div>
+                            <div class="text-xs" v-for="r in performanceAttribution.factor_risk_budget.rows || []" :key="r.factor">{{ r.factor }}｜風險貢獻 {{ performancePct(r.risk_pct) }}｜示範預算 {{ performancePct(r.illustrative_budget_pct) }}｜差 {{ r.gap_pp.toFixed(3) }} pp</div>
+                        </template>
+                    </div>
+                    <div class="glass chart-card p-5 md:p-6 space-y-3">
                         <h4 class="panel-title">Historical Brinson-Fachler · v2.3.3</h4>
                         <p class="panel-subtitle">歷史 NAV、流水帳及價格重建；研究用非正式基準。採交易日收盤切段與多期 Carino 主動報酬連結。現金為流水帳推算，非銀行核對；不跨缺漏區間，不回填原始 NAV。微額負現金 ≤ NT$1 僅在研究估值歸零；保留原始差額。</p>
                         <div class="text-xs text-amber-300">{{ performanceAttribution?.historical_brinson?.status || '等待新版歸因更新' }}｜{{ performanceAttribution?.historical_brinson?.reason || '' }}</div>

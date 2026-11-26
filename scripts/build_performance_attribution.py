@@ -396,6 +396,7 @@ def build(row,market=None,factor_data=None):
              "notes":["Unknown opening cash balance; cumulative ledger flows are not an independently observed bank balance.",
                       "Split normalization is an inferred diagnostic, never a ledger edit. Ambiguous cases remain quarantined.",
                       "Negative historical inventory with no current-period trades is flagged separately, not silently assigned zero exposure."]}
+    periods=None
     try:
         ff,tw,btc=load_factors(earliest) if factor_data is None else factor_data
         periods,skipped=factor_periods(nav,tx,market["fx"],ff,tw,btc)
@@ -414,7 +415,10 @@ def build(row,market=None,factor_data=None):
     from performance_cashflow import cashflow_report
     qdiag=quality_diagnostics(nav,tx,historical_brinson,total_return,gate)
     cashflow=cashflow_report(nav,tx,categories,pnl)
-    return clean_json({"version":"v1.0","engine_version":ENGINE_VERSION,"quality":quality,"point_in_time":pit,"brinson":brinson,"historical_brinson":historical_brinson,"total_return_attribution":total_return,"attribution_quality_gate":gate,"quality_diagnostics":qdiag,"cashflow_attribution":cashflow,"generated_at":datetime.now(timezone.utc).isoformat(),
+    from performance_risk_research import actual_factor_budget,run_research
+    risk_budget=actual_factor_budget(periods,FACTORS)
+    risk_research=run_research()
+    return clean_json({"version":"v1.0","engine_version":ENGINE_VERSION,"quality":quality,"point_in_time":pit,"brinson":brinson,"historical_brinson":historical_brinson,"total_return_attribution":total_return,"attribution_quality_gate":gate,"quality_diagnostics":qdiag,"cashflow_attribution":cashflow,"factor_risk_budget":risk_budget,"regime_factor_research":risk_research,"generated_at":datetime.now(timezone.utc).isoformat(),
         "nav_as_of":str(list(nav)[-1].date()),"ledger_count":len(tx),"history_count":len(nav),
         "pnl":pnl,"factor":factor,"rolling_factor":rolling,"execution_permission":False,
         "notes":["NAV and external flows are recorded data; per-asset P&L is reconstructed, not broker-certified.",
