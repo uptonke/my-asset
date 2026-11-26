@@ -45,6 +45,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r scripts/quant_requirements.txt
 
+      - name: Validate signed Component ES attribution
+        run: python -m unittest discover -s tests -p test_signed_component_es.py
+
       - name: Update stock_meta quant factors
         run: python scripts/update_stock_meta.py
 

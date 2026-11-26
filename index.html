@@ -2169,14 +2169,14 @@
                                 <div class="p-4 grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
                                     <div class="quant-card border-red-500/20 bg-red-500/10">
                                         <div class="quant-label text-red-300">ES95</div>
-                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.component_tail_risk?.var_es_95?.es_pct ?? '-' }}%</div>
+                                        <div class="quant-value text-white">{{ syntheticRiskMeta?.component_tail_risk?.var_es_95?.net_signed_es_pct ?? syntheticRiskMeta?.component_tail_risk?.var_es_95?.es_pct ?? '-' }}%</div>
                                     </div>
                                     <div class="quant-card border-red-500/20 bg-red-500/10">
-                                        <div class="quant-label text-red-300">Top3 ES 佔比</div>
+                                        <div class="quant-label text-red-300">{{ syntheticRiskMeta?.component_tail_risk?.version === 'v0.6' ? 'Top3 淨 ES 佔比' : 'Top3 ES 佔比（舊）' }}</div>
                                         <div class="quant-value text-white">{{ syntheticRiskMeta?.component_tail_risk?.var_es_95?.top3_component_es_share_pct ?? '-' }}%</div>
                                     </div>
                                     <div class="quant-card border-orange-500/20 bg-orange-500/10">
-                                        <div class="quant-label text-orange-300">尾部集中 HHI</div>
+                                        <div class="quant-label text-orange-300">正向尾部 HHI</div>
                                         <div class="quant-value text-white">{{ syntheticRiskMeta?.component_tail_risk?.var_es_95?.tail_concentration_hhi ?? '-' }}</div>
                                     </div>
                                     <div class="quant-card border-slate-500/20 bg-slate-500/10">
@@ -2201,11 +2201,18 @@
                                     </div>
                                 </div>
 
+                                <div v-if="syntheticRiskMeta?.component_tail_risk?.var_es_95?.version === 'v0.6'" class="px-4 pb-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                    <div class="quant-card"><div class="quant-label text-red-300">Gross Tail Loss</div><div class="quant-value text-red-300">{{ syntheticRiskMeta.component_tail_risk.var_es_95.gross_tail_loss_pct }}%</div></div>
+                                    <div class="quant-card"><div class="quant-label text-emerald-300">Hedge Offset</div><div class="quant-value text-emerald-300">{{ syntheticRiskMeta.component_tail_risk.var_es_95.hedge_offset_pct }}%</div></div>
+                                    <div class="quant-card"><div class="quant-label">Net Signed ES</div><div class="quant-value text-white">{{ syntheticRiskMeta.component_tail_risk.var_es_95.net_signed_es_pct }}%</div></div>
+                                    <div class="quant-card"><div class="quant-label">ES 歸因核對誤差（百分點）</div><div class="quant-value" :class="syntheticRiskMeta.component_tail_risk.var_es_95.es_reconciliation_ok ? 'text-emerald-300' : 'text-red-300'">{{ syntheticRiskMeta.component_tail_risk.var_es_95.es_reconciliation_error_pct }} · {{ syntheticRiskMeta.component_tail_risk.var_es_95.es_reconciliation_ok ? 'OK' : 'FAIL' }}</div></div>
+                                </div>
+                                <div v-else class="px-4 pb-3 text-xs text-amber-300">目前仍為舊版或未產生資料；請更新 Stock Quant Meta 以取得保留負值的 v0.6 歸因。</div>
                                 <div class="px-4 pb-4 grid grid-cols-1 xl:grid-cols-2 gap-4">
                                     <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                         <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
                                             <i class="fas fa-arrow-trend-down text-red-400"></i>
-                                            Component ES 95 Top 12
+                                            Component ES 95｜全資產（v0.6）
                                         </div>
                                         <div class="overflow-x-auto">
                                             <table class="w-full text-[11px]">
@@ -2214,7 +2221,7 @@
                                                         <th class="text-left px-3 py-2">標的</th>
                                                         <th class="text-right px-3 py-2">權重</th>
                                                         <th class="text-right px-3 py-2">Comp ES</th>
-                                                        <th class="text-right px-3 py-2">ES 佔比</th>
+                                                        <th class="text-right px-3 py-2" title="正向佔比可能超過100%；負值表示避險抵銷">{{ syntheticRiskMeta?.component_tail_risk?.version === 'v0.6' ? '淨 ES 佔比' : 'ES 佔比（舊）' }}</th>
                                                         <th class="text-right px-3 py-2">半砍改善</th>
                                                     </tr>
                                                 </thead>
@@ -2222,9 +2229,9 @@
                                                     <tr v-for="row in (syntheticRiskMeta?.component_tail_risk?.var_es_95?.rows || [])" :key="row.ticker" class="border-b border-white/5 hover:bg-white/[0.03]">
                                                         <td class="px-3 py-2 font-mono text-white">{{ row.ticker }}</td>
                                                         <td class="px-3 py-2 text-right text-gray-300">{{ row.weight_pct ?? '-' }}%</td>
-                                                        <td class="px-3 py-2 text-right text-red-300">{{ row.component_es_pct ?? '-' }}%</td>
-                                                        <td class="px-3 py-2 text-right text-orange-300">{{ row.component_es_share_pct ?? '-' }}%</td>
-                                                        <td class="px-3 py-2 text-right text-emerald-300">{{ row.half_cut_es_improvement_pct ?? '-' }}%</td>
+                                                        <td class="px-3 py-2 text-right" :class="Number(row.component_es_pct) < 0 ? 'text-emerald-300' : Number(row.component_es_pct) > 0 ? 'text-red-300' : 'text-gray-300'">{{ row.component_es_pct == null ? '-' : row.component_es_pct + '%' }}</td>
+                                                        <td class="px-3 py-2 text-right" :class="Number(row.component_es_share_pct) < 0 ? 'text-emerald-300' : Number(row.component_es_share_pct) > 0 ? 'text-orange-300' : 'text-gray-300'">{{ row.component_es_share_pct == null ? '-' : row.component_es_share_pct + '%' }}</td>
+                                                        <td class="px-3 py-2 text-right" :class="Number(row.half_cut_es_improvement_pct) < 0 ? 'text-red-300' : Number(row.half_cut_es_improvement_pct) > 0 ? 'text-emerald-300' : 'text-gray-300'">{{ row.half_cut_es_improvement_pct == null ? '-' : row.half_cut_es_improvement_pct + '%' }}</td>
                                                     </tr>
                                                 </tbody>
                                             </table>
@@ -2915,7 +2922,7 @@
                                                 <div class="quant-value text-white text-lg">{{ syntheticRiskMeta?.component_tail_risk?.var_es_95?.rows?.[0]?.ticker ?? '-' }}</div>
                                             </div>
                                             <div class="quant-card border-red-500/20 bg-red-500/10">
-                                                <div class="quant-label text-red-300">Top ES 佔比</div>
+                                                <div class="quant-label text-red-300">{{ syntheticRiskMeta?.component_tail_risk?.version === 'v0.6' ? 'Top 淨 ES 佔比' : 'Top ES 佔比（舊）' }}</div>
                                                 <div class="quant-value text-white">{{ syntheticRiskMeta?.component_tail_risk?.var_es_95?.rows?.[0]?.component_es_share_pct ?? '-' }}%</div>
                                             </div>
                                         </div>
@@ -3142,7 +3149,7 @@
                                                 <div class="quant-value text-white text-lg">{{ syntheticRiskMeta?.component_tail_risk?.var_es_95?.rows?.[0]?.ticker ?? '-' }}</div>
                                             </div>
                                             <div class="quant-card border-red-500/20 bg-red-500/10">
-                                                <div class="quant-label text-red-300">Top ES 佔比</div>
+                                                <div class="quant-label text-red-300">{{ syntheticRiskMeta?.component_tail_risk?.version === 'v0.6' ? 'Top 淨 ES 佔比' : 'Top ES 佔比（舊）' }}</div>
                                                 <div class="quant-value text-white">{{ syntheticRiskMeta?.component_tail_risk?.var_es_95?.rows?.[0]?.component_es_share_pct ?? '-' }}%</div>
                                             </div>
                                         </div>
@@ -5229,7 +5236,7 @@
                                                     <td class="px-4 py-2 font-mono text-white">{{ row.ticker }}</td>
                                                     <td class="px-4 py-2 text-right text-gray-300">{{ row.weight_pct ?? '-' }}%</td>
                                                     <td class="px-4 py-2 text-right text-emerald-300">{{ row.variance_risk_contribution_pct ?? '-' }}%</td>
-                                                    <td class="px-4 py-2 text-right text-red-300">{{ row.tail_loss_contribution_pct ?? '-' }}%</td>
+                                                    <td class="px-4 py-2 text-right" :class="Number(row.tail_loss_contribution_pct) < 0 ? 'text-emerald-300' : Number(row.tail_loss_contribution_pct) > 0 ? 'text-red-300' : 'text-gray-300'">{{ row.tail_loss_contribution_pct == null ? '-' : row.tail_loss_contribution_pct + '%' }}</td>
                                                     <td class="px-4 py-2 text-right text-gray-300">{{ row.ann_vol_pct ?? '-' }}%</td>
                                                     <td class="px-4 py-2 text-right text-gray-500">{{ row.sample_days ?? '-' }}</td>
                                                 </tr>

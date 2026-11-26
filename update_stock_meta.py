@@ -1876,12 +1876,12 @@ def historical_component_tail_risk(
     alpha: float = 0.95,
 ) -> Dict[str, Any]:
     """
-    v0.5 historical Component VaR / Component ES.
+    v0.6 signed historical Component VaR / Component ES.
 
     Component ES:
     - Find portfolio tail days where portfolio return <= VaR threshold.
     - Attribute portfolio loss on those tail days to each weighted asset contribution.
-    - Sum of component ES should approximately equal total portfolio ES.
+    - Signed contributions reconcile to the unrounded net portfolio ES.
 
     Component VaR:
     - Use a local window around the historical VaR threshold.
@@ -1919,7 +1919,8 @@ def historical_component_tail_risk(
             "rows": [],
         }
 
-    es_amount = max(0.0, -float(tail_port.mean()))
+    net_es = -float(tail_port.mean())
+    es_amount = max(0.0, net_es)  # Legacy nonnegative loss measure.
 
     sorted_idx = port.sort_values().index
     q_rank = max(0, int(len(sorted_idx) * (1.0 - alpha)) - 1)
@@ -1934,13 +1935,23 @@ def historical_component_tail_risk(
     comp_var_amounts = {}
 
     for t in tickers:
-        comp_es = max(0.0, -float((tail[t] * w[t]).mean()))
-        comp_var = max(0.0, -float((var_window[t] * w[t]).mean())) if not var_window.empty else None
+        comp_es = -float((tail[t] * w[t]).mean())
+        comp_var = -float((var_window[t] * w[t]).mean()) if not var_window.empty else None
         comp_es_amounts[t] = comp_es
         comp_var_amounts[t] = comp_var or 0.0
 
-    es_sum = sum(comp_es_amounts.values())
-    var_sum = sum(comp_var_amounts.values())
+    es_sum = math.fsum(comp_es_amounts.values())
+    var_sum = math.fsum(comp_var_amounts.values())
+    var_window_net = -float(var_window.dot(w).mean())
+    es_error = abs(es_sum - net_es)
+    var_error = abs(var_sum - var_window_net)
+    es_ok = math.isclose(es_sum, net_es, rel_tol=1e-10, abs_tol=1e-12)
+    var_ok = math.isclose(var_sum, var_window_net, rel_tol=1e-10, abs_tol=1e-12)
+    gross_loss = math.fsum(max(0.0, v) for v in comp_es_amounts.values())
+    hedge_offset = math.fsum(min(0.0, v) for v in comp_es_amounts.values())
+    positive_es = sorted((v for v in comp_es_amounts.values() if v > 0), reverse=True)
+    top3_loss = math.fsum(positive_es[:3])
+    eps = 1e-12
 
     for t in tickers:
         current_es = comp_es_amounts[t]
@@ -1949,39 +1960,51 @@ def historical_component_tail_risk(
         reduced_port = port - 0.5 * w[t] * df[t]
         reduced_q = float(reduced_port.quantile(1.0 - alpha))
         reduced_tail = reduced_port[reduced_port <= reduced_q]
-        reduced_es = max(0.0, -float(reduced_tail.mean())) if len(reduced_tail) else None
-        es_improvement = (es_amount - reduced_es) if reduced_es is not None else None
+        reduced_es = -float(reduced_tail.mean()) if len(reduced_tail) else None
+        es_improvement = (net_es - reduced_es) if reduced_es is not None else None
 
         rows.append({
             "ticker": t,
             "weight_pct": round(float(w[t] * 100.0), 2),
             "component_var_pct": round(current_var * 100.0, 3),
-            "component_var_share_pct": round((current_var / var_sum) * 100.0, 2) if var_sum > 0 else None,
+            "component_var_share_pct": round(current_var / var_window_net * 100.0, 2) if var_window_net > eps else None,
             "component_es_pct": round(current_es * 100.0, 3),
-            "component_es_share_pct": round((current_es / es_sum) * 100.0, 2) if es_sum > 0 else None,
+            "component_es_share_pct": round(current_es / net_es * 100.0, 2) if net_es > eps else None,
+            "component_es_gross_loss_share_pct": round(max(0.0, current_es) / gross_loss * 100.0, 2) if gross_loss > eps else None,
             "half_cut_es_improvement_pct": round((es_improvement or 0.0) * 100.0, 3) if es_improvement is not None else None,
             "source": asset_sources.get(t, "unknown"),
         })
 
-    rows.sort(key=lambda x: (x.get("component_es_share_pct") or 0), reverse=True)
-    top3_share = sum([(r.get("component_es_share_pct") or 0.0) for r in rows[:3]])
-    shares = np.array([(r.get("component_es_share_pct") or 0.0) / 100.0 for r in rows], dtype=float)
-    hhi = float(np.sum(shares ** 2)) if len(shares) else None
+    rows.sort(key=lambda row: comp_es_amounts[row["ticker"]], reverse=True)
+    top3_share = top3_loss / net_es * 100.0 if net_es > eps else None
+    hhi = math.fsum((v / gross_loss) ** 2 for v in positive_es) if gross_loss > eps else None
 
     return {
-        "status": "OK",
-        "version": "v0.5",
-        "method": "historical_component_var_es_on_strict_synthetic_returns",
+        "status": "OK" if es_ok and var_ok else "RECONCILIATION_FAILED",
+        "version": "v0.6",
+        "method": "historical_signed_component_var_es_on_strict_synthetic_returns",
         "alpha": alpha,
         "sample_count": int(len(port)),
         "tail_count": int(len(tail)),
         "var_pct": round(var_amount * 100.0, 3),
         "es_pct": round(es_amount * 100.0, 3),
-        "top3_component_es_share_pct": round(float(top3_share), 2),
+        "net_signed_es_pct": round(net_es * 100.0, 3),
+        "gross_tail_loss_pct": round(gross_loss * 100.0, 3),
+        "hedge_offset_pct": round(hedge_offset * 100.0, 3),
+        "es_reconciliation_error_pct": round(es_error * 100.0, 12),
+        "es_reconciliation_ok": es_ok,
+        "var_window_signed_loss_pct": round(var_window_net * 100.0, 3),
+        "var_reconciliation_error_pct": round(var_error * 100.0, 12),
+        "var_reconciliation_ok": var_ok,
+        "top3_component_es_share_pct": round(top3_share, 2) if top3_share is not None else None,
+        "top3_gross_tail_loss_share_pct": round(top3_loss / gross_loss * 100.0, 2) if gross_loss > eps else None,
         "tail_concentration_hhi": round(hhi, 4) if hhi is not None else None,
-        "rows": rows[:12],
+        "rows": rows,
         "notes": [
-            "Component ES 以投組尾部日的加權單檔損失歸因。",
+            "Component ES 保留正負值；負值表示避險抵銷，未四捨五入前加總等於淨 ES。",
+            "淨 ES 佔比以正的淨 ES 為分母；有避險時正向佔比及 Top3 可能超過 100%；淨 ES 非正時佔比不適用。",
+            "HHI 使用正向損失重新正規化，不含避險抵銷。舊版 es_pct 保留非負損失口徑；net_signed_es_pct 為有符號淨 ES。",
+            "Component VaR 佔比分母為 VaR 附近窗口淨損失，非分位數 VaR。半砍改善為負表示風險增加。",
             "Component VaR 使用歷史 VaR 門檻附近樣本近似，不是 parametric marginal VaR。",
             "半砍 ES 改善量假設減掉的部位停在現金，不重新配置到其他風險資產。"
         ],
@@ -2499,11 +2522,13 @@ def compute_synthetic_portfolio_risk(
     }
 
     ewma_regime = compute_ewma_regime_report(strict_returns[tickers], weights, asset_meta, lam=SYNTHETIC_EWMA_LAMBDA)
+    component_tail_95 = historical_component_tail_risk(strict_returns[tickers], weights, asset_sources, alpha=0.95)
+    component_tail_99 = historical_component_tail_risk(strict_returns[tickers], weights, asset_sources, alpha=0.99)
     component_tail_risk = {
-        "version": "v0.5",
-        "status": "OK",
-        "var_es_95": historical_component_tail_risk(strict_returns[tickers], weights, asset_sources, alpha=0.95),
-        "var_es_99": historical_component_tail_risk(strict_returns[tickers], weights, asset_sources, alpha=0.99),
+        "version": "v0.6",
+        "status": "OK" if component_tail_95.get("status") == component_tail_99.get("status") == "OK" else "CHECK",
+        "var_es_95": component_tail_95,
+        "var_es_99": component_tail_99,
     }
     risk_budgeting = compute_risk_budgeting_report(strict_returns[tickers], weights, asset_meta, lam=SYNTHETIC_EWMA_LAMBDA)
 
