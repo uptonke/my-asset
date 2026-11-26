@@ -69,7 +69,7 @@ def fund_nav(ticker):
     return parse_fund_nav(html,name)
 
 
-def yahoo_chart(symbol,earliest):
+def yahoo_chart(symbol,earliest,adjusted=False):
     import requests
     start=int((earliest-pd.Timedelta(days=10)).tz_localize("UTC").timestamp())
     stop=int(pd.Timestamp.now(tz="UTC").timestamp())+86400
@@ -82,7 +82,9 @@ def yahoo_chart(symbol,earliest):
     tz=meta.get("exchangeTimezoneName")
     if not tz:raise ValueError("Missing quote timezone")
     def dates(x):return pd.to_datetime(x,unit="s",utc=True).tz_convert(tz).tz_localize(None).normalize()
-    px=series(pd.Series(p["indicators"]["quote"][0]["close"],index=dates(p["timestamp"])))
+    values=p["indicators"]["adjclose"][0]["adjclose"] if adjusted else p["indicators"]["quote"][0]["close"]
+    px=series(pd.Series(values,index=dates(p["timestamp"])))
+    if not px.map(lambda v:math.isfinite(v) and v>0).all():raise ValueError("Invalid quote series")
     if px.empty:raise ValueError("No historical close")
     events={}
     for event in (p.get("events") or {}).get("splits",{}).values():

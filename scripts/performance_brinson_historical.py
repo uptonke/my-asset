@@ -100,7 +100,7 @@ def historical_interval(a,b,nav,tx,categories,market,config,bmarket):
     n=len(groups)
     return {"start":str(a.date()),"end":str(b.date()),"status":"RECONSTRUCTED_RESEARCH_ONLY",
         "portfolio_return_pct":actual*100,"reconstructed_return_pct":P*100,"benchmark_return_pct":B*100,
-        "active_return_pp":(actual-B)*100,"subperiod_count":len(days),"ledger_event_count":len(flows),
+        "active_return_pp":(actual-B)*100,"opening_weights":{g:float(start[i]/start.sum()) for i,g in enumerate(groups)},"subperiod_count":len(days),"ledger_event_count":len(flows),
         "start_nav_gap_twd":opening_gap,"end_nav_gap_twd":nav[b]-float(vpost.sum()),
         "effects_pp":{k:float(v*100) for k,v in zip(NAMES,[linked[:n].sum(),linked[n:2*n].sum(),linked[2*n:3*n].sum(),linked[-2],linked[-1]])},
         "rows":[{"bucket":g,"allocation_pp":float(linked[i]*100),"selection_pp":float(linked[n+i]*100),"interaction_pp":float(linked[2*n+i]*100)} for i,g in enumerate(groups)]}
