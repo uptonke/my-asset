@@ -11,6 +11,14 @@ on:
       - 'tests/test_automated_nav_v24.py'
       - 'sql/automated_nav_capture.sql'
       - 'backup.py'
+      - 'scripts/performance_total_return.py'
+      - 'scripts/performance_quality_gate.py'
+      - 'scripts/private_portfolio_backup.py'
+      - 'tests/test_attribution_v27.py'
+      - 'sql/attribution_policy_v27.sql'
+      - 'sql/private_backup_v27.sql'
+      - '.github/workflows/weekly_backup.yml.yml'
+      - '.github/workflows/restore-supabase-backup.yml'
       - '.github/workflows/capture-private-nav.yml'
       - 'scripts/performance_brinson.py'
       - 'scripts/performance_brinson_historical.py'
@@ -56,12 +64,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install numpy==2.2.6 pandas==2.3.2 scipy==1.13.1 'statsmodels>=0.14,<0.15' 'beautifulsoup4>=4.12,<5' exchange-calendars==4.13.2
+      - run: pip install numpy==2.2.6 pandas==2.3.2 scipy==1.13.1 'statsmodels>=0.14,<0.15' 'beautifulsoup4>=4.12,<5' exchange-calendars==4.13.2 'cryptography>=44,<48'
       - run: python -m unittest discover -s tests -p test_performance_attribution.py
       - run: python -m unittest discover -s tests -p test_historical_brinson.py
       - run: python -m unittest discover -s tests -p test_coverage_v23.py
       - run: python -m unittest discover -s tests -p test_market_recovery_v231.py
       - run: python -m unittest discover -s tests -p test_automated_nav_v24.py
+      - run: python -m unittest discover -s tests -p test_attribution_v27.py
       - run: python -m unittest discover -s tests -p test_cost_walk_forward.py
       - uses: actions/setup-node@v4
         with:

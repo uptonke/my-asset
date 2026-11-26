@@ -1,71 +1,45 @@
-name: Restore Supabase Backup
-
+name: Verify or Restore Private Portfolio Backup
 on:
   workflow_dispatch:
     inputs:
-      backup_date:
-        description: "Backup date (YYYY-MM-DD)"
+      object_path:
+        description: 'Encrypted object path portfolio/v1/...enc'
         required: true
-        default: "2026-11-22"
         type: string
-      row_id:
-        description: "portfolio_db row id"
-        required: true
-        default: "1"
-        type: string
+      mode:
+        description: 'Verify only or restore existing empty row'
+        type: choice
+        options:
+          - verify
+          - restore-empty
+        default: verify
       confirm:
-        description: 'Type RESTORE to allow destructive overwrite'
-        required: true
+        description: 'For restore-empty type RESTORE_EMPTY'
+        required: false
         type: string
-
 permissions:
   contents: read
-
+concurrency:
+  group: private-performance-attribution
+  cancel-in-progress: false
 jobs:
-  restore:
+  recover:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      PORTFOLIO_BACKUP_KEY: ${{ secrets.PORTFOLIO_BACKUP_KEY }}
+      PORTFOLIO_ROW_ID: '1'
+      OBJECT_PATH: ${{ inputs.object_path }}
+      MODE: ${{ inputs.mode }}
+      CONFIRM: ${{ inputs.confirm }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Validate confirmation
-        shell: bash
-        run: |
-          if [ "${{ inputs.confirm }}" != "RESTORE" ]; then
-            echo "Refusing restore: confirmation must be exactly RESTORE."
-            exit 1
-          fi
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-
-      - name: Install Supabase client
-        run: pip install "supabase>=2.7,<3"
-
-      - name: Restore portfolio row from backup
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SUPABASE_TABLE: portfolio_db
-        run: |
-          python scripts/restore_supabase_backup.py \
-            --backup-date "${{ inputs.backup_date }}" \
-            --row-id "${{ inputs.row_id }}" \
-            --confirm "${{ inputs.confirm }}"
-
-      - name: Write restore summary
-        if: success()
-        shell: bash
-        run: |
-          {
-            echo "## Supabase restore completed"
-            echo ""
-            echo "- Backup: `backups/portfolio_backup_${{ inputs.backup_date }}.json`"
-            echo "- Table: `portfolio_db`"
-            echo "- Row ID: `${{ inputs.row_id }}`"
-            echo "- Verification: non-empty ledger/history/stock_meta counts matched the backup"
-          } >> "$GITHUB_STEP_SUMMARY"
+          python-version: '3.11'
+      - run: pip install 'supabase>=2.7,<3' 'cryptography>=44,<48'
+      - run: python scripts/private_portfolio_backup.py "$MODE" --object "$OBJECT_PATH" --confirm "$CONFIRM"
