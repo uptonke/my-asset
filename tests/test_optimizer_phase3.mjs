@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+const s=fs.readFileSync('assets/js/src/app.bundle.source.js','utf8');
+assert.equal(s,fs.readFileSync('assets/js/app.bundle.js','utf8'));
+const i=s.indexOf('const optimizerPhase3Report = computed'),j=s.indexOf('const optimizerPhase2Rows = computed',i);
+assert.ok(i>=0&&j>i);
+const output={sample:{snapshot_id:'abc'},phase3:{snapshot_id:'abc',status:'OK',portfolios:{cost_aware_cvar:{status:'OK',method:{estimated_oneoff_cost_pct:.05}}}}};
+const ctx=vm.createContext({optimizerSandboxOutput:{value:output},optimizerComparisonBasis:{value:{comparable:true}},computed:fn=>({get value(){return fn();}})});
+vm.runInContext(s.slice(i,j)+'\nthis.report=optimizerPhase3Report;this.rows=optimizerPhase3Rows;',ctx);
+assert.equal(ctx.report.value.comparable,true);
+assert.equal(ctx.rows.value[0].diagnostic_only,true);
+output.phase3.snapshot_id='stale';assert.equal(ctx.report.value.comparable,false);
+delete output.phase3;assert.equal(ctx.report.value,null);assert.equal(ctx.rows.value.length,0);
+assert.ok(!s.slice(s.indexOf('const unifiedOptimizerComparison = computed'),s.indexOf('const unifiedOptimizerBestByES = computed')).includes('optimizerPhase3Rows'));
+console.log('Phase 3 UI guards passed');

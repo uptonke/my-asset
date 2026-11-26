@@ -8,6 +8,10 @@ on:
       - 'scripts/build_black_litterman_sandbox.py'
       - 'config/optimizer_phase3.json'
       - 'tests/test_cost_aware_optimizer.py'
+      - 'tests/test_optimizer_phase3.mjs'
+      - 'assets/js/src/app.bundle.source.js'
+      - 'assets/js/app.bundle.js'
+      - 'index.html'
       - '.github/workflows/validate-optimizer-phase3.yml'
   workflow_dispatch:
 permissions:
@@ -22,3 +26,8 @@ jobs:
           python-version: '3.11'
       - run: pip install numpy==2.2.6 pandas==2.3.2 scipy==1.13.1
       - run: python -m unittest discover -s tests -p test_cost_aware_optimizer.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --check assets/js/app.bundle.js
+      - run: node tests/test_optimizer_phase3.mjs

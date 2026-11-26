@@ -3232,6 +3232,38 @@
                                             </template>
                                             <div class="text-[11px] text-gray-500">類現金為投資資產中的類現金證券，不是流水帳現金。CVaR LP 與歷史分位數 ES 的尾部取樣在邊界可能不同；共同比較採相同歷史指標口徑。</div>
                                         </div>
+                                        <div class="rounded-xl border border-white/10 bg-black/20 p-3 space-y-3">
+                                            <div class="text-sm font-bold text-white">Phase 3 · Black-Litterman 情境報酬與交易成本</div>
+                                            <div class="text-xs text-amber-200">僅為假設情境，不是絕對報酬預測、正式目標權重或買賣指令；成本不是券商實際報價。既有最大 Sharpe 禁用政策不變。</div>
+                                            <div v-if="!optimizerPhase3Report" class="text-xs text-amber-300">尚未產生 Phase 3：請執行 Optimizer Lab → all_optimizer_outputs。</div>
+                                            <template v-else>
+                                                <div class="text-xs" :class="optimizerPhase3Report.comparable ? 'text-gray-300' : 'text-amber-300'">
+                                                    {{ optimizerPhase3Report.status }} · {{ optimizerPhase3Report.comparable ? '共同快照' : '快照不一致／不可比' }}
+                                                    {{ optimizerPhase3Report.reason || '' }}
+                                                </div>
+                                                <template v-if="optimizerPhase3Report.comparable">
+                                                    <div class="text-xs text-gray-400">目前投組年化情境超額報酬：{{ optimizerPhase3Report.reference_scenario_excess_return_pct == null ? '-' : optimizerPhase3Report.reference_scenario_excess_return_pct.toFixed(2)+'%' }}；單向換手上限 {{ optimizerPhase3Report.config?.turnover_cap_pct ?? '-' }}%；報酬門檻相對目前 {{ optimizerPhase3Report.config?.return_floor_delta_pp ?? '-' }} pp；成本攤提 {{ optimizerPhase3Report.config?.horizon_sessions ?? '-' }} 交易日。</div>
+                                                    <div class="overflow-x-auto">
+                                                        <table class="w-full text-[11px]">
+                                                            <thead class="text-gray-400"><tr><th class="text-left p-2">模型</th><th class="text-left p-2">狀態</th><th class="text-right p-2">歷史 ES95</th><th class="text-right p-2">歷史年化波動</th><th class="text-right p-2">年化情境超額報酬</th><th class="text-right p-2">扣一次成本後</th><th class="text-right p-2">估計一次成本</th><th class="text-right p-2">單向換手</th></tr></thead>
+                                                            <tbody><tr v-for="p in optimizerPhase3Rows" :key="p.key" class="border-t border-white/5">
+                                                                <td class="p-2 text-white">{{ p.label }}</td><td class="p-2" :class="p.status==='OK' ? 'text-emerald-300':'text-amber-300'">{{ p.status }}<div v-if="p.method?.message" class="text-gray-400">{{ p.method.message }}</div></td>
+                                                                <td class="p-2 text-right">{{ p.metrics?.es95_pct == null ? '-' : p.metrics.es95_pct+'%' }}</td><td class="p-2 text-right">{{ p.metrics?.annual_vol_pct == null ? '-' : p.metrics.annual_vol_pct+'%' }}</td>
+                                                                <td class="p-2 text-right">{{ p.method?.gross_scenario_excess_return_pct == null ? '-' : p.method.gross_scenario_excess_return_pct.toFixed(2)+'%' }}</td><td class="p-2 text-right">{{ p.method?.net_scenario_excess_return_pct == null ? '-' : p.method.net_scenario_excess_return_pct.toFixed(2)+'%' }}</td>
+                                                                <td class="p-2 text-right text-amber-300">{{ p.method?.estimated_oneoff_cost_pct == null ? '-' : p.method.estimated_oneoff_cost_pct.toFixed(3)+'%' }}</td><td class="p-2 text-right">{{ p.method?.turnover_pct == null ? '-' : p.method.turnover_pct.toFixed(2)+'%' }}</td>
+                                                            </tr></tbody>
+                                                        </table>
+                                                    </div>
+                                                    <details class="border border-white/10 rounded-lg p-2"><summary class="text-xs text-gray-300 cursor-pointer">情境報酬向量與成本假設（逐檔）</summary>
+                                                        <div class="overflow-x-auto max-h-[350px]"><table class="w-full text-[11px]"><thead class="text-gray-400"><tr><th class="text-left p-2">標的</th><th class="text-right p-2">參考隱含超額報酬</th><th class="text-right p-2">BL 情境後驗</th><th class="text-right p-2">每側成本 bp</th></tr></thead><tbody><tr v-for="r in optimizerPhase3Report.return_scenarios || []" :key="r.ticker" class="border-t border-white/5"><td class="p-2 text-white">{{ r.ticker }}</td><td class="p-2 text-right">{{ r.prior_excess_pct.toFixed(2) }}%</td><td class="p-2 text-right">{{ r.posterior_excess_pct.toFixed(2) }}%</td><td class="p-2 text-right">{{ r.cost_bps_per_side }}</td></tr></tbody></table></div>
+                                                    </details>
+                                                    <details class="border border-white/10 rounded-lg p-2"><summary class="text-xs text-gray-300 cursor-pointer">各模型權重與敏感度（非交易草案）</summary>
+                                                        <div class="grid grid-cols-1 xl:grid-cols-3 gap-2 mt-2"><div v-for="p in optimizerPhase3Rows" :key="p.key" class="border border-white/10 rounded-lg p-2"><div class="text-xs text-white">{{ p.label }}</div><div class="overflow-x-auto max-h-[350px]"><table class="w-full text-[11px]"><thead class="text-gray-400"><tr><th class="text-left p-1">標的</th><th class="text-right p-1">目前%</th><th class="text-right p-1">模型%</th></tr></thead><tbody><tr v-for="w in p.weights || []" :key="w.ticker" class="border-t border-white/5"><td class="p-1">{{ w.ticker }}</td><td class="p-1 text-right">{{ w.current_weight_pct }}</td><td class="p-1 text-right text-indigo-300">{{ w.weight_pct }}</td></tr></tbody></table></div></div></div>
+                                                        <div class="overflow-x-auto mt-2"><table class="w-full text-[11px]"><thead class="text-gray-400"><tr><th class="text-left p-2">變動參數</th><th class="text-right p-2">情境值</th><th class="text-left p-2">狀態</th><th class="text-right p-2">ES95</th><th class="text-right p-2">扣成本超額報酬</th><th class="text-right p-2">一次成本</th><th class="text-right p-2">換手</th></tr></thead><tbody><tr v-for="r in optimizerPhase3Report.sensitivity || []" :key="r.axis+'-'+r.value" class="border-t border-white/5"><td class="p-2">{{ r.axis }}</td><td class="p-2 text-right">{{ r.value }}</td><td class="p-2">{{ r.status }}</td><td class="p-2 text-right">{{ r.metrics?.es95_pct ?? '-' }}</td><td class="p-2 text-right">{{ r.method?.net_scenario_excess_return_pct == null ? '-' : r.method.net_scenario_excess_return_pct.toFixed(2)+'%' }}</td><td class="p-2 text-right">{{ r.method?.estimated_oneoff_cost_pct == null ? '-' : r.method.estimated_oneoff_cost_pct.toFixed(3)+'%' }}</td><td class="p-2 text-right">{{ r.method?.turnover_pct == null ? '-' : r.method.turnover_pct.toFixed(2)+'%' }}</td></tr></tbody></table></div>
+                                                    </details>
+                                                </template>
+                                            </template>
+                                        </div>
                                         <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
                                             <div class="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
                                                 <div class="px-3 py-2 border-b border-white/10 text-sm font-bold text-white flex items-center gap-2">
@@ -7212,7 +7244,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=optimizer-phase2-constrained-v1"></script>
+<script src="assets/js/app.bundle.js?v=optimizer-phase3-cost-aware-v1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>
