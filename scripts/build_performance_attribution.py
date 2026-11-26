@@ -13,7 +13,7 @@ import pandas as pd
 FACTORS = ["Mkt-RF","SMB","HML","RMW","CMA","Mom","TW_Mkt_RF","Crypto_RF"]
 WINDOWS = {"1W":7,"1M":30,"3M":91,"YTD":None,"12M":365,"SI":None}
 EPS=1e-8
-ENGINE_VERSION='v1.1'
+ENGINE_VERSION='v1.2'
 
 
 def number(x):
@@ -149,7 +149,23 @@ def window_pnl(nav,tx,categories,market,start,end):
         try:
             m=market["assets"][t]
             if m.get("error"): raise ValueError(m["error"])
-            r=asset_pnl(t,tx,start,end,m["price"],market["fx"],m["foreign"],m["splits"])
+            try:
+                r=asset_pnl(t,tx,start,end,m["price"],market["fx"],m["foreign"],m["splits"])
+            except ValueError as exc:
+                if "Missing" not in str(exc) and "stale" not in str(exc):raise
+                # Endpoint-only total P&L remains mathematically identifiable
+                # even when intra-period marks are missing (e.g. fund NAV).
+                if m["splits"] is None or any(d>start for d in m["splits"]):raise
+                trades=[x for x in rel if x["date"]>start]
+                closing=opening+sum(x["qty"] for x in trades)
+                if min(opening,closing)<-EPS:raise
+                def mv(q,d):
+                    return q*close(m["price"],d)*(close(market["fx"],d) if m["foreign"] else 1.) if abs(q)>=EPS else 0.
+                v0,v1=mv(opening,start),mv(closing,end)
+                exact=v1-v0+math.fsum(x["flow"] for x in trades)
+                r={"ticker":t,"opening_mv_twd":v0,"closing_mv_twd":v1,"opening_shares":opening,"closing_shares":closing,
+                   "pnl_twd":exact,"price_twd":None,"fx_twd":None,"interaction_twd":None,"execution_vs_close_twd":None,
+                   "unallocated_pnl_twd":exact,"identity_error_twd":0.,"decomposition_status":"ENDPOINT_ONLY","reason":str(exc)}
             if r is not None:
                 r["bucket"]=m["bucket"];r["source"]=m["source"];rows.append(r)
         except Exception as exc:
@@ -162,16 +178,18 @@ def window_pnl(nav,tx,categories,market,start,end):
     denom=nav[start]+sum(x["flow"]*(end-x["date"]).days/(end-start).days for x in flows if x["type"] in ("deposit","withdraw"))
     groups={}
     for r in rows: groups[r["bucket"]]=groups.get(r["bucket"],0.)+r["pnl_twd"]
+    partial_decomposition=[r["ticker"] for r in rows if r.get("decomposition_status")=="ENDPOINT_ONLY"]
     return {"status":"PARTIAL" if missing or abs(residual)>max(10.,abs(nav[start])*.001) else "RECONCILED_WITH_RESIDUAL",
-        "historical_issues_no_window_trades":historical_issues,
+        "historical_issues_no_window_trades":historical_issues,"partial_decomposition":partial_decomposition,
+        "unallocated_pnl_twd":math.fsum(r.get("unallocated_pnl_twd",0.) for r in rows),
         "start":str(start.date()),"end":str(end.date()),"start_nav_twd":nav[start],"end_nav_twd":nav[end],
         "external_flow_twd":external,"actual_pnl_twd":total,"asset_pnl_twd":asset_total,
         "explicit_other_cashflow_twd":explicit,"unexplained_twd":residual,
         "dietz_return_pct":total/denom*100 if denom>0 else None,
-        "price_twd":math.fsum(r["price_twd"] for r in rows),
-        "fx_twd":math.fsum(r["fx_twd"] for r in rows),
-        "interaction_twd":math.fsum(r["interaction_twd"] for r in rows),
-        "execution_vs_close_twd":math.fsum(r["execution_vs_close_twd"] for r in rows),
+        "price_twd":math.fsum(r["price_twd"] for r in rows if r["price_twd"] is not None),
+        "fx_twd":math.fsum(r["fx_twd"] for r in rows if r["fx_twd"] is not None),
+        "interaction_twd":math.fsum(r["interaction_twd"] for r in rows if r["interaction_twd"] is not None),
+        "execution_vs_close_twd":math.fsum(r["execution_vs_close_twd"] for r in rows if r["execution_vs_close_twd"] is not None),
         "bucket_pnl_twd":groups,"rows":sorted(rows,key=lambda x:x["pnl_twd"]),
         "missing":missing,"reconciliation_error_twd":total-asset_total-explicit-residual}
 
@@ -188,34 +206,19 @@ def windows_for(dates):
 
 def load_market(categories,earliest):
     import update_stock_meta as q
-    import yfinance as yf
     from jensen_alpha import fetch_yahoo_chart_close
+    from performance_market_data import series,load_asset,yahoo_chart
     days=max(60,(pd.Timestamp.now().normalize()-earliest).days+15)
-    def series(s):
-        s=pd.to_numeric(s,errors="coerce").dropna()
-        s.index=pd.to_datetime(s.index).tz_localize(None).normalize()
-        return s[~s.index.duplicated(keep="last")].sort_index()
     try: fx=series(fetch_yahoo_chart_close("TWD=X",days=days))
-    except Exception: fx=pd.Series(dtype=float)
+    except Exception:
+        try:
+            fx,_,currency=yahoo_chart("TWD=X",earliest)
+            if currency!="TWD":raise ValueError("FX currency mismatch")
+        except Exception:fx=pd.Series(dtype=float)
     out={}
     for t,cat in categories.items():
-        try:
-            if cat=="__AMBIGUOUS__":
-                raise ValueError("Ticker category changed; quote currency ambiguous")
-            sym=q.yfinance_symbol(t,cat)
-            h=yf.Ticker(sym).history(start=(earliest-pd.Timedelta(days=10)).strftime("%Y-%m-%d"),
-                                      auto_adjust=False,actions=True,raise_errors=True)
-            if h.empty or "Close" not in h or "Stock Splits" not in h:
-                raise ValueError("Close or corporate actions unavailable")
-            px=series(h["Close"]);split_ratios=series(h["Stock Splits"])[lambda x:x!=0].to_dict();splits=list(split_ratios)
-            foreign=q.is_foreign_currency_asset(t,cat)
-            # Confirm quote currency rather than assuming all foreign assets are USD.
-            currency=str(yf.Ticker(sym).fast_info.currency or "").upper()
-            if currency!=("USD" if foreign else "TWD"):
-                raise ValueError("Quote currency does not match ledger classification")
-            out[t]={"price":px,"splits":splits,"split_ratios":split_ratios,"foreign":foreign,"bucket":q.classify_asset_bucket(t,cat),"source":"Yahoo Close (no dividend adjustment)","instrument_id":sym,"currency":currency}
-        except Exception as exc:
-            out[t]={"error":str(exc)[:180]}
+        try:out[t]=load_asset(t,cat,earliest,q)
+        except Exception as exc:out[t]={"error":str(exc)[:180]}
     return {"assets":out,"fx":fx}
 
 
@@ -258,14 +261,19 @@ def factor_periods(nav,tx,fx,ff,tw,btc):
     for start,end in zip(list(nav)[:-1],list(nav)[1:]):
         try:
             days=(end-start).days
-            if days!=7: raise ValueError("Not a seven-day NAV interval")
+            if not 1<=days<=31: raise ValueError("NAV interval outside 1–31 day model limit")
             # Do not fill unpublished French observations with zero. Weekly
             # source must cover end, allowing weekend/holiday lag only.
             if end>ff.index[-1]+pd.Timedelta(days=3) or start<ff.index[0]:
                 raise ValueError("French factors not published for full interval")
             f=ff.loc[(ff.index>start)&(ff.index<=end)]
-            if len(f)<3 or (end-f.index[-1]).days>3:
+            weekdays=len(pd.bdate_range(start+pd.Timedelta(days=1),end))
+            # Holiday-aware proxy: published observations must span the interval.
+            # No zero imputation; exclude weekend-only / insufficient coverage.
+            if f.empty or len(f)<max(1,math.ceil(.60*weekdays)) or (end-f.index[-1]).days>3 or (f.index[0]-start).days>4:
                 raise ValueError("Factor interval incomplete")
+            if len(f)>1 and f.index.to_series().diff().dropna().dt.days.max()>4:
+                raise ValueError("Internal factor date gap")
             vals=(1+f).prod()-1
             x0=close(fx,start,4);x1=close(fx,end,4);fxr=x1/x0-1
             twr=(close(tw,end,5)/x1)/(close(tw,start,5)/x0)-1
@@ -279,7 +287,7 @@ def factor_periods(nav,tx,fx,ff,tw,btc):
             rt=(nav[end]-nav[start]-sum(x["flow"] for x in ext))/td
             ru=(nav[end]/x1-nav[start]/x0-sum(usd))/ud
             if min(rt,ru)<=-1: raise ValueError("Return <= -100%")
-            row={"start":start,"end":end,"twd":rt,"usd":ru,"fx":fxr,"RF":float(vals["RF"]),
+            row={"start":start,"end":end,"duration_weeks":days/7.,"twd":rt,"usd":ru,"fx":fxr,"RF":float(vals["RF"]),
                  **{k:float(vals[k]) for k in FACTORS[:6]},
                  "TW_Mkt_RF":twr-float(vals["RF"]),"Crypto_RF":br-float(vals["RF"])}
             if not all(math.isfinite(v) for k,v in row.items() if k not in ("start","end")):
@@ -309,17 +317,22 @@ def factor_report(periods,skipped,nav):
     import statsmodels.api as sm
     out={"status":"INSUFFICIENT_SAMPLE","sample_count":len(periods),"skipped":skipped,
          "model":"FF5 + Momentum + TW USD excess + Crypto USD excess","method":"actual_NAV_Modified_Dietz_USD_in_sample_HAC",
-         "windows":{}}
+         "windows":{},"coverage":{"expected_intervals":len(nav)-1,"available_intervals":len(periods),
+             "coverage_pct":len(periods)/max(1,len(nav)-1)*100,
+             "nav_latest":str(max(nav).date()),"latest_factor_interval":str(periods["end"].max().date()) if len(periods) else None,
+             "lag_days":int((max(nav)-periods["end"].max()).days) if len(periods) else None,
+             "irregular_intervals":int(((periods["end"]-periods["start"]).dt.days!=7).sum()) if len(periods) else 0}}
     # 8 factors plus intercept: minimum 52 intervals, full rank required.
     if len(periods)<52:return out
     p=periods.sort_values("end").reset_index(drop=True)
-    X=sm.add_constant(p[FACTORS],has_constant="add")
+    p["duration_weeks"]=(p["end"]-p["start"]).dt.days/7.
+    X=p[["duration_weeks"]+FACTORS]
     if np.linalg.matrix_rank(X.to_numpy())<len(FACTORS)+1:
         out["status"]="RANK_DEFICIENT";return out
     fit=sm.OLS(p["usd"]-p["RF"],X).fit(cov_type="HAC",cov_kwds={"maxlags":4,"use_correction":True})
     names=["RF","Alpha"]+FACTORS+["Residual","FX","Dietz_currency_bridge"]
     # Translate each USD contribution to TWD including FX interaction.
-    usd=np.column_stack([p["RF"],np.full(len(p),fit.params["const"]),
+    usd=np.column_stack([p["RF"],p["duration_weeks"].to_numpy()*fit.params["duration_weeks"],
                          p[FACTORS].to_numpy()*fit.params[FACTORS].to_numpy(),fit.resid])
     fx=p["fx"].to_numpy();ru=p["usd"].to_numpy();rt=p["twd"].to_numpy()
     c=np.column_stack([usd*(1+fx[:,None]),fx,rt-((1+ru)*(1+fx)-1)])
@@ -337,10 +350,10 @@ def factor_report(periods,skipped,nav):
             "reconciliation_error_pp":float((linked.sum()-total)*100)}
     out.update(status="OK",start=str(p.iloc[0]["start"].date()),end=str(p.iloc[-1]["end"].date()),
                nav_latest=str(list(nav)[-1].date()),r_squared=float(fit.rsquared),
-               alpha_weekly_pct=float(fit.params["const"]*100),alpha_hac_pvalue=float(fit.pvalues["const"]),
+               alpha_weekly_pct=float(fit.params["duration_weeks"]*100),alpha_hac_pvalue=float(fit.pvalues["duration_weeks"]),
                beta={k:float(fit.params[k]) for k in FACTORS},
                notes=["Retrospective in-sample fit; not an investable or out-of-sample alpha estimate.",
-                      "Daily French factor spreads compounded to actual weekly NAV intervals (approximation).",
+                      "Daily French factor spreads compounded to actual NAV intervals (approximation); intercept scaled by duration in weeks; HAC lags are observation-based.",
                       "USD Dietz converts external flows on their own dates; FX interaction allocated proportionately to USD components.",
                       "Dietz currency bridge retained explicitly; latest factor period may lag latest NAV.",
                       "Carino links only contiguous covered periods."])
@@ -375,6 +388,8 @@ def build(row,market=None,factor_data=None):
         ff,tw,btc=load_factors(earliest) if factor_data is None else factor_data
         periods,skipped=factor_periods(nav,tx,market["fx"],ff,tw,btc)
         factor=factor_report(periods,skipped,nav)
+        factor["coverage"]["french_latest"]=str(ff.index.max().date())
+        factor["coverage"]["lag_warning"]=factor["coverage"]["lag_days"] is None or factor["coverage"]["lag_days"]>7
     except Exception as exc:
         factor={"status":"UNAVAILABLE","reason":str(exc)[:200],"windows":{}}
     return clean_json({"version":"v1.0","engine_version":ENGINE_VERSION,"quality":quality,"generated_at":datetime.now(timezone.utc).isoformat(),

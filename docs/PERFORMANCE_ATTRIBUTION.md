@@ -11,3 +11,6 @@ There is no scheduled NAV writer: the web UI's snapshotToHistory/addHistoryRecor
 
 ## v1.1 reconciliation
 Historical inventory is checked across all dated transactions. Conflicting categories and negative holdings are quarantined, with a separate flag for historical anomalies with no window trades. Yahoo split ratios and recorded effective transaction prices support conservative detection of as-traded versus already normalized share units; ambiguous cases fail closed. Cash bridge uses cumulative ledger flows and known endpoint marks; unknown opening cash or missing asset values remain unresolved. No ledger writes. Report schema v1.0 retained; engine_version invalidates old reports.
+
+## v1.2 coverage
+MoneyDJ recent 90 NAV observations for three verified fund identities (not full historical backfill); endpoint-only total P&L if intraperiod marks unavailable and endpoint valuations known, with unallocated breakdown explicitly null. Yahoo chart Close + split events fallback; FinMind raw overlap only when no split events and >=5 overlapping dates agree within 0.5%. No static FX. 1–31 calendar-day actual NAV periods, source coverage checks, duration-scaled weekly alpha, and coverage/lag diagnostics; weekend-only or missing data excluded. In-sample HAC remains observation-based and irregular duration is an approximation.

@@ -127,4 +127,28 @@ class QualityTests(unittest.TestCase):
         r=cash_reconciliation(nav,tx,{"1M":p})["1M"]
         self.assertFalse(r["opening_cash_balance_verified"])
         self.assertAlmostEqual(r["bridge_error_twd"],0.)
+class CoverageTests(unittest.TestCase):
+    def test_fund_nav_parser(self):
+        from performance_market_data import parse_fund_nav
+        html="<h1>安聯台灣科技基金</h1><table><tr><td>2026/11/20</td><td>497.65</td></tr><tr><td>2026/11/19</td><td>542.60</td></tr></table>"
+        s=parse_fund_nav(html,"安聯台灣科技基金")
+        self.assertEqual(s.loc[pd.Timestamp("2026-11-20")],497.65)
+        with self.assertRaises(ValueError):parse_fund_nav(html,"統一黑馬基金")
+    def test_closed_fund_endpoint_only(self):
+        a,b,c,d=pd.to_datetime(["2025-01-01","2025-01-02","2025-02-02","2025-03-01"])
+        tx=[{"date":b,"ticker":"F","qty":2.,"flow":-200.,"type":"buy"},{"date":c,"ticker":"F","qty":-2.,"flow":250.,"type":"sell"}]
+        m={"assets":{"F":{"price":pd.Series(dtype=float),"splits":[],"foreign":False,"bucket":"taiwan_equity","source":"test"}},"fx":None}
+        p=window_pnl({a:1000.,d:1050.},tx,{"F":"基金"},m,a,d)
+        self.assertAlmostEqual(p["asset_pnl_twd"],50.)
+        self.assertEqual(p["unallocated_pnl_twd"],50.)
+        self.assertIsNone(p["rows"][0]["price_twd"])
+    def test_irregular_factor_interval(self):
+        from build_performance_attribution import factor_periods
+        a,b=pd.to_datetime(["2025-01-03","2025-01-13"])
+        dates=pd.bdate_range(a,b)
+        ff=pd.DataFrame(0.001,index=dates,columns=FACTORS[:6]+["RF"])
+        px=pd.Series(100.,index=pd.date_range(a,b))
+        p,skip=factor_periods({a:100.,b:101.},[],px,ff,px,px)
+        self.assertEqual(len(p),1);self.assertAlmostEqual(p.iloc[0]["duration_weeks"],10/7)
+        self.assertFalse(skip)
 if __name__=="__main__":unittest.main()
