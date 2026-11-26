@@ -13,7 +13,7 @@ import pandas as pd
 FACTORS = ["Mkt-RF","SMB","HML","RMW","CMA","Mom","TW_Mkt_RF","Crypto_RF"]
 WINDOWS = {"1W":7,"1M":30,"3M":91,"YTD":None,"12M":365,"SI":None}
 EPS=1e-8
-ENGINE_VERSION='v3.2.1-cashflow-only'
+ENGINE_VERSION='v3.4-portfolio-risk'
 
 
 def number(x):
@@ -420,7 +420,10 @@ def build(row,market=None,factor_data=None,research_prices=None):
     try:risk_budget=actual_factor_budget(periods,FACTORS)
     except Exception:risk_budget={"status":"UNAVAILABLE","execution_permission":False}
     risk_research=run_research(prices=research_prices)
-    return clean_json({"version":"v1.0","engine_version":ENGINE_VERSION,"quality":quality,"point_in_time":pit,"brinson":brinson,"historical_brinson":historical_brinson,"total_return_attribution":total_return,"attribution_quality_gate":gate,"quality_diagnostics":qdiag,"cashflow_attribution":cashflow,"factor_risk_budget":risk_budget,"regime_factor_research":risk_research,"generated_at":datetime.now(timezone.utc).isoformat(),
+    from performance_portfolio_risk import build_portfolio_risk
+    try:portfolio_risk=build_portfolio_risk(nav,adjusted,categories,market,captured)
+    except Exception:portfolio_risk={"status":"UNAVAILABLE","execution_permission":False,"reason":"Portfolio risk calculation failed"}
+    return clean_json({"version":"v1.0","engine_version":ENGINE_VERSION,"quality":quality,"point_in_time":pit,"brinson":brinson,"historical_brinson":historical_brinson,"total_return_attribution":total_return,"attribution_quality_gate":gate,"quality_diagnostics":qdiag,"cashflow_attribution":cashflow,"factor_risk_budget":risk_budget,"regime_factor_research":risk_research,"portfolio_risk":portfolio_risk,"generated_at":datetime.now(timezone.utc).isoformat(),
         "nav_as_of":str(list(nav)[-1].date()),"ledger_count":len(tx),"history_count":len(nav),
         "pnl":pnl,"factor":factor,"rolling_factor":rolling,"execution_permission":False,
         "notes":["NAV and external flows are recorded data; per-asset P&L is reconstructed, not broker-certified.",
