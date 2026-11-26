@@ -13,7 +13,7 @@ import pandas as pd
 FACTORS = ["Mkt-RF","SMB","HML","RMW","CMA","Mom","TW_Mkt_RF","Crypto_RF"]
 WINDOWS = {"1W":7,"1M":30,"3M":91,"YTD":None,"12M":365,"SI":None}
 EPS=1e-8
-ENGINE_VERSION='v2.1'
+ENGINE_VERSION='v2.1-bf'
 
 
 def number(x):
@@ -383,6 +383,9 @@ def build(row,market=None,factor_data=None):
     pnl={label:window_pnl(nav,adjusted,categories,market,start,end) for label,start,end in windows_for(list(nav))}
     from performance_pit_nav import build_pit
     pit, captured=build_pit(row.get("history_data") or [],tx,nav,pnl)
+    from performance_brinson import build_brinson
+    try:brinson=build_brinson(captured,tx,nav)
+    except Exception as exc:brinson={"status":"UNAVAILABLE","reason":str(exc)[:180],"periods":[]}
     quality={"version":"v1.1","inventory":diagnostics,"quarantined_count":len(quarantined),
              "cash_reconciliation":cash_reconciliation(nav,tx,pnl),
              "notes":["Unknown opening cash balance; cumulative ledger flows are not an independently observed bank balance.",
@@ -400,7 +403,7 @@ def build(row,market=None,factor_data=None):
     except Exception as exc:
         factor={"status":"UNAVAILABLE","reason":str(exc)[:200],"windows":{}}
         rolling={"status":"UNAVAILABLE","reason":str(exc)[:200],"rows":[],"windows":{}}
-    return clean_json({"version":"v1.0","engine_version":ENGINE_VERSION,"quality":quality,"point_in_time":pit,"generated_at":datetime.now(timezone.utc).isoformat(),
+    return clean_json({"version":"v1.0","engine_version":ENGINE_VERSION,"quality":quality,"point_in_time":pit,"brinson":brinson,"generated_at":datetime.now(timezone.utc).isoformat(),
         "nav_as_of":str(list(nav)[-1].date()),"ledger_count":len(tx),"history_count":len(nav),
         "pnl":pnl,"factor":factor,"rolling_factor":rolling,"execution_permission":False,
         "notes":["NAV and external flows are recorded data; per-asset P&L is reconstructed, not broker-certified.",

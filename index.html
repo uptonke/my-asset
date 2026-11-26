@@ -1187,6 +1187,17 @@
                             <details class="text-xs"><summary class="cursor-pointer">快照診斷</summary><div class="max-h-[250px] overflow-y-auto"><div v-for="r in performanceAttribution.point_in_time.snapshots" :key="r.date">{{ r.date }}｜{{ r.status }}｜{{ r.reason || r.captured_at || '' }}</div></div></details>
                         </template>
                     </div>
+                    <div class="glass chart-card p-5 md:p-6 space-y-3">
+                        <h4 class="panel-title">Brinson-Fachler Attribution · v2.1</h4>
+                        <p class="panel-subtitle">示範基準：VT 60%、0050 20%、BOXX 10%、GLDM 5%、BTC 5%；非核准政策。僅比較無交易／現金流且具完整擷取估值的連續區間。基準是前一日或更早的價格收盤值，非總報酬或同步成交價。</p>
+                        <div class="text-xs text-amber-300">{{ performanceAttribution?.brinson?.status || '等待更新' }}｜{{ performanceAttribution?.brinson?.reason || '' }}</div>
+                        <div v-if="performanceAttribution?.brinson?.latest" class="space-y-2">
+                            <div class="text-xs">{{ performanceAttribution.brinson.latest.start }} ～ {{ performanceAttribution.brinson.latest.end }}｜主動報酬 {{ performancePct(performanceAttribution.brinson.latest.active_return_pp).replace('%',' pp') }}</div>
+                            <div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr><th class="text-left p-2">類別</th><th class="text-right p-2">投組%</th><th class="text-right p-2">基準%</th><th class="text-right p-2">配置 pp</th><th class="text-right p-2">選擇 pp</th><th class="text-right p-2">交互 pp</th></tr></thead><tbody><tr v-for="r in performanceAttribution.brinson.latest.rows" :key="r.bucket" class="border-t border-white/5"><td class="p-2">{{ r.bucket }}</td><td class="p-2 text-right">{{ r.portfolio_weight_pct.toFixed(2) }}</td><td class="p-2 text-right">{{ r.benchmark_weight_pct.toFixed(2) }}</td><td v-for="k in ['allocation_pp','selection_pp','interaction_pp']" :key="k" class="p-2 text-right" :class="performanceTone(r[k])">{{ r[k].toFixed(3) }}</td></tr></tbody></table></div>
+                        </div>
+                        <div v-else class="text-xs text-gray-400">尚無合格配對，不使用歷史重建估值冒充正式歸因。</div>
+                        <details v-if="performanceAttribution?.brinson?.skipped?.length" class="text-xs"><summary>排除區間</summary><div v-for="r in performanceAttribution.brinson.skipped" :key="r.end">{{ r.start }} ～ {{ r.end }}：{{ r.reason }}</div></details>
+                    </div>
                 </div>
             </section>
 
@@ -7336,7 +7347,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=pit-attribution-v21"></script>
+<script src="assets/js/app.bundle.js?v=pit-bf-attribution-v21"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>

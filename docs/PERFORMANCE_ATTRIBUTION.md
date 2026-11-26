@@ -22,3 +22,6 @@ Optional older public fund NAV archive: `data/attribution/fund_nav_history.csv` 
 
 ## v2.1 captured NAV
 Current Taipei-date browser snapshots save captured marks, price source, quote timestamp unknown, shares, FX, cash, unrounded NAV and capture timestamp inside history_data. Historical manual NAV has no valuation; no invented backfill. The report checks ledger quantities, categories, counts and cash at each date, and compares captured endpoint P&L separately from historical reconstruction. Existing SQL CAS and invalidation apply. Backup excludes captured valuation detail (legacy NAV preserved); private offsite backup of these details is not implemented. Browser timestamp and price source do not prove market quote freshness.
+
+## v2.1 Brinson-Fachler
+Illustrative benchmark 60% VT/20% 0050/10% BOXX/5% GLDM/5% BTC, not approved policy. Single-period allocation, selection and interaction computed only for consecutive captured endpoints with unchanged holdings, no ledger events and no cost-fallback marks. Benchmark previous-calendar-day-or-earlier price closes, USD converted to TWD; no total-return or exact-time comparability claim. No multi-period active linking or formal promotion. Initially no result until eligible captured snapshots exist.

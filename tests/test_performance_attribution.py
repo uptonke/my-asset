@@ -204,4 +204,15 @@ class PITTests(unittest.TestCase):
         r[0].pop("valuation")
         out,_=build_pit(r,tx,{a:1000,b:1010},w)
         self.assertEqual(out["pair_count"],0)
+class BrinsonTests(unittest.TestCase):
+    def test_effects_identity(self):
+        from performance_brinson import effects
+        wp=np.array([.6,.4,0.]);wb=np.array([.4,.4,.2])
+        rp=np.array([.1,.02,.03]);rb=np.array([.08,.04,.03])
+        p,b,a,s,i=effects(wp,rp,wb,rb)
+        self.assertAlmostEqual((a+s+i).sum(),p-b)
+        self.assertAlmostEqual(s[2]+i[2],0.)
+    def test_no_legacy_attribution(self):
+        from performance_brinson import build_brinson
+        self.assertEqual(build_brinson({},[],{})["status"],"NO_ELIGIBLE_CAPTURED_INTERVAL")
 if __name__=="__main__":unittest.main()
