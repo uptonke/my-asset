@@ -28,12 +28,13 @@ class AttributionTests(unittest.TestCase):
         p={"start":"2026-01-01","end":"2026-01-08","explicit_other_cashflow_twd":20,
             "actual_pnl_twd":40,"asset_pnl_twd":15,"unexplained_twd":5,"rows":[{"ticker":"VOO","pnl_twd":15}]}
         r=interval(nav,tx,cats,p)
-        self.assertEqual(r["linked_dividend_twd"],20)
-        self.assertEqual(r["unclassified_income_twd"],5)
-        self.assertEqual(r["asset_including_linked_dividend_twd"],35)
-        self.assertEqual(r["other_after_dividend_twd"],0)
+        self.assertEqual(r["unclassified_income_twd"],25)
+        self.assertEqual(r["asset_pnl_twd"],15)
+        self.assertEqual(r["explicit_other_cashflow_twd"],20)
+        self.assertNotIn("linked_dividend_twd",r)
+        self.assertNotIn("security_rows",r)
         self.assertEqual(r["identity_error_twd"],0)
-        self.assertEqual(classify({**tx[1],"cashflow_detail":{"kind":"dividend","ticker":"UNKNOWN"}},cats)[0],"dividend_unlinked")
+        self.assertEqual(classify({**tx[1],"cashflow_detail":{"kind":"dividend","ticker":"UNKNOWN"}},cats)[0],"unclassified_income")
         self.assertEqual(classify({**tx[2],"cashflow_detail":{"kind":"dividend","ticker":"VOO"}},cats)[2],"INVALID_METADATA")
     def test_quality_segments_do_not_cross_gap(self):
         dates=pd.date_range("2026-01-01",periods=5,freq="7D")

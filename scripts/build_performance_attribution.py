@@ -13,7 +13,7 @@ import pandas as pd
 FACTORS = ["Mkt-RF","SMB","HML","RMW","CMA","Mom","TW_Mkt_RF","Crypto_RF"]
 WINDOWS = {"1W":7,"1M":30,"3M":91,"YTD":None,"12M":365,"SI":None}
 EPS=1e-8
-ENGINE_VERSION='v3.2-risk-research'
+ENGINE_VERSION='v3.2.1-cashflow-only'
 
 
 def number(x):
