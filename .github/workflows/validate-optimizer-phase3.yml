@@ -1,0 +1,24 @@
+name: Validate Optimizer Phase 3
+on:
+  push:
+    paths:
+      - 'scripts/run_cost_aware_optimizer.py'
+      - 'scripts/run_common_optimizer_snapshot.py'
+      - 'scripts/build_expected_return_model.py'
+      - 'scripts/build_black_litterman_sandbox.py'
+      - 'config/optimizer_phase3.json'
+      - 'tests/test_cost_aware_optimizer.py'
+      - '.github/workflows/validate-optimizer-phase3.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install numpy==2.2.6 pandas==2.3.2 scipy==1.13.1
+      - run: python -m unittest discover -s tests -p test_cost_aware_optimizer.py
