@@ -7,6 +7,11 @@ on:
       - 'scripts/performance_market_data.py'
       - 'scripts/performance_rolling_factor.py'
       - 'scripts/performance_pit_nav.py'
+      - 'scripts/capture_private_nav.py'
+      - 'tests/test_automated_nav_v24.py'
+      - 'sql/automated_nav_capture.sql'
+      - 'backup.py'
+      - '.github/workflows/capture-private-nav.yml'
       - 'scripts/performance_brinson.py'
       - 'scripts/performance_brinson_historical.py'
       - 'scripts/performance_coverage.py'
@@ -35,6 +40,9 @@ on:
     paths:
       - 'scripts/**'
       - 'tests/**'
+      - 'sql/**'
+      - 'backup.py'
+      - '.github/workflows/capture-private-nav.yml'
       - 'index.html'
       - '.github/workflows/validate-performance-attribution.yml'
   workflow_dispatch:
@@ -53,6 +61,7 @@ jobs:
       - run: python -m unittest discover -s tests -p test_historical_brinson.py
       - run: python -m unittest discover -s tests -p test_coverage_v23.py
       - run: python -m unittest discover -s tests -p test_market_recovery_v231.py
+      - run: python -m unittest discover -s tests -p test_automated_nav_v24.py
       - run: python -m unittest discover -s tests -p test_cost_walk_forward.py
       - uses: actions/setup-node@v4
         with:

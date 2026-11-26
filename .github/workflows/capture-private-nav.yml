@@ -1,0 +1,35 @@
+name: Capture Private NAV
+on:
+  schedule:
+    - cron: '15 2 * * 6'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  capture:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    concurrency:
+      group: private-performance-attribution
+      cancel-in-progress: false
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_TABLE: portfolio_db
+      PORTFOLIO_ROW_ID: '1'
+      CAPTURE_SCHEDULED: ${{ github.event_name == 'schedule' && 'true' || 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - run: python -m unittest discover -s tests -p test_automated_nav_v24.py
+      - run: python scripts/capture_private_nav.py
+  attribution:
+    needs: capture
+    if: github.ref == 'refs/heads/main' && needs.capture.result == 'success'
+    uses: ./.github/workflows/update-private-performance-attribution.yml
+    secrets: inherit

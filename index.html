@@ -1172,8 +1172,8 @@
                         </template>
                     </div>
                     <div class="glass chart-card p-5 md:p-6 space-y-3">
-                        <h4 class="panel-title">Point-in-Time NAV Reconciliation · v2.1</h4>
-                        <p class="panel-subtitle">新建即時 NAV 保存當時的估值明細、股數、匯率、現金及擷取時間；歷史手動 NAV 不回填。擷取時間不等於交易所報價時間。</p>
+                        <h4 class="panel-title">Point-in-Time NAV Reconciliation · v2.4</h4>
+                        <p class="panel-subtitle">新建即時 NAV 保存當時的估值明細、股數、匯率、現金及擷取時間；歷史手動 NAV 不回填。擷取時間不等於交易所報價時間。每週六 10:15 台北時間自動擷取（需先部署 SQL）；使用已完成日線及來源日期，非同步即時價。自動快照不可覆寫，儲存前請重新整理網站。</p>
                         <div v-if="!performanceAttribution?.point_in_time" class="text-xs text-gray-400">等待新版歸因更新。</div>
                         <template v-else>
                             <div class="text-xs text-gray-300">有效快照 {{ performanceAttribution.point_in_time.valid_count }} / {{ performanceAttribution.history_count }}｜精確快照配對 {{ performanceAttribution.point_in_time.pair_count }}</div>
@@ -1184,7 +1184,7 @@
                                 </div>
                                 <div v-else class="text-amber-300">{{ p.reason }}</div>
                             </div>
-                            <details class="text-xs"><summary class="cursor-pointer">快照診斷</summary><div class="max-h-[250px] overflow-y-auto"><div v-for="r in performanceAttribution.point_in_time.snapshots" :key="r.date">{{ r.date }}｜{{ r.status }}｜{{ r.reason || r.captured_at || '' }}</div></div></details>
+                            <details class="text-xs"><summary class="cursor-pointer">快照診斷</summary><div class="max-h-[250px] overflow-y-auto"><div v-for="r in performanceAttribution.point_in_time.snapshots" :key="r.date">{{ r.date }}｜{{ r.status }}｜{{ r.capture_mode || '' }}｜{{ r.reason || r.captured_at || '' }}｜報價截止 {{ r.cutoff_date || '—' }}｜FX {{ r.fx_quote_date || '—' }}｜{{ r.quote_dates_verified ? '日期已核對；精確時間未核對' : '報價日期未核對' }}</div></div></details>
                         </template>
                     </div>
                     <div class="glass chart-card p-5 md:p-6 space-y-3">
@@ -1199,13 +1199,13 @@
                         <details v-if="performanceAttribution?.brinson?.skipped?.length" class="text-xs"><summary>排除區間</summary><div v-for="r in performanceAttribution.brinson.skipped" :key="r.end">{{ r.start }} ～ {{ r.end }}：{{ r.reason }}</div></details>
                     </div>
                     <div class="glass chart-card p-5 md:p-6 space-y-3">
-                        <h4 class="panel-title">Historical Brinson-Fachler · v2.3.1</h4>
+                        <h4 class="panel-title">Historical Brinson-Fachler · v2.3.3</h4>
                         <p class="panel-subtitle">歷史 NAV、流水帳及價格重建；研究用非正式基準。採交易日收盤切段與多期 Carino 主動報酬連結。現金為流水帳推算，非銀行核對；不跨缺漏區間，不回填原始 NAV。微額負現金 ≤ NT$1 僅在研究估值歸零；保留原始差額。</p>
                         <div class="text-xs text-amber-300">{{ performanceAttribution?.historical_brinson?.status || '等待新版歸因更新' }}｜{{ performanceAttribution?.historical_brinson?.reason || '' }}</div>
                         <template v-if="performanceAttribution?.historical_brinson">
                             <div class="text-xs">合格 {{ performanceAttribution.historical_brinson.eligible_intervals ?? 0 }} / {{ performanceAttribution.historical_brinson.expected_intervals ?? '—' }} 區間｜覆蓋率 {{ performancePct(performanceAttribution.historical_brinson.coverage_pct) }}</div>
                             <details v-if="performanceAttribution.historical_brinson.coverage_diagnostics" open class="text-xs space-y-2">
-                                <summary>v2.3.1 資料品質診斷（原因可重疊）</summary>
+                                <summary>v2.3.3 資料品質診斷（原因可重疊）</summary>
                                 <div>微額現金容許區間 {{ performanceAttribution.historical_brinson.coverage_diagnostics.micro_cash_intervals }}｜已核實申購區間 {{ performanceAttribution.historical_brinson.coverage_diagnostics.pending_subscription_intervals }}</div>
                                 <div v-for="(n,k) in performanceAttribution.historical_brinson.coverage_diagnostics.reason_interval_counts" :key="k">{{ k }}：{{ n }} 期</div>
                                 <div v-for="(n,t) in performanceAttribution.historical_brinson.coverage_diagnostics.ticker_interval_counts" :key="t">{{ t }}：{{ n }} 期</div>

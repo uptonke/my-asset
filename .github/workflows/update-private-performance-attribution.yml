@@ -34,6 +34,7 @@ jobs:
       - run: python -m unittest discover -s tests -p test_historical_brinson.py
       - run: python -m unittest discover -s tests -p test_coverage_v23.py
       - run: python -m unittest discover -s tests -p test_market_recovery_v231.py
+      - run: python -m unittest discover -s tests -p test_automated_nav_v24.py
       - name: Publish private report only
         env:
           # Manual workflow dispatch always rebuilds. Reusable callers

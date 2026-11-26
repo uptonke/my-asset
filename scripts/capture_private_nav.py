@@ -1,7 +1,6 @@
 """Scheduled forward-only, private close-based NAV capture. No historical backfill."""
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
-import hashlib
 import json
 import math
 import os
@@ -104,7 +103,7 @@ def make_snapshot(row,now,market,parsed=None):
             "quote_as_of":str(mark_date.date()),"quote_kind":kind,"calendar":calendar})
     invested=math.fsum(h["market_value_twd"] for h in holdings)
     nav=invested+max(0.,cash)
-    if not math.isfinite(nav) or nav<=0:raise CaptureBlocked("NONPOSITIVE_NAV")
+    if not math.isfinite(nav) or nav<.5:raise CaptureBlocked("NONPOSITIVE_NAV")
     d=str(today.date())
     record={"date":d,"assets":math.floor(nav+.5),"cost":cost_basis(row,active),
         "valuation":{"version":"v2","capture_mode":"automated_completed_daily_marks","captured_at":now.isoformat(),
