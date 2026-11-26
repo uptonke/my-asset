@@ -124,6 +124,19 @@ def recover_fund_history(t,reference,earliest):
             continue
     return reference,None
 
+def apply_fund_archive(t,reference,path=None):
+    """Accept a historical archive only with independent overlapping NAV evidence."""
+    try:
+        archive=merge_fund_archive(t,pd.Series(dtype=float),path)
+        if archive.empty:return reference,"REFERENCE_ONLY",None
+        if len(reference.index.intersection(archive.index))<5:
+            raise ValueError("Fund archive requires five matching reference dates")
+        merged=merge_verified_fund_history(reference,archive,"TWD",{})
+        return merged,"ARCHIVE_VERIFIED_OVERLAP",None
+    except Exception as e:
+        return reference,"ARCHIVE_REJECTED",str(e)[:180]
+
+
 def load_asset(t,cat,earliest,q):
     import yfinance as yf
     if t in FUND_CODES:
@@ -131,13 +144,16 @@ def load_asset(t,cat,earliest,q):
         try: px=fund_nav(t);err=None
         except Exception as exc:
             px=pd.Series(dtype=float);err=str(exc)[:180]
-        original=len(px);px=merge_fund_archive(t,px)
-        source="MoneyDJ recent NAV observations"+(" + supplied NAV archive" if len(px)>original else "")
-        px,recovered=recover_fund_history(t,px,earliest)
+        px,archive_status,archive_error=apply_fund_archive(t,px)
+        source="MoneyDJ recent NAV observations"
+        if archive_status=="ARCHIVE_VERIFIED_OVERLAP":source+=" + supplied Yahoo NAV archive (verified overlap)"
+        if archive_error:source+=" | archive rejected: "+archive_error
+        recovered=None
+        if archive_status!="ARCHIVE_VERIFIED_OVERLAP":px,recovered=recover_fund_history(t,px,earliest)
         if recovered:source+=" + verified Yahoo NAV overlap ("+recovered+")"
         return {"price":px,"splits":[],"split_ratios":{},"foreign":False,"bucket":"taiwan_equity",
                 "source":source,"instrument_id":FUND_CODES[t][0],"currency":"TWD",
-                "fund_nav_error":err,"fund":True,"historical_recovery_status":"VERIFIED_OVERLAP" if recovered else "REFERENCE_ONLY"}
+                "fund_nav_error":err,"fund":True,"historical_recovery_status":"VERIFIED_OVERLAP" if recovered else archive_status}
     if cat=="__AMBIGUOUS__":raise ValueError("Exchange/currency conflict; confirm TW vs ADR")
     sym=q.yfinance_symbol(t,cat)
     foreign=q.is_foreign_currency_asset(t,cat);expected="USD" if foreign else "TWD"

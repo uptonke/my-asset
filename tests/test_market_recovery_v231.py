@@ -6,7 +6,7 @@ import pandas as pd
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"scripts"))
 from performance_calendar import required_session
 from performance_coverage import quote,CoverageIssue,cash_trace
-from performance_market_data import merge_verified_fund_history,recover_fund_history
+from performance_market_data import merge_verified_fund_history,recover_fund_history,apply_fund_archive,merge_fund_archive,FUND_CODES
 
 class MarketRecoveryTests(unittest.TestCase):
     def test_twse_lunar_new_year(self):
@@ -36,6 +36,24 @@ class MarketRecoveryTests(unittest.TestCase):
         self.assertEqual(r["minimum_cash_twd"],-2.)
         self.assertAlmostEqual(r["negative_days"][-1]["cash_twd"],-.15)
         self.assertFalse(r["opening_cash_verified"])
+    def test_supplied_archive(self):
+        path=Path(__file__).resolve().parents[1]/"data/attribution/fund_nav_history.csv"
+        self.assertTrue(path.is_file())
+        for ticker in FUND_CODES:
+            archive=merge_fund_archive(ticker,pd.Series(dtype=float),path)
+            self.assertEqual(len(archive),424)
+            self.assertEqual(str(archive.index[0].date()),"2025-03-03")
+            self.assertEqual(str(archive.index[-1].date()),"2026-11-25")
+            reference=archive.iloc[-89:]
+            merged,status,error=apply_fund_archive(ticker,reference,path)
+            self.assertEqual(status,"ARCHIVE_VERIFIED_OVERLAP")
+            self.assertIsNone(error)
+            pd.testing.assert_series_equal(merged,archive)
+            merged,status,error=apply_fund_archive(ticker,reference*1.02,path)
+            self.assertEqual(status,"ARCHIVE_REJECTED")
+            pd.testing.assert_series_equal(merged,reference*1.02)
+            _,status,_=apply_fund_archive(ticker,pd.Series(dtype=float),path)
+            self.assertEqual(status,"ARCHIVE_REJECTED")
     def test_verified_fund_overlap(self):
         dates=pd.date_range("2025-01-01",periods=10)
         candidate=pd.Series(range(10,20),index=dates,dtype=float)
