@@ -1,7 +1,7 @@
 {
   "version": "v2.5",
   "status": "OK",
-  "generated_at": "2026-11-26T08:29:23+00:00",
+  "generated_at": "2026-11-26T08:38:57+00:00",
   "mode": "action_audit_trail",
   "safe_mode": true,
   "safe_mode_note": "v2.5 Action Audit Trail 記錄模型候選、審核狀態與拒絕/觀察原因；這是 append/dedupe 型審計紀錄，不是交易系統，不自動下單，不寫入 Supabase，不修改正式持倉或正式權重。",
@@ -17,16 +17,768 @@
     "not_trade_order": true
   },
   "summary": {
-    "stored_events": 264,
+    "stored_events": 275,
     "new_events_added_this_run": 11,
     "existing_events_seen_again": 0,
-    "pending_review": 264,
+    "pending_review": 275,
     "approved_for_manual_execution": 0,
     "rejected": 0,
     "watch_only": 0,
     "execution_permission_true": 0
   },
   "audit_events": [
+    {
+      "event_id": "v2_5_model_candidate_generated_6f277e495988ff82f41a",
+      "event_content_hash": "6f277e495988ff82f41a",
+      "event_type": "model_candidate_generated",
+      "created_at": "2026-11-26T08:38:57+00:00",
+      "source_version": "v2.4",
+      "approval_ticket_id": "v2_4_v2_3_v2_1_inverse_vol_baseline_ddf40047",
+      "candidate_id": "v2_3_v2_1_inverse_vol_baseline",
+      "source_type": "constraint_aware_rebalance",
+      "model_status": "constraint_pass_review_required",
+      "constraint_status": "constraint_pass_candidate_review",
+      "human_status": "pending_review",
+      "requires_manual_approval": true,
+      "execution_permission": false,
+      "not_trade_order": true,
+      "reason_codes": [
+        "manual_approval_required",
+        "not_trade_order",
+        "decision_support_only",
+        "constraint_pass",
+        "turnover_watch_threshold"
+      ],
+      "turnover_vs_current_pct": 14.804,
+      "top_adjustments": [
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 10.499,
+          "constraint_aware_weight_pct": 17.005,
+          "delta_pct": 6.506,
+          "direction": "UP"
+        },
+        {
+          "ticker": "BTC-USD",
+          "current_weight_pct": 10.169,
+          "constraint_aware_weight_pct": 6.662,
+          "delta_pct": -3.507,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "QQQ",
+          "current_weight_pct": 11.962,
+          "constraint_aware_weight_pct": 9.172,
+          "delta_pct": -2.79,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "00981A",
+          "current_weight_pct": 8.54,
+          "constraint_aware_weight_pct": 5.84,
+          "delta_pct": -2.7,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "VOO",
+          "current_weight_pct": 12.433,
+          "constraint_aware_weight_pct": 9.944,
+          "delta_pct": -2.489,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "IFRA",
+          "current_weight_pct": 3.572,
+          "constraint_aware_weight_pct": 5.918,
+          "delta_pct": 2.346,
+          "direction": "UP"
+        },
+        {
+          "ticker": "VEA",
+          "current_weight_pct": 4.131,
+          "constraint_aware_weight_pct": 5.97,
+          "delta_pct": 1.839,
+          "direction": "UP"
+        },
+        {
+          "ticker": "AVUV",
+          "current_weight_pct": 11.155,
+          "constraint_aware_weight_pct": 9.377,
+          "delta_pct": -1.778,
+          "direction": "DOWN"
+        }
+      ],
+      "first_seen_at": "2026-11-26T08:38:57+00:00",
+      "last_seen_at": "2026-11-26T08:38:57+00:00",
+      "seen_count": 1
+    },
+    {
+      "event_id": "v2_5_model_candidate_generated_ad3c0e083972c37d92b2",
+      "event_content_hash": "ad3c0e083972c37d92b2",
+      "event_type": "model_candidate_generated",
+      "created_at": "2026-11-26T08:38:57+00:00",
+      "source_version": "v2.4",
+      "approval_ticket_id": "v2_4_v2_3_v2_1_riskfolio_risk_parity_mv_447e8777",
+      "candidate_id": "v2_3_v2_1_riskfolio_risk_parity_mv",
+      "source_type": "constraint_aware_rebalance",
+      "model_status": "pending_review",
+      "constraint_status": "turnover_too_high_review_only",
+      "human_status": "pending_review",
+      "requires_manual_approval": true,
+      "execution_permission": false,
+      "not_trade_order": true,
+      "reason_codes": [
+        "manual_approval_required",
+        "not_trade_order",
+        "decision_support_only",
+        "turnover_above_candidate_threshold"
+      ],
+      "turnover_vs_current_pct": 17.55,
+      "top_adjustments": [
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 10.499,
+          "constraint_aware_weight_pct": 22.708,
+          "delta_pct": 12.209,
+          "direction": "UP"
+        },
+        {
+          "ticker": "QQQ",
+          "current_weight_pct": 11.962,
+          "constraint_aware_weight_pct": 8.084,
+          "delta_pct": -3.878,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "BTC-USD",
+          "current_weight_pct": 10.169,
+          "constraint_aware_weight_pct": 6.615,
+          "delta_pct": -3.554,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "VOO",
+          "current_weight_pct": 12.433,
+          "constraint_aware_weight_pct": 9.052,
+          "delta_pct": -3.381,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "AVUV",
+          "current_weight_pct": 11.155,
+          "constraint_aware_weight_pct": 8.623,
+          "delta_pct": -2.532,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "00981A",
+          "current_weight_pct": 8.54,
+          "constraint_aware_weight_pct": 6.181,
+          "delta_pct": -2.359,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "ETH-USD",
+          "current_weight_pct": 5.134,
+          "constraint_aware_weight_pct": 3.557,
+          "delta_pct": -1.577,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "2317",
+          "current_weight_pct": 1.82,
+          "constraint_aware_weight_pct": 3.345,
+          "delta_pct": 1.525,
+          "direction": "UP"
+        }
+      ],
+      "first_seen_at": "2026-11-26T08:38:57+00:00",
+      "last_seen_at": "2026-11-26T08:38:57+00:00",
+      "seen_count": 1
+    },
+    {
+      "event_id": "v2_5_model_candidate_generated_ab55e577da9b70a95721",
+      "event_content_hash": "ab55e577da9b70a95721",
+      "event_type": "model_candidate_generated",
+      "created_at": "2026-11-26T08:38:57+00:00",
+      "source_version": "v2.4",
+      "approval_ticket_id": "v2_4_v2_3_v2_1_riskfolio_hrp_mv_0d2a8f2b",
+      "candidate_id": "v2_3_v2_1_riskfolio_hrp_mv",
+      "source_type": "constraint_aware_rebalance",
+      "model_status": "pending_review",
+      "constraint_status": "turnover_too_high_review_only",
+      "human_status": "pending_review",
+      "requires_manual_approval": true,
+      "execution_permission": false,
+      "not_trade_order": true,
+      "reason_codes": [
+        "manual_approval_required",
+        "not_trade_order",
+        "decision_support_only",
+        "watch_only_source",
+        "turnover_watch_threshold"
+      ],
+      "turnover_vs_current_pct": 11.933,
+      "top_adjustments": [
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 10.499,
+          "constraint_aware_weight_pct": 19.509,
+          "delta_pct": 9.01,
+          "direction": "UP"
+        },
+        {
+          "ticker": "VOO",
+          "current_weight_pct": 12.433,
+          "constraint_aware_weight_pct": 9.789,
+          "delta_pct": -2.644,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "BTC-USD",
+          "current_weight_pct": 10.169,
+          "constraint_aware_weight_pct": 8.169,
+          "delta_pct": -2.0,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "QQQ",
+          "current_weight_pct": 11.962,
+          "constraint_aware_weight_pct": 9.962,
+          "delta_pct": -2.0,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "00981A",
+          "current_weight_pct": 8.54,
+          "constraint_aware_weight_pct": 6.874,
+          "delta_pct": -1.666,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "AVUV",
+          "current_weight_pct": 11.155,
+          "constraint_aware_weight_pct": 9.637,
+          "delta_pct": -1.518,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "USMV",
+          "current_weight_pct": 8.942,
+          "constraint_aware_weight_pct": 10.257,
+          "delta_pct": 1.315,
+          "direction": "UP"
+        },
+        {
+          "ticker": "ETH-USD",
+          "current_weight_pct": 5.134,
+          "constraint_aware_weight_pct": 3.983,
+          "delta_pct": -1.151,
+          "direction": "DOWN"
+        }
+      ],
+      "first_seen_at": "2026-11-26T08:38:57+00:00",
+      "last_seen_at": "2026-11-26T08:38:57+00:00",
+      "seen_count": 1
+    },
+    {
+      "event_id": "v2_5_model_candidate_generated_8747a631ebd4aa3ec991",
+      "event_content_hash": "8747a631ebd4aa3ec991",
+      "event_type": "model_candidate_generated",
+      "created_at": "2026-11-26T08:38:57+00:00",
+      "source_version": "v2.4",
+      "approval_ticket_id": "v2_4_v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX_dd437855",
+      "candidate_id": "v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX",
+      "source_type": "constraint_aware_risk_reduction",
+      "model_status": "pending_review",
+      "constraint_status": "turnover_too_high_review_only",
+      "human_status": "pending_review",
+      "requires_manual_approval": true,
+      "execution_permission": false,
+      "not_trade_order": true,
+      "reason_codes": [
+        "manual_approval_required",
+        "not_trade_order",
+        "decision_support_only",
+        "risk_reduction_simulation",
+        "turnover_watch_threshold"
+      ],
+      "turnover_vs_current_pct": 11.167,
+      "top_adjustments": [
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 10.499,
+          "constraint_aware_weight_pct": 20.668,
+          "delta_pct": 10.169,
+          "direction": "UP"
+        },
+        {
+          "ticker": "BTC-USD",
+          "current_weight_pct": 10.169,
+          "constraint_aware_weight_pct": 0.0,
+          "delta_pct": -10.169,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "GLDM",
+          "current_weight_pct": 4.002,
+          "constraint_aware_weight_pct": 5.0,
+          "delta_pct": 0.998,
+          "direction": "UP"
+        },
+        {
+          "ticker": "VOO",
+          "current_weight_pct": 12.433,
+          "constraint_aware_weight_pct": 11.435,
+          "delta_pct": -0.998,
+          "direction": "DOWN"
+        }
+      ],
+      "first_seen_at": "2026-11-26T08:38:57+00:00",
+      "last_seen_at": "2026-11-26T08:38:57+00:00",
+      "seen_count": 1
+    },
+    {
+      "event_id": "v2_5_model_candidate_generated_65ab56a31f7d89b53dba",
+      "event_content_hash": "65ab56a31f7d89b53dba",
+      "event_type": "model_candidate_generated",
+      "created_at": "2026-11-26T08:38:57+00:00",
+      "source_version": "v2.4",
+      "approval_ticket_id": "v2_4_v2_3_from_v2_2_trim_QQQ_100pct_to_BOXX_66db7437",
+      "candidate_id": "v2_3_from_v2_2_trim_QQQ_100pct_to_BOXX",
+      "source_type": "constraint_aware_risk_reduction",
+      "model_status": "pending_review",
+      "constraint_status": "turnover_too_high_review_only",
+      "human_status": "pending_review",
+      "requires_manual_approval": true,
+      "execution_permission": false,
+      "not_trade_order": true,
+      "reason_codes": [
+        "manual_approval_required",
+        "not_trade_order",
+        "decision_support_only",
+        "risk_reduction_simulation",
+        "turnover_watch_threshold"
+      ],
+      "turnover_vs_current_pct": 13.263,
+      "top_adjustments": [
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 10.499,
+          "constraint_aware_weight_pct": 22.764,
+          "delta_pct": 12.265,
+          "direction": "UP"
+        },
+        {
+          "ticker": "QQQ",
+          "current_weight_pct": 11.962,
+          "constraint_aware_weight_pct": 0.0,
+          "delta_pct": -11.962,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "GLDM",
+          "current_weight_pct": 4.002,
+          "constraint_aware_weight_pct": 5.0,
+          "delta_pct": 0.998,
+          "direction": "UP"
+        },
+        {
+          "ticker": "VOO",
+          "current_weight_pct": 12.433,
+          "constraint_aware_weight_pct": 11.435,
+          "delta_pct": -0.998,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "BTC-USD",
+          "current_weight_pct": 10.169,
+          "constraint_aware_weight_pct": 9.968,
+          "delta_pct": -0.201,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "ETH-USD",
+          "current_weight_pct": 5.134,
+          "constraint_aware_weight_pct": 5.032,
+          "delta_pct": -0.102,
+          "direction": "DOWN"
+        }
+      ],
+      "first_seen_at": "2026-11-26T08:38:57+00:00",
+      "last_seen_at": "2026-11-26T08:38:57+00:00",
+      "seen_count": 1
+    },
+    {
+      "event_id": "v2_5_model_candidate_generated_4f0eeff19c89d5bd44eb",
+      "event_content_hash": "4f0eeff19c89d5bd44eb",
+      "event_type": "model_candidate_generated",
+      "created_at": "2026-11-26T08:38:57+00:00",
+      "source_version": "v2.4",
+      "approval_ticket_id": "v2_4_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX_3825801e",
+      "candidate_id": "v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX",
+      "source_type": "constraint_aware_risk_reduction",
+      "model_status": "constraint_pass_review_required",
+      "constraint_status": "constraint_pass_watch_only",
+      "human_status": "pending_review",
+      "requires_manual_approval": true,
+      "execution_permission": false,
+      "not_trade_order": true,
+      "reason_codes": [
+        "manual_approval_required",
+        "not_trade_order",
+        "decision_support_only",
+        "risk_reduction_simulation",
+        "constraint_pass"
+      ],
+      "turnover_vs_current_pct": 6.083,
+      "top_adjustments": [
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 10.499,
+          "constraint_aware_weight_pct": 15.584,
+          "delta_pct": 5.085,
+          "direction": "UP"
+        },
+        {
+          "ticker": "BTC-USD",
+          "current_weight_pct": 10.169,
+          "constraint_aware_weight_pct": 5.084,
+          "delta_pct": -5.085,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "GLDM",
+          "current_weight_pct": 4.002,
+          "constraint_aware_weight_pct": 5.0,
+          "delta_pct": 0.998,
+          "direction": "UP"
+        },
+        {
+          "ticker": "VOO",
+          "current_weight_pct": 12.433,
+          "constraint_aware_weight_pct": 11.435,
+          "delta_pct": -0.998,
+          "direction": "DOWN"
+        }
+      ],
+      "first_seen_at": "2026-11-26T08:38:57+00:00",
+      "last_seen_at": "2026-11-26T08:38:57+00:00",
+      "seen_count": 1
+    },
+    {
+      "event_id": "v2_5_model_candidate_generated_5d429856fd3e5d646431",
+      "event_content_hash": "5d429856fd3e5d646431",
+      "event_type": "model_candidate_generated",
+      "created_at": "2026-11-26T08:38:57+00:00",
+      "source_version": "v2.4",
+      "approval_ticket_id": "v2_4_v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX_95796fde",
+      "candidate_id": "v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX",
+      "source_type": "constraint_aware_risk_reduction",
+      "model_status": "constraint_pass_review_required",
+      "constraint_status": "constraint_pass_watch_only",
+      "human_status": "pending_review",
+      "requires_manual_approval": true,
+      "execution_permission": false,
+      "not_trade_order": true,
+      "reason_codes": [
+        "manual_approval_required",
+        "not_trade_order",
+        "decision_support_only",
+        "risk_reduction_simulation",
+        "constraint_pass"
+      ],
+      "turnover_vs_current_pct": 6.132,
+      "top_adjustments": [
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 10.499,
+          "constraint_aware_weight_pct": 15.633,
+          "delta_pct": 5.134,
+          "direction": "UP"
+        },
+        {
+          "ticker": "ETH-USD",
+          "current_weight_pct": 5.134,
+          "constraint_aware_weight_pct": 0.0,
+          "delta_pct": -5.134,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "GLDM",
+          "current_weight_pct": 4.002,
+          "constraint_aware_weight_pct": 5.0,
+          "delta_pct": 0.998,
+          "direction": "UP"
+        },
+        {
+          "ticker": "VOO",
+          "current_weight_pct": 12.433,
+          "constraint_aware_weight_pct": 11.435,
+          "delta_pct": -0.998,
+          "direction": "DOWN"
+        }
+      ],
+      "first_seen_at": "2026-11-26T08:38:57+00:00",
+      "last_seen_at": "2026-11-26T08:38:57+00:00",
+      "seen_count": 1
+    },
+    {
+      "event_id": "v2_5_model_candidate_generated_45dea21466c4a8fd74ac",
+      "event_content_hash": "45dea21466c4a8fd74ac",
+      "event_type": "model_candidate_generated",
+      "created_at": "2026-11-26T08:38:57+00:00",
+      "source_version": "v2.4",
+      "approval_ticket_id": "v2_4_v2_3_from_v2_2_trim_00981A_100pct_to_BOXX_75b87eb8",
+      "candidate_id": "v2_3_from_v2_2_trim_00981A_100pct_to_BOXX",
+      "source_type": "constraint_aware_risk_reduction",
+      "model_status": "pending_review",
+      "constraint_status": "turnover_too_high_review_only",
+      "human_status": "pending_review",
+      "requires_manual_approval": true,
+      "execution_permission": false,
+      "not_trade_order": true,
+      "reason_codes": [
+        "manual_approval_required",
+        "not_trade_order",
+        "decision_support_only",
+        "risk_reduction_simulation",
+        "turnover_watch_threshold"
+      ],
+      "turnover_vs_current_pct": 9.841,
+      "top_adjustments": [
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 10.499,
+          "constraint_aware_weight_pct": 19.342,
+          "delta_pct": 8.843,
+          "direction": "UP"
+        },
+        {
+          "ticker": "00981A",
+          "current_weight_pct": 8.54,
+          "constraint_aware_weight_pct": 0.0,
+          "delta_pct": -8.54,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "GLDM",
+          "current_weight_pct": 4.002,
+          "constraint_aware_weight_pct": 5.0,
+          "delta_pct": 0.998,
+          "direction": "UP"
+        },
+        {
+          "ticker": "VOO",
+          "current_weight_pct": 12.433,
+          "constraint_aware_weight_pct": 11.435,
+          "delta_pct": -0.998,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "BTC-USD",
+          "current_weight_pct": 10.169,
+          "constraint_aware_weight_pct": 9.968,
+          "delta_pct": -0.201,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "ETH-USD",
+          "current_weight_pct": 5.134,
+          "constraint_aware_weight_pct": 5.032,
+          "delta_pct": -0.102,
+          "direction": "DOWN"
+        }
+      ],
+      "first_seen_at": "2026-11-26T08:38:57+00:00",
+      "last_seen_at": "2026-11-26T08:38:57+00:00",
+      "seen_count": 1
+    },
+    {
+      "event_id": "v2_5_model_candidate_generated_197b57a324cec4a7f4ff",
+      "event_content_hash": "197b57a324cec4a7f4ff",
+      "event_type": "model_candidate_generated",
+      "created_at": "2026-11-26T08:38:57+00:00",
+      "source_version": "v2.4",
+      "approval_ticket_id": "v2_4_v2_3_from_v2_2_trim_QQQ_50pct_to_BOXX_e48818bd",
+      "candidate_id": "v2_3_from_v2_2_trim_QQQ_50pct_to_BOXX",
+      "source_type": "constraint_aware_risk_reduction",
+      "model_status": "constraint_pass_review_required",
+      "constraint_status": "constraint_pass_watch_only",
+      "human_status": "pending_review",
+      "requires_manual_approval": true,
+      "execution_permission": false,
+      "not_trade_order": true,
+      "reason_codes": [
+        "manual_approval_required",
+        "not_trade_order",
+        "decision_support_only",
+        "risk_reduction_simulation",
+        "constraint_pass"
+      ],
+      "turnover_vs_current_pct": 7.282,
+      "top_adjustments": [
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 10.499,
+          "constraint_aware_weight_pct": 16.783,
+          "delta_pct": 6.284,
+          "direction": "UP"
+        },
+        {
+          "ticker": "QQQ",
+          "current_weight_pct": 11.962,
+          "constraint_aware_weight_pct": 5.981,
+          "delta_pct": -5.981,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "GLDM",
+          "current_weight_pct": 4.002,
+          "constraint_aware_weight_pct": 5.0,
+          "delta_pct": 0.998,
+          "direction": "UP"
+        },
+        {
+          "ticker": "VOO",
+          "current_weight_pct": 12.433,
+          "constraint_aware_weight_pct": 11.435,
+          "delta_pct": -0.998,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "BTC-USD",
+          "current_weight_pct": 10.169,
+          "constraint_aware_weight_pct": 9.968,
+          "delta_pct": -0.201,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "ETH-USD",
+          "current_weight_pct": 5.134,
+          "constraint_aware_weight_pct": 5.032,
+          "delta_pct": -0.102,
+          "direction": "DOWN"
+        }
+      ],
+      "first_seen_at": "2026-11-26T08:38:57+00:00",
+      "last_seen_at": "2026-11-26T08:38:57+00:00",
+      "seen_count": 1
+    },
+    {
+      "event_id": "v2_5_model_candidate_generated_85b166490cdbfd3ef506",
+      "event_content_hash": "85b166490cdbfd3ef506",
+      "event_type": "model_candidate_generated",
+      "created_at": "2026-11-26T08:38:57+00:00",
+      "source_version": "v2.4",
+      "approval_ticket_id": "v2_4_v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX_8de0f4a1",
+      "candidate_id": "v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX",
+      "source_type": "constraint_aware_risk_reduction",
+      "model_status": "constraint_pass_review_required",
+      "constraint_status": "constraint_pass_watch_only",
+      "human_status": "pending_review",
+      "requires_manual_approval": true,
+      "execution_permission": false,
+      "not_trade_order": true,
+      "reason_codes": [
+        "manual_approval_required",
+        "not_trade_order",
+        "decision_support_only",
+        "risk_reduction_simulation",
+        "constraint_pass"
+      ],
+      "turnover_vs_current_pct": 3.54,
+      "top_adjustments": [
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 10.499,
+          "constraint_aware_weight_pct": 13.041,
+          "delta_pct": 2.542,
+          "direction": "UP"
+        },
+        {
+          "ticker": "BTC-USD",
+          "current_weight_pct": 10.169,
+          "constraint_aware_weight_pct": 7.627,
+          "delta_pct": -2.542,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "GLDM",
+          "current_weight_pct": 4.002,
+          "constraint_aware_weight_pct": 5.0,
+          "delta_pct": 0.998,
+          "direction": "UP"
+        },
+        {
+          "ticker": "VOO",
+          "current_weight_pct": 12.433,
+          "constraint_aware_weight_pct": 11.435,
+          "delta_pct": -0.998,
+          "direction": "DOWN"
+        }
+      ],
+      "first_seen_at": "2026-11-26T08:38:57+00:00",
+      "last_seen_at": "2026-11-26T08:38:57+00:00",
+      "seen_count": 1
+    },
+    {
+      "event_id": "v2_5_model_candidate_generated_a5d5c1b086840794c888",
+      "event_content_hash": "a5d5c1b086840794c888",
+      "event_type": "model_candidate_generated",
+      "created_at": "2026-11-26T08:38:57+00:00",
+      "source_version": "v2.4",
+      "approval_ticket_id": "v2_4_v2_3_from_v2_2_trim_ETH_USD_50pct_to_BOXX_90433cce",
+      "candidate_id": "v2_3_from_v2_2_trim_ETH_USD_50pct_to_BOXX",
+      "source_type": "constraint_aware_risk_reduction",
+      "model_status": "constraint_pass_review_required",
+      "constraint_status": "constraint_pass_watch_only",
+      "human_status": "pending_review",
+      "requires_manual_approval": true,
+      "execution_permission": false,
+      "not_trade_order": true,
+      "reason_codes": [
+        "manual_approval_required",
+        "not_trade_order",
+        "decision_support_only",
+        "risk_reduction_simulation",
+        "constraint_pass"
+      ],
+      "turnover_vs_current_pct": 3.565,
+      "top_adjustments": [
+        {
+          "ticker": "BOXX",
+          "current_weight_pct": 10.499,
+          "constraint_aware_weight_pct": 13.066,
+          "delta_pct": 2.567,
+          "direction": "UP"
+        },
+        {
+          "ticker": "ETH-USD",
+          "current_weight_pct": 5.134,
+          "constraint_aware_weight_pct": 2.567,
+          "delta_pct": -2.567,
+          "direction": "DOWN"
+        },
+        {
+          "ticker": "GLDM",
+          "current_weight_pct": 4.002,
+          "constraint_aware_weight_pct": 5.0,
+          "delta_pct": 0.998,
+          "direction": "UP"
+        },
+        {
+          "ticker": "VOO",
+          "current_weight_pct": 12.433,
+          "constraint_aware_weight_pct": 11.435,
+          "delta_pct": -0.998,
+          "direction": "DOWN"
+        }
+      ],
+      "first_seen_at": "2026-11-26T08:38:57+00:00",
+      "last_seen_at": "2026-11-26T08:38:57+00:00",
+      "seen_count": 1
+    },
     {
       "event_id": "v2_5_model_candidate_generated_42a05c5d9d33eefef38b",
       "event_content_hash": "42a05c5d9d33eefef38b",
