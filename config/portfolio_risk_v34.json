@@ -1,0 +1,98 @@
+{
+  "version": "v3.4",
+  "history_weeks": 104,
+  "scenarios": [
+    {
+      "id": "equity_selloff",
+      "label": "股票大幅回落",
+      "local_price_shocks": {
+        "global_equity": -0.2,
+        "taiwan_equity": -0.25,
+        "gold": 0.05,
+        "cash": 0,
+        "crypto": -0.3
+      },
+      "usd_twd_shock": 0.03
+    },
+    {
+      "id": "crypto_crash",
+      "label": "加密貨幣重挫",
+      "local_price_shocks": {
+        "global_equity": -0.05,
+        "taiwan_equity": -0.05,
+        "gold": 0,
+        "cash": 0,
+        "crypto": -0.5
+      },
+      "usd_twd_shock": 0
+    },
+    {
+      "id": "twd_appreciation",
+      "label": "台幣升值（USD/TWD -10%）",
+      "local_price_shocks": {
+        "global_equity": 0,
+        "taiwan_equity": 0,
+        "gold": 0,
+        "cash": 0,
+        "crypto": 0
+      },
+      "usd_twd_shock": -0.1
+    },
+    {
+      "id": "twd_depreciation",
+      "label": "台幣貶值（USD/TWD +10%）",
+      "local_price_shocks": {
+        "global_equity": 0,
+        "taiwan_equity": 0,
+        "gold": 0,
+        "cash": 0,
+        "crypto": 0
+      },
+      "usd_twd_shock": 0.1
+    },
+    {
+      "id": "inflation_risk",
+      "label": "通膨與股市壓力（假設）",
+      "local_price_shocks": {
+        "global_equity": -0.15,
+        "taiwan_equity": -0.18,
+        "gold": 0.1,
+        "cash": -0.01,
+        "crypto": -0.25
+      },
+      "usd_twd_shock": 0.05
+    },
+    {
+      "id": "joint_severe",
+      "label": "跨資產同步下跌",
+      "local_price_shocks": {
+        "global_equity": -0.3,
+        "taiwan_equity": -0.35,
+        "gold": -0.1,
+        "cash": -0.02,
+        "crypto": -0.6
+      },
+      "usd_twd_shock": -0.05
+    }
+  ],
+  "events": [
+    {
+      "id": "2020_window",
+      "label": "2020/02–03 歷史窗口",
+      "start": "2020-02-19",
+      "end": "2020-03-23"
+    },
+    {
+      "id": "2022_window",
+      "label": "2022/01–10 歷史窗口",
+      "start": "2022-01-03",
+      "end": "2022-10-14"
+    },
+    {
+      "id": "2025_april",
+      "label": "2025/04 初歷史窗口",
+      "start": "2025-04-02",
+      "end": "2025-04-09"
+    }
+  ]
+}
