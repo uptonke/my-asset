@@ -1,7 +1,7 @@
 """Private historical coverage diagnostics. Never impute missing market prices."""
 import math
 import pandas as pd
-from performance_calendar import required_session, benchmark_calendar
+from performance_calendar import required_session, benchmark_calendar, fund_holiday_calendar
 
 CASH_TOLERANCE_TWD=1.
 EPS=1e-8
@@ -76,7 +76,7 @@ def asset_mark(t,n,d,market):
     if lot and lot["paid"]<=d<lot["switch"]:
         if abs(n-lot["qty"])>EPS:raise CoverageIssue("SUBSCRIPTION_QUANTITY",t,d,"Subscription quantity mismatch: "+t)
         return lot["amount"],True
-    p=quote(m.get("price"),d,7,t,m.get("source","unknown"),calendar=m.get("calendar"))
+    p=quote(m.get("price"),d,7,t,m.get("source","unknown"),calendar=m.get("calendar") or (fund_holiday_calendar(t,d) if m.get("fund") else None))
     f=quote(market.get("fx"),d,4,"USD/TWD","portfolio FX","FX") if m.get("foreign") else 1.
     return n*p*f,False
 

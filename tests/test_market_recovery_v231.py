@@ -4,11 +4,27 @@ from pathlib import Path
 from unittest.mock import patch
 import pandas as pd
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"scripts"))
-from performance_calendar import required_session
-from performance_coverage import quote,CoverageIssue,cash_trace
+from performance_calendar import required_session,fund_holiday_calendar
+from performance_coverage import quote,CoverageIssue,cash_trace,asset_mark
 from performance_market_data import merge_verified_fund_history,recover_fund_history,apply_fund_archive,merge_fund_archive,FUND_CODES
 
 class MarketRecoveryTests(unittest.TestCase):
+    def test_twse_emergency_closure(self):
+        s=pd.Series([100.],index=pd.to_datetime(["2026-07-09"]))
+        for d in pd.to_datetime(["2026-07-10","2026-07-11","2026-07-12"]):
+            self.assertEqual(required_session("XTAI",d),pd.Timestamp("2026-07-09"))
+            self.assertEqual(quote(s,d,7,"TW","fixture",calendar="XTAI"),100.)
+        with self.assertRaises(CoverageIssue):
+            quote(s,pd.Timestamp("2026-07-13"),7,"TW","fixture",calendar="XTAI")
+    def test_domestic_fund_verified_holiday(self):
+        d=pd.Timestamp("2026-02-21")
+        p=pd.Series([100.],index=pd.to_datetime(["2026-02-11"]))
+        m={"assets":{"安聯台灣科技":{"price":p,"fund":True,"splits":[],"foreign":False,"source":"fixture"}}}
+        self.assertEqual(asset_mark("安聯台灣科技",2,d,m),(200.,False))
+        self.assertIsNone(fund_holiday_calendar("OTHER",d))
+        self.assertIsNone(fund_holiday_calendar("安聯台灣科技",pd.Timestamp("2026-02-23")))
+        with self.assertRaises(CoverageIssue):
+            asset_mark("安聯台灣科技",2,pd.Timestamp("2026-02-23"),m)
     def test_twse_lunar_new_year(self):
         d=pd.Timestamp("2026-02-21")
         self.assertEqual(required_session("XTAI",d),pd.Timestamp("2026-02-11"))

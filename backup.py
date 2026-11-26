@@ -32,7 +32,7 @@ def main():
         # Captured valuation details are private; retain legacy NAV/date/cost only.
         for row in data:
             if isinstance(row.get('history_data'), list):
-                row['history_data'] = [{k:v for k,v in h.items() if k != 'valuation'} for h in row['history_data']]
+                row['history_data'] = [{k:v for k,v in h.items() if k != 'valuation'} for h in row['history_data'] if not isinstance(h.get('valuation'), dict) or h['valuation'].get('capture_mode') != 'automated_completed_daily_marks']
 
         if not data:
             print("⚠️ 資料庫為空，無資料可備份。")

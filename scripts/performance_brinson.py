@@ -78,12 +78,27 @@ def build_brinson(captured,tx,nav,config=None,market=None):
                 stamp=pd.Timestamp(snapshot['captured_at']).tz_convert(zone)
                 return stamp.tz_localize(None).normalize()-pd.Timedelta(days=1)
             fx0,fx1=cutoff(A,'UTC'),cutoff(B,'UTC')
+            auto_a=A.get("capture_mode")=="automated_completed_daily_marks"
+            auto_b=B.get("capture_mode")=="automated_completed_daily_marks"
+            if auto_a!=auto_b:raise ValueError("Mixed capture conventions")
             rates=[]
             for g in groups:
                 zone="Asia/Taipei" if config["currency"][g]=="TWD" else "UTC" if g=="crypto" else "America/New_York"
                 d0,d1=cutoff(A,zone),cutoff(B,zone)
-                p0,p1=close(prices[g],d0,7),close(prices[g],d1,7)
-                f0,f1=(close(fx,fx0,7),close(fx,fx1,7)) if config["currency"][g]=="USD" else (1.,1.)
+                if auto_a:
+                    from performance_calendar import benchmark_calendar
+                    from performance_coverage import quote
+                    d0,d1=pd.Timestamp(A["cutoff_date"]),pd.Timestamp(B["cutoff_date"])
+                    calendar=benchmark_calendar(config,g)
+                    if not calendar and g!="crypto":raise ValueError("Unsupported benchmark calendar")
+                    age=7 if calendar else 0
+                    p0,p1=(quote(prices[g],d,age,"BENCHMARK:"+g,"benchmark close","BENCHMARK",calendar) for d in (d0,d1))
+                    # Use the exact captured FX observation dates, not a later
+                    # vintage date or an inconsistent NY local cutoff.
+                    f0,f1=(quote(fx,pd.Timestamp(s["fx_quote_date"]),0,"BENCHMARK:USD/TWD","benchmark FX","FX") for s in (A,B)) if config["currency"][g]=="USD" else (1.,1.)
+                else:
+                    p0,p1=close(prices[g],d0,7),close(prices[g],d1,7)
+                    f0,f1=(close(fx,fx0,7),close(fx,fx1,7)) if config["currency"][g]=="USD" else (1.,1.)
                 rates.append(p1*f1/(p0*f0)-1)
             rb=np.array(rates);wp=x/x.sum()
             # Empty bucket: use benchmark return convention, selection + interaction cancel.
