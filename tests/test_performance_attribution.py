@@ -151,4 +151,28 @@ class CoverageTests(unittest.TestCase):
         p,skip=factor_periods({a:100.,b:101.},[],px,ff,px,px)
         self.assertEqual(len(p),1);self.assertAlmostEqual(p.iloc[0]["duration_weeks"],10/7)
         self.assertFalse(skip)
+class RollingTests(unittest.TestCase):
+    def test_prior_only_and_link(self):
+        from performance_rolling_factor import rolling_report
+        from build_performance_attribution import windows_for
+        n=90; rng=np.random.default_rng(99)
+        ends=pd.date_range("2024-01-13",periods=n,freq="7D")
+        f=rng.normal(0,.02,(n,8));ru=.001+f@np.arange(1,9)/10+rng.normal(0,.001,n)
+        fx=rng.normal(0,.005,n);rt=(1+ru)*(1+fx)-1
+        p=pd.DataFrame(f,columns=FACTORS)
+        p["start"]=ends-pd.Timedelta(days=7);p["end"]=ends;p["usd"]=ru;p["twd"]=rt;p["fx"]=fx;p["RF"]=.0005
+        nav={d:100. for d in [p.iloc[0]["start"]]+list(ends)}
+        r=rolling_report(p,nav,FACTORS,carino,windows_for)
+        self.assertEqual(r["status"],"OK");self.assertFalse(r["point_in_time_vintages_verified"])
+        self.assertGreater(r["evaluated_intervals"],0)
+        for row in r["rows"]:
+            self.assertGreaterEqual((pd.Timestamp(row["start"])-pd.Timestamp(row["train_end"])).days,60)
+            self.assertAlmostEqual(sum(row["contributions_pp"].values()),row["actual_return_pct"])
+        latest=r["latest"]
+        changed=p.copy();changed.loc[changed["end"]==pd.Timestamp(latest["end"]),"usd"]+=.1
+        r2=rolling_report(changed,nav,FACTORS,carino,windows_for)
+        self.assertEqual(latest["beta"],r2["latest"]["beta"])
+        for w in r["windows"].values():
+            self.assertAlmostEqual(sum(w["contributions_pp"].values()),w["total_return_pct"])
+        self.assertEqual(rolling_report(p.iloc[:52],nav,FACTORS,carino,windows_for)["status"],"INSUFFICIENT_SAMPLE")
 if __name__=="__main__":unittest.main()

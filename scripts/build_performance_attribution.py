@@ -13,7 +13,7 @@ import pandas as pd
 FACTORS = ["Mkt-RF","SMB","HML","RMW","CMA","Mom","TW_Mkt_RF","Crypto_RF"]
 WINDOWS = {"1W":7,"1M":30,"3M":91,"YTD":None,"12M":365,"SI":None}
 EPS=1e-8
-ENGINE_VERSION='v1.2'
+ENGINE_VERSION='v2.0'
 
 
 def number(x):
@@ -90,6 +90,8 @@ def asset_pnl(ticker,transactions,start,end,price,fx,foreign,splits):
     if abs(opening)<EPS and not trades: return None
     if opening < -EPS or closing < -EPS:
         raise ValueError("Negative reconstructed holding")
+    trades=[{"date":d,"qty":math.fsum(x["qty"] for x in trades if x["date"]==d),
+             "flow":math.fsum(x["flow"] for x in trades if x["date"]==d)} for d in sorted({x["date"] for x in trades})]
     running=opening
     for x in trades:
         running+=x["qty"]
@@ -390,11 +392,15 @@ def build(row,market=None,factor_data=None):
         factor=factor_report(periods,skipped,nav)
         factor["coverage"]["french_latest"]=str(ff.index.max().date())
         factor["coverage"]["lag_warning"]=factor["coverage"]["lag_days"] is None or factor["coverage"]["lag_days"]>7
+        from performance_rolling_factor import rolling_report
+        try:rolling=rolling_report(periods,nav,FACTORS,carino,windows_for)
+        except Exception as exc:rolling={"status":"UNAVAILABLE","reason":str(exc)[:200],"rows":[],"windows":{}}
     except Exception as exc:
         factor={"status":"UNAVAILABLE","reason":str(exc)[:200],"windows":{}}
+        rolling={"status":"UNAVAILABLE","reason":str(exc)[:200],"rows":[],"windows":{}}
     return clean_json({"version":"v1.0","engine_version":ENGINE_VERSION,"quality":quality,"generated_at":datetime.now(timezone.utc).isoformat(),
         "nav_as_of":str(list(nav)[-1].date()),"ledger_count":len(tx),"history_count":len(nav),
-        "pnl":pnl,"factor":factor,"execution_permission":False,
+        "pnl":pnl,"factor":factor,"rolling_factor":rolling,"execution_permission":False,
         "notes":["NAV and external flows are recorded data; per-asset P&L is reconstructed, not broker-certified.",
                  "Date-only ledger uses end-of-date marks and (start,end] trade convention. Local closing dates may not match NAV timestamp.",
                  "Prices exclude dividend adjustment; unrecorded dividends, fees, split basis, valuation and data gaps remain unexplained.",

@@ -99,13 +99,14 @@ def cash_reconciliation(nav,tx,windows):
         mv_a=math.fsum(r["opening_mv_twd"] for r in p["rows"])
         mv_b=math.fsum(r["closing_mv_twd"] for r in p["rows"])
         gap_a=nav[a]-mv_a-cash_a;gap_b=nav[b]-mv_b-cash_b
-        out[label]={"start":p["start"],"end":p["end"],"recorded_cumulative_cashflow_start_twd":cash_a,
+        excluded_trades=math.fsum(x["flow"] for x in tx if a<x["date"]<=b and x["qty"]!=0 and x["ticker"] not in {r["ticker"] for r in p["rows"]})
+        out[label]={"start":p["start"],"end":p["end"],"excluded_trade_cashflow_twd":excluded_trades,"recorded_cumulative_cashflow_start_twd":cash_a,
             "recorded_cumulative_cashflow_end_twd":cash_b,"recorded_cash_change_twd":cash_b-cash_a,
             "known_assets_start_twd":mv_a,"known_assets_end_twd":mv_b,
             "nav_minus_known_assets_start_twd":nav[a]-mv_a,"nav_minus_known_assets_end_twd":nav[b]-mv_b,
             "unexplained_balance_start_twd":gap_a,"unexplained_balance_end_twd":gap_b,
             "unexplained_balance_change_twd":gap_b-gap_a,"pnl_residual_twd":p["unexplained_twd"],
-            "bridge_error_twd":gap_b-gap_a-p["unexplained_twd"],
+            "bridge_error_twd":gap_b-gap_a-p["unexplained_twd"]+excluded_trades,
             "complete_asset_coverage":not p["missing"],"opening_cash_balance_verified":False,
             "status":"PARTIAL" if p["missing"] else "LEDGER_IMPLIED_ONLY"}
     return out

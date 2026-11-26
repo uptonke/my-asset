@@ -14,3 +14,6 @@ Historical inventory is checked across all dated transactions. Conflicting categ
 
 ## v1.2 coverage
 MoneyDJ recent 90 NAV observations for three verified fund identities (not full historical backfill); endpoint-only total P&L if intraperiod marks unavailable and endpoint valuations known, with unallocated breakdown explicitly null. Yahoo chart Close + split events fallback; FinMind raw overlap only when no split events and >=5 overlapping dates agree within 0.5%. No static FX. 1–31 calendar-day actual NAV periods, source coverage checks, duration-scaled weekly alpha, and coverage/lag diagnostics; weekend-only or missing data excluded. In-sample HAC remains observation-based and irregular duration is an approximation.
+
+## v2.0 rolling factor attribution
+52 prior valid intervals, assumed 60 calendar-day publication embargo, duration-scaled alpha, no target-period outcome in training. The output uses current-vintage historical factors and realized evaluation-period factors: retrospective pseudo-OOS explanatory attribution, not a genuine point-in-time backtest or forecast. No historical vintage archive; embargo is not proof of data availability. Each evaluated period shows training dates, betas, contribution and residual. Carino only links contiguous evaluated intervals. Report engine_version v2.0 triggers automatic refresh; JSONB schema and RPC unchanged.
