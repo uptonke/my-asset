@@ -10,6 +10,9 @@ on:
       - 'scripts/performance_brinson.py'
       - 'scripts/performance_brinson_historical.py'
       - 'scripts/performance_coverage.py'
+      - 'scripts/performance_calendar.py'
+      - 'tests/test_market_recovery_v231.py'
+      - 'requirements.txt'
       - 'scripts/import_fund_nav_archive.py'
       - 'tests/test_coverage_v23.py'
       - 'tests/test_historical_brinson.py'
@@ -45,10 +48,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install numpy==2.2.6 pandas==2.3.2 scipy==1.13.1 'statsmodels>=0.14,<0.15' 'beautifulsoup4>=4.12,<5'
+      - run: pip install numpy==2.2.6 pandas==2.3.2 scipy==1.13.1 'statsmodels>=0.14,<0.15' 'beautifulsoup4>=4.12,<5' exchange-calendars==4.13.2
       - run: python -m unittest discover -s tests -p test_performance_attribution.py
       - run: python -m unittest discover -s tests -p test_historical_brinson.py
       - run: python -m unittest discover -s tests -p test_coverage_v23.py
+      - run: python -m unittest discover -s tests -p test_market_recovery_v231.py
       - run: python -m unittest discover -s tests -p test_cost_walk_forward.py
       - uses: actions/setup-node@v4
         with:

@@ -93,6 +93,37 @@ def yahoo_chart(symbol,earliest):
     return px,events,str(meta.get("currency","")).upper()
 
 
+# Identifiers confirmed on Yahoo Taiwan's individual fund pages.
+# The chart endpoint is a candidate, not a guaranteed source.
+FUND_YAHOO_IDS={
+    "安聯台灣科技":"F0HKG05X22",
+    "統一奔騰":"F0HKG05X2C",
+    "統一黑馬":"F0HKG05X0O",
+}
+
+def merge_verified_fund_history(reference,candidate,currency,splits):
+    if currency!="TWD" or splits or candidate.empty or reference.empty:
+        raise ValueError("Unverified fund history currency, split or reference")
+    if not candidate.index.is_unique or not candidate.index.is_monotonic_increasing or not candidate.map(lambda v:math.isfinite(v) and v>0).all():
+        raise ValueError("Invalid fund history observations")
+    overlap=reference.index.intersection(candidate.index)
+    if len(overlap)<5 or ((reference.loc[overlap]/candidate.loc[overlap]-1).abs()>.005).any():
+        raise ValueError("Fund history requires five agreeing NAV overlap dates")
+    return reference.combine_first(candidate).sort_index()
+
+def recover_fund_history(t,reference,earliest):
+    if reference.empty or reference.index[0]<=earliest:return reference,None
+    base=FUND_YAHOO_IDS[t]
+    for symbol in (base+":FO",base+".FO",base):
+        try:
+            candidate,splits,currency=yahoo_chart(symbol,earliest)
+            merged=merge_verified_fund_history(reference,candidate,currency,splits)
+            if merged.index[0]<reference.index[0]:
+                return merged,symbol
+        except Exception:
+            continue
+    return reference,None
+
 def load_asset(t,cat,earliest,q):
     import yfinance as yf
     if t in FUND_CODES:
@@ -101,10 +132,12 @@ def load_asset(t,cat,earliest,q):
         except Exception as exc:
             px=pd.Series(dtype=float);err=str(exc)[:180]
         original=len(px);px=merge_fund_archive(t,px)
-        source="MoneyDJ recent 90 NAV observations"+(" + supplied NAV archive" if len(px)>original else "")
+        source="MoneyDJ recent NAV observations"+(" + supplied NAV archive" if len(px)>original else "")
+        px,recovered=recover_fund_history(t,px,earliest)
+        if recovered:source+=" + verified Yahoo NAV overlap ("+recovered+")"
         return {"price":px,"splits":[],"split_ratios":{},"foreign":False,"bucket":"taiwan_equity",
                 "source":source,"instrument_id":FUND_CODES[t][0],"currency":"TWD",
-                "fund_nav_error":err,"fund":True}
+                "fund_nav_error":err,"fund":True,"historical_recovery_status":"VERIFIED_OVERLAP" if recovered else "REFERENCE_ONLY"}
     if cat=="__AMBIGUOUS__":raise ValueError("Exchange/currency conflict; confirm TW vs ADR")
     sym=q.yfinance_symbol(t,cat)
     foreign=q.is_foreign_currency_asset(t,cat);expected="USD" if foreign else "TWD"
@@ -135,4 +168,5 @@ def load_asset(t,cat,earliest,q):
                 px=px.combine_first(fm).sort_index();source+=" + FinMind verified raw overlap"
         except Exception: pass
     return {"price":px,"splits":list(events),"split_ratios":events,"foreign":foreign,
-            "bucket":q.classify_asset_bucket(t,cat),"source":source,"instrument_id":sym,"currency":currency}
+            "bucket":q.classify_asset_bucket(t,cat),"source":source,"instrument_id":sym,"currency":currency,
+            "calendar":"XTAI" if sym.endswith((".TW",".TWO")) else "XNYS" if cat=="美股" and "." not in sym and "-" not in sym else None}
