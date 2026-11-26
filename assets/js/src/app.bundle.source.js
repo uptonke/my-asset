@@ -4129,9 +4129,32 @@ async function saveData() {
     return output;
 });
 
+        function resolveTradeCategory(type, ticker, category, ledger, holdings) {
+    const key = String(ticker || '').trim().toUpperCase();
+    if (!key) throw new Error('請填寫代號');
+    const cats = new Set(ledger.filter(t => ['Buy','Sell'].includes(t.type) && String(t.ticker || '').trim().toUpperCase() === key).map(t => String(t.category || '')));
+    const holding = holdings.find(h => String(h.ticker || '').trim().toUpperCase() === key);
+    if (holding) cats.add(String(holding.category || ''));
+    if (cats.size > 1 || cats.has('')) throw new Error('歷史標的分類衝突，請先核對流水帳：' + key);
+    const known = [...cats][0];
+    if (type === 'Sell') {
+        if (!holding || !known) throw new Error('找不到可確認分類的持倉：' + key);
+        return known;
+    }
+    if (!category) throw new Error('請選擇資產分類');
+    if (known && known !== category) throw new Error('分類與既有標的不符：' + key + '（' + known + '）');
+    return category;
+}
+
         function addTransaction() {
     const { date, type, category, ticker, price, shares, amount } = txForm.value;
     if (!date) return;
+    let finalCategory = category;
+    const normalizedTicker = String(ticker || "").trim().toUpperCase();
+    if (type === "Buy" || type === "Sell") {
+        try { finalCategory = resolveTradeCategory(type, normalizedTicker, category, transactions.value, holdingsFlat.value); }
+        catch (e) { alert(e.message); return; }
+    }
 
     let finalPrice = null;
     let finalShares = null;
@@ -4168,7 +4191,7 @@ async function saveData() {
         }
 
         if (type === 'Sell') {
-            const upperTicker = ticker.toUpperCase();
+            const upperTicker = normalizedTicker;
             const holding = holdingsFlat.value.find(h => h.ticker === upperTicker);
             if (!holding) {
                 alert('目前沒有這檔持倉可賣出');
@@ -4206,8 +4229,8 @@ async function saveData() {
     transactions.value.push({
         date,
         type,
-        category: category || (type === 'Expense' ? '校正 / 費用' : ''),
-        ticker: (type === 'Buy' || type === 'Sell') ? ticker?.toUpperCase() : '',
+        category: finalCategory || (type === 'Expense' ? '校正 / 費用' : ''),
+        ticker: (type === 'Buy' || type === 'Sell') ? normalizedTicker : '',
         price: finalPrice,
         shares: finalShares,
         amount: actualTotal,

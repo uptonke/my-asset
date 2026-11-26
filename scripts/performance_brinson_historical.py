@@ -4,6 +4,7 @@ import json
 import numpy as np
 import pandas as pd
 from performance_brinson import CONFIG, effects, benchmark_prices
+from performance_coverage import CASH_TOLERANCE_TWD, asset_mark, prepare_subscriptions, interval_diagnostics
 
 EPS=1e-8
 NAMES=("allocation","selection","interaction","execution_other","nav_bridge")
@@ -46,7 +47,8 @@ def historical_interval(a,b,nav,tx,categories,market,config,bmarket):
                 raise ValueError("Unverified split basis: "+t)
             g=m.get("bucket")
             if g not in idx:raise ValueError("Unsupported bucket: "+str(g))
-            out[idx[g]]+=n*close(m["price"],d,7)*(close(market["fx"],d,4) if m["foreign"] else 1.)
+            mark,_=asset_mark(t,n,d,market)
+            out[idx[g]]+=mark
         return out
     def bench(d):
         return np.array([close(bp[g],d,7)*(close(bfx,d,4) if config["currency"][g]=="USD" else 1.) for g in groups])
@@ -57,14 +59,14 @@ def historical_interval(a,b,nav,tx,categories,market,config,bmarket):
         cash+=x["flow"]
         if x["qty"]:q[x["ticker"]]+=x["qty"]
     def marks(q,d,cash):
-        if cash<-.02:raise ValueError("Negative ledger-implied cash")
+        if cash < -CASH_TOLERANCE_TWD:raise ValueError("Negative ledger-implied cash")
         v=value(q,d);v[idx["cash"]]+=max(0.,cash)
         if v.sum()<=0:raise ValueError("Nonpositive reconstructed NAV")
         return v
     start=marks(q,a,cash)
     opening_gap=nav[a]-float(start.sum())
     flows=[x for x in tx if a<x["date"]<=b]
-    days=sorted({x["date"] for x in flows}|{b})
+    days=sorted({x["date"] for x in flows}|{b}|{v["switch"] for v in market.get("subscriptions",{}).values() if a<v["switch"]<=b})
     ps=[];bs=[];cs=[];last=a
     for d in days:
         v0=marks(q,last,cash)
@@ -121,25 +123,43 @@ def link_segment(rows,groups):
 def build_historical(nav,tx,categories,market,config=None,bmarket=None):
     config=config or json.loads(CONFIG.read_text())
     groups=list(config["weights"])
-    out={"version":"v2.2","status":"NO_ELIGIBLE_INTERVAL","benchmark":config,"execution_permission":False,
+    pending,subscription_errors=prepare_subscriptions(tx,market)
+    market={**market,"subscriptions":pending,"subscription_errors":subscription_errors}
+    out={"version":"v2.3","status":"NO_ELIGIBLE_INTERVAL","benchmark":config,"execution_permission":False,
         "expected_intervals":max(0,len(nav)-1),"periods":[],"skipped":[],"segments":[],
+        "coverage_diagnostics":{"reason_interval_counts":{},"ticker_interval_counts":{},"micro_cash_intervals":0,"pending_subscription_intervals":0,"cash_tolerance_twd":CASH_TOLERANCE_TWD,"subscription_errors":subscription_errors},
         "notes":["Historical reconstruction only; recorded NAV remains unchanged. Ledger-implied cash is not independently verified.",
                  "Same-date or earlier unadjusted closes, current-vintage data, asynchronous markets; not total returns or point-in-time marks.",
                  "End-of-day ledger events; trade execution and other recorded cash flow effects separate from allocation, selection and interaction.",
                  "Reference policy reset at each NAV boundary, drift within interval. Actual portfolio uses Modified Dietz; NAV bridge also includes methodology differences.",
-                 "No linking across skipped intervals. No formal trade permission."]}
+                 "No linking across skipped intervals. No formal trade permission.",
+                 "Cash deficits up to TWD 1 are clamped only for research valuation; raw balance and residual retained. Verified paid subscriptions are claims until the exact confirmed first valuation date; classified in intended equity bucket."]}
     if bmarket is None:
         try:bmarket=benchmark_prices(config,min(nav))
         except Exception as e:out.update(status="BENCHMARK_UNAVAILABLE",reason=str(e)[:180]);return out
     current=[]
     dates=sorted(nav)
+    summary=out["coverage_diagnostics"]
     for a,b in zip(dates[:-1],dates[1:]):
+        diag=None
         try:
+            diag=interval_diagnostics(a,b,tx,categories,market,config,bmarket)
+            if diag["issues"]:
+                for code in {z["code"] for z in diag["issues"]}:
+                    summary["reason_interval_counts"][code]=summary["reason_interval_counts"].get(code,0)+1
+                for t in {z["ticker"] for z in diag["issues"]}:
+                    summary["ticker_interval_counts"][t]=summary["ticker_interval_counts"].get(t,0)+1
+                raise ValueError(diag["issues"][0]["reason"])
             r=historical_interval(a,b,nav,tx,categories,market,config,bmarket)
+            r["data_quality"]=diag
+            summary["micro_cash_intervals"]+=int(diag["micro_cash_tolerance_used"])
+            summary["pending_subscription_intervals"]+=int(bool(diag["pending_subscription_tickers"]))
             out["periods"].append(r);current.append(r)
         except Exception as e:
             if current:out["segments"].append(link_segment(current,groups));current=[]
-            out["skipped"].append({"start":str(a.date()),"end":str(b.date()),"reason":str(e)[:180]})
+            out["skipped"].append({"start":str(a.date()),"end":str(b.date()),"reason":str(e)[:180],"diagnostics":diag})
+            if not diag or not diag["issues"]:
+                summary["reason_interval_counts"]["CALCULATION_ERROR"]=summary["reason_interval_counts"].get("CALCULATION_ERROR",0)+1
     if current:out["segments"].append(link_segment(current,groups))
     out["eligible_intervals"]=len(out["periods"])
     out["coverage_pct"]=len(out["periods"])/max(1,len(nav)-1)*100

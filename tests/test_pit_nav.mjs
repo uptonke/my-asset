@@ -16,3 +16,14 @@ assert.throws(()=>ctx.capture('2026-11-26',now,group,20,32,ledger,70));
 assert.throws(()=>ctx.capture('2026-11-27',now,group,20,32,ledger,71));
 assert.throws(()=>ctx.capture('2026-11-27',now,group,20,32,[{date:'2026-11-28'}],70));
 console.log('Captured NAV checks passed');
+
+const gs=s.indexOf('function resolveTradeCategory('),ge=s.indexOf('function addTransaction()',gs);
+assert.ok(gs>=0&&ge>gs);
+vm.runInContext(s.slice(gs,ge)+'\nthis.resolve=resolveTradeCategory;',ctx);
+const hist=[{type:'Buy',ticker:'TEST',category:'台股'}],hold=[{ticker:'TEST',category:'台股'}];
+assert.equal(ctx.resolve('Sell',' test ','美股',hist,hold),'台股');
+assert.equal(ctx.resolve('Buy','TEST','台股',hist,hold),'台股');
+assert.throws(()=>ctx.resolve('Buy','TEST','美股',hist,hold));
+assert.throws(()=>ctx.resolve('Sell','TEST','台股',[...hist,{type:'Sell',ticker:'TEST',category:'美股'}],hold));
+assert.equal(ctx.resolve('Buy','NEW','美股',[],[]),'美股');
+console.log('Instrument category guard checks passed');

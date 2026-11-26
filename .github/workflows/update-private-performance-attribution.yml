@@ -32,6 +32,7 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python -m unittest discover -s tests -p test_performance_attribution.py
       - run: python -m unittest discover -s tests -p test_historical_brinson.py
+      - run: python -m unittest discover -s tests -p test_coverage_v23.py
       - name: Publish private report only
         env:
           # Manual workflow dispatch always rebuilds. Reusable callers
