@@ -2,6 +2,9 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import math
+import hashlib
+import json
+from performance_calendar import required_session
 import pandas as pd
 
 EPS=1e-7
@@ -12,15 +15,33 @@ def numeric(x):
     if not math.isfinite(v):raise ValueError("Nonfinite number")
     return v
 
+def ledger_fingerprint(tx):
+    # Canonical normalized ledger fields, ordered by parser stable date order.
+    rows=[{"date":str(x["date"].date()),"type":x["type"],"ticker":x["ticker"],
+           "qty":float(x["qty"]),"flow":float(x["flow"]),"category":x.get("category",""),
+           "subscription":x.get("subscription")} for x in tx]
+    return hashlib.sha256(json.dumps(rows,sort_keys=True,ensure_ascii=False,allow_nan=False,separators=(",",":")).encode()).hexdigest()
+
 def validate_snapshot(record,tx):
     v=record.get("valuation")
-    if not isinstance(v,dict) or v.get("version")!="v1":raise ValueError("Legacy NAV without captured marks")
+    if not isinstance(v,dict) or v.get("version") not in ("v1","v2"):raise ValueError("Legacy NAV without captured marks")
     d=pd.Timestamp(record["date"]).normalize()
     stamp=datetime.fromisoformat(v["captured_at"].replace("Z","+00:00"))
     if stamp.tzinfo is None or stamp.astimezone(ZoneInfo("Asia/Taipei")).date()!=d.date() or v["date"]!=str(d.date()):
         raise ValueError("Capture date/time mismatch")
     prior=[x for x in tx if x["date"]<=d]
     if len(prior)!=v["ledger_count"]:raise ValueError("Historical ledger count changed")
+    automated=v["version"]=="v2"
+    if automated:
+        cutoff=d-pd.Timedelta(days=1)
+        if (v.get("capture_mode")!="automated_completed_daily_marks" or v.get("cutoff_date")!=str(cutoff.date())
+            or stamp.astimezone(ZoneInfo("Asia/Taipei")).hour<10 or v.get("ledger_fingerprint")!=ledger_fingerprint(prior)
+            or any(x["date"]>cutoff for x in prior) or v.get("quote_dates_verified") is not True
+            or v.get("quote_timestamps_verified") is not False):
+            raise ValueError("Automated capture provenance or ledger fingerprint mismatch")
+        fxdate=pd.Timestamp(v["fx_quote_date"])
+        if not 0<=(cutoff-fxdate).days<=4 or not v.get("fx_price_source"):
+            raise ValueError("Automated FX quote date mismatch")
     cash=numeric(v["cash_twd"]);rawcash=math.fsum(x["flow"] for x in prior)
     if cash<-.01 or abs(rawcash-cash)>.02 or abs(numeric(v["nav_cash_twd"])-max(0,cash))>.01:
         raise ValueError("Cash inconsistent with ledger")
@@ -41,7 +62,19 @@ def validate_snapshot(record,tx):
             raise ValueError("Instrument category conflict")
         if h["currency"] not in ("USD","TWD") or abs(fx-(numeric(v["fx_usdtwd"]) if h["currency"]=="USD" else 1.))>EPS:
             raise ValueError("Currency/FX mismatch")
-        if h["price_source"] not in ("manual","price_map","cost_fallback"):raise ValueError("Unknown price source")
+        if automated:
+            kind=h.get("quote_kind");cal=h.get("calendar");cat=h["category"]
+            if cat=="台股":expected=("market_close","XTAI","TWD")
+            elif cat=="基金":expected=("fund_nav","XTAI","TWD")
+            elif cat=="美股":expected=("market_close","XNYS","USD")
+            elif cat=="加密貨幣":expected=("crypto_daily_close",None,"USD")
+            else:raise ValueError("Automated unsupported category")
+            if (kind,cal,h["currency"])!=expected or h["price_source"]!="verified_daily_mark" or not h.get("price_provider") or not h.get("instrument_id"):
+                raise ValueError("Automated price provenance missing")
+            expected_date=required_session(cal,cutoff) if cal else cutoff
+            if h.get("quote_as_of")!=str(expected_date.date()):
+                raise ValueError("Automated quote session mismatch")
+        elif h["price_source"] not in ("manual","price_map","cost_fallback"):raise ValueError("Unknown price source")
         holdings[t]={**h,"market_value_twd":mv}
     if set(holdings)!={t for t,q in balances.items() if q>0.0001}:raise ValueError("Missing captured holding")
     invested=math.fsum(h["market_value_twd"] for h in holdings.values())
@@ -50,7 +83,8 @@ def validate_snapshot(record,tx):
         raise ValueError("NAV identity mismatch")
     return {"date":str(d.date()),"captured_at":v["captured_at"],"cash_twd":cash,"nav":nav,"holdings":holdings,
             "fallback_count":sum(h["price_source"]=="cost_fallback" for h in holdings.values()),
-            "quote_timestamps_verified":False}
+            "quote_timestamps_verified":False,"quote_dates_verified":automated,
+            "capture_mode":v.get("capture_mode","browser"),"cutoff_date":v.get("cutoff_date"),"fx_quote_date":v.get("fx_quote_date")}
 
 def pair(a,b,tx,nav):
     start,end=pd.Timestamp(a["date"]),pd.Timestamp(b["date"])
@@ -80,12 +114,12 @@ def build_pit(history,tx,nav,windows):
         d=str(r["date"])[:10]
         try:
             a=validate_snapshot(r,tx);valid[d]=a
-            diagnostics.append({"date":d,"status":"CAPTURED","captured_at":a["captured_at"],"fallback_count":a["fallback_count"]})
+            diagnostics.append({"date":d,"status":"CAPTURED","captured_at":a["captured_at"],"fallback_count":a["fallback_count"],"capture_mode":a["capture_mode"],"quote_dates_verified":a["quote_dates_verified"],"cutoff_date":a["cutoff_date"],"fx_quote_date":a["fx_quote_date"]})
         except Exception as exc:
             diagnostics.append({"date":d,"status":"LEGACY" if not r.get("valuation") else "INVALID","reason":str(exc)})
     out={}
     for k,w in windows.items():
         s,e=w["start"],w["end"]
         out[k]=pair(valid[s],valid[e],tx,nav) if s in valid and e in valid else {"status":"NO_CAPTURED_PAIR","start":s,"end":e,"reason":"Both endpoint marks required; historical reconstruction remains separate"}
-    return {"version":"v2.1","valid_count":len(valid),"pair_count":sum(p["status"]=="OK" for p in out.values()),
+    return {"version":"v2.4","valid_count":len(valid),"pair_count":sum(p["status"]=="OK" for p in out.values()),
             "snapshots":diagnostics,"windows":out},valid
