@@ -125,7 +125,7 @@ def build_historical(nav,tx,categories,market,config=None,bmarket=None):
     groups=list(config["weights"])
     pending,subscription_errors=prepare_subscriptions(tx,market)
     market={**market,"subscriptions":pending,"subscription_errors":subscription_errors}
-    out={"version":"v2.3.1","status":"NO_ELIGIBLE_INTERVAL","benchmark":config,"execution_permission":False,
+    out={"version":"v2.3.3","status":"NO_ELIGIBLE_INTERVAL","benchmark":config,"execution_permission":False,
         "expected_intervals":max(0,len(nav)-1),"periods":[],"skipped":[],"segments":[],
         "cash_trace":cash_trace(tx),"market_recovery":fund_coverage(market),
         "coverage_diagnostics":{"reason_interval_counts":{},"ticker_interval_counts":{},"micro_cash_intervals":0,"pending_subscription_intervals":0,"cash_tolerance_twd":CASH_TOLERANCE_TWD,"subscription_errors":subscription_errors},
@@ -134,7 +134,7 @@ def build_historical(nav,tx,categories,market,config=None,bmarket=None):
                  "End-of-day ledger events; trade execution and other recorded cash flow effects separate from allocation, selection and interaction.",
                  "Reference policy reset at each NAV boundary, drift within interval. Actual portfolio uses Modified Dietz; NAV bridge also includes methodology differences.",
                  "No linking across skipped intervals. No formal trade permission.",
-                 "Listed TW/US price marks require the latest scheduled exchange session, including holidays. Fund NAV, FX and crypto retain their separate age rules. Calendar data are versioned research inputs, not proof of actual quote publication.",
+                 "Listed TW/US price marks require the latest scheduled exchange session, including holidays. Verified domestic fund spring holiday follows the TW exchange calendar; other fund NAV, FX and crypto retain separate age rules. Calendar data are versioned research inputs, not proof of actual quote publication.",
                  "Cash deficits up to TWD 1 are clamped only for research valuation; raw balance and residual retained. Verified paid subscriptions are claims until the exact confirmed first valuation date; classified in intended equity bucket."]}
     if bmarket is None:
         try:bmarket=benchmark_prices(config,min(nav))
