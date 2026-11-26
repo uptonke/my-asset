@@ -12,7 +12,7 @@ class CoverageIssue(ValueError):
 
 def quote(s,d,age,t,source,kind="PRICE"):
     s=s if s is not None else pd.Series(dtype=float)
-    before=s.loc[:d]
+    before=s.loc[:d] if len(s) else s
     extra={"source":source,"first_available":str(s.index[0].date()) if len(s) else None,
            "last_available":str(s.index[-1].date()) if len(s) else None,
            "last_on_or_before":str(before.index[-1].date()) if len(before) else None,"max_age_days":age}
