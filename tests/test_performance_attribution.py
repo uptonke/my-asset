@@ -175,4 +175,16 @@ class RollingTests(unittest.TestCase):
         for w in r["windows"].values():
             self.assertAlmostEqual(sum(w["contributions_pp"].values()),w["total_return_pct"])
         self.assertEqual(rolling_report(p.iloc[:52],nav,FACTORS,carino,windows_for)["status"],"INSUFFICIENT_SAMPLE")
+class ArchiveTests(unittest.TestCase):
+    def test_archive_merges_valid_identity(self):
+        import tempfile
+        from performance_market_data import merge_fund_archive
+        from pathlib import Path
+        recent=pd.Series([100.],index=pd.to_datetime(["2026-11-20"]))
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d)/"nav.csv"
+            p.write_text("ticker,fund_id,currency,date,nav,source\n安聯台灣科技,ACDD04-NTDEQ0004,TWD,2025-01-02,50,official\n",encoding="utf-8")
+            self.assertEqual(len(merge_fund_archive("安聯台灣科技",recent,p)),2)
+            p.write_text("ticker,fund_id,currency,date,nav,source\n安聯台灣科技,WRONG,TWD,2025-01-02,50,official\n",encoding="utf-8")
+            with self.assertRaises(ValueError):merge_fund_archive("安聯台灣科技",recent,p)
 if __name__=="__main__":unittest.main()

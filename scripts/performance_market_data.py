@@ -35,6 +35,28 @@ def parse_fund_nav(html,name):
     return pd.Series(rows,dtype=float).sort_index()
 
 
+def merge_fund_archive(ticker, recent, path=None):
+    from pathlib import Path
+    path=Path(path) if path is not None else Path(__file__).resolve().parents[1]/"data/attribution/fund_nav_history.csv"
+    if not path.exists():return recent
+    df=pd.read_csv(path,dtype={"ticker":str,"fund_id":str,"currency":str,"source":str})
+    required={"ticker","fund_id","currency","date","nav","source"}
+    if not required.issubset(df.columns):raise ValueError("Fund archive schema mismatch")
+    df=df[df["ticker"]==ticker].copy()
+    if df.empty:return recent
+    if not (df["fund_id"]==FUND_CODES[ticker][0]).all() or not (df["currency"]=="TWD").all() or df["source"].fillna("").str.strip().eq("").any():
+        raise ValueError("Fund archive identity/currency/source mismatch")
+    df["date"]=pd.to_datetime(df["date"],format="%Y-%m-%d",errors="raise")
+    df["nav"]=pd.to_numeric(df["nav"],errors="raise")
+    if df["date"].duplicated().any() or not df["nav"].map(lambda v:math.isfinite(v) and v>0).all():
+        raise ValueError("Invalid archive NAV")
+    archive=pd.Series(df["nav"].to_numpy(),index=df["date"]).sort_index()
+    overlap=recent.index.intersection(archive.index)
+    if len(overlap) and ((recent.loc[overlap]/archive.loc[overlap]-1).abs()>.005).any():
+        raise ValueError("Fund archive conflicts with recent source")
+    return recent.combine_first(archive).sort_index()
+
+
 def fund_nav(ticker):
     import requests
     code,name=FUND_CODES[ticker]
@@ -76,9 +98,12 @@ def load_asset(t,cat,earliest,q):
     if t in FUND_CODES:
         if cat!="基金":raise ValueError("Fund category conflict")
         try: px=fund_nav(t);err=None
-        except Exception as exc: px=pd.Series(dtype=float);err=str(exc)[:180]
+        except Exception as exc:
+            px=pd.Series(dtype=float);err=str(exc)[:180]
+        original=len(px);px=merge_fund_archive(t,px)
+        source="MoneyDJ recent 90 NAV observations"+(" + supplied NAV archive" if len(px)>original else "")
         return {"price":px,"splits":[],"split_ratios":{},"foreign":False,"bucket":"taiwan_equity",
-                "source":"MoneyDJ recent 90 NAV observations","instrument_id":FUND_CODES[t][0],"currency":"TWD",
+                "source":source,"instrument_id":FUND_CODES[t][0],"currency":"TWD",
                 "fund_nav_error":err,"fund":True}
     if cat=="__AMBIGUOUS__":raise ValueError("Exchange/currency conflict; confirm TW vs ADR")
     sym=q.yfinance_symbol(t,cat)

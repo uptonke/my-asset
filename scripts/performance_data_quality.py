@@ -24,12 +24,12 @@ def split_basis(trades, events, price, fx, foreign, close):
         raise ValueError("Split ratios unavailable")
     if any(not math.isfinite(float(v)) or v<=0 for v in events.values()):
         raise ValueError("Invalid corporate action ratio")
-    pre=[x for x in trades if any(d>x["date"] for d in events)]
-    if not pre:
-        return trades,"no_pre_split_trade"
     # Trade-date split timing is unknown with a date-only ledger.
     if any(x["date"] in events for x in trades):
         raise ValueError("Trade on split date; share basis unverified")
+    pre=[x for x in trades if any(d>x["date"] for d in events)]
+    if not pre:
+        return trades,"no_pre_split_trade"
     transformed=[]
     for x in trades:
         factor=math.prod(v for d,v in events.items() if d>x["date"])
