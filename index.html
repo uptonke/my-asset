@@ -1199,16 +1199,25 @@
                         <details v-if="performanceAttribution?.brinson?.skipped?.length" class="text-xs"><summary>排除區間</summary><div v-for="r in performanceAttribution.brinson.skipped" :key="r.end">{{ r.start }} ～ {{ r.end }}：{{ r.reason }}</div></details>
                     </div>
                     <div class="glass chart-card p-5 md:p-6 space-y-3">
-                        <h4 class="panel-title">Historical Brinson-Fachler · v2.3</h4>
+                        <h4 class="panel-title">Historical Brinson-Fachler · v2.3.1</h4>
                         <p class="panel-subtitle">歷史 NAV、流水帳及價格重建；研究用非正式基準。採交易日收盤切段與多期 Carino 主動報酬連結。現金為流水帳推算，非銀行核對；不跨缺漏區間，不回填原始 NAV。微額負現金 ≤ NT$1 僅在研究估值歸零；保留原始差額。</p>
                         <div class="text-xs text-amber-300">{{ performanceAttribution?.historical_brinson?.status || '等待新版歸因更新' }}｜{{ performanceAttribution?.historical_brinson?.reason || '' }}</div>
                         <template v-if="performanceAttribution?.historical_brinson">
                             <div class="text-xs">合格 {{ performanceAttribution.historical_brinson.eligible_intervals ?? 0 }} / {{ performanceAttribution.historical_brinson.expected_intervals ?? '—' }} 區間｜覆蓋率 {{ performancePct(performanceAttribution.historical_brinson.coverage_pct) }}</div>
                             <details v-if="performanceAttribution.historical_brinson.coverage_diagnostics" open class="text-xs space-y-2">
-                                <summary>v2.3 資料品質診斷（原因可重疊）</summary>
+                                <summary>v2.3.1 資料品質診斷（原因可重疊）</summary>
                                 <div>微額現金容許區間 {{ performanceAttribution.historical_brinson.coverage_diagnostics.micro_cash_intervals }}｜已核實申購區間 {{ performanceAttribution.historical_brinson.coverage_diagnostics.pending_subscription_intervals }}</div>
                                 <div v-for="(n,k) in performanceAttribution.historical_brinson.coverage_diagnostics.reason_interval_counts" :key="k">{{ k }}：{{ n }} 期</div>
                                 <div v-for="(n,t) in performanceAttribution.historical_brinson.coverage_diagnostics.ticker_interval_counts" :key="t">{{ t }}：{{ n }} 期</div>
+                            </details>
+                            <details v-if="performanceAttribution.historical_brinson.market_recovery" class="text-xs space-y-2">
+                                <summary>歷史基金淨值來源與覆蓋範圍</summary>
+                                <div v-for="r in performanceAttribution.historical_brinson.market_recovery" :key="r.ticker">{{ r.ticker }}｜{{ r.status }}｜{{ r.source }}｜{{ r.first_available || "—" }} ～ {{ r.last_available || "—" }}｜{{ r.observations }} 筆</div>
+                            </details>
+                            <details v-if="performanceAttribution.historical_brinson.cash_trace" class="text-xs space-y-2">
+                                <summary>歷史現金缺口（流水帳推算，未核對期初資金）</summary>
+                                <div>重大負現金交易日 {{ performanceAttribution.historical_brinson.cash_trace.material_negative_days }}｜最低 {{ performanceAttribution.historical_brinson.cash_trace.minimum_cash_twd.toFixed(2) }} TWD</div>
+                                <div v-for="r in performanceAttribution.historical_brinson.cash_trace.negative_days" :key="r.date">{{ r.date }}｜日現金流 {{ r.daily_flow_twd.toFixed(2) }}｜累計 {{ r.cash_twd.toFixed(2) }} TWD｜{{ r.status }}</div>
                             </details>
                             <details v-if="performanceAttribution.historical_brinson.latest_segment" open class="text-xs space-y-2">
                                 <summary>最新連續區間（不跨缺口）</summary>
@@ -1218,7 +1227,7 @@
                                 <div>連結核對差額 {{ performanceAttribution.historical_brinson.latest_segment.identity_error_pp.toExponential(2) }} pp</div>
                             </details>
                             <details class="text-xs"><summary>所有連續區段</summary><div v-for="r in performanceAttribution.historical_brinson.segments || []" :key="r.start">{{ r.start }} ～ {{ r.end }}｜{{ r.period_count }} 期｜主動 {{ r.active_return_pp.toFixed(3) }} pp</div></details>
-                            <details class="text-xs"><summary>逐期估值差額及排除區間</summary><div class="max-h-[320px] overflow-y-auto"><div v-for="r in performanceAttribution.historical_brinson.periods || []" :key="r.start"> {{ r.start }} ～ {{ r.end }}｜期初 / 期末 NAV 差額 {{ r.start_nav_gap_twd.toFixed(0) }} / {{ r.end_nav_gap_twd.toFixed(0) }} TWD｜方法差額 {{ r.effects_pp.nav_bridge.toFixed(3) }} pp</div><details v-for="r in performanceAttribution.historical_brinson.skipped || []" :key="r.start"><summary>{{ r.start }} ～ {{ r.end }}：{{ r.reason }}</summary><div v-for="(z,i) in r.diagnostics?.issues || []" :key="i" class="pl-2">{{ z.date }}｜{{ z.ticker }}｜{{ z.code }}｜{{ z.source || "" }}｜首次 {{ z.first_available || "—" }}｜末次 {{ z.last_available || "—" }}｜當日前末次 {{ z.last_on_or_before || "—" }}｜現金 {{ z.cash_twd ?? "—" }}</div></details></div></details>
+                            <details class="text-xs"><summary>逐期估值差額及排除區間</summary><div class="max-h-[320px] overflow-y-auto"><div v-for="r in performanceAttribution.historical_brinson.periods || []" :key="r.start"> {{ r.start }} ～ {{ r.end }}｜期初 / 期末 NAV 差額 {{ r.start_nav_gap_twd.toFixed(0) }} / {{ r.end_nav_gap_twd.toFixed(0) }} TWD｜方法差額 {{ r.effects_pp.nav_bridge.toFixed(3) }} pp</div><details v-for="r in performanceAttribution.historical_brinson.skipped || []" :key="r.start"><summary>{{ r.start }} ～ {{ r.end }}：{{ r.reason }}</summary><div v-for="(z,i) in r.diagnostics?.issues || []" :key="i" class="pl-2">{{ z.date }}｜{{ z.ticker }}｜{{ z.code }}｜{{ z.source || "" }}｜首次 {{ z.first_available || "—" }}｜末次 {{ z.last_available || "—" }}｜當日前末次 {{ z.last_on_or_before || "—" }}｜應有交易日 {{ z.expected_session || "—" }}｜日曆 {{ z.calendar || "—" }}｜現金 {{ z.cash_twd ?? "—" }}</div></details></div></details>
                         </template>
                     </div>
                 </div>

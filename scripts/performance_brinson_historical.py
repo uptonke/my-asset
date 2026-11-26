@@ -4,7 +4,7 @@ import json
 import numpy as np
 import pandas as pd
 from performance_brinson import CONFIG, effects, benchmark_prices
-from performance_coverage import CASH_TOLERANCE_TWD, asset_mark, prepare_subscriptions, interval_diagnostics, quote
+from performance_coverage import CASH_TOLERANCE_TWD, asset_mark, prepare_subscriptions, interval_diagnostics, quote, cash_trace, fund_coverage
 from performance_calendar import benchmark_calendar
 
 EPS=1e-8
@@ -127,6 +127,7 @@ def build_historical(nav,tx,categories,market,config=None,bmarket=None):
     market={**market,"subscriptions":pending,"subscription_errors":subscription_errors}
     out={"version":"v2.3.1","status":"NO_ELIGIBLE_INTERVAL","benchmark":config,"execution_permission":False,
         "expected_intervals":max(0,len(nav)-1),"periods":[],"skipped":[],"segments":[],
+        "cash_trace":cash_trace(tx),"market_recovery":fund_coverage(market),
         "coverage_diagnostics":{"reason_interval_counts":{},"ticker_interval_counts":{},"micro_cash_intervals":0,"pending_subscription_intervals":0,"cash_tolerance_twd":CASH_TOLERANCE_TWD,"subscription_errors":subscription_errors},
         "notes":["Historical reconstruction only; recorded NAV remains unchanged. Ledger-implied cash is not independently verified.",
                  "Same-date or earlier unadjusted closes, current-vintage data, asynchronous markets; not total returns or point-in-time marks.",

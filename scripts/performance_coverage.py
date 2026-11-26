@@ -123,3 +123,27 @@ def interval_diagnostics(a,b,tx,categories,market,config,bmarket):
     return {"issues":list(problems.values()),"minimum_ledger_cash_twd":float(minimum),
             "micro_cash_tolerance_used":-CASH_TOLERANCE_TWD<=minimum<0,
             "pending_subscription_tickers":sorted(pending)}
+
+
+def cash_trace(tx):
+    daily={}
+    for x in tx:daily.setdefault(x["date"],[]).append(x["flow"])
+    balance=0.;minimum=0.;negative=[]
+    for d,flows in sorted(daily.items()):
+        flow=math.fsum(flows)
+        balance=math.fsum([balance,flow]);minimum=min(minimum,balance)
+        if balance < -EPS:
+            negative.append({"date":str(d.date()),"daily_flow_twd":flow,"cash_twd":balance,
+                             "status":"MATERIAL" if balance < -CASH_TOLERANCE_TWD else "MICRO"})
+    return {"opening_cash_verified":False,"minimum_cash_twd":minimum,"material_negative_days":sum(r["status"]=="MATERIAL" for r in negative),"negative_days":negative}
+
+def fund_coverage(market):
+    rows=[]
+    for t,m in market["assets"].items():
+        if not m.get("fund"):continue
+        s=m.get("price")
+        rows.append({"ticker":t,"status":m.get("historical_recovery_status","UNKNOWN"),
+                     "source":m.get("source","unknown"),"observations":len(s) if s is not None else 0,
+                     "first_available":str(s.index[0].date()) if s is not None and len(s) else None,
+                     "last_available":str(s.index[-1].date()) if s is not None and len(s) else None})
+    return rows
