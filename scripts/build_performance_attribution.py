@@ -13,7 +13,7 @@ import pandas as pd
 FACTORS = ["Mkt-RF","SMB","HML","RMW","CMA","Mom","TW_Mkt_RF","Crypto_RF"]
 WINDOWS = {"1W":7,"1M":30,"3M":91,"YTD":None,"12M":365,"SI":None}
 EPS=1e-8
-ENGINE_VERSION='v2.7-private-quality'
+ENGINE_VERSION='v3.2-risk-research'
 
 
 def number(x):
@@ -62,7 +62,7 @@ def parse_inputs(row):
         elif t in ("deposit","withdraw"):
             if (t=="deposit" and flow<0) or (t=="withdraw" and flow>0):
                 raise ValueError("Invalid external flow sign")
-        tx.append({"date":d,"type":t,"ticker":ticker,"qty":q,"flow":flow,"category":str(x.get("category") or ""),**({"subscription":x["subscription"]} if "subscription" in x else {})})
+        tx.append({"date":d,"type":t,"ticker":ticker,"qty":q,"flow":flow,"category":str(x.get("category") or ""),**({"subscription":x["subscription"]} if "subscription" in x else {}),**({"cashflow_detail":x["cashflow_detail"]} if "cashflow_detail" in x else {})})
     return dict(sorted(nav.items())),sorted(tx,key=lambda x:x["date"]),categories
 
 
@@ -370,7 +370,7 @@ def clean_json(x):
     return x
 
 
-def build(row,market=None,factor_data=None):
+def build(row,market=None,factor_data=None,research_prices=None):
     nav,tx,categories=parse_inputs(row)
     from performance_data_quality import reconcile_transactions,cash_reconciliation
     earliest=min(nav)
@@ -396,6 +396,7 @@ def build(row,market=None,factor_data=None):
              "notes":["Unknown opening cash balance; cumulative ledger flows are not an independently observed bank balance.",
                       "Split normalization is an inferred diagnostic, never a ledger edit. Ambiguous cases remain quarantined.",
                       "Negative historical inventory with no current-period trades is flagged separately, not silently assigned zero exposure."]}
+    periods=None
     try:
         ff,tw,btc=load_factors(earliest) if factor_data is None else factor_data
         periods,skipped=factor_periods(nav,tx,market["fx"],ff,tw,btc)
@@ -410,7 +411,16 @@ def build(row,market=None,factor_data=None):
         rolling={"status":"UNAVAILABLE","reason":str(exc)[:200],"rows":[],"windows":{}}
     from performance_quality_gate import quality_gate
     gate=quality_gate(nav,historical_brinson,total_return,pit,quarantined)
-    return clean_json({"version":"v1.0","engine_version":ENGINE_VERSION,"quality":quality,"point_in_time":pit,"brinson":brinson,"historical_brinson":historical_brinson,"total_return_attribution":total_return,"attribution_quality_gate":gate,"generated_at":datetime.now(timezone.utc).isoformat(),
+    from performance_quality_diagnostics import diagnostics as quality_diagnostics
+    from performance_cashflow import cashflow_report
+    try:qdiag=quality_diagnostics(nav,tx,historical_brinson,total_return,gate)
+    except Exception:qdiag={"status":"UNAVAILABLE","reason":"Quality diagnostic calculation failed","windows":{},"reason_counts":{},"priority":[],"quality_segments":[],"cohorts":[]}
+    cashflow=cashflow_report(nav,tx,categories,pnl)
+    from performance_risk_research import actual_factor_budget,run_research
+    try:risk_budget=actual_factor_budget(periods,FACTORS)
+    except Exception:risk_budget={"status":"UNAVAILABLE","execution_permission":False}
+    risk_research=run_research(prices=research_prices)
+    return clean_json({"version":"v1.0","engine_version":ENGINE_VERSION,"quality":quality,"point_in_time":pit,"brinson":brinson,"historical_brinson":historical_brinson,"total_return_attribution":total_return,"attribution_quality_gate":gate,"quality_diagnostics":qdiag,"cashflow_attribution":cashflow,"factor_risk_budget":risk_budget,"regime_factor_research":risk_research,"generated_at":datetime.now(timezone.utc).isoformat(),
         "nav_as_of":str(list(nav)[-1].date()),"ledger_count":len(tx),"history_count":len(nav),
         "pnl":pnl,"factor":factor,"rolling_factor":rolling,"execution_permission":False,
         "notes":["NAV and external flows are recorded data; per-asset P&L is reconstructed, not broker-certified.",

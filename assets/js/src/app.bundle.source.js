@@ -742,7 +742,9 @@ ${JSON.stringify(payload, null, 2)}
     ticker: '',
     price: null,
     shares: null,
-    amount: null
+    amount: null,
+    cashFlowKind: '',
+    cashFlowTicker: ''
 });
         const holdingsSearch = ref('');
         const holdingsView = ref('all');
@@ -754,7 +756,10 @@ ${JSON.stringify(payload, null, 2)}
                 { value: 'Deposit', label: '入金', hint: '外部資金匯入投資帳戶' },
                 { value: 'Withdraw', label: '出金', hint: '資金領回銀行 / 生活帳戶' }
             ]
-            : [
+            : txFlowMode.value === 'adjustment' ? [
+                { value: 'Income', label: '收入（股息／利息）' },
+                { value: 'Expense', label: '支出／校正' }
+            ] : [
                 { value: 'Buy', label: '買入', hint: '用帳上資金買資產' },
                 { value: 'Sell', label: '賣出', hint: '賣掉部位，現金留在投資帳戶' }
             ]
@@ -772,7 +777,7 @@ ${JSON.stringify(payload, null, 2)}
                 txForm.value.price = null;
                 txForm.value.shares = null;
             } else if (mode === 'adjustment') {
-                txForm.value.type = 'Expense';
+                if (!['Income','Expense'].includes(txForm.value.type)) txForm.value.type = 'Expense';
                 txForm.value.category = '校正 / 費用';
                 txForm.value.ticker = '';
                 txForm.value.price = null;
@@ -4147,7 +4152,7 @@ async function saveData() {
 }
 
         function addTransaction() {
-    const { date, type, category, ticker, price, shares, amount } = txForm.value;
+    const { date, type, category, ticker, price, shares, amount, cashFlowKind, cashFlowTicker } = txForm.value;
     if (!date) return;
     let finalCategory = category;
     const normalizedTicker = String(ticker || "").trim().toUpperCase();
@@ -4226,9 +4231,19 @@ async function saveData() {
         if (!goOn) return;
     }
 
+    const allowedKinds = type === 'Income' ? ['dividend','interest','other_income'] : type === 'Expense' ? ['fee','tax','other_expense','correction'] : [];
+    const detail = allowedKinds.includes(cashFlowKind) ? {kind:cashFlowKind} : null;
+    if (detail?.kind === 'dividend') {
+        const security = String(cashFlowTicker || '').trim().toUpperCase();
+        if (security && !transactions.value.some(t => ['Buy','Sell'].includes(t.type) && String(t.ticker).trim().toUpperCase()===security)) {
+            alert('股息標的必須為曾記錄的交易代號；未知請留空'); return;
+        }
+        if (security) detail.ticker = security;
+    }
     transactions.value.push({
         date,
         type,
+        ...(detail ? {cashflow_detail:detail} : {}),
         category: finalCategory || (type === 'Expense' ? '校正 / 費用' : ''),
         ticker: (type === 'Buy' || type === 'Sell') ? normalizedTicker : '',
         price: finalPrice,
@@ -4243,6 +4258,8 @@ async function saveData() {
     txForm.value.price = null;
     txForm.value.shares = null;
     txForm.value.amount = null;
+    txForm.value.cashFlowKind = '';
+    txForm.value.cashFlowTicker = '';
 
     updateCharts();
 }

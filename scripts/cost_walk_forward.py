@@ -73,7 +73,7 @@ def metrics(net,gross,dates,start,fees,turns,failures,folds):
         "ending_nav_index":float(curve[-1]*100)}
 
 
-def simulate(prices,config,opt,multiplier):
+def simulate(prices,config,opt,multiplier,methods=METHODS):
     validate_config(opt)
     items=config["universe"];cols=[x["ticker"] for x in items]
     if len(set(cols))!=len(cols) or set(prices.columns)!=set(cols) or not prices.index.is_monotonic_increasing or prices.index.has_duplicates:
@@ -89,7 +89,7 @@ def simulate(prices,config,opt,multiplier):
     if not feasibility(reference,A,b,bounds):raise ValueError("Strategic start violates policy")
     rates=np.array([opt["cost_bps_per_side"][buckets[t]]/10000*multiplier for t in cols])
     cfg={**opt,"horizon_sessions":hold}
-    state={m:{"w":reference.copy(),"nav":1.,"net":[],"gross":[],"fees":0.,"turns":[],"fail":0} for m in METHODS}
+    state={m:{"w":reference.copy(),"nav":1.,"net":[],"gross":[],"fees":0.,"turns":[],"fail":0} for m in methods}
     folds=[];dates=[]
     # Return row i is the close-to-close move ending on date i. Train
     # strictly before execution close; evaluate only subsequent returns.
@@ -106,9 +106,19 @@ def simulate(prices,config,opt,multiplier):
             "execution_date":str(execution.date()),"test_start":str(test.index[0].date()),"test_end":str(test.index[-1].date()),"methods":{}}
         dates.extend(test.index.tolist())
         for method,st in state.items():
-            before=st["w"].copy();status="OK";message=""
+            before=st["w"].copy();status="OK";message="";model={}
             if method=="buy_hold":target=before.copy()
             elif method=="strategic_rebalance":target=reference.copy()
+            elif method in ("regime_aware","factor_budget"):
+                from performance_risk_research import regime_target,budget_target
+                try:
+                    w,model=(regime_target(train,pd.Series(before,index=cols),buckets,mu,cov,rates,cfg)
+                        if method=="regime_aware" else budget_target(train,pd.Series(before,index=cols),buckets,cfg))
+                except Exception:
+                    w=None;model={"status":"MODEL_UNAVAILABLE"}
+                if w is None:
+                    target=before.copy();status="HOLD_"+model.get("status","FAILED");st["fail"]+=1
+                else:target=w.to_numpy()
             else:
                 use_cost=method!="constrained_cvar"
                 floor=float(mu@before)+opt["return_floor_delta_pp"]/100 if use_cost else None
@@ -119,7 +129,7 @@ def simulate(prices,config,opt,multiplier):
                 else:target=w.to_numpy()
             cost,actual_turn=trade_cost(before,target,rates)
             turn=float(np.abs(target-before).sum()/2)
-            if method in ("constrained_cvar","cost_aware_cvar","cost_aware_mean_variance") and status=="OK":
+            if method in ("constrained_cvar","cost_aware_cvar","cost_aware_mean_variance","regime_aware","factor_budget") and status=="OK":
                 if not feasibility(target,A,b,bounds) or turn>opt["turnover_cap_pct"]/100+1e-7:
                     raise ValueError("Solver policy failure")
             st["fees"]+=st["nav"]*cost;st["turns"].append(turn)
@@ -133,7 +143,7 @@ def simulate(prices,config,opt,multiplier):
                 st["w"]=st["w"]*(1+x)/(1+ret)
                 gross.append(ret);net.append(nr)
             st["gross"].extend(gross);st["net"].extend(net)
-            fold["methods"][method]={"status":status,"message":message,"pretrade_weights":dict(zip(cols,before.tolist())),
+            fold["methods"][method]={"status":status,"message":message,"model":model,"pretrade_weights":dict(zip(cols,before.tolist())),
                 "target_weights":dict(zip(cols,target.tolist())),"ending_weights":dict(zip(cols,st["w"].tolist())),
                 "oneoff_cost_pct":cost*100,"nominal_turnover_pct":turn*100,"actual_half_gross_traded_pct":actual_turn*100,
                 "gross_return_pct":float((np.prod(1+np.array(gross))-1)*100),
