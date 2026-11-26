@@ -1,9 +1,9 @@
-name: Verify or Restore Private Portfolio Backup
+name: Verify or Restore GitHub Portfolio Backup
 on:
   workflow_dispatch:
     inputs:
-      object_path:
-        description: 'Encrypted object path portfolio/v1/...enc'
+      backup_date:
+        description: 'Backup date (YYYY-MM-DD)'
         required: true
         type: string
       mode:
@@ -31,9 +31,7 @@ jobs:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      PORTFOLIO_BACKUP_KEY: ${{ secrets.PORTFOLIO_BACKUP_KEY }}
-      PORTFOLIO_ROW_ID: '1'
-      OBJECT_PATH: ${{ inputs.object_path }}
+      BACKUP_DATE: ${{ inputs.backup_date }}
       MODE: ${{ inputs.mode }}
       CONFIRM: ${{ inputs.confirm }}
     steps:
@@ -41,5 +39,5 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - run: pip install 'supabase>=2.7,<3' 'cryptography>=44,<48'
-      - run: python scripts/private_portfolio_backup.py "$MODE" --object "$OBJECT_PATH" --confirm "$CONFIRM"
+      - run: pip install 'supabase>=2.7,<3'
+      - run: python scripts/restore_supabase_backup.py --backup-date "$BACKUP_DATE" --mode "$MODE" --confirm "$CONFIRM"
