@@ -1095,6 +1095,54 @@
                             </div>
                         </div>
                     </div>
+                    <div class="glass chart-card p-5 md:p-6 space-y-4">
+                        <div><h4 class="panel-title">Actual P&amp;L Attribution（TWD）</h4>
+                        <p class="panel-subtitle">已記錄 NAV 減外部資金流；逐檔損益依歷史持倉與未做股息調整的收盤價重建。非券商已實現成本基礎報表。</p></div>
+                        <div v-if="!performanceAttribution" class="text-xs text-amber-300">尚無有效私人歸因報表，或流水帳 / NAV 已變更。請執行 Update Private Performance Attribution 後重新整理。</div>
+                        <template v-else>
+                            <div class="text-xs text-gray-400">NAV 截至 {{ performanceAttribution.nav_as_of }}｜更新 {{ performanceAttribution.generated_at }}</div>
+                            <div class="flex flex-wrap gap-2"><button v-for="k in performanceAttributionWindows" :key="k" @click="performanceAttributionPeriod=k" class="px-3 py-1 rounded-lg border text-xs" :class="performanceAttributionPeriod===k?'border-indigo-400 text-indigo-200':'border-white/10 text-gray-400'">{{ k==='SI'?'成立以來':k }}</button></div>
+                            <template v-if="performancePnlWindow">
+                                <div class="text-xs text-gray-400">{{ performancePnlWindow.start }} ～ {{ performancePnlWindow.end }}｜{{ performancePnlWindow.status }}｜實際快照日期，非硬插值</div>
+                                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                    <div class="quant-card"><div class="quant-label">實際損益 NT$</div><div class="quant-value" :class="performanceTone(performancePnlWindow.actual_pnl_twd)">{{ performanceAmount(performancePnlWindow.actual_pnl_twd) }}</div></div>
+                                    <div class="quant-card"><div class="quant-label">外部資金流 NT$</div><div class="quant-value">{{ performanceAmount(performancePnlWindow.external_flow_twd) }}</div></div>
+                                    <div class="quant-card"><div class="quant-label">區間 Modified Dietz</div><div class="quant-value" :class="performanceTone(performancePnlWindow.dietz_return_pct)">{{ performancePct(performancePnlWindow.dietz_return_pct) }}</div></div>
+                                    <div class="quant-card"><div class="quant-label">未解釋差額 NT$</div><div class="quant-value text-amber-300">{{ performanceAmount(performancePnlWindow.unexplained_twd) }}</div></div>
+                                </div>
+                                <div class="grid grid-cols-2 lg:grid-cols-5 gap-2">
+                                    <div v-for="item in [{key:'price_twd',label:'原幣價格'},{key:'fx_twd',label:'匯率'},{key:'interaction_twd',label:'價格×匯率'},{key:'execution_vs_close_twd',label:'成交與收盤差'},{key:'explicit_other_cashflow_twd',label:'其他帳載現金流'}]" :key="item.key" class="quant-card">
+                                        <div class="quant-label">{{ item.label }} NT$</div><div class="quant-value" :class="performanceTone(performancePnlWindow[item.key])">{{ performanceAmount(performancePnlWindow[item.key]) }}</div>
+                                    </div>
+                                </div>
+                                <div class="text-xs text-gray-400">歸因未涵蓋的損益保留於 Residual；成交與收盤差包含盤中變動、費用及匯率成交差，不是純手續費。</div>
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                                    <div class="border border-white/10 rounded-lg p-3"><div class="text-sm font-bold text-white">資產類別貢獻 NT$</div><div v-for="(v,k) in performancePnlWindow.bucket_pnl_twd" :key="k" class="flex justify-between text-xs py-2 border-b border-white/5"><span>{{ zhText(k) }}</span><span :class="performanceTone(v)">{{ performanceAmount(v) }}</span></div></div>
+                                    <div class="border border-white/10 rounded-lg p-3"><div class="text-sm font-bold text-white">資料缺口</div><div v-if="!performancePnlWindow.missing?.length" class="text-xs text-gray-400">無已辨識的標的缺口；仍可能有估值誤差。</div><div v-for="m in performancePnlWindow.missing" :key="m.ticker" class="text-xs text-amber-300 py-1">{{ m.ticker }}：{{ m.reason }}</div></div>
+                                </div>
+                                <div class="overflow-x-auto max-h-[450px]"><table class="w-full text-xs"><thead class="text-gray-400 sticky top-0 bg-slate-950"><tr><th class="p-2 text-left">標的</th><th class="p-2 text-right">損益 NT$</th><th class="p-2 text-right">價格</th><th class="p-2 text-right">FX</th><th class="p-2 text-right">交互</th><th class="p-2 text-right">成交差</th></tr></thead><tbody><tr v-for="r in performancePnlWindow.rows" :key="r.ticker" class="border-t border-white/5"><td class="p-2 text-white">{{ r.ticker }}</td><td v-for="k in ['pnl_twd','price_twd','fx_twd','interaction_twd','execution_vs_close_twd']" :key="k" class="p-2 text-right" :class="performanceTone(r[k])">{{ performanceAmount(r[k]) }}</td></tr></tbody></table></div>
+                            </template>
+                        </template>
+                    </div>
+                    <div class="glass chart-card p-5 md:p-6 space-y-4">
+                        <div><h4 class="panel-title">Actual Factor Return Attribution · Carino</h4><p class="panel-subtitle">實際歷史 NAV 的 Modified Dietz 報酬；USD 八因子樣本內迴歸，連結回 TWD 複利報酬。非目前權重合成報酬。</p></div>
+                        <div v-if="!performanceAttribution?.factor" class="text-xs text-gray-400">尚無因子資料。</div>
+                        <template v-else>
+                            <div class="text-xs" :class="performanceAttribution.factor.status==='OK'?'text-gray-400':'text-amber-300'">{{ performanceAttribution.factor.status }}｜有效週數 {{ performanceAttribution.factor.sample_count ?? '—' }}｜{{ performanceAttribution.factor.reason || '' }}<span v-if="performanceAttribution.factor.end">｜因子截至 {{ performanceAttribution.factor.end }}（NAV {{ performanceAttribution.nav_as_of }}）</span></div>
+                            <div v-if="performanceAttribution.factor.status==='OK'" class="grid grid-cols-2 lg:grid-cols-3 gap-2">
+                                <div class="quant-card"><div class="quant-label">樣本內 R²</div><div class="quant-value">{{ performanceAttribution.factor.r_squared?.toFixed(3) ?? '—' }}</div></div>
+                                <div class="quant-card"><div class="quant-label">週 Alpha</div><div class="quant-value">{{ performancePct(performanceAttribution.factor.alpha_weekly_pct) }}</div></div>
+                                <div class="quant-card"><div class="quant-label">HAC Alpha p-value</div><div class="quant-value">{{ performanceAttribution.factor.alpha_hac_pvalue?.toFixed(3) ?? '—' }}</div></div>
+                            </div>
+                            <div class="flex flex-wrap gap-2"><button v-for="k in performanceFactorWindows" :key="k" @click="performanceFactorPeriod=k" class="px-3 py-1 rounded-lg border text-xs" :class="performanceFactorPeriod===k?'border-indigo-400 text-indigo-200':'border-white/10 text-gray-400'">{{ k==='SI'?'成立以來':k }}</button></div>
+                            <template v-if="performanceFactorWindow">
+                                <div class="grid grid-cols-2 gap-3"><div class="quant-card"><div class="quant-label">連結後 TWD 報酬</div><div class="quant-value" :class="performanceTone(performanceFactorWindow.total_return_pct)">{{ performancePct(performanceFactorWindow.total_return_pct) }}</div></div><div class="quant-card"><div class="quant-label">期間／歸因核對</div><div class="text-xs text-gray-300">{{ performanceFactorWindow.start }} ～ {{ performanceFactorWindow.end }}｜{{ performanceFactorWindow.period_count }} 週｜誤差 {{ performanceFactorWindow.reconciliation_error_pp.toExponential(2) }} pp</div></div></div>
+                                <div v-for="(v,k) in performanceFactorWindow.contributions_pp" :key="k" class="flex justify-between text-xs border-b border-white/5 py-2"><span>{{ k }}</span><span :class="performanceTone(v)">{{ performancePct(v).replace('%',' pp') }}</span></div>
+                            </template>
+                            <details v-if="performanceAttribution.factor.skipped?.length" class="text-xs text-amber-300"><summary class="cursor-pointer">未涵蓋期間 {{ performanceAttribution.factor.skipped.length }} 筆</summary><div class="max-h-[250px] overflow-y-auto"><div v-for="r in performanceAttribution.factor.skipped" :key="r.end" class="py-1">{{ r.start }} ～ {{ r.end }}：{{ r.reason }}</div></div></details>
+                            <div class="text-xs text-gray-400">因子貢獻為樣本內解釋，不等同因果或可交易 Alpha。Carino 僅連結最新連續可用期間；保留 Residual 與 Dietz 幣別橋接差額。因子資料可能較 NAV 延遲。</div>
+                        </template>
+                    </div>
                 </div>
             </section>
 
@@ -7244,7 +7292,7 @@
     </main>
 </div>
 
-<script src="assets/js/app.bundle.js?v=optimizer-phase3-cost-aware-v1"></script>
+<script src="assets/js/app.bundle.js?v=private-attribution-v1"></script>
 <script src="assets/js/quant-main-display.js?v=optimizer-zh-runtime-fix-1"></script>
     <script src="assets/js/terminal-ui-polish.js?v=terminal-ds-1"></script>
     <script src="assets/js/terminal-ia-phase2.js?v=noop-1"></script>

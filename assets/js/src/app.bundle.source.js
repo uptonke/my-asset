@@ -469,6 +469,24 @@ ${JSON.stringify(payload, null, 2)}
         const loginError = ref('');
         const isAuthenticating = ref(false);
         const cloudHydrated = ref(false);
+        const performanceAttribution = ref(null);
+        const performanceAttributionPeriod = ref('1W');
+        const performanceFactorPeriod = ref('12M');
+        const performanceAttributionWindows = computed(() => Object.keys(performanceAttribution.value?.pnl || {}));
+        const performanceFactorWindows = computed(() => Object.keys(performanceAttribution.value?.factor?.windows || {}));
+        const performancePnlWindow = computed(() => performanceAttribution.value?.pnl?.[performanceAttributionPeriod.value] || null);
+        const performanceFactorWindow = computed(() => performanceAttribution.value?.factor?.windows?.[performanceFactorPeriod.value] || null);
+        function performanceAmount(x) {
+            if (typeof x !== 'number' || !Number.isFinite(x)) return '—';
+            return (x > 0 ? '+' : x < 0 ? '−' : '') + Math.abs(x).toLocaleString('zh-TW',{maximumFractionDigits:0});
+        }
+        function performancePct(x) {
+            if (typeof x !== 'number' || !Number.isFinite(x)) return '—';
+            return (x > 0 ? '+' : '') + x.toFixed(2) + '%';
+        }
+        function performanceTone(x) {
+            return typeof x === 'number' && x > 0 ? 'text-emerald-300' : typeof x === 'number' && x < 0 ? 'text-red-300' : 'text-gray-300';
+        }
         const cloudBaselineHadPortfolioData = ref(false);
 
         const checkAuth = async () => {
@@ -567,6 +585,7 @@ ${JSON.stringify(payload, null, 2)}
         });
 
         async function loadDataFromCloud() {
+            performanceAttribution.value = null;
             cloudHydrated.value = false;
             cloudBaselineHadPortfolioData.value = false;
             isDbSyncing.value = true;
@@ -589,6 +608,9 @@ ${JSON.stringify(payload, null, 2)}
                     transactions.value = data.ledger_data || [];
                     realHistoryData.value = data.history_data || [];
                     stockMeta.value = data.stock_meta || {};
+                    performanceAttribution.value = data.performance_attribution?.version === 'v1.0' ? data.performance_attribution : null;
+                    performanceAttributionPeriod.value = performanceAttributionWindows.value.includes('1W') ? '1W' : performanceAttributionWindows.value[0] || '1W';
+                    performanceFactorPeriod.value = performanceFactorWindows.value.includes('12M') ? '12M' : performanceFactorWindows.value[0] || '12M';
 
                     if (data.macro_meta) {
                         const macroData = data.macro_meta;
@@ -3529,6 +3551,9 @@ if (backendTail && (
 
         let syncTimer = null;
 async function saveData() {
+    // Private attribution is never saved by the client. Hide on any save;
+    // server trigger invalidates it on ledger/history changes.
+    performanceAttribution.value = null;
     await localforage.setItem('ledgerData', JSON.stringify(transactions.value));
     await localforage.setItem('historyData', JSON.stringify(realHistoryData.value));
     await localforage.setItem('stockMeta', JSON.stringify(stockMeta.value));
@@ -7985,7 +8010,7 @@ chartCML.data.datasets = [
             isAuthenticating, handleLogin, handleLogout, checkAuth, fireProgress,
             updateCharts, addFireTarget, macroRegime, enableBlackSwan, mcRisk, blViews, mcAvailableAssets, addBlView, enableInflation,
             generateAutoViews, runMonteCarlo, stressTestResults,
-            expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr, navOverlayMode, navOverlayOptions, setNavOverlayMode, navMaConfig, riskRegimeStrip, navTrendSummary, twrDetrendSummary, rollingExcessSummary,
+            expandedCardTicker, toggleCard, isHistoryExpanded, cloudRebalanceMeta, sysCorr, navOverlayMode, navOverlayOptions, setNavOverlayMode, navMaConfig, riskRegimeStrip, navTrendSummary, twrDetrendSummary, rollingExcessSummary, performanceAttribution, performanceAttributionPeriod, performanceFactorPeriod, performanceAttributionWindows, performanceFactorWindows, performancePnlWindow, performanceFactorWindow, performanceAmount, performancePct, performanceTone,
             syncHoldingsHeaderScroll,
             croInsight, isCroThinking, liquidityBufferRatio, bufferPresets, applyLiquidityBuffer, nudgeLiquidityBuffer, generateQuantInsight, chaosMeta,
             xrayStats, rebalanceMonitor, tailStatsLite, alphaRegressionStats, syntheticRiskMeta, optimizerDependencyStatus, optimizerDependencyPackages, optimizerSandboxOutput, optimizerSandboxError, optimizerSandboxPortfolios, optimizerSandboxBestByES, optimizerSandboxSkfolioWeights, optimizerSandboxCvarWeights, optimizerIntegratedComparison, loadOptimizerSandboxOutput, riskfolioSandboxOutput, riskfolioSandboxError, riskfolioSandboxPortfolios, loadRiskfolioSandboxOutput, optimizerComparisonBasis, optimizerPhase3Report, optimizerPhase3Rows, optimizerPhase2Rows, optimizerPhase2Best, unifiedOptimizerComparison, unifiedOptimizerBestByES, riskfolioMinVarWeights, riskfolioCvarWeights, selectedOptimizerBufferCandidateKey, optimizerBufferCandidateSummaries, selectedOptimizerBufferCandidate, selectedOptimizerBufferRows, optimizerBufferActionSummary, setOptimizerBufferCandidate, optimizerConstraintRules, optimizerConstraintPolicySummaries, selectedOptimizerConstraintPolicy, selectedOptimizerConstraintRows, selectedOptimizerConstraintIssues, optimizerRobustnessOutput, optimizerRobustnessError, optimizerRobustnessWindows, optimizerRobustnessMethods, optimizerMostStableMethod, optimizerUnstableMethods, loadOptimizerRobustnessOutput, optimizerStressOutput, optimizerStressError, optimizerStressScenarios, optimizerStressRows, optimizerStressWorstRows, optimizerStressBestWorst, optimizerStressMostFragile, selectedStressScenarioKey, selectedStressScenario, selectedStressScenarioRows, setStressScenario, loadOptimizerStressOutput, humanApprovalLayer, humanApprovalLayerError, humanApprovalTickets, humanApprovalSummary, humanApprovalVisibleTickets, loadHumanApprovalLayer, actionAuditTrail, actionAuditTrailError, actionAuditSummary, actionAuditEvents, loadActionAuditTrail, regimeAwareOptimizer, regimeAwareError, regimeAwareSummary, regimeAwareRegime, regimeAwareActivePolicy, regimeAwareCovariancePolicy, regimeAwareDrafts, regimeAwareVisibleDrafts, loadRegimeAwareOptimizer, blackLittermanSandbox, blackLittermanError, blackLittermanSummary, blackLittermanViewEngine, blackLittermanViews, blackLittermanPosteriorCandidates, loadBlackLittermanSandbox, expectedReturnModel, expectedReturnError, expectedReturnSummary, expectedReturnPolicy, expectedReturnBucketPriors, expectedReturnAssetPriors, expectedReturnVisibleBuckets, expectedReturnVisibleAssets, loadExpectedReturnModel, walkForwardBacktest, walkForwardError, walkForwardSummary, walkForwardAggregate, walkForwardVisibleRows, loadWalkForwardBacktest, modelGovernanceDashboard, modelGovernanceError, modelGovernanceSummary, modelGovernanceRegistry, modelGovernanceFlags, modelGovernanceVisibleRegistry, modelGovernanceVisibleFlags, loadModelGovernanceDashboard, forecastFeatureStore, forecastFeatureError, forecastFeatureSummary, forecastFeatureSample, forecastFeatureRows, forecastFeatureVisibleRows, loadForecastFeatureStore, alphaResearchSandbox, alphaResearchError, alphaResearchSummary, alphaResearchPolicy, alphaResearchRows, alphaResearchVisibleRows, loadAlphaResearchSandbox, rebalanceCandidateRanking, rebalanceRankingError, rebalanceRankingSummary, rebalanceRankingPolicy, rebalanceRankingRows, rebalanceRankingVisibleRows, loadRebalanceCandidateRanking, alphaValidationGate, alphaValidationError, alphaValidationSummary, alphaValidationGates, alphaValidationVisibleGates, loadAlphaValidationGate, manualRebalanceProposal, manualProposalError, manualProposalSummary, manualProposalRows, manualProposalVisibleRows, loadManualRebalanceProposal, executionReadyDraft, executionDraftError, executionDraftSummary, executionDraftRows, executionDraftVisibleRows, loadExecutionReadyDraft, formalDraftPassConditions, formalDraftPassError, formalDraftPassSummary, loadFormalDraftPassConditions, tradingConstraintsSnapshot, tradingConstraintsError, tradingConstraintsSummary, tradingConstraintsRows, tradingConstraintsVisibleRows, loadTradingConstraintsSnapshot, paperTradeTracker, paperTradeError, paperTradeSummary, paperTradeRows, paperTradeVisibleRows, loadPaperTradeTracker, tradeSizingDiagnostics, tradeSizingDiagnosticsError, tradeSizingDiagnosticsSummary, tradeSizingDiagnosticsIssues, tradeSizingDiagnosticsVisibleIssues, tradeSizingDiagnosticsNextActions, loadTradeSizingDiagnostics, manualApprovalConsole, manualApprovalConsoleError, manualApprovalConsoleLoading, manualApprovalConsoleLastLoadedAt, manualApprovalConsoleReloadMessage, manualApprovalConsoleSummary, manualApprovalMissingInputs, loadManualApprovalConsole, paperTradePerformanceEvaluator, paperTradePerformanceError, paperTradePerformanceLoading, paperTradePerformanceLastLoadedAt, paperTradePerformanceReloadMessage, paperTradePerformanceSummary, paperTradePerformanceRows, paperTradePerformanceVisibleRows, loadPaperTradePerformanceEvaluator, tradeTicketExplainability, tradeTicketExplainabilityError, tradeTicketExplainabilityLoading, tradeTicketExplainabilityLastLoadedAt, tradeTicketExplainabilityReloadMessage, tradeTicketExplainabilitySummary, tradeTicketExplainabilityRows, tradeTicketExplainabilityVisibleRows, loadTradeTicketExplainability, nativeTargetThesis, nativeTargetThesisError, nativeTargetThesisSummary, nativeTargetThesisRows, nativeTargetThesisVisibleRows, nativeTargetThesisAgreementCounts, loadNativeTargetThesis, delegatedTargetWeightDraft, delegatedTargetWeightDraftError, delegatedTargetWeightDraftSummary, delegatedTargetRows, delegatedTargetVisibleRows, delegatedDraftLines, delegatedDraftVisibleLines, delegatedDraftWarnings, delegatedDraftVisibleWarnings, loadDelegatedTargetWeightDraft, dailyQuantReference, dailyQuantReferenceError, dailyQuantReferenceSummary, loadDailyQuantReference, delegatedDraftMonteCarloCheck, delegatedDraftMonteCarloCheckError, delegatedDraftMonteCarloSummary, delegatedDraftMonteCarloChecks, delegatedDraftMonteCarloVisibleChecks, delegatedDraftMonteCarloRiskNotes, delegatedDraftMonteCarloVisibleRiskNotes, loadDelegatedDraftMonteCarloCheck, humanConfirmedTradeTicket, humanConfirmedTradeTicketError, humanConfirmedTradeTicketSummary, humanConfirmedTicketRows, humanConfirmedTicketVisibleRows, humanConfirmedTicketBlockers, humanConfirmedTicketVisibleBlockers, loadHumanConfirmedTradeTicket, optimizerDataReloading, optimizerDataLastLoadedAt, optimizerDataReloadMessage, reloadAllOptimizerData, formalRebalanceDraftGate, formalDraftGateError, formalDraftGateSummary, formalDraftRows, formalDraftVisibleRows, loadFormalRebalanceDraftGate, manualTradeTicket, manualTradeTicketError, manualTradeTicketSummary, manualTradeTicketRows, manualTradeTicketVisibleRows, loadManualTradeTicket, approvalBadgeClass, machineReviewLabel, machineReviewReason, machineReviewBadgeClass, zhText, zhList, zhBool, selectedOptimizerExplainKey, optimizerExplainabilityCandidates, selectedOptimizerExplainability, setOptimizerExplainCandidate, allocationGovernance, decisionCenter, cashBalance, totalPortfolioNav, cashBalance, totalPortfolioNav, isCashNegative, isCashTooHigh, isCashAlert

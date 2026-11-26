@@ -7,8 +7,8 @@ create or replace function public.invalidate_performance_attribution()
 returns trigger language plpgsql security invoker set search_path = ''
 as $$
 begin
-  if new.ledger_data is distinct from old.ledger_data
-     or new.history_data is distinct from old.history_data then
+  if new.ledger_data::jsonb is distinct from old.ledger_data::jsonb
+     or new.history_data::jsonb is distinct from old.history_data::jsonb then
     new.performance_attribution := null;
   end if;
   return new;

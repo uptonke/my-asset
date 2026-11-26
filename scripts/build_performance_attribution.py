@@ -55,8 +55,9 @@ def parse_inputs(row):
             q=q if t=="buy" else -q
             cat=str(x.get("category") or "")
             if ticker in categories and categories[ticker]!=cat:
-                raise ValueError("Ticker category changed; currency ambiguous")
-            categories[ticker]=cat
+                categories[ticker]="__AMBIGUOUS__"
+            else:
+                categories[ticker]=cat
         elif t in ("deposit","withdraw"):
             if (t=="deposit" and flow<0) or (t=="withdraw" and flow>0):
                 raise ValueError("Invalid external flow sign")
@@ -191,6 +192,8 @@ def load_market(categories,earliest):
     out={}
     for t,cat in categories.items():
         try:
+            if cat=="__AMBIGUOUS__":
+                raise ValueError("Ticker category changed; quote currency ambiguous")
             sym=q.yfinance_symbol(t,cat)
             h=yf.Ticker(sym).history(start=(earliest-pd.Timedelta(days=10)).strftime("%Y-%m-%d"),
                                       auto_adjust=False,actions=True,raise_errors=True)

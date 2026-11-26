@@ -60,6 +60,12 @@ class AttributionTests(unittest.TestCase):
         p=p.drop(index=30)
         result=factor_report(p,[],nav)
         self.assertNotIn("SI",result["windows"])
+    def test_changed_category_does_not_block_other_assets(self):
+        row={"history_data":[{"date":"2025-01-01","assets":100},{"date":"2025-01-08","assets":110}],
+             "ledger_data":[{"date":"2025-01-01","ticker":"X","type":"Buy","shares":1,"totalCashFlow":-10,"category":"TW"},
+                            {"date":"2025-01-02","ticker":"X","type":"Buy","shares":1,"totalCashFlow":-10,"category":"US"}]}
+        _,_,cats=parse_inputs(row)
+        self.assertEqual(cats["X"],"__AMBIGUOUS__")
     def test_duplicate_nav_rejected(self):
         with self.assertRaisesRegex(ValueError,"duplicate"):
             parse_inputs({"history_data":[{"date":"2025-01-01","assets":1},{"date":"2025-01-01","assets":2}]})
