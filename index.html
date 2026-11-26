@@ -1270,6 +1270,53 @@
                         </template>
                     </div>
                     <div class="glass chart-card p-5 md:p-6 space-y-3">
+                        <h4 class="panel-title">Marginal &amp; Component Risk Contribution · v3.3</h4>
+                        <p class="panel-subtitle">最新 NAV 日期的全部標的曝險（非即時）。有效自動快照優先；否則採前一日已完成報價及流水帳重建。不把未解釋差額補成現金，不剔除缺價持倉。使用台幣價格報酬，不新增股息。</p>
+                        <template v-if="performanceAttribution?.portfolio_risk">
+                            <div class="text-xs">{{ performanceAttribution.portfolio_risk.status }}｜{{ performanceAttribution.portfolio_risk.reason || '' }}</div>
+                            <template v-if="performanceAttribution.portfolio_risk.exposure">
+                                <div class="text-xs">{{ performanceAttribution.portfolio_risk.exposure.as_of }}｜報價截止 {{ performanceAttribution.portfolio_risk.exposure.cutoff }}｜{{ performanceAttribution.portfolio_risk.exposure.basis }}</div>
+                                <div class="text-xs">重建／擷取估值 NT$ {{ formatNumber(performanceAttribution.portfolio_risk.exposure.model_nav_twd) }}｜原 NAV 差額 NT$ {{ formatNumber(performanceAttribution.portfolio_risk.exposure.nav_gap_twd) }}（{{ performancePct(performanceAttribution.portfolio_risk.exposure.nav_gap_pct) }}）</div>
+                                <div class="text-xs text-amber-300">{{ performanceAttribution.portfolio_risk.exposure.warnings.join('｜') }}</div>
+                                <div class="text-xs" v-if="performanceAttribution.portfolio_risk.coverage">共同七日樣本 {{ performanceAttribution.portfolio_risk.coverage.valid_weeks ?? '—' }} / {{ performanceAttribution.portfolio_risk.coverage.expected_weeks ?? '—' }}｜最新連續 {{ performanceAttribution.portfolio_risk.coverage.latest_contiguous_weeks ?? '—' }}</div>
+                                <details class="text-xs" v-for="(r,k) in performanceAttribution.portfolio_risk.risk_windows || {}" :key="k" :open="k==='52'">
+                                    <summary>{{ k }} 週｜{{ r.status }}｜年化波動 {{ performancePct(r.annualized_vol_pct) }}｜樣本 {{ r.observations ?? r.available ?? 0 }}</summary>
+                                    <template v-if="r.status==='RESEARCH_ONLY'">
+                                        <div>{{ r.start }} ～ {{ r.end }}｜分散化比率 {{ r.diversification_ratio.toFixed(3) }}｜核對 {{ r.identity_error_pp.toExponential(2) }} pp</div>
+                                        <div v-if="r.tail">歷史單週 95% VaR 損失 {{ performancePct(r.tail.var95_loss_pct) }}｜ES {{ performancePct(r.tail.es95_loss_pct) }}｜有效尾部樣本 {{ r.tail.effective_tail_observations.toFixed(2) }}</div>
+                                        <div v-if="r.warnings.length" class="text-amber-300">{{ r.warnings.join('｜') }}</div>
+                                        <div class="overflow-x-auto"><table class="w-full text-xs text-right"><thead><tr><th class="text-left">資產</th><th>權重</th><th>單獨波動</th><th>邊際 pp / 1pp</th><th>成分 pp</th><th>風險占比</th><th>ES 成分 pp</th></tr></thead><tbody><tr v-for="s in r.rows" :key="s.ticker"><td class="text-left">{{ s.ticker==='__TWD_CASH__' ? 'TWD 現金' : s.ticker }}</td><td>{{ performancePct(s.weight_pct) }}</td><td>{{ performancePct(s.standalone_ann_vol_pct) }}</td><td>{{ s.marginal_vol_pp_per_1pp_weight.toFixed(4) }}</td><td>{{ s.component_ann_vol_pp.toFixed(3) }}</td><td>{{ performancePct(s.risk_share_pct) }}</td><td>{{ s.es95_component_loss_pp?.toFixed(3) ?? '—' }}</td></tr></tbody></table></div>
+                                        <div v-for="g in r.groups" :key="g.bucket">{{ g.bucket }}｜權重 {{ performancePct(g.weight_pct) }}｜波動成分 {{ g.component_ann_vol_pp.toFixed(3) }} pp｜風險占比 {{ performancePct(g.risk_share_pct) }}</div>
+                                    </template><div v-else>{{ r.reason || '共同連續樣本不足；不填補缺價' }}</div>
+                                </details>
+                            </template>
+                        </template><div v-else class="text-xs">等待更新</div>
+                    </div>
+                    <div class="glass chart-card p-5 md:p-6 space-y-3">
+                        <h4 class="panel-title">Stress Testing &amp; Scenario Analysis · v3.4</h4>
+                        <p class="panel-subtitle">固定目前曝險、假設標的價格及匯率同時變動；不代表未來預測。美元資產以 (1+價格變動)×(1+匯率變動)−1 計算；TWD 現金維持不變。歷史重播不是當時實際投組報酬。</p>
+                        <template v-if="performanceAttribution?.portfolio_risk?.exposure">
+                            <details class="text-xs" v-for="r in performanceAttribution.portfolio_risk.hypothetical" :key="r.id">
+                                <summary>{{ r.label }}｜{{ r.status }}｜{{ performancePct(r.return_pct) }}｜NT$ {{ r.pnl_twd===undefined ? '—' : formatNumber(r.pnl_twd) }}</summary>
+                                <template v-if="r.status==='HYPOTHETICAL'">
+                                    <div>USD/TWD {{ performancePct(r.usd_twd_shock*100) }}｜壓力後模型 NAV NT$ {{ formatNumber(r.stressed_model_nav_twd) }}</div>
+                                    <div v-for="(v,k) in r.local_price_shocks" :key="k">{{ k }} {{ performancePct(v*100) }}</div>
+                                    <div v-for="s in r.rows" :key="s.ticker">{{ s.ticker==='__TWD_CASH__' ? 'TWD 現金' : s.ticker }}｜價格含匯率 {{ performancePct(s.return_pct) }}｜貢獻 {{ s.contribution_pp.toFixed(3) }} pp｜NT$ {{ formatNumber(s.pnl_twd) }}</div>
+                                </template>
+                            </details>
+                            <details class="text-xs" v-for="r in performanceAttribution.portfolio_risk.historical" :key="r.weeks">
+                                <summary>歷史最差 {{ r.weeks }} 週｜{{ r.status }}｜{{ performancePct(r.worst?.return_pct) }}｜{{ r.candidate_windows }} 個可用窗口</summary>
+                                <div v-if="r.worst">{{ r.worst.start }} ～ {{ r.worst.end }}｜NT$ {{ formatNumber(r.worst.pnl_twd) }}</div>
+                                <div v-for="s in r.worst?.rows || []" :key="s.ticker">{{ s.ticker }}｜{{ s.contribution_pp.toFixed(3) }} pp｜NT$ {{ formatNumber(s.pnl_twd) }}</div>
+                            </details>
+                            <details class="text-xs" v-for="r in performanceAttribution.portfolio_risk.events" :key="r.id">
+                                <summary>{{ r.label }}｜{{ r.status }}｜{{ performancePct(r.return_pct) }}</summary>
+                                <div>{{ r.start }} ～ {{ r.end }}｜{{ r.reason || '' }}<span v-if="r.status==='REPLAY'">｜NT$ {{ formatNumber(r.pnl_twd) }}</span></div>
+                                <div v-for="s in r.rows || []" :key="s.ticker">{{ s.ticker }}｜{{ s.contribution_pp.toFixed(3) }} pp</div>
+                            </details>
+                        </template><div v-else class="text-xs">尚無可用曝險，未計算情境</div>
+                    </div>
+                    <div class="glass chart-card p-5 md:p-6 space-y-3">
                         <h4 class="panel-title">Historical Brinson-Fachler · v2.3.3</h4>
                         <p class="panel-subtitle">歷史 NAV、流水帳及價格重建；研究用非正式基準。採交易日收盤切段與多期 Carino 主動報酬連結。現金為流水帳推算，非銀行核對；不跨缺漏區間，不回填原始 NAV。微額負現金 ≤ NT$1 僅在研究估值歸零；保留原始差額。</p>
                         <div class="text-xs text-amber-300">{{ performanceAttribution?.historical_brinson?.status || '等待新版歸因更新' }}｜{{ performanceAttribution?.historical_brinson?.reason || '' }}</div>
