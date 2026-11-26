@@ -1,0 +1,8 @@
+# Phase 2 — constrained risk sandbox
+The canonical skfolio snapshot emits a separate `phase2` object in its JSON. It is deliberately outside legacy `portfolios`: no formal decision-center, candidate generation, trade ticket, Supabase write or order approval consumes these models yet.
+
+The constrained minimum-variance (SLSQP) and empirical CVaR95 (HiGHS LP) solve hard constraints, with a separate LP feasibility check and post-solve validation. Infeasible means no weights, not relaxed limits. Existing ticker universe only. Policy uses stricter intersection of the existing UI and v2.3 limits: single 20%, Taiwan 30%, crypto 15%, cash minimum 8%, gold 3–7%, theme single 10%, crypto+theme 35%. The aggregate cash cap of 20% is a new sandbox assumption; gold is made hard. Cash means classified cash-like invested securities, not ledger cash. The high-volatility proxy is the existing listed crypto/theme rule, not empirical vol. No return floor, turnover or cost penalty in this phase.
+
+HRP-lite uses the same existing EWMA covariance and recursive bisection functions, plus deterministic correlation ordering, and is evaluated against the shared snapshot with the same metrics as the other skfolio candidates. Its EWMA volatility is reported separately, not mixed with historical sample volatility. CVaR LP objective and displayed quantile-tail mean ES can differ at ties.
+
+Run Optimizer Lab / all_optimizer_outputs. New candidates require a matching snapshot ID to enter unified comparison. They remain diagnostic, not executable. No report is fresh until the data workflow has run successfully.

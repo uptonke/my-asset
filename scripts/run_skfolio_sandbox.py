@@ -342,6 +342,7 @@ def load_strict_returns_and_weights() -> Tuple[pd.DataFrame, pd.Series, Dict[str
         "snapshot_id": snapshot_id,
         "currency": "TWD",
         "weight_basis": "invested_assets_only",
+        "asset_buckets": {t: q.classify_asset_bucket(t, holdings[t].get("category", "")) for t in returns.columns},
     }
 
     return returns, current_weights, meta
@@ -408,8 +409,12 @@ def main() -> None:
     else:
         portfolios["skfolio_cvar_minimize"] = {"status": skfolio_cvar_info.get("status", "FAILED"), "method": skfolio_cvar_info}
 
+    from run_constrained_optimizer import build_phase2_portfolios
+    phase2 = build_phase2_portfolios(returns, current_weights, meta)
+
     result = {
         "version": "v1.0",
+        "phase2": phase2,
         "status": "OK",
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "mode": "sandbox_only",
