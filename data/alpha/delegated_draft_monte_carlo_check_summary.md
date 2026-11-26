@@ -1,10 +1,10 @@
 # v10.5 Delegated Draft Monte Carlo Reference Check
 
-- Generated: `2026-08-10T04:03:27+00:00`
+- Generated: `2026-11-26T08:29:50+00:00`
 - Reference check status: **reference_available**
 - Delegated draft status: `machine_delegated_draft_available`
-- Draft line count: `3`
-- Stressed VaR95: `6.44`
-- Stressed ES95: `9.0`
-- Liquidity run probability: `19.15`
+- Draft line count: `4`
+- Stressed VaR95: `10.16`
+- Stressed ES95: `15.43`
+- Liquidity run probability: `49.78`
 - Execution permission: `False`

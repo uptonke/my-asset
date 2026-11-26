@@ -1,10 +1,10 @@
 # v10.0 Human-Confirmed Trade Ticket
 
-- Generated: `2026-08-10T04:03:26+00:00`
+- Generated: `2026-11-26T08:29:47+00:00`
 - Human confirmed ticket status: **blocked**
 - Source manual ticket count: `0`
 - Confirmed ticket count: `0`
-- Blockers: `17`
+- Blockers: `15`
 - Trade signal enabled: `False`
 - Execution permission: `False`
 - Broker submission enabled: `False`

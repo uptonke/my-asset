@@ -1,6 +1,6 @@
 # Constraint-Aware Rebalance Sandbox v2.3
 
-Generated at: `2026-08-10T04:03:12+00:00`
+Generated at: `2026-11-26T08:29:23+00:00`
 
 ## Safety Boundary
 
@@ -16,21 +16,21 @@ Generated at: `2026-08-10T04:03:12+00:00`
 - Rebalance draft count: `3`
 - Risk-reduction draft count: `8`
 - Constraint pass count: `6`
-- High-turnover review count: `4`
+- High-turnover review count: `5`
 - Verdict: 有通過約束的觀察草案，但仍不得執行；下一步才是 Human Approval Layer。
 
 ## Drafts
 
 | Draft | Source | Status | Turnover | Cash | Crypto | Taiwan | Gold | Top adjustments |
 |---|---|---|---:|---:|---:|---:|---:|---|
-| `v2_3_v2_1_inverse_vol_baseline` | v2.1_rebalance_candidate_generator | `constraint_pass_watch_only` | 7.455% | 15.082% | 12.549% | 8.075% | 4.057% | BOXX UP 1.78pp; BTC-USD DOWN -1.637pp; GLDM UP 1.63pp; SRVR UP 1.565pp; 00981A DOWN -1.472pp |
-| `v2_3_v2_1_riskfolio_risk_parity_mv` | v2.1_rebalance_candidate_generator | `turnover_too_high_review_only` | 8.102% | 16.711% | 12.596% | 9.547% | 4.178% | BOXX UP 3.409pp; VOO DOWN -2.254pp; GLDM UP 1.751pp; QQQ DOWN -1.675pp; BTC-USD DOWN -1.607pp |
-| `v2_3_v2_1_riskfolio_hrp_mv` | v2.1_rebalance_candidate_generator | `turnover_too_high_review_only` | 10.695% | 19.582% | 11.814% | 7.95% | 3.811% | BOXX UP 6.28pp; BTC-USD DOWN -2.0pp; QQQ DOWN -2.0pp; AVUV DOWN -1.774pp; 00981A DOWN -1.597pp |
-| `v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX` | v2.2_risk_reduction_simulator | `turnover_too_high_review_only` | 10.761% | 23.063% | 5.22% | 9.547% | 3.427% | BOXX UP 9.761pp; BTC-USD DOWN -9.761pp; GLDM UP 1.0pp; QQQ DOWN -1.0pp |
-| `v2_3_from_v2_2_trim_QQQ_100pct_to_BOXX` | v2.2_risk_reduction_simulator | `constraint_violation_unresolved` | 13.252% | 25.554% | 14.981% | 9.547% | 3.427% | BOXX UP 12.252pp; QQQ DOWN -12.252pp; GLDM UP 1.0pp; VOO DOWN -1.0pp |
-| `v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX` | v2.2_risk_reduction_simulator | `constraint_pass_watch_only` | 5.88% | 18.182% | 10.101% | 9.547% | 3.427% | BOXX UP 4.88pp; BTC-USD DOWN -4.88pp; GLDM UP 1.0pp; QQQ DOWN -1.0pp |
-| `v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX` | v2.2_risk_reduction_simulator | `constraint_pass_watch_only` | 6.22% | 18.522% | 9.761% | 9.547% | 3.427% | BOXX UP 5.22pp; ETH-USD DOWN -5.22pp; GLDM UP 1.0pp; QQQ DOWN -1.0pp |
-| `v2_3_from_v2_2_trim_00981A_100pct_to_BOXX` | v2.2_risk_reduction_simulator | `turnover_too_high_review_only` | 10.547% | 22.849% | 14.981% | 0.0% | 3.427% | 00981A DOWN -9.547pp; BOXX UP 9.547pp; GLDM UP 1.0pp; QQQ DOWN -1.0pp |
-| `v2_3_from_v2_2_trim_QQQ_50pct_to_BOXX` | v2.2_risk_reduction_simulator | `constraint_pass_watch_only` | 7.126% | 19.428% | 14.981% | 9.547% | 3.427% | BOXX UP 6.126pp; QQQ DOWN -6.126pp; GLDM UP 1.0pp; VOO DOWN -1.0pp |
-| `v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX` | v2.2_risk_reduction_simulator | `constraint_pass_watch_only` | 3.44% | 15.742% | 12.541% | 9.547% | 3.427% | BOXX UP 2.44pp; BTC-USD DOWN -2.44pp; GLDM UP 1.0pp; QQQ DOWN -1.0pp |
-| `v2_3_from_v2_2_trim_ETH_USD_50pct_to_BOXX` | v2.2_risk_reduction_simulator | `constraint_pass_watch_only` | 3.61% | 15.912% | 12.371% | 9.547% | 3.427% | BOXX UP 2.61pp; ETH-USD DOWN -2.61pp; GLDM UP 1.0pp; QQQ DOWN -1.0pp |
+| `v2_3_v2_1_inverse_vol_baseline` | v2.1_rebalance_candidate_generator | `constraint_pass_candidate_review` | 14.8% | 17.004% | 10.25% | 11.863% | 5.0% | BOXX UP 6.504pp; BTC-USD DOWN -3.506pp; QQQ DOWN -2.79pp; 00981A DOWN -2.7pp; VOO DOWN -2.489pp |
+| `v2_3_v2_1_riskfolio_risk_parity_mv` | v2.1_rebalance_candidate_generator | `turnover_too_high_review_only` | 17.548% | 22.709% | 10.167% | 13.488% | 5.0% | BOXX UP 12.209pp; QQQ DOWN -3.879pp; BTC-USD DOWN -3.552pp; VOO DOWN -3.381pp; AVUV DOWN -2.532pp |
+| `v2_3_v2_1_riskfolio_hrp_mv` | v2.1_rebalance_candidate_generator | `turnover_too_high_review_only` | 11.933% | 19.51% | 12.143% | 11.587% | 5.0% | BOXX UP 9.01pp; VOO DOWN -2.644pp; BTC-USD DOWN -2.0pp; QQQ DOWN -2.0pp; 00981A DOWN -1.666pp |
+| `v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX` | v2.2_risk_reduction_simulator | `turnover_too_high_review_only` | 11.164% | 20.666% | 5.127% | 13.744% | 5.0% | BOXX UP 10.166pp; BTC-USD DOWN -10.166pp; GLDM UP 0.998pp; VOO DOWN -0.998pp |
+| `v2_3_from_v2_2_trim_QQQ_100pct_to_BOXX` | v2.2_risk_reduction_simulator | `turnover_too_high_review_only` | 13.255% | 22.757% | 15.0% | 13.744% | 5.0% | BOXX UP 12.257pp; QQQ DOWN -11.964pp; GLDM UP 0.998pp; VOO DOWN -0.998pp; BTC-USD DOWN -0.195pp |
+| `v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX` | v2.2_risk_reduction_simulator | `constraint_pass_watch_only` | 6.081% | 15.583% | 10.21% | 13.744% | 5.0% | BOXX UP 5.083pp; BTC-USD DOWN -5.083pp; GLDM UP 0.998pp; VOO DOWN -0.998pp |
+| `v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX` | v2.2_risk_reduction_simulator | `constraint_pass_watch_only` | 6.125% | 15.627% | 10.166% | 13.744% | 5.0% | BOXX UP 5.127pp; ETH-USD DOWN -5.127pp; GLDM UP 0.998pp; VOO DOWN -0.998pp |
+| `v2_3_from_v2_2_trim_00981A_100pct_to_BOXX` | v2.2_risk_reduction_simulator | `turnover_too_high_review_only` | 9.832% | 19.334% | 15.0% | 5.203% | 5.0% | BOXX UP 8.834pp; 00981A DOWN -8.541pp; GLDM UP 0.998pp; VOO DOWN -0.998pp; BTC-USD DOWN -0.195pp |
+| `v2_3_from_v2_2_trim_QQQ_50pct_to_BOXX` | v2.2_risk_reduction_simulator | `constraint_pass_watch_only` | 7.273% | 16.775% | 15.0% | 13.744% | 5.0% | BOXX UP 6.275pp; QQQ DOWN -5.982pp; GLDM UP 0.998pp; VOO DOWN -0.998pp; BTC-USD DOWN -0.195pp |
+| `v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX` | v2.2_risk_reduction_simulator | `constraint_pass_watch_only` | 3.54% | 13.042% | 12.751% | 13.744% | 5.0% | BOXX UP 2.542pp; BTC-USD DOWN -2.542pp; GLDM UP 0.998pp; VOO DOWN -0.998pp |
+| `v2_3_from_v2_2_trim_ETH_USD_50pct_to_BOXX` | v2.2_risk_reduction_simulator | `constraint_pass_watch_only` | 3.561% | 13.063% | 12.73% | 13.744% | 5.0% | BOXX UP 2.563pp; ETH-USD DOWN -2.563pp; GLDM UP 0.998pp; VOO DOWN -0.998pp |

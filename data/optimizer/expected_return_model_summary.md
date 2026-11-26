@@ -1,6 +1,6 @@
 # Expected Return Model v3.2
 
-Generated: `2026-08-10T04:03:12+00:00`
+Generated: `2026-11-26T08:29:23+00:00`
 
 ## Safety boundary
 
@@ -10,7 +10,7 @@ Generated: `2026-08-10T04:03:12+00:00`
 
 ## Summary
 
-- Asset priors: `13`
+- Asset priors: `15`
 - Positive prior buckets: `2`
 - Negative prior buckets: `3`
 - Verdict: `relative_prior_only_no_max_sharpe`
@@ -25,11 +25,11 @@ Generated: `2026-08-10T04:03:12+00:00`
 | `other` | 0.0 | `neutral_or_no_edge_prior` | 0.75 | 0.0 | 0.0 |
 | `us_equity` | 0.0 | `neutral_or_no_edge_prior` | 0.75 | 0.0 | 0.0 |
 | `commodity_equity` | -0.1 | `neutral_or_no_edge_prior` | 0.75 | 0.0 | 0.0 |
-| `emerging_market` | -0.35 | `neutral_or_no_edge_prior` | 0.7 | -0.25 | 0.0 |
-| `theme_etf` | -0.45 | `neutral_or_no_edge_prior` | 0.7 | -0.3 | 0.0 |
+| `emerging_market` | -0.35 | `neutral_or_no_edge_prior` | 0.75 | -0.25 | 0.0 |
+| `theme_etf` | -0.45 | `neutral_or_no_edge_prior` | 0.75 | -0.3 | 0.0 |
 | `taiwan_tech` | -0.55 | `neutral_or_no_edge_prior` | 0.75 | -0.35 | 0.0 |
 | `us_tech` | -0.94 | `relative_underweight_prior` | 0.75 | -0.45 | -0.34 |
-| `crypto` | -1.98 | `relative_underweight_prior` | 0.7 | -0.9 | -0.68 |
+| `crypto` | -1.98 | `relative_underweight_prior` | 0.75 | -0.9 | -0.68 |
 
 ## Top asset priors
 
@@ -37,20 +37,21 @@ Generated: `2026-08-10T04:03:12+00:00`
 |---|---|---:|---|---:|
 | `BOXX` | `cash` | 2.05 | `relative_overweight_prior` | 0.75 |
 | `GLDM` | `gold` | 0.622 | `neutral_or_no_edge_prior` | 0.75 |
+| `2317` | `other` | 0.0 | `neutral_or_no_edge_prior` | 0.75 |
+| `2382` | `other` | 0.0 | `neutral_or_no_edge_prior` | 0.75 |
 | `AVUV` | `other` | 0.0 | `neutral_or_no_edge_prior` | 0.75 |
+| `NVDA` | `other` | 0.0 | `neutral_or_no_edge_prior` | 0.75 |
 | `PICK` | `other` | 0.0 | `neutral_or_no_edge_prior` | 0.75 |
 | `USMV` | `other` | 0.0 | `neutral_or_no_edge_prior` | 0.75 |
 | `VEA` | `other` | 0.0 | `neutral_or_no_edge_prior` | 0.75 |
 | `VOO` | `us_equity` | 0.0 | `neutral_or_no_edge_prior` | 0.75 |
-| `IFRA` | `theme_etf` | -0.45 | `neutral_or_no_edge_prior` | 0.7 |
-| `SRVR` | `theme_etf` | -0.45 | `neutral_or_no_edge_prior` | 0.7 |
+| `IFRA` | `theme_etf` | -0.45 | `neutral_or_no_edge_prior` | 0.75 |
 | `00981A` | `taiwan_tech` | -0.55 | `neutral_or_no_edge_prior` | 0.75 |
 | `QQQ` | `us_tech` | -0.94 | `relative_underweight_prior` | 0.75 |
-| `BTC-USD` | `crypto` | -1.98 | `relative_underweight_prior` | 0.7 |
-| `ETH-USD` | `crypto` | -1.98 | `relative_underweight_prior` | 0.7 |
+| `BTC-USD` | `crypto` | -1.98 | `relative_underweight_prior` | 0.75 |
+| `ETH-USD` | `crypto` | -1.98 | `relative_underweight_prior` | 0.75 |
 
 ## Warnings
 
-- 3Y robustness window unavailable; expected return confidence capped.
 - Absolute expected return forecast is disabled by design.
 - Maximum Sharpe optimization is disabled; no alpha model is trusted enough.

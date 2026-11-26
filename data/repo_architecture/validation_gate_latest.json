@@ -1,14 +1,14 @@
 {
   "version": "v4.6",
   "status": "OK",
-  "generated_at": "2026-08-10T04:03:29.791075+00:00",
+  "generated_at": "2026-11-26T08:29:52.941293+00:00",
   "mode": "validation_gate",
   "safe_mode": true,
   "summary": {
     "error_count": 0,
     "warning_count": 0,
     "schema_validated_count": 43,
-    "python_compiled_count": 70
+    "python_compiled_count": 76
   },
   "checks": {
     "required_files": {
@@ -79,15 +79,18 @@
         ".github/workflows/daily_update.yml",
         ".github/workflows/optimizer-lab.yml.yml",
         ".github/workflows/repo-architecture-audit.yml.yml",
+        ".github/workflows/restore-supabase-backup.yml",
         ".github/workflows/update_holdings.yml.yml",
         ".github/workflows/update_stock_meta.yml.yml",
+        ".github/workflows/validate-optimizer-phase1.yml",
+        ".github/workflows/validate-signed-component-es.yml",
         ".github/workflows/validation-gate.yml.yml",
         ".github/workflows/weekly_backup.yml.yml",
         ".github/workflows/weekly_macro_update.yml.yml"
       ]
     },
     "json_parse": {
-      "parsed_count": 126,
+      "parsed_count": 141,
       "failed": []
     },
     "schema_registry": {
@@ -315,7 +318,7 @@
       "errors": []
     },
     "python_compile": {
-      "compiled_count": 70,
+      "compiled_count": 76,
       "failed": []
     },
     "frontend_source_runtime": {
@@ -323,7 +326,7 @@
       "command_output": "Wrote data/repo_architecture/frontend_build_status_latest.json\nWrote data/repo_architecture/frontend_build_status_summary.md\nStatus: OK\nRuntime matches source: True"
     },
     "workflows": {
-      "workflow_count": 8,
+      "workflow_count": 11,
       "workflows": [
         {
           "path": ".github/workflows/daily_update.yml",
@@ -344,6 +347,12 @@
           "has_jobs": true
         },
         {
+          "path": ".github/workflows/restore-supabase-backup.yml",
+          "has_name": true,
+          "has_on": true,
+          "has_jobs": true
+        },
+        {
           "path": ".github/workflows/update_holdings.yml.yml",
           "has_name": true,
           "has_on": true,
@@ -351,6 +360,18 @@
         },
         {
           "path": ".github/workflows/update_stock_meta.yml.yml",
+          "has_name": true,
+          "has_on": true,
+          "has_jobs": true
+        },
+        {
+          "path": ".github/workflows/validate-optimizer-phase1.yml",
+          "has_name": true,
+          "has_on": true,
+          "has_jobs": true
+        },
+        {
+          "path": ".github/workflows/validate-signed-component-es.yml",
           "has_name": true,
           "has_on": true,
           "has_jobs": true

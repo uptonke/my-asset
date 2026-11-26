@@ -1,18 +1,18 @@
 # v5.0 Forecast Feature Store
 
 - Status: **OK**
-- Generated at: `2026-08-10T04:03:23+00:00`
-- Asset count: `13`
-- Feature-ready count: `13`
+- Generated at: `2026-11-26T08:29:43+00:00`
+- Asset count: `15`
+- Feature-ready count: `15`
 - Fallback count: `0`
 - Return feature source: `live_strict_returns_from_update_stock_meta`
 
 ## Top feature assets
-- `VOO`
+- `BOXX`
 - `USMV`
-- `VEA`
-- `PICK`
+- `IFRA`
 - `AVUV`
+- `VOO`
 
 ## Safety boundary
 - Research-only feature layer.

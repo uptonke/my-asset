@@ -1,6 +1,6 @@
 # Human Approval Layer v2.4
 
-Generated: `2026-08-10T04:03:12+00:00`
+Generated: `2026-11-26T08:29:23+00:00`
 
 ## Safety boundary
 
@@ -15,7 +15,7 @@ Generated: `2026-08-10T04:03:12+00:00`
 - Pending review: 11
 - Constraint-pass review required: 6
 - High-turnover review required: 0
-- Blocked review required: 1
+- Blocked review required: 0
 - Execution permission true: 0
 
 ## Tickets
@@ -26,8 +26,8 @@ Generated: `2026-08-10T04:03:12+00:00`
 - Source type: `constraint_aware_rebalance`
 - Model status: `constraint_pass_review_required`
 - Human status: `pending_review`
-- Turnover vs current: `7.455`%
-- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, watch_only_source, constraint_pass`
+- Turnover vs current: `14.8`%
+- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, constraint_pass, turnover_watch_threshold`
 
 ### v2_4_v2_3_v2_1_riskfolio_risk_parity_mv_447e8777
 
@@ -35,8 +35,8 @@ Generated: `2026-08-10T04:03:12+00:00`
 - Source type: `constraint_aware_rebalance`
 - Model status: `pending_review`
 - Human status: `pending_review`
-- Turnover vs current: `8.102`%
-- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, watch_only_source, turnover_watch_threshold`
+- Turnover vs current: `17.548`%
+- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, turnover_above_candidate_threshold`
 
 ### v2_4_v2_3_v2_1_riskfolio_hrp_mv_0d2a8f2b
 
@@ -44,7 +44,7 @@ Generated: `2026-08-10T04:03:12+00:00`
 - Source type: `constraint_aware_rebalance`
 - Model status: `pending_review`
 - Human status: `pending_review`
-- Turnover vs current: `10.695`%
+- Turnover vs current: `11.933`%
 - Reason codes: `manual_approval_required, not_trade_order, decision_support_only, watch_only_source, turnover_watch_threshold`
 
 ### v2_4_v2_3_from_v2_2_trim_BTC_USD_100pct_to_BOXX_dd437855
@@ -53,17 +53,17 @@ Generated: `2026-08-10T04:03:12+00:00`
 - Source type: `constraint_aware_risk_reduction`
 - Model status: `pending_review`
 - Human status: `pending_review`
-- Turnover vs current: `10.761`%
+- Turnover vs current: `11.164`%
 - Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, turnover_watch_threshold`
 
 ### v2_4_v2_3_from_v2_2_trim_QQQ_100pct_to_BOXX_66db7437
 
 - Source draft: `v2_3_from_v2_2_trim_QQQ_100pct_to_BOXX`
 - Source type: `constraint_aware_risk_reduction`
-- Model status: `blocked_review_required`
+- Model status: `pending_review`
 - Human status: `pending_review`
-- Turnover vs current: `13.252`%
-- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, constraint_violation_or_blocker, constraint_flags_present, turnover_watch_threshold`
+- Turnover vs current: `13.255`%
+- Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, turnover_watch_threshold`
 
 ### v2_4_v2_3_from_v2_2_trim_BTC_USD_50pct_to_BOXX_3825801e
 
@@ -71,7 +71,7 @@ Generated: `2026-08-10T04:03:12+00:00`
 - Source type: `constraint_aware_risk_reduction`
 - Model status: `constraint_pass_review_required`
 - Human status: `pending_review`
-- Turnover vs current: `5.88`%
+- Turnover vs current: `6.081`%
 - Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, constraint_pass`
 
 ### v2_4_v2_3_from_v2_2_trim_ETH_USD_100pct_to_BOXX_95796fde
@@ -80,7 +80,7 @@ Generated: `2026-08-10T04:03:12+00:00`
 - Source type: `constraint_aware_risk_reduction`
 - Model status: `constraint_pass_review_required`
 - Human status: `pending_review`
-- Turnover vs current: `6.22`%
+- Turnover vs current: `6.125`%
 - Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, constraint_pass`
 
 ### v2_4_v2_3_from_v2_2_trim_00981A_100pct_to_BOXX_75b87eb8
@@ -89,7 +89,7 @@ Generated: `2026-08-10T04:03:12+00:00`
 - Source type: `constraint_aware_risk_reduction`
 - Model status: `pending_review`
 - Human status: `pending_review`
-- Turnover vs current: `10.547`%
+- Turnover vs current: `9.832`%
 - Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, turnover_watch_threshold`
 
 ### v2_4_v2_3_from_v2_2_trim_QQQ_50pct_to_BOXX_e48818bd
@@ -98,7 +98,7 @@ Generated: `2026-08-10T04:03:12+00:00`
 - Source type: `constraint_aware_risk_reduction`
 - Model status: `constraint_pass_review_required`
 - Human status: `pending_review`
-- Turnover vs current: `7.126`%
+- Turnover vs current: `7.273`%
 - Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, constraint_pass`
 
 ### v2_4_v2_3_from_v2_2_trim_BTC_USD_25pct_to_BOXX_8de0f4a1
@@ -107,7 +107,7 @@ Generated: `2026-08-10T04:03:12+00:00`
 - Source type: `constraint_aware_risk_reduction`
 - Model status: `constraint_pass_review_required`
 - Human status: `pending_review`
-- Turnover vs current: `3.44`%
+- Turnover vs current: `3.54`%
 - Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, constraint_pass`
 
 ### v2_4_v2_3_from_v2_2_trim_ETH_USD_50pct_to_BOXX_90433cce
@@ -116,5 +116,5 @@ Generated: `2026-08-10T04:03:12+00:00`
 - Source type: `constraint_aware_risk_reduction`
 - Model status: `constraint_pass_review_required`
 - Human status: `pending_review`
-- Turnover vs current: `3.61`%
+- Turnover vs current: `3.561`%
 - Reason codes: `manual_approval_required, not_trade_order, decision_support_only, risk_reduction_simulation, constraint_pass`

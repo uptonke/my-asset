@@ -1,7 +1,7 @@
 {
   "version": "v2.0",
   "status": "OK",
-  "generated_at": "2026-08-10T04:03:12+00:00",
+  "generated_at": "2026-11-26T08:29:23+00:00",
   "mode": "portfolio_optimizer_decision_center",
   "safe_mode": true,
   "safe_mode_note": "Aggregates sandbox optimizer outputs only. No Supabase write, no holdings change, no execution instruction.",
@@ -55,325 +55,331 @@
       "type": "baseline",
       "raw_status": "OK",
       "metrics": {
-        "annual_return_pct": 21.19,
-        "annual_vol_pct": 11.62,
-        "sharpe": 1.824,
-        "var95_pct": 1.048,
-        "es95_pct": 1.656,
-        "max_drawdown_pct": -6.27,
-        "worst_day_pct": -3.08,
-        "best_day_pct": 3.13,
+        "annual_return_pct": 12.97,
+        "annual_vol_pct": 12.14,
+        "sharpe": 1.068,
+        "var95_pct": 1.044,
+        "es95_pct": 1.854,
+        "max_drawdown_pct": -15.08,
+        "worst_day_pct": -3.89,
+        "best_day_pct": 3.24,
         "turnover_vs_current_pct": 0.0
       },
       "exposure": {
-        "cash_pct": 13.302,
-        "gold_pct": 2.427,
-        "crypto_pct": 14.981,
-        "taiwan_pct": 9.547,
-        "other_pct": 59.743,
-        "max_single_weight_pct": 12.252,
-        "max_single_ticker": "QQQ"
+        "cash_pct": 10.5,
+        "gold_pct": 4.002,
+        "crypto_pct": 15.293,
+        "taiwan_pct": 13.744,
+        "other_pct": 56.461,
+        "max_single_weight_pct": 12.434,
+        "max_single_ticker": "VOO"
       },
       "top_weights": [
         {
-          "ticker": "BOXX",
-          "weight_pct": 13.302,
+          "ticker": "VOO",
+          "weight_pct": 12.434,
           "delta_vs_current_pct": 0.0
         },
         {
           "ticker": "QQQ",
-          "weight_pct": 12.252,
-          "delta_vs_current_pct": 0.0
-        },
-        {
-          "ticker": "VOO",
-          "weight_pct": 12.043,
+          "weight_pct": 11.964,
           "delta_vs_current_pct": 0.0
         },
         {
           "ticker": "AVUV",
-          "weight_pct": 10.75,
+          "weight_pct": 11.156,
+          "delta_vs_current_pct": 0.0
+        },
+        {
+          "ticker": "BOXX",
+          "weight_pct": 10.5,
           "delta_vs_current_pct": 0.0
         },
         {
           "ticker": "BTC-USD",
-          "weight_pct": 9.761,
-          "delta_vs_current_pct": 0.0
-        },
-        {
-          "ticker": "00981A",
-          "weight_pct": 9.547,
+          "weight_pct": 10.166,
           "delta_vs_current_pct": 0.0
         },
         {
           "ticker": "USMV",
-          "weight_pct": 7.957,
+          "weight_pct": 8.943,
           "delta_vs_current_pct": 0.0
         },
         {
-          "ticker": "VEA",
-          "weight_pct": 6.999,
+          "ticker": "00981A",
+          "weight_pct": 8.541,
+          "delta_vs_current_pct": 0.0
+        },
+        {
+          "ticker": "ETH-USD",
+          "weight_pct": 5.127,
           "delta_vs_current_pct": 0.0
         }
       ],
       "robustness": {
         "status": "OK",
         "verdict": "穩定",
-        "available_windows": 4,
+        "available_windows": 5,
         "avg_pairwise_weight_turnover_pct": 0.0,
         "max_asset_weight_range_pct": 0.0,
-        "es95_range_pct": 0.123,
-        "annual_vol_range_pct": 1.21
+        "es95_range_pct": 0.506,
+        "annual_vol_range_pct": 1.78
       },
       "stress": {
         "status": "OK",
-        "worst_scenario_return_pct": -25.316,
-        "avg_scenario_return_pct": -17.508,
-        "best_scenario_return_pct": -13.575,
+        "worst_scenario_return_pct": -26.17,
+        "avg_scenario_return_pct": -18.027,
+        "best_scenario_return_pct": -14.776,
         "scenario_returns": {
           "rate_hike_2022_like": {
-            "return_pct": -25.316,
+            "return_pct": -26.17,
             "top_contributors": [
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 9.761,
+                "weight_pct": 10.166,
                 "shock_pct": -55.0,
-                "contribution_pct": -5.369
+                "contribution_pct": -5.591
               },
               {
                 "ticker": "QQQ",
                 "bucket": "us_tech",
-                "weight_pct": 12.252,
+                "weight_pct": 11.964,
                 "shock_pct": -32.0,
-                "contribution_pct": -3.921
+                "contribution_pct": -3.828
               },
               {
                 "ticker": "ETH-USD",
                 "bucket": "crypto",
-                "weight_pct": 5.22,
+                "weight_pct": 5.127,
                 "shock_pct": -55.0,
-                "contribution_pct": -2.871
-              },
-              {
-                "ticker": "00981A",
-                "bucket": "taiwan_tech",
-                "weight_pct": 9.547,
-                "shock_pct": -28.0,
-                "contribution_pct": -2.673
+                "contribution_pct": -2.82
               },
               {
                 "ticker": "VOO",
                 "bucket": "us_equity",
-                "weight_pct": 12.043,
+                "weight_pct": 12.434,
                 "shock_pct": -22.0,
-                "contribution_pct": -2.649
+                "contribution_pct": -2.735
+              },
+              {
+                "ticker": "AVUV",
+                "bucket": "us_small_value",
+                "weight_pct": 11.156,
+                "shock_pct": -24.0,
+                "contribution_pct": -2.677
               }
             ]
           },
           "crypto_crash": {
-            "return_pct": -16.759,
+            "return_pct": -17.097,
             "top_contributors": [
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 9.761,
+                "weight_pct": 10.166,
                 "shock_pct": -70.0,
-                "contribution_pct": -6.833
+                "contribution_pct": -7.116
               },
               {
                 "ticker": "ETH-USD",
                 "bucket": "crypto",
-                "weight_pct": 5.22,
+                "weight_pct": 5.127,
                 "shock_pct": -70.0,
-                "contribution_pct": -3.654
+                "contribution_pct": -3.589
               },
               {
                 "ticker": "QQQ",
                 "bucket": "us_tech",
-                "weight_pct": 12.252,
+                "weight_pct": 11.964,
                 "shock_pct": -12.0,
-                "contribution_pct": -1.47
+                "contribution_pct": -1.436
               },
               {
                 "ticker": "AVUV",
                 "bucket": "us_small_value",
-                "weight_pct": 10.75,
+                "weight_pct": 11.156,
                 "shock_pct": -10.0,
-                "contribution_pct": -1.075
+                "contribution_pct": -1.116
               },
               {
                 "ticker": "VOO",
                 "bucket": "us_equity",
-                "weight_pct": 12.043,
+                "weight_pct": 12.434,
                 "shock_pct": -8.0,
-                "contribution_pct": -0.963
+                "contribution_pct": -0.995
               }
             ]
           },
           "taiwan_tech_correction": {
-            "return_pct": -13.575,
+            "return_pct": -14.832,
             "top_contributors": [
               {
                 "ticker": "00981A",
                 "bucket": "taiwan_tech",
-                "weight_pct": 9.547,
+                "weight_pct": 8.541,
                 "shock_pct": -35.0,
-                "contribution_pct": -3.341
+                "contribution_pct": -2.989
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 9.761,
+                "weight_pct": 10.166,
                 "shock_pct": -25.0,
-                "contribution_pct": -2.44
+                "contribution_pct": -2.542
               },
               {
                 "ticker": "QQQ",
                 "bucket": "us_tech",
-                "weight_pct": 12.252,
+                "weight_pct": 11.964,
                 "shock_pct": -15.0,
-                "contribution_pct": -1.838
-              },
-              {
-                "ticker": "ETH-USD",
-                "bucket": "crypto",
-                "weight_pct": 5.22,
-                "shock_pct": -25.0,
-                "contribution_pct": -1.305
+                "contribution_pct": -1.795
               },
               {
                 "ticker": "AVUV",
                 "bucket": "us_small_value",
-                "weight_pct": 10.75,
+                "weight_pct": 11.156,
                 "shock_pct": -12.0,
-                "contribution_pct": -1.29
+                "contribution_pct": -1.339
+              },
+              {
+                "ticker": "ETH-USD",
+                "bucket": "crypto",
+                "weight_pct": 5.127,
+                "shock_pct": -25.0,
+                "contribution_pct": -1.282
               }
             ]
           },
           "risk_off_usd_squeeze": {
-            "return_pct": -19.886,
+            "return_pct": -20.178,
             "top_contributors": [
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 9.761,
+                "weight_pct": 10.166,
                 "shock_pct": -40.0,
-                "contribution_pct": -3.904
+                "contribution_pct": -4.066
               },
               {
                 "ticker": "QQQ",
                 "bucket": "us_tech",
-                "weight_pct": 12.252,
+                "weight_pct": 11.964,
                 "shock_pct": -22.0,
-                "contribution_pct": -2.695
+                "contribution_pct": -2.632
               },
               {
                 "ticker": "AVUV",
                 "bucket": "us_small_value",
-                "weight_pct": 10.75,
+                "weight_pct": 11.156,
                 "shock_pct": -22.0,
-                "contribution_pct": -2.365
+                "contribution_pct": -2.454
               },
               {
                 "ticker": "VOO",
                 "bucket": "us_equity",
-                "weight_pct": 12.043,
+                "weight_pct": 12.434,
                 "shock_pct": -18.0,
-                "contribution_pct": -2.168
-              },
-              {
-                "ticker": "00981A",
-                "bucket": "taiwan_tech",
-                "weight_pct": 9.547,
-                "shock_pct": -22.0,
-                "contribution_pct": -2.1
-              }
-            ]
-          },
-          "gold_hedge_failure": {
-            "return_pct": -14.243,
-            "top_contributors": [
-              {
-                "ticker": "BTC-USD",
-                "bucket": "crypto",
-                "weight_pct": 9.761,
-                "shock_pct": -30.0,
-                "contribution_pct": -2.928
-              },
-              {
-                "ticker": "QQQ",
-                "bucket": "us_tech",
-                "weight_pct": 12.252,
-                "shock_pct": -16.0,
-                "contribution_pct": -1.96
+                "contribution_pct": -2.238
               },
               {
                 "ticker": "ETH-USD",
                 "bucket": "crypto",
-                "weight_pct": 5.22,
-                "shock_pct": -30.0,
-                "contribution_pct": -1.566
-              },
-              {
-                "ticker": "AVUV",
-                "bucket": "us_small_value",
-                "weight_pct": 10.75,
-                "shock_pct": -14.0,
-                "contribution_pct": -1.505
-              },
-              {
-                "ticker": "VOO",
-                "bucket": "us_equity",
-                "weight_pct": 12.043,
-                "shock_pct": -12.0,
-                "contribution_pct": -1.445
+                "weight_pct": 5.127,
+                "shock_pct": -40.0,
+                "contribution_pct": -2.051
               }
             ]
           },
-          "theme_etf_liquidity_shock": {
-            "return_pct": -15.266,
+          "gold_hedge_failure": {
+            "return_pct": -14.776,
             "top_contributors": [
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 9.761,
-                "shock_pct": -25.0,
-                "contribution_pct": -2.44
+                "weight_pct": 10.166,
+                "shock_pct": -30.0,
+                "contribution_pct": -3.05
               },
               {
                 "ticker": "QQQ",
                 "bucket": "us_tech",
-                "weight_pct": 12.252,
-                "shock_pct": -18.0,
-                "contribution_pct": -2.205
+                "weight_pct": 11.964,
+                "shock_pct": -16.0,
+                "contribution_pct": -1.914
               },
               {
                 "ticker": "AVUV",
                 "bucket": "us_small_value",
-                "weight_pct": 10.75,
+                "weight_pct": 11.156,
+                "shock_pct": -14.0,
+                "contribution_pct": -1.562
+              },
+              {
+                "ticker": "ETH-USD",
+                "bucket": "crypto",
+                "weight_pct": 5.127,
+                "shock_pct": -30.0,
+                "contribution_pct": -1.538
+              },
+              {
+                "ticker": "VOO",
+                "bucket": "us_equity",
+                "weight_pct": 12.434,
+                "shock_pct": -12.0,
+                "contribution_pct": -1.492
+              }
+            ]
+          },
+          "theme_etf_liquidity_shock": {
+            "return_pct": -15.111,
+            "top_contributors": [
+              {
+                "ticker": "BTC-USD",
+                "bucket": "crypto",
+                "weight_pct": 10.166,
+                "shock_pct": -25.0,
+                "contribution_pct": -2.542
+              },
+              {
+                "ticker": "QQQ",
+                "bucket": "us_tech",
+                "weight_pct": 11.964,
+                "shock_pct": -18.0,
+                "contribution_pct": -2.154
+              },
+              {
+                "ticker": "AVUV",
+                "bucket": "us_small_value",
+                "weight_pct": 11.156,
                 "shock_pct": -16.0,
-                "contribution_pct": -1.72
+                "contribution_pct": -1.785
+              },
+              {
+                "ticker": "VOO",
+                "bucket": "us_equity",
+                "weight_pct": 12.434,
+                "shock_pct": -12.0,
+                "contribution_pct": -1.492
               },
               {
                 "ticker": "00981A",
                 "bucket": "taiwan_tech",
-                "weight_pct": 9.547,
+                "weight_pct": 8.541,
                 "shock_pct": -16.0,
-                "contribution_pct": -1.528
-              },
-              {
-                "ticker": "PICK",
-                "bucket": "commodity_equity",
-                "weight_pct": 5.032,
-                "shock_pct": -30.0,
-                "contribution_pct": -1.51
+                "contribution_pct": -1.367
               }
             ]
           }
         }
       },
-      "constraint_flags": [],
+      "constraint_flags": [
+        {
+          "level": "violation",
+          "code": "crypto_cap",
+          "message": "加密資產權重 15.29% 超過風險上限。"
+        }
+      ],
       "decision": {
         "status": "baseline",
         "score": 0.0,
@@ -387,319 +393,319 @@
       "type": "baseline",
       "raw_status": "OK",
       "metrics": {
-        "annual_return_pct": 18.76,
-        "annual_vol_pct": 9.23,
-        "sharpe": 2.032,
-        "var95_pct": 0.857,
-        "es95_pct": 1.358,
-        "max_drawdown_pct": -4.51,
-        "worst_day_pct": -2.62,
-        "best_day_pct": 2.19,
-        "turnover_vs_current_pct": 26.27
+        "annual_return_pct": 13.2,
+        "annual_vol_pct": 9.36,
+        "sharpe": 1.41,
+        "var95_pct": 0.864,
+        "es95_pct": 1.483,
+        "max_drawdown_pct": -9.81,
+        "worst_day_pct": -2.81,
+        "best_day_pct": 3.07,
+        "turnover_vs_current_pct": 27.61
       },
       "exposure": {
-        "cash_pct": 20.87,
-        "gold_pct": 4.947,
-        "crypto_pct": 5.251,
-        "taiwan_pct": 3.66,
-        "other_pct": 65.272,
-        "max_single_weight_pct": 12.1,
+        "cash_pct": 21.319,
+        "gold_pct": 4.916,
+        "crypto_pct": 5.207,
+        "taiwan_pct": 10.072,
+        "other_pct": 58.487,
+        "max_single_weight_pct": 11.621,
         "max_single_ticker": "USMV"
       },
       "top_weights": [
         {
           "ticker": "BOXX",
-          "weight_pct": 20.87,
-          "delta_vs_current_pct": 7.568
+          "weight_pct": 21.319,
+          "delta_vs_current_pct": 10.819
         },
         {
           "ticker": "USMV",
-          "weight_pct": 12.1,
-          "delta_vs_current_pct": 4.144
+          "weight_pct": 11.621,
+          "delta_vs_current_pct": 2.678
         },
         {
           "ticker": "VOO",
-          "weight_pct": 10.228,
-          "delta_vs_current_pct": -1.815
+          "weight_pct": 9.452,
+          "delta_vs_current_pct": -2.982
         },
         {
           "ticker": "IFRA",
-          "weight_pct": 8.325,
-          "delta_vs_current_pct": 4.873
+          "weight_pct": 8.263,
+          "delta_vs_current_pct": 4.691
         },
         {
           "ticker": "VEA",
-          "weight_pct": 7.902,
-          "delta_vs_current_pct": 0.903
-        },
-        {
-          "ticker": "SRVR",
-          "weight_pct": 7.516,
-          "delta_vs_current_pct": 6.259
+          "weight_pct": 7.808,
+          "delta_vs_current_pct": 3.677
         },
         {
           "ticker": "AVUV",
-          "weight_pct": 7.462,
-          "delta_vs_current_pct": -3.288
+          "weight_pct": 7.599,
+          "delta_vs_current_pct": -3.558
         },
         {
           "ticker": "QQQ",
-          "weight_pct": 7.15,
-          "delta_vs_current_pct": -5.102
+          "weight_pct": 6.383,
+          "delta_vs_current_pct": -5.581
+        },
+        {
+          "ticker": "GLDM",
+          "weight_pct": 4.916,
+          "delta_vs_current_pct": 0.914
         }
       ],
       "robustness": {
         "status": "OK",
-        "verdict": "可觀察",
-        "available_windows": 4,
-        "avg_pairwise_weight_turnover_pct": 7.88,
-        "max_asset_weight_range_pct": 11.26,
-        "es95_range_pct": 0.367,
-        "annual_vol_range_pct": 2.36
+        "verdict": "穩定",
+        "available_windows": 5,
+        "avg_pairwise_weight_turnover_pct": 5.29,
+        "max_asset_weight_range_pct": 6.89,
+        "es95_range_pct": 0.159,
+        "annual_vol_range_pct": 0.56
       },
       "stress": {
         "status": "OK",
-        "worst_scenario_return_pct": -19.374,
-        "avg_scenario_return_pct": -13.133,
-        "best_scenario_return_pct": -9.229,
+        "worst_scenario_return_pct": -19.373,
+        "avg_scenario_return_pct": -13.196,
+        "best_scenario_return_pct": -9.464,
         "scenario_returns": {
           "rate_hike_2022_like": {
-            "return_pct": -19.374,
+            "return_pct": -19.373,
             "top_contributors": [
               {
                 "ticker": "USMV",
                 "bucket": "us_equity",
-                "weight_pct": 12.1,
+                "weight_pct": 11.621,
                 "shock_pct": -22.0,
-                "contribution_pct": -2.662
-              },
-              {
-                "ticker": "QQQ",
-                "bucket": "us_tech",
-                "weight_pct": 7.15,
-                "shock_pct": -32.0,
-                "contribution_pct": -2.288
+                "contribution_pct": -2.557
               },
               {
                 "ticker": "VOO",
                 "bucket": "us_equity",
-                "weight_pct": 10.228,
+                "weight_pct": 9.452,
                 "shock_pct": -22.0,
-                "contribution_pct": -2.25
+                "contribution_pct": -2.079
+              },
+              {
+                "ticker": "QQQ",
+                "bucket": "us_tech",
+                "weight_pct": 6.383,
+                "shock_pct": -32.0,
+                "contribution_pct": -2.043
               },
               {
                 "ticker": "IFRA",
                 "bucket": "infrastructure_theme",
-                "weight_pct": 8.325,
+                "weight_pct": 8.263,
                 "shock_pct": -24.0,
-                "contribution_pct": -1.998
+                "contribution_pct": -1.983
               },
               {
-                "ticker": "SRVR",
-                "bucket": "infrastructure_theme",
-                "weight_pct": 7.516,
+                "ticker": "AVUV",
+                "bucket": "us_small_value",
+                "weight_pct": 7.599,
                 "shock_pct": -24.0,
-                "contribution_pct": -1.804
+                "contribution_pct": -1.824
               }
             ]
           },
           "crypto_crash": {
-            "return_pct": -9.422,
+            "return_pct": -9.464,
             "top_contributors": [
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 3.212,
+                "weight_pct": 3.154,
                 "shock_pct": -70.0,
-                "contribution_pct": -2.248
+                "contribution_pct": -2.208
               },
               {
                 "ticker": "ETH-USD",
                 "bucket": "crypto",
-                "weight_pct": 2.039,
+                "weight_pct": 2.053,
                 "shock_pct": -70.0,
-                "contribution_pct": -1.427
+                "contribution_pct": -1.437
               },
               {
                 "ticker": "USMV",
                 "bucket": "us_equity",
-                "weight_pct": 12.1,
+                "weight_pct": 11.621,
                 "shock_pct": -8.0,
-                "contribution_pct": -0.968
+                "contribution_pct": -0.93
               },
               {
                 "ticker": "QQQ",
                 "bucket": "us_tech",
-                "weight_pct": 7.15,
+                "weight_pct": 6.383,
                 "shock_pct": -12.0,
-                "contribution_pct": -0.858
+                "contribution_pct": -0.766
               },
               {
-                "ticker": "VOO",
-                "bucket": "us_equity",
-                "weight_pct": 10.228,
-                "shock_pct": -8.0,
-                "contribution_pct": -0.818
+                "ticker": "AVUV",
+                "bucket": "us_small_value",
+                "weight_pct": 7.599,
+                "shock_pct": -10.0,
+                "contribution_pct": -0.76
               }
             ]
           },
           "taiwan_tech_correction": {
-            "return_pct": -9.229,
+            "return_pct": -10.753,
             "top_contributors": [
               {
-                "ticker": "00981A",
+                "ticker": "2382",
                 "bucket": "taiwan_tech",
-                "weight_pct": 3.66,
+                "weight_pct": 3.475,
                 "shock_pct": -35.0,
-                "contribution_pct": -1.281
+                "contribution_pct": -1.216
+              },
+              {
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 3.457,
+                "shock_pct": -35.0,
+                "contribution_pct": -1.21
               },
               {
                 "ticker": "USMV",
                 "bucket": "us_equity",
-                "weight_pct": 12.1,
+                "weight_pct": 11.621,
                 "shock_pct": -10.0,
-                "contribution_pct": -1.21
+                "contribution_pct": -1.162
+              },
+              {
+                "ticker": "00981A",
+                "bucket": "taiwan_tech",
+                "weight_pct": 3.14,
+                "shock_pct": -35.0,
+                "contribution_pct": -1.099
               },
               {
                 "ticker": "QQQ",
                 "bucket": "us_tech",
-                "weight_pct": 7.15,
+                "weight_pct": 6.383,
                 "shock_pct": -15.0,
-                "contribution_pct": -1.073
-              },
-              {
-                "ticker": "VOO",
-                "bucket": "us_equity",
-                "weight_pct": 10.228,
-                "shock_pct": -10.0,
-                "contribution_pct": -1.023
-              },
-              {
-                "ticker": "AVUV",
-                "bucket": "us_small_value",
-                "weight_pct": 7.462,
-                "shock_pct": -12.0,
-                "contribution_pct": -0.895
+                "contribution_pct": -0.957
               }
             ]
           },
           "risk_off_usd_squeeze": {
-            "return_pct": -15.242,
+            "return_pct": -15.386,
             "top_contributors": [
               {
                 "ticker": "USMV",
                 "bucket": "us_equity",
-                "weight_pct": 12.1,
+                "weight_pct": 11.621,
                 "shock_pct": -18.0,
-                "contribution_pct": -2.178
+                "contribution_pct": -2.092
               },
               {
                 "ticker": "VOO",
                 "bucket": "us_equity",
-                "weight_pct": 10.228,
+                "weight_pct": 9.452,
                 "shock_pct": -18.0,
-                "contribution_pct": -1.841
+                "contribution_pct": -1.701
               },
               {
                 "ticker": "AVUV",
                 "bucket": "us_small_value",
-                "weight_pct": 7.462,
+                "weight_pct": 7.599,
                 "shock_pct": -22.0,
-                "contribution_pct": -1.642
+                "contribution_pct": -1.672
               },
               {
                 "ticker": "VEA",
                 "bucket": "developed_ex_us",
-                "weight_pct": 7.902,
+                "weight_pct": 7.808,
                 "shock_pct": -20.0,
-                "contribution_pct": -1.58
+                "contribution_pct": -1.562
               },
               {
-                "ticker": "QQQ",
-                "bucket": "us_tech",
-                "weight_pct": 7.15,
-                "shock_pct": -22.0,
-                "contribution_pct": -1.573
+                "ticker": "IFRA",
+                "bucket": "infrastructure_theme",
+                "weight_pct": 8.263,
+                "shock_pct": -18.0,
+                "contribution_pct": -1.487
               }
             ]
           },
           "gold_hedge_failure": {
-            "return_pct": -11.338,
+            "return_pct": -11.373,
             "top_contributors": [
               {
                 "ticker": "USMV",
                 "bucket": "us_equity",
-                "weight_pct": 12.1,
+                "weight_pct": 11.621,
                 "shock_pct": -12.0,
-                "contribution_pct": -1.452
+                "contribution_pct": -1.395
               },
               {
                 "ticker": "VOO",
                 "bucket": "us_equity",
-                "weight_pct": 10.228,
+                "weight_pct": 9.452,
                 "shock_pct": -12.0,
-                "contribution_pct": -1.227
-              },
-              {
-                "ticker": "QQQ",
-                "bucket": "us_tech",
-                "weight_pct": 7.15,
-                "shock_pct": -16.0,
-                "contribution_pct": -1.144
+                "contribution_pct": -1.134
               },
               {
                 "ticker": "AVUV",
                 "bucket": "us_small_value",
-                "weight_pct": 7.462,
+                "weight_pct": 7.599,
                 "shock_pct": -14.0,
-                "contribution_pct": -1.045
-              },
-              {
-                "ticker": "IFRA",
-                "bucket": "infrastructure_theme",
-                "weight_pct": 8.325,
-                "shock_pct": -12.0,
-                "contribution_pct": -0.999
-              }
-            ]
-          },
-          "theme_etf_liquidity_shock": {
-            "return_pct": -14.196,
-            "top_contributors": [
-              {
-                "ticker": "IFRA",
-                "bucket": "infrastructure_theme",
-                "weight_pct": 8.325,
-                "shock_pct": -32.0,
-                "contribution_pct": -2.664
-              },
-              {
-                "ticker": "SRVR",
-                "bucket": "infrastructure_theme",
-                "weight_pct": 7.516,
-                "shock_pct": -32.0,
-                "contribution_pct": -2.405
-              },
-              {
-                "ticker": "USMV",
-                "bucket": "us_equity",
-                "weight_pct": 12.1,
-                "shock_pct": -12.0,
-                "contribution_pct": -1.452
-              },
-              {
-                "ticker": "PICK",
-                "bucket": "commodity_equity",
-                "weight_pct": 4.589,
-                "shock_pct": -30.0,
-                "contribution_pct": -1.377
+                "contribution_pct": -1.064
               },
               {
                 "ticker": "QQQ",
                 "bucket": "us_tech",
-                "weight_pct": 7.15,
+                "weight_pct": 6.383,
+                "shock_pct": -16.0,
+                "contribution_pct": -1.021
+              },
+              {
+                "ticker": "IFRA",
+                "bucket": "infrastructure_theme",
+                "weight_pct": 8.263,
+                "shock_pct": -12.0,
+                "contribution_pct": -0.992
+              }
+            ]
+          },
+          "theme_etf_liquidity_shock": {
+            "return_pct": -12.828,
+            "top_contributors": [
+              {
+                "ticker": "IFRA",
+                "bucket": "infrastructure_theme",
+                "weight_pct": 8.263,
+                "shock_pct": -32.0,
+                "contribution_pct": -2.644
+              },
+              {
+                "ticker": "USMV",
+                "bucket": "us_equity",
+                "weight_pct": 11.621,
+                "shock_pct": -12.0,
+                "contribution_pct": -1.395
+              },
+              {
+                "ticker": "PICK",
+                "bucket": "commodity_equity",
+                "weight_pct": 4.51,
+                "shock_pct": -30.0,
+                "contribution_pct": -1.353
+              },
+              {
+                "ticker": "AVUV",
+                "bucket": "us_small_value",
+                "weight_pct": 7.599,
+                "shock_pct": -16.0,
+                "contribution_pct": -1.216
+              },
+              {
+                "ticker": "QQQ",
+                "bucket": "us_tech",
+                "weight_pct": 6.383,
                 "shock_pct": -18.0,
-                "contribution_pct": -1.287
+                "contribution_pct": -1.149
               }
             ]
           }
@@ -707,9 +713,9 @@
       },
       "constraint_flags": [],
       "decision": {
-        "status": "watch",
-        "score": 12.91,
-        "reason": "ES95 較目前改善 0.298 個百分點。；年化波動較目前降低 2.39 個百分點。；最差壓力情境較目前改善 5.94 個百分點。；跨樣本穩健性僅為可觀察。；需要 26.27% 換手率。"
+        "status": "candidate",
+        "score": 24.43,
+        "reason": "ES95 較目前改善 0.371 個百分點。；年化波動較目前降低 2.78 個百分點。；最差壓力情境較目前改善 6.80 個百分點。；跨樣本穩健性標記為穩定。；需要 27.61% 換手率。"
       }
     },
     {
@@ -719,319 +725,319 @@
       "type": "optimizer",
       "raw_status": "OK",
       "metrics": {
-        "annual_return_pct": 11.45,
-        "annual_vol_pct": 4.94,
-        "sharpe": 2.318,
-        "var95_pct": 0.344,
-        "es95_pct": 0.743,
-        "max_drawdown_pct": -3.0,
-        "worst_day_pct": -1.73,
-        "best_day_pct": 2.06,
-        "turnover_vs_current_pct": 77.92
+        "annual_return_pct": 8.88,
+        "annual_vol_pct": 4.68,
+        "sharpe": 1.898,
+        "var95_pct": 0.365,
+        "es95_pct": 0.718,
+        "max_drawdown_pct": -2.97,
+        "worst_day_pct": -1.79,
+        "best_day_pct": 2.01,
+        "turnover_vs_current_pct": 80.19
       },
       "exposure": {
-        "cash_pct": 91.221,
+        "cash_pct": 90.693,
         "gold_pct": 0.0,
-        "crypto_pct": 0.363,
-        "taiwan_pct": 5.275,
-        "other_pct": 3.141,
-        "max_single_weight_pct": 5.275,
+        "crypto_pct": 0.558,
+        "taiwan_pct": 6.297,
+        "other_pct": 2.452,
+        "max_single_weight_pct": 2.549,
         "max_single_ticker": "00981A"
       },
       "top_weights": [
         {
           "ticker": "BOXX",
-          "weight_pct": 91.221,
-          "delta_vs_current_pct": 77.919
+          "weight_pct": 90.693,
+          "delta_vs_current_pct": 80.194
         },
         {
           "ticker": "00981A",
-          "weight_pct": 5.275,
-          "delta_vs_current_pct": -4.271
+          "weight_pct": 2.549,
+          "delta_vs_current_pct": -5.992
+        },
+        {
+          "ticker": "2382",
+          "weight_pct": 2.4,
+          "delta_vs_current_pct": -0.983
         },
         {
           "ticker": "PICK",
-          "weight_pct": 2.152,
-          "delta_vs_current_pct": -2.881
+          "weight_pct": 2.118,
+          "delta_vs_current_pct": -1.203
         },
         {
-          "ticker": "QQQ",
-          "weight_pct": 0.543,
-          "delta_vs_current_pct": -11.709
-        },
-        {
-          "ticker": "VEA",
-          "weight_pct": 0.446,
-          "delta_vs_current_pct": -6.553
+          "ticker": "2317",
+          "weight_pct": 1.348,
+          "delta_vs_current_pct": -0.472
         },
         {
           "ticker": "BTC-USD",
-          "weight_pct": 0.363,
-          "delta_vs_current_pct": -9.398
+          "weight_pct": 0.558,
+          "delta_vs_current_pct": -9.607
         },
         {
-          "ticker": "VOO",
-          "weight_pct": 0.0,
-          "delta_vs_current_pct": -12.043
+          "ticker": "QQQ",
+          "weight_pct": 0.192,
+          "delta_vs_current_pct": -11.772
         },
         {
-          "ticker": "AVUV",
-          "weight_pct": 0.0,
-          "delta_vs_current_pct": -10.75
+          "ticker": "VEA",
+          "weight_pct": 0.128,
+          "delta_vs_current_pct": -4.003
         }
       ],
       "robustness": {
         "status": "OK",
         "verdict": "穩定",
-        "available_windows": 4,
-        "avg_pairwise_weight_turnover_pct": 5.52,
-        "max_asset_weight_range_pct": 3.97,
-        "es95_range_pct": 0.42,
-        "annual_vol_range_pct": 2.46
+        "available_windows": 5,
+        "avg_pairwise_weight_turnover_pct": 4.52,
+        "max_asset_weight_range_pct": 3.82,
+        "es95_range_pct": 0.204,
+        "annual_vol_range_pct": 1.37
       },
       "stress": {
         "status": "OK",
-        "worst_scenario_return_pct": -2.226,
-        "avg_scenario_return_pct": -1.722,
-        "best_scenario_return_pct": -1.05,
+        "worst_scenario_return_pct": -2.553,
+        "avg_scenario_return_pct": -1.904,
+        "best_scenario_return_pct": -1.223,
         "scenario_returns": {
           "rate_hike_2022_like": {
-            "return_pct": -2.101,
+            "return_pct": -2.318,
             "top_contributors": [
               {
                 "ticker": "00981A",
                 "bucket": "taiwan_tech",
-                "weight_pct": 5.275,
+                "weight_pct": 2.549,
                 "shock_pct": -28.0,
-                "contribution_pct": -1.477
+                "contribution_pct": -0.714
+              },
+              {
+                "ticker": "2382",
+                "bucket": "taiwan_tech",
+                "weight_pct": 2.4,
+                "shock_pct": -28.0,
+                "contribution_pct": -0.672
+              },
+              {
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.348,
+                "shock_pct": -28.0,
+                "contribution_pct": -0.377
               },
               {
                 "ticker": "PICK",
                 "bucket": "commodity_equity",
-                "weight_pct": 2.152,
+                "weight_pct": 2.118,
                 "shock_pct": -16.0,
-                "contribution_pct": -0.344
+                "contribution_pct": -0.339
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 0.363,
+                "weight_pct": 0.558,
                 "shock_pct": -55.0,
-                "contribution_pct": -0.2
-              },
-              {
-                "ticker": "QQQ",
-                "bucket": "us_tech",
-                "weight_pct": 0.543,
-                "shock_pct": -32.0,
-                "contribution_pct": -0.174
-              },
-              {
-                "ticker": "VEA",
-                "bucket": "developed_ex_us",
-                "weight_pct": 0.446,
-                "shock_pct": -20.0,
-                "contribution_pct": -0.089
+                "contribution_pct": -0.307
               }
             ]
           },
           "crypto_crash": {
-            "return_pct": -1.05,
+            "return_pct": -1.223,
             "top_contributors": [
-              {
-                "ticker": "00981A",
-                "bucket": "taiwan_tech",
-                "weight_pct": 5.275,
-                "shock_pct": -10.0,
-                "contribution_pct": -0.527
-              },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 0.363,
+                "weight_pct": 0.558,
                 "shock_pct": -70.0,
-                "contribution_pct": -0.254
+                "contribution_pct": -0.391
+              },
+              {
+                "ticker": "00981A",
+                "bucket": "taiwan_tech",
+                "weight_pct": 2.549,
+                "shock_pct": -10.0,
+                "contribution_pct": -0.255
+              },
+              {
+                "ticker": "2382",
+                "bucket": "taiwan_tech",
+                "weight_pct": 2.4,
+                "shock_pct": -10.0,
+                "contribution_pct": -0.24
               },
               {
                 "ticker": "PICK",
                 "bucket": "commodity_equity",
-                "weight_pct": 2.152,
+                "weight_pct": 2.118,
                 "shock_pct": -8.0,
-                "contribution_pct": -0.172
+                "contribution_pct": -0.169
               },
               {
-                "ticker": "QQQ",
-                "bucket": "us_tech",
-                "weight_pct": 0.543,
-                "shock_pct": -12.0,
-                "contribution_pct": -0.065
-              },
-              {
-                "ticker": "VEA",
-                "bucket": "developed_ex_us",
-                "weight_pct": 0.446,
-                "shock_pct": -7.0,
-                "contribution_pct": -0.031
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.348,
+                "shock_pct": -10.0,
+                "contribution_pct": -0.135
               }
             ]
           },
           "taiwan_tech_correction": {
-            "return_pct": -2.226,
+            "return_pct": -2.553,
             "top_contributors": [
               {
                 "ticker": "00981A",
                 "bucket": "taiwan_tech",
-                "weight_pct": 5.275,
+                "weight_pct": 2.549,
                 "shock_pct": -35.0,
-                "contribution_pct": -1.846
+                "contribution_pct": -0.892
+              },
+              {
+                "ticker": "2382",
+                "bucket": "taiwan_tech",
+                "weight_pct": 2.4,
+                "shock_pct": -35.0,
+                "contribution_pct": -0.84
+              },
+              {
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.348,
+                "shock_pct": -35.0,
+                "contribution_pct": -0.472
               },
               {
                 "ticker": "PICK",
                 "bucket": "commodity_equity",
-                "weight_pct": 2.152,
+                "weight_pct": 2.118,
                 "shock_pct": -8.0,
-                "contribution_pct": -0.172
+                "contribution_pct": -0.169
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 0.363,
+                "weight_pct": 0.558,
                 "shock_pct": -25.0,
-                "contribution_pct": -0.091
-              },
-              {
-                "ticker": "QQQ",
-                "bucket": "us_tech",
-                "weight_pct": 0.543,
-                "shock_pct": -15.0,
-                "contribution_pct": -0.081
-              },
-              {
-                "ticker": "VEA",
-                "bucket": "developed_ex_us",
-                "weight_pct": 0.446,
-                "shock_pct": -8.0,
-                "contribution_pct": -0.036
+                "contribution_pct": -0.14
               }
             ]
           },
           "risk_off_usd_squeeze": {
-            "return_pct": -1.945,
+            "return_pct": -2.103,
             "top_contributors": [
               {
                 "ticker": "00981A",
                 "bucket": "taiwan_tech",
-                "weight_pct": 5.275,
+                "weight_pct": 2.549,
                 "shock_pct": -22.0,
-                "contribution_pct": -1.16
+                "contribution_pct": -0.561
+              },
+              {
+                "ticker": "2382",
+                "bucket": "taiwan_tech",
+                "weight_pct": 2.4,
+                "shock_pct": -22.0,
+                "contribution_pct": -0.528
               },
               {
                 "ticker": "PICK",
                 "bucket": "commodity_equity",
-                "weight_pct": 2.152,
+                "weight_pct": 2.118,
                 "shock_pct": -20.0,
-                "contribution_pct": -0.43
+                "contribution_pct": -0.424
+              },
+              {
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.348,
+                "shock_pct": -22.0,
+                "contribution_pct": -0.297
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 0.363,
+                "weight_pct": 0.558,
                 "shock_pct": -40.0,
-                "contribution_pct": -0.145
-              },
-              {
-                "ticker": "QQQ",
-                "bucket": "us_tech",
-                "weight_pct": 0.543,
-                "shock_pct": -22.0,
-                "contribution_pct": -0.119
-              },
-              {
-                "ticker": "VEA",
-                "bucket": "developed_ex_us",
-                "weight_pct": 0.446,
-                "shock_pct": -20.0,
-                "contribution_pct": -0.089
+                "contribution_pct": -0.223
               }
             ]
           },
           "gold_hedge_failure": {
-            "return_pct": -1.289,
+            "return_pct": -1.393,
             "top_contributors": [
               {
                 "ticker": "00981A",
                 "bucket": "taiwan_tech",
-                "weight_pct": 5.275,
+                "weight_pct": 2.549,
                 "shock_pct": -14.0,
-                "contribution_pct": -0.738
+                "contribution_pct": -0.357
+              },
+              {
+                "ticker": "2382",
+                "bucket": "taiwan_tech",
+                "weight_pct": 2.4,
+                "shock_pct": -14.0,
+                "contribution_pct": -0.336
               },
               {
                 "ticker": "PICK",
                 "bucket": "commodity_equity",
-                "weight_pct": 2.152,
+                "weight_pct": 2.118,
                 "shock_pct": -14.0,
-                "contribution_pct": -0.301
+                "contribution_pct": -0.297
+              },
+              {
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.348,
+                "shock_pct": -14.0,
+                "contribution_pct": -0.189
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 0.363,
+                "weight_pct": 0.558,
                 "shock_pct": -30.0,
-                "contribution_pct": -0.109
-              },
-              {
-                "ticker": "QQQ",
-                "bucket": "us_tech",
-                "weight_pct": 0.543,
-                "shock_pct": -16.0,
-                "contribution_pct": -0.087
-              },
-              {
-                "ticker": "VEA",
-                "bucket": "developed_ex_us",
-                "weight_pct": 0.446,
-                "shock_pct": -12.0,
-                "contribution_pct": -0.054
+                "contribution_pct": -0.167
               }
             ]
           },
           "theme_etf_liquidity_shock": {
-            "return_pct": -1.723,
+            "return_pct": -1.831,
             "top_contributors": [
-              {
-                "ticker": "00981A",
-                "bucket": "taiwan_tech",
-                "weight_pct": 5.275,
-                "shock_pct": -16.0,
-                "contribution_pct": -0.844
-              },
               {
                 "ticker": "PICK",
                 "bucket": "commodity_equity",
-                "weight_pct": 2.152,
+                "weight_pct": 2.118,
                 "shock_pct": -30.0,
-                "contribution_pct": -0.646
+                "contribution_pct": -0.635
               },
               {
-                "ticker": "QQQ",
-                "bucket": "us_tech",
-                "weight_pct": 0.543,
-                "shock_pct": -18.0,
-                "contribution_pct": -0.098
+                "ticker": "00981A",
+                "bucket": "taiwan_tech",
+                "weight_pct": 2.549,
+                "shock_pct": -16.0,
+                "contribution_pct": -0.408
+              },
+              {
+                "ticker": "2382",
+                "bucket": "taiwan_tech",
+                "weight_pct": 2.4,
+                "shock_pct": -16.0,
+                "contribution_pct": -0.384
+              },
+              {
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.348,
+                "shock_pct": -16.0,
+                "contribution_pct": -0.216
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 0.363,
+                "weight_pct": 0.558,
                 "shock_pct": -25.0,
-                "contribution_pct": -0.091
-              },
-              {
-                "ticker": "VEA",
-                "bucket": "developed_ex_us",
-                "weight_pct": 0.446,
-                "shock_pct": -10.0,
-                "contribution_pct": -0.045
+                "contribution_pct": -0.14
               }
             ]
           }
@@ -1041,18 +1047,18 @@
         {
           "level": "violation",
           "code": "turnover_extreme",
-          "message": "換手率 77.92% 過高，暫不適合作為候選調整。"
+          "message": "換手率 80.19% 過高，暫不適合作為候選調整。"
         },
         {
           "level": "violation",
           "code": "cash_too_high",
-          "message": "現金 / BOXX 權重 91.22% 過高，像是降風險而非可執行配置。"
+          "message": "現金 / BOXX 權重 90.69% 過高，像是降風險而非可執行配置。"
         }
       ],
       "decision": {
         "status": "reject",
-        "score": -3.91,
-        "reason": "ES95 較目前改善 0.913 個百分點。；年化波動較目前降低 6.68 個百分點。；最差壓力情境較目前改善 23.09 個百分點。；跨樣本穩健性標記為穩定。；需要 77.92% 換手率。"
+        "score": 4.73,
+        "reason": "ES95 較目前改善 1.136 個百分點。；年化波動較目前降低 7.46 個百分點。；最差壓力情境較目前改善 23.62 個百分點。；跨樣本穩健性標記為穩定。；需要 80.19% 換手率。"
       }
     },
     {
@@ -1062,319 +1068,319 @@
       "type": "optimizer",
       "raw_status": "OK",
       "metrics": {
-        "annual_return_pct": 11.37,
-        "annual_vol_pct": 4.94,
-        "sharpe": 2.302,
-        "var95_pct": 0.346,
-        "es95_pct": 0.743,
-        "max_drawdown_pct": -3.01,
-        "worst_day_pct": -1.74,
-        "best_day_pct": 2.06,
-        "turnover_vs_current_pct": 77.48
+        "annual_return_pct": 8.89,
+        "annual_vol_pct": 4.68,
+        "sharpe": 1.9,
+        "var95_pct": 0.356,
+        "es95_pct": 0.717,
+        "max_drawdown_pct": -2.97,
+        "worst_day_pct": -1.8,
+        "best_day_pct": 2.02,
+        "turnover_vs_current_pct": 80.13
       },
       "exposure": {
-        "cash_pct": 90.786,
+        "cash_pct": 90.633,
         "gold_pct": 0.0,
-        "crypto_pct": 0.569,
-        "taiwan_pct": 5.235,
-        "other_pct": 3.41,
-        "max_single_weight_pct": 5.235,
+        "crypto_pct": 0.748,
+        "taiwan_pct": 6.074,
+        "other_pct": 2.545,
+        "max_single_weight_pct": 2.624,
         "max_single_ticker": "00981A"
       },
       "top_weights": [
         {
           "ticker": "BOXX",
-          "weight_pct": 90.786,
-          "delta_vs_current_pct": 77.484
+          "weight_pct": 90.633,
+          "delta_vs_current_pct": 80.133
         },
         {
           "ticker": "00981A",
-          "weight_pct": 5.235,
-          "delta_vs_current_pct": -4.312
+          "weight_pct": 2.624,
+          "delta_vs_current_pct": -5.917
         },
         {
           "ticker": "PICK",
-          "weight_pct": 2.081,
-          "delta_vs_current_pct": -2.951
+          "weight_pct": 2.087,
+          "delta_vs_current_pct": -1.234
         },
         {
-          "ticker": "VOO",
-          "weight_pct": 0.737,
-          "delta_vs_current_pct": -11.306
+          "ticker": "2382",
+          "weight_pct": 1.943,
+          "delta_vs_current_pct": -1.44
+        },
+        {
+          "ticker": "2317",
+          "weight_pct": 1.507,
+          "delta_vs_current_pct": -0.313
         },
         {
           "ticker": "BTC-USD",
-          "weight_pct": 0.569,
-          "delta_vs_current_pct": -9.192
-        },
-        {
-          "ticker": "VEA",
-          "weight_pct": 0.551,
-          "delta_vs_current_pct": -6.448
+          "weight_pct": 0.748,
+          "delta_vs_current_pct": -9.418
         },
         {
           "ticker": "QQQ",
-          "weight_pct": 0.041,
-          "delta_vs_current_pct": -12.211
+          "weight_pct": 0.235,
+          "delta_vs_current_pct": -11.729
         },
         {
-          "ticker": "AVUV",
-          "weight_pct": 0.0,
-          "delta_vs_current_pct": -10.75
+          "ticker": "VEA",
+          "weight_pct": 0.183,
+          "delta_vs_current_pct": -3.948
         }
       ],
       "robustness": {
         "status": "OK",
         "verdict": "穩定",
-        "available_windows": 4,
-        "avg_pairwise_weight_turnover_pct": 4.86,
-        "max_asset_weight_range_pct": 3.74,
-        "es95_range_pct": 0.428,
-        "annual_vol_range_pct": 2.46
+        "available_windows": 5,
+        "avg_pairwise_weight_turnover_pct": 4.55,
+        "max_asset_weight_range_pct": 4.33,
+        "es95_range_pct": 0.205,
+        "annual_vol_range_pct": 1.37
       },
       "stress": {
         "status": "OK",
-        "worst_scenario_return_pct": -2.265,
-        "avg_scenario_return_pct": -1.805,
-        "best_scenario_return_pct": -1.191,
+        "worst_scenario_return_pct": -2.534,
+        "avg_scenario_return_pct": -1.948,
+        "best_scenario_return_pct": -1.342,
         "scenario_returns": {
           "rate_hike_2022_like": {
-            "return_pct": -2.216,
+            "return_pct": -2.385,
             "top_contributors": [
               {
                 "ticker": "00981A",
                 "bucket": "taiwan_tech",
-                "weight_pct": 5.235,
+                "weight_pct": 2.624,
                 "shock_pct": -28.0,
-                "contribution_pct": -1.466
+                "contribution_pct": -0.735
               },
               {
-                "ticker": "PICK",
-                "bucket": "commodity_equity",
-                "weight_pct": 2.081,
-                "shock_pct": -16.0,
-                "contribution_pct": -0.333
+                "ticker": "2382",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.943,
+                "shock_pct": -28.0,
+                "contribution_pct": -0.544
+              },
+              {
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.507,
+                "shock_pct": -28.0,
+                "contribution_pct": -0.422
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 0.569,
+                "weight_pct": 0.748,
                 "shock_pct": -55.0,
-                "contribution_pct": -0.313
+                "contribution_pct": -0.411
               },
               {
-                "ticker": "VOO",
-                "bucket": "us_equity",
-                "weight_pct": 0.737,
-                "shock_pct": -22.0,
-                "contribution_pct": -0.162
-              },
-              {
-                "ticker": "VEA",
-                "bucket": "developed_ex_us",
-                "weight_pct": 0.551,
-                "shock_pct": -20.0,
-                "contribution_pct": -0.11
+                "ticker": "PICK",
+                "bucket": "commodity_equity",
+                "weight_pct": 2.087,
+                "shock_pct": -16.0,
+                "contribution_pct": -0.334
               }
             ]
           },
           "crypto_crash": {
-            "return_pct": -1.191,
+            "return_pct": -1.342,
             "top_contributors": [
-              {
-                "ticker": "00981A",
-                "bucket": "taiwan_tech",
-                "weight_pct": 5.235,
-                "shock_pct": -10.0,
-                "contribution_pct": -0.523
-              },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 0.569,
+                "weight_pct": 0.748,
                 "shock_pct": -70.0,
-                "contribution_pct": -0.398
+                "contribution_pct": -0.524
+              },
+              {
+                "ticker": "00981A",
+                "bucket": "taiwan_tech",
+                "weight_pct": 2.624,
+                "shock_pct": -10.0,
+                "contribution_pct": -0.262
+              },
+              {
+                "ticker": "2382",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.943,
+                "shock_pct": -10.0,
+                "contribution_pct": -0.194
               },
               {
                 "ticker": "PICK",
                 "bucket": "commodity_equity",
-                "weight_pct": 2.081,
+                "weight_pct": 2.087,
                 "shock_pct": -8.0,
-                "contribution_pct": -0.166
+                "contribution_pct": -0.167
               },
               {
-                "ticker": "VOO",
-                "bucket": "us_equity",
-                "weight_pct": 0.737,
-                "shock_pct": -8.0,
-                "contribution_pct": -0.059
-              },
-              {
-                "ticker": "VEA",
-                "bucket": "developed_ex_us",
-                "weight_pct": 0.551,
-                "shock_pct": -7.0,
-                "contribution_pct": -0.039
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.507,
+                "shock_pct": -10.0,
+                "contribution_pct": -0.151
               }
             ]
           },
           "taiwan_tech_correction": {
-            "return_pct": -2.265,
+            "return_pct": -2.534,
             "top_contributors": [
               {
                 "ticker": "00981A",
                 "bucket": "taiwan_tech",
-                "weight_pct": 5.235,
+                "weight_pct": 2.624,
                 "shock_pct": -35.0,
-                "contribution_pct": -1.832
+                "contribution_pct": -0.918
               },
               {
-                "ticker": "PICK",
-                "bucket": "commodity_equity",
-                "weight_pct": 2.081,
-                "shock_pct": -8.0,
-                "contribution_pct": -0.166
+                "ticker": "2382",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.943,
+                "shock_pct": -35.0,
+                "contribution_pct": -0.68
+              },
+              {
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.507,
+                "shock_pct": -35.0,
+                "contribution_pct": -0.527
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 0.569,
+                "weight_pct": 0.748,
                 "shock_pct": -25.0,
-                "contribution_pct": -0.142
+                "contribution_pct": -0.187
               },
               {
-                "ticker": "VOO",
-                "bucket": "us_equity",
-                "weight_pct": 0.737,
-                "shock_pct": -10.0,
-                "contribution_pct": -0.074
-              },
-              {
-                "ticker": "VEA",
-                "bucket": "developed_ex_us",
-                "weight_pct": 0.551,
+                "ticker": "PICK",
+                "bucket": "commodity_equity",
+                "weight_pct": 2.087,
                 "shock_pct": -8.0,
-                "contribution_pct": -0.044
+                "contribution_pct": -0.167
               }
             ]
           },
           "risk_off_usd_squeeze": {
-            "return_pct": -2.047,
+            "return_pct": -2.148,
             "top_contributors": [
               {
                 "ticker": "00981A",
                 "bucket": "taiwan_tech",
-                "weight_pct": 5.235,
+                "weight_pct": 2.624,
                 "shock_pct": -22.0,
-                "contribution_pct": -1.152
+                "contribution_pct": -0.577
+              },
+              {
+                "ticker": "2382",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.943,
+                "shock_pct": -22.0,
+                "contribution_pct": -0.427
               },
               {
                 "ticker": "PICK",
                 "bucket": "commodity_equity",
-                "weight_pct": 2.081,
+                "weight_pct": 2.087,
                 "shock_pct": -20.0,
-                "contribution_pct": -0.416
+                "contribution_pct": -0.417
+              },
+              {
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.507,
+                "shock_pct": -22.0,
+                "contribution_pct": -0.332
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 0.569,
+                "weight_pct": 0.748,
                 "shock_pct": -40.0,
-                "contribution_pct": -0.228
-              },
-              {
-                "ticker": "VOO",
-                "bucket": "us_equity",
-                "weight_pct": 0.737,
-                "shock_pct": -18.0,
-                "contribution_pct": -0.133
-              },
-              {
-                "ticker": "VEA",
-                "bucket": "developed_ex_us",
-                "weight_pct": 0.551,
-                "shock_pct": -20.0,
-                "contribution_pct": -0.11
+                "contribution_pct": -0.299
               }
             ]
           },
           "gold_hedge_failure": {
-            "return_pct": -1.356,
+            "return_pct": -1.431,
             "top_contributors": [
               {
                 "ticker": "00981A",
                 "bucket": "taiwan_tech",
-                "weight_pct": 5.235,
+                "weight_pct": 2.624,
                 "shock_pct": -14.0,
-                "contribution_pct": -0.733
+                "contribution_pct": -0.367
               },
               {
                 "ticker": "PICK",
                 "bucket": "commodity_equity",
-                "weight_pct": 2.081,
+                "weight_pct": 2.087,
                 "shock_pct": -14.0,
-                "contribution_pct": -0.291
+                "contribution_pct": -0.292
+              },
+              {
+                "ticker": "2382",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.943,
+                "shock_pct": -14.0,
+                "contribution_pct": -0.272
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 0.569,
+                "weight_pct": 0.748,
                 "shock_pct": -30.0,
-                "contribution_pct": -0.171
+                "contribution_pct": -0.224
               },
               {
-                "ticker": "VOO",
-                "bucket": "us_equity",
-                "weight_pct": 0.737,
-                "shock_pct": -12.0,
-                "contribution_pct": -0.088
-              },
-              {
-                "ticker": "VEA",
-                "bucket": "developed_ex_us",
-                "weight_pct": 0.551,
-                "shock_pct": -12.0,
-                "contribution_pct": -0.066
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.507,
+                "shock_pct": -14.0,
+                "contribution_pct": -0.211
               }
             ]
           },
           "theme_etf_liquidity_shock": {
-            "return_pct": -1.755,
+            "return_pct": -1.851,
             "top_contributors": [
-              {
-                "ticker": "00981A",
-                "bucket": "taiwan_tech",
-                "weight_pct": 5.235,
-                "shock_pct": -16.0,
-                "contribution_pct": -0.838
-              },
               {
                 "ticker": "PICK",
                 "bucket": "commodity_equity",
-                "weight_pct": 2.081,
+                "weight_pct": 2.087,
                 "shock_pct": -30.0,
-                "contribution_pct": -0.624
+                "contribution_pct": -0.626
+              },
+              {
+                "ticker": "00981A",
+                "bucket": "taiwan_tech",
+                "weight_pct": 2.624,
+                "shock_pct": -16.0,
+                "contribution_pct": -0.42
+              },
+              {
+                "ticker": "2382",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.943,
+                "shock_pct": -16.0,
+                "contribution_pct": -0.311
+              },
+              {
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.507,
+                "shock_pct": -16.0,
+                "contribution_pct": -0.241
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 0.569,
+                "weight_pct": 0.748,
                 "shock_pct": -25.0,
-                "contribution_pct": -0.142
-              },
-              {
-                "ticker": "VOO",
-                "bucket": "us_equity",
-                "weight_pct": 0.737,
-                "shock_pct": -12.0,
-                "contribution_pct": -0.088
-              },
-              {
-                "ticker": "VEA",
-                "bucket": "developed_ex_us",
-                "weight_pct": 0.551,
-                "shock_pct": -10.0,
-                "contribution_pct": -0.055
+                "contribution_pct": -0.187
               }
             ]
           }
@@ -1384,18 +1390,18 @@
         {
           "level": "violation",
           "code": "turnover_extreme",
-          "message": "換手率 77.48% 過高，暫不適合作為候選調整。"
+          "message": "換手率 80.13% 過高，暫不適合作為候選調整。"
         },
         {
           "level": "violation",
           "code": "cash_too_high",
-          "message": "現金 / BOXX 權重 90.79% 過高，像是降風險而非可執行配置。"
+          "message": "現金 / BOXX 權重 90.63% 過高，像是降風險而非可執行配置。"
         }
       ],
       "decision": {
         "status": "reject",
-        "score": -3.91,
-        "reason": "ES95 較目前改善 0.913 個百分點。；年化波動較目前降低 6.68 個百分點。；最差壓力情境較目前改善 23.05 個百分點。；跨樣本穩健性標記為穩定。；需要 77.48% 換手率。"
+        "score": 4.76,
+        "reason": "ES95 較目前改善 1.137 個百分點。；年化波動較目前降低 7.46 個百分點。；最差壓力情境較目前改善 23.64 個百分點。；跨樣本穩健性標記為穩定。；需要 80.13% 換手率。"
       }
     },
     {
@@ -1405,319 +1411,319 @@
       "type": "optimizer",
       "raw_status": "OK",
       "metrics": {
-        "annual_return_pct": 10.92,
-        "annual_vol_pct": 5.0,
-        "sharpe": 2.186,
-        "var95_pct": 0.357,
-        "es95_pct": 0.739,
-        "max_drawdown_pct": -3.07,
-        "worst_day_pct": -1.8,
-        "best_day_pct": 2.02,
-        "turnover_vs_current_pct": 75.29
+        "annual_return_pct": 9.23,
+        "annual_vol_pct": 4.82,
+        "sharpe": 1.916,
+        "var95_pct": 0.34,
+        "es95_pct": 0.707,
+        "max_drawdown_pct": -2.84,
+        "worst_day_pct": -1.92,
+        "best_day_pct": 1.97,
+        "turnover_vs_current_pct": 77.96
       },
       "exposure": {
-        "cash_pct": 88.593,
+        "cash_pct": 84.911,
         "gold_pct": 0.0,
-        "crypto_pct": 2.536,
-        "taiwan_pct": 5.336,
-        "other_pct": 3.535,
-        "max_single_weight_pct": 5.336,
-        "max_single_ticker": "00981A"
+        "crypto_pct": 1.984,
+        "taiwan_pct": 7.6,
+        "other_pct": 5.506,
+        "max_single_weight_pct": 5.366,
+        "max_single_ticker": "2317"
       },
       "top_weights": [
         {
           "ticker": "BOXX",
-          "weight_pct": 88.593,
-          "delta_vs_current_pct": 75.291
+          "weight_pct": 84.911,
+          "delta_vs_current_pct": 74.411
         },
         {
-          "ticker": "00981A",
-          "weight_pct": 5.336,
-          "delta_vs_current_pct": -4.21
-        },
-        {
-          "ticker": "BTC-USD",
-          "weight_pct": 2.536,
-          "delta_vs_current_pct": -7.225
-        },
-        {
-          "ticker": "PICK",
-          "weight_pct": 1.917,
-          "delta_vs_current_pct": -3.116
+          "ticker": "2317",
+          "weight_pct": 5.366,
+          "delta_vs_current_pct": 3.545
         },
         {
           "ticker": "AVUV",
-          "weight_pct": 1.618,
-          "delta_vs_current_pct": -9.132
+          "weight_pct": 3.055,
+          "delta_vs_current_pct": -8.102
         },
         {
-          "ticker": "QQQ",
-          "weight_pct": 0.0,
-          "delta_vs_current_pct": -12.252
+          "ticker": "IFRA",
+          "weight_pct": 2.298,
+          "delta_vs_current_pct": -1.274
+        },
+        {
+          "ticker": "00981A",
+          "weight_pct": 2.234,
+          "delta_vs_current_pct": -6.308
+        },
+        {
+          "ticker": "BTC-USD",
+          "weight_pct": 1.984,
+          "delta_vs_current_pct": -8.182
+        },
+        {
+          "ticker": "PICK",
+          "weight_pct": 0.153,
+          "delta_vs_current_pct": -3.168
         },
         {
           "ticker": "VOO",
           "weight_pct": 0.0,
-          "delta_vs_current_pct": -12.043
-        },
-        {
-          "ticker": "USMV",
-          "weight_pct": 0.0,
-          "delta_vs_current_pct": -7.957
+          "delta_vs_current_pct": -12.434
         }
       ],
       "robustness": {
         "status": "OK",
-        "verdict": "穩定",
-        "available_windows": 4,
-        "avg_pairwise_weight_turnover_pct": 5.26,
-        "max_asset_weight_range_pct": 4.46,
-        "es95_range_pct": 0.454,
-        "annual_vol_range_pct": 2.42
+        "verdict": "可觀察",
+        "available_windows": 5,
+        "avg_pairwise_weight_turnover_pct": 11.22,
+        "max_asset_weight_range_pct": 17.06,
+        "es95_range_pct": 0.217,
+        "annual_vol_range_pct": 1.34
       },
       "stress": {
         "status": "OK",
-        "worst_scenario_return_pct": -3.407,
-        "avg_scenario_return_pct": -2.689,
-        "best_scenario_return_pct": -2.003,
+        "worst_scenario_return_pct": -4.359,
+        "avg_scenario_return_pct": -3.287,
+        "best_scenario_return_pct": -2.384,
         "scenario_returns": {
           "rate_hike_2022_like": {
-            "return_pct": -3.407,
+            "return_pct": -4.359,
             "top_contributors": [
               {
-                "ticker": "00981A",
+                "ticker": "2317",
                 "bucket": "taiwan_tech",
-                "weight_pct": 5.336,
+                "weight_pct": 5.366,
                 "shock_pct": -28.0,
-                "contribution_pct": -1.494
+                "contribution_pct": -1.502
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 2.536,
+                "weight_pct": 1.984,
                 "shock_pct": -55.0,
-                "contribution_pct": -1.395
+                "contribution_pct": -1.091
               },
               {
                 "ticker": "AVUV",
                 "bucket": "us_small_value",
-                "weight_pct": 1.618,
+                "weight_pct": 3.055,
                 "shock_pct": -24.0,
-                "contribution_pct": -0.388
+                "contribution_pct": -0.733
               },
               {
-                "ticker": "PICK",
-                "bucket": "commodity_equity",
-                "weight_pct": 1.917,
-                "shock_pct": -16.0,
-                "contribution_pct": -0.307
+                "ticker": "00981A",
+                "bucket": "taiwan_tech",
+                "weight_pct": 2.234,
+                "shock_pct": -28.0,
+                "contribution_pct": -0.626
               },
               {
-                "ticker": "QQQ",
-                "bucket": "us_tech",
-                "weight_pct": 0.0,
-                "shock_pct": -32.0,
-                "contribution_pct": -0.0
+                "ticker": "IFRA",
+                "bucket": "infrastructure_theme",
+                "weight_pct": 2.298,
+                "shock_pct": -24.0,
+                "contribution_pct": -0.552
               }
             ]
           },
           "crypto_crash": {
-            "return_pct": -2.624,
+            "return_pct": -2.65,
             "top_contributors": [
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 2.536,
+                "weight_pct": 1.984,
                 "shock_pct": -70.0,
-                "contribution_pct": -1.775
+                "contribution_pct": -1.389
               },
               {
-                "ticker": "00981A",
+                "ticker": "2317",
                 "bucket": "taiwan_tech",
-                "weight_pct": 5.336,
+                "weight_pct": 5.366,
                 "shock_pct": -10.0,
-                "contribution_pct": -0.534
+                "contribution_pct": -0.537
               },
               {
                 "ticker": "AVUV",
                 "bucket": "us_small_value",
-                "weight_pct": 1.618,
+                "weight_pct": 3.055,
                 "shock_pct": -10.0,
-                "contribution_pct": -0.162
+                "contribution_pct": -0.305
               },
               {
-                "ticker": "PICK",
-                "bucket": "commodity_equity",
-                "weight_pct": 1.917,
+                "ticker": "00981A",
+                "bucket": "taiwan_tech",
+                "weight_pct": 2.234,
+                "shock_pct": -10.0,
+                "contribution_pct": -0.223
+              },
+              {
+                "ticker": "IFRA",
+                "bucket": "infrastructure_theme",
+                "weight_pct": 2.298,
                 "shock_pct": -8.0,
-                "contribution_pct": -0.153
-              },
-              {
-                "ticker": "BOXX",
-                "bucket": "cash",
-                "weight_pct": 88.593,
-                "shock_pct": 0.0,
-                "contribution_pct": 0.0
+                "contribution_pct": -0.184
               }
             ]
           },
           "taiwan_tech_correction": {
-            "return_pct": -2.849,
+            "return_pct": -3.765,
             "top_contributors": [
+              {
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 5.366,
+                "shock_pct": -35.0,
+                "contribution_pct": -1.878
+              },
               {
                 "ticker": "00981A",
                 "bucket": "taiwan_tech",
-                "weight_pct": 5.336,
+                "weight_pct": 2.234,
                 "shock_pct": -35.0,
-                "contribution_pct": -1.868
+                "contribution_pct": -0.782
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 2.536,
+                "weight_pct": 1.984,
                 "shock_pct": -25.0,
-                "contribution_pct": -0.634
+                "contribution_pct": -0.496
               },
               {
                 "ticker": "AVUV",
                 "bucket": "us_small_value",
-                "weight_pct": 1.618,
+                "weight_pct": 3.055,
                 "shock_pct": -12.0,
-                "contribution_pct": -0.194
+                "contribution_pct": -0.367
               },
               {
-                "ticker": "PICK",
-                "bucket": "commodity_equity",
-                "weight_pct": 1.917,
-                "shock_pct": -8.0,
-                "contribution_pct": -0.153
-              },
-              {
-                "ticker": "BOXX",
-                "bucket": "cash",
-                "weight_pct": 88.593,
-                "shock_pct": 0.0,
-                "contribution_pct": 0.0
+                "ticker": "IFRA",
+                "bucket": "infrastructure_theme",
+                "weight_pct": 2.298,
+                "shock_pct": -10.0,
+                "contribution_pct": -0.23
               }
             ]
           },
           "risk_off_usd_squeeze": {
-            "return_pct": -2.928,
+            "return_pct": -3.582,
             "top_contributors": [
               {
-                "ticker": "00981A",
+                "ticker": "2317",
                 "bucket": "taiwan_tech",
-                "weight_pct": 5.336,
+                "weight_pct": 5.366,
                 "shock_pct": -22.0,
-                "contribution_pct": -1.174
+                "contribution_pct": -1.181
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 2.536,
+                "weight_pct": 1.984,
                 "shock_pct": -40.0,
-                "contribution_pct": -1.014
-              },
-              {
-                "ticker": "PICK",
-                "bucket": "commodity_equity",
-                "weight_pct": 1.917,
-                "shock_pct": -20.0,
-                "contribution_pct": -0.383
+                "contribution_pct": -0.794
               },
               {
                 "ticker": "AVUV",
                 "bucket": "us_small_value",
-                "weight_pct": 1.618,
+                "weight_pct": 3.055,
                 "shock_pct": -22.0,
-                "contribution_pct": -0.356
+                "contribution_pct": -0.672
               },
               {
-                "ticker": "BOXX",
-                "bucket": "cash",
-                "weight_pct": 88.593,
-                "shock_pct": 0.0,
-                "contribution_pct": 0.0
+                "ticker": "00981A",
+                "bucket": "taiwan_tech",
+                "weight_pct": 2.234,
+                "shock_pct": -22.0,
+                "contribution_pct": -0.491
+              },
+              {
+                "ticker": "IFRA",
+                "bucket": "infrastructure_theme",
+                "weight_pct": 2.298,
+                "shock_pct": -18.0,
+                "contribution_pct": -0.414
               }
             ]
           },
           "gold_hedge_failure": {
-            "return_pct": -2.003,
+            "return_pct": -2.384,
             "top_contributors": [
+              {
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 5.366,
+                "shock_pct": -14.0,
+                "contribution_pct": -0.751
+              },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 2.536,
+                "weight_pct": 1.984,
                 "shock_pct": -30.0,
-                "contribution_pct": -0.761
-              },
-              {
-                "ticker": "00981A",
-                "bucket": "taiwan_tech",
-                "weight_pct": 5.336,
-                "shock_pct": -14.0,
-                "contribution_pct": -0.747
-              },
-              {
-                "ticker": "PICK",
-                "bucket": "commodity_equity",
-                "weight_pct": 1.917,
-                "shock_pct": -14.0,
-                "contribution_pct": -0.268
+                "contribution_pct": -0.595
               },
               {
                 "ticker": "AVUV",
                 "bucket": "us_small_value",
-                "weight_pct": 1.618,
+                "weight_pct": 3.055,
                 "shock_pct": -14.0,
-                "contribution_pct": -0.227
+                "contribution_pct": -0.428
               },
               {
-                "ticker": "BOXX",
-                "bucket": "cash",
-                "weight_pct": 88.593,
-                "shock_pct": 0.0,
-                "contribution_pct": 0.0
+                "ticker": "00981A",
+                "bucket": "taiwan_tech",
+                "weight_pct": 2.234,
+                "shock_pct": -14.0,
+                "contribution_pct": -0.313
+              },
+              {
+                "ticker": "IFRA",
+                "bucket": "infrastructure_theme",
+                "weight_pct": 2.298,
+                "shock_pct": -12.0,
+                "contribution_pct": -0.276
               }
             ]
           },
           "theme_etf_liquidity_shock": {
-            "return_pct": -2.322,
+            "return_pct": -2.982,
             "top_contributors": [
               {
-                "ticker": "00981A",
+                "ticker": "2317",
                 "bucket": "taiwan_tech",
-                "weight_pct": 5.336,
+                "weight_pct": 5.366,
                 "shock_pct": -16.0,
-                "contribution_pct": -0.854
+                "contribution_pct": -0.859
+              },
+              {
+                "ticker": "IFRA",
+                "bucket": "infrastructure_theme",
+                "weight_pct": 2.298,
+                "shock_pct": -32.0,
+                "contribution_pct": -0.735
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 2.536,
+                "weight_pct": 1.984,
                 "shock_pct": -25.0,
-                "contribution_pct": -0.634
-              },
-              {
-                "ticker": "PICK",
-                "bucket": "commodity_equity",
-                "weight_pct": 1.917,
-                "shock_pct": -30.0,
-                "contribution_pct": -0.575
+                "contribution_pct": -0.496
               },
               {
                 "ticker": "AVUV",
                 "bucket": "us_small_value",
-                "weight_pct": 1.618,
+                "weight_pct": 3.055,
                 "shock_pct": -16.0,
-                "contribution_pct": -0.259
+                "contribution_pct": -0.489
               },
               {
-                "ticker": "BOXX",
-                "bucket": "cash",
-                "weight_pct": 88.593,
-                "shock_pct": 0.0,
-                "contribution_pct": 0.0
+                "ticker": "00981A",
+                "bucket": "taiwan_tech",
+                "weight_pct": 2.234,
+                "shock_pct": -16.0,
+                "contribution_pct": -0.357
               }
             ]
           }
@@ -1727,18 +1733,18 @@
         {
           "level": "violation",
           "code": "turnover_extreme",
-          "message": "換手率 75.29% 過高，暫不適合作為候選調整。"
+          "message": "換手率 77.96% 過高，暫不適合作為候選調整。"
         },
         {
           "level": "violation",
           "code": "cash_too_high",
-          "message": "現金 / BOXX 權重 88.59% 過高，像是降風險而非可執行配置。"
+          "message": "現金 / BOXX 權重 84.91% 過高，像是降風險而非可執行配置。"
         }
       ],
       "decision": {
         "status": "reject",
-        "score": -3.94,
-        "reason": "ES95 較目前改善 0.917 個百分點。；年化波動較目前降低 6.62 個百分點。；最差壓力情境較目前改善 21.91 個百分點。；跨樣本穩健性標記為穩定。；需要 75.29% 換手率。"
+        "score": -3.29,
+        "reason": "ES95 較目前改善 1.147 個百分點。；年化波動較目前降低 7.32 個百分點。；最差壓力情境較目前改善 21.81 個百分點。；跨樣本穩健性僅為可觀察。；需要 77.96% 換手率。"
       }
     },
     {
@@ -1748,319 +1754,319 @@
       "type": "optimizer",
       "raw_status": "OK",
       "metrics": {
-        "annual_return_pct": 11.38,
-        "annual_vol_pct": 4.94,
-        "sharpe": 2.303,
-        "var95_pct": 0.346,
-        "es95_pct": 0.743,
-        "max_drawdown_pct": -3.01,
-        "worst_day_pct": -1.74,
-        "best_day_pct": 2.06,
-        "turnover_vs_current_pct": 77.44
+        "annual_return_pct": 8.89,
+        "annual_vol_pct": 4.68,
+        "sharpe": 1.9,
+        "var95_pct": 0.357,
+        "es95_pct": 0.717,
+        "max_drawdown_pct": -2.97,
+        "worst_day_pct": -1.8,
+        "best_day_pct": 2.02,
+        "turnover_vs_current_pct": 80.13
       },
       "exposure": {
-        "cash_pct": 90.742,
+        "cash_pct": 90.63,
         "gold_pct": 0.0,
-        "crypto_pct": 0.57,
-        "taiwan_pct": 5.236,
-        "other_pct": 3.451,
-        "max_single_weight_pct": 5.236,
+        "crypto_pct": 0.743,
+        "taiwan_pct": 6.073,
+        "other_pct": 2.554,
+        "max_single_weight_pct": 2.62,
         "max_single_ticker": "00981A"
       },
       "top_weights": [
         {
           "ticker": "BOXX",
-          "weight_pct": 90.742,
-          "delta_vs_current_pct": 77.44
+          "weight_pct": 90.63,
+          "delta_vs_current_pct": 80.131
         },
         {
           "ticker": "00981A",
-          "weight_pct": 5.236,
-          "delta_vs_current_pct": -4.311
+          "weight_pct": 2.62,
+          "delta_vs_current_pct": -5.922
         },
         {
           "ticker": "PICK",
-          "weight_pct": 2.076,
-          "delta_vs_current_pct": -2.956
+          "weight_pct": 2.092,
+          "delta_vs_current_pct": -1.229
         },
         {
-          "ticker": "VOO",
-          "weight_pct": 0.812,
-          "delta_vs_current_pct": -11.231
+          "ticker": "2382",
+          "weight_pct": 1.947,
+          "delta_vs_current_pct": -1.436
+        },
+        {
+          "ticker": "2317",
+          "weight_pct": 1.506,
+          "delta_vs_current_pct": -0.314
         },
         {
           "ticker": "BTC-USD",
-          "weight_pct": 0.57,
-          "delta_vs_current_pct": -9.191
-        },
-        {
-          "ticker": "VEA",
-          "weight_pct": 0.563,
-          "delta_vs_current_pct": -6.436
+          "weight_pct": 0.743,
+          "delta_vs_current_pct": -9.422
         },
         {
           "ticker": "QQQ",
-          "weight_pct": 0.0,
-          "delta_vs_current_pct": -12.252
+          "weight_pct": 0.328,
+          "delta_vs_current_pct": -11.636
         },
         {
-          "ticker": "AVUV",
-          "weight_pct": 0.0,
-          "delta_vs_current_pct": -10.75
+          "ticker": "VEA",
+          "weight_pct": 0.126,
+          "delta_vs_current_pct": -4.005
         }
       ],
       "robustness": {
         "status": "OK",
         "verdict": "穩定",
-        "available_windows": 4,
-        "avg_pairwise_weight_turnover_pct": 4.9,
-        "max_asset_weight_range_pct": 3.74,
-        "es95_range_pct": 0.428,
-        "annual_vol_range_pct": 2.46
+        "available_windows": 5,
+        "avg_pairwise_weight_turnover_pct": 4.54,
+        "max_asset_weight_range_pct": 4.32,
+        "es95_range_pct": 0.205,
+        "annual_vol_range_pct": 1.37
       },
       "stress": {
         "status": "OK",
-        "worst_scenario_return_pct": -2.267,
-        "avg_scenario_return_pct": -1.809,
-        "best_scenario_return_pct": -1.193,
+        "worst_scenario_return_pct": -2.539,
+        "avg_scenario_return_pct": -1.953,
+        "best_scenario_return_pct": -1.344,
         "scenario_returns": {
           "rate_hike_2022_like": {
-            "return_pct": -2.222,
+            "return_pct": -2.394,
             "top_contributors": [
               {
                 "ticker": "00981A",
                 "bucket": "taiwan_tech",
-                "weight_pct": 5.236,
+                "weight_pct": 2.62,
                 "shock_pct": -28.0,
-                "contribution_pct": -1.466
+                "contribution_pct": -0.734
               },
               {
-                "ticker": "PICK",
-                "bucket": "commodity_equity",
-                "weight_pct": 2.076,
-                "shock_pct": -16.0,
-                "contribution_pct": -0.332
+                "ticker": "2382",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.947,
+                "shock_pct": -28.0,
+                "contribution_pct": -0.545
+              },
+              {
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.506,
+                "shock_pct": -28.0,
+                "contribution_pct": -0.422
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 0.57,
+                "weight_pct": 0.743,
                 "shock_pct": -55.0,
-                "contribution_pct": -0.314
+                "contribution_pct": -0.409
               },
               {
-                "ticker": "VOO",
-                "bucket": "us_equity",
-                "weight_pct": 0.812,
-                "shock_pct": -22.0,
-                "contribution_pct": -0.179
-              },
-              {
-                "ticker": "VEA",
-                "bucket": "developed_ex_us",
-                "weight_pct": 0.563,
-                "shock_pct": -20.0,
-                "contribution_pct": -0.113
+                "ticker": "PICK",
+                "bucket": "commodity_equity",
+                "weight_pct": 2.092,
+                "shock_pct": -16.0,
+                "contribution_pct": -0.335
               }
             ]
           },
           "crypto_crash": {
-            "return_pct": -1.193,
+            "return_pct": -1.344,
             "top_contributors": [
-              {
-                "ticker": "00981A",
-                "bucket": "taiwan_tech",
-                "weight_pct": 5.236,
-                "shock_pct": -10.0,
-                "contribution_pct": -0.524
-              },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 0.57,
+                "weight_pct": 0.743,
                 "shock_pct": -70.0,
-                "contribution_pct": -0.399
+                "contribution_pct": -0.52
+              },
+              {
+                "ticker": "00981A",
+                "bucket": "taiwan_tech",
+                "weight_pct": 2.62,
+                "shock_pct": -10.0,
+                "contribution_pct": -0.262
+              },
+              {
+                "ticker": "2382",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.947,
+                "shock_pct": -10.0,
+                "contribution_pct": -0.195
               },
               {
                 "ticker": "PICK",
                 "bucket": "commodity_equity",
-                "weight_pct": 2.076,
+                "weight_pct": 2.092,
                 "shock_pct": -8.0,
-                "contribution_pct": -0.166
+                "contribution_pct": -0.167
               },
               {
-                "ticker": "VOO",
-                "bucket": "us_equity",
-                "weight_pct": 0.812,
-                "shock_pct": -8.0,
-                "contribution_pct": -0.065
-              },
-              {
-                "ticker": "VEA",
-                "bucket": "developed_ex_us",
-                "weight_pct": 0.563,
-                "shock_pct": -7.0,
-                "contribution_pct": -0.039
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.506,
+                "shock_pct": -10.0,
+                "contribution_pct": -0.151
               }
             ]
           },
           "taiwan_tech_correction": {
-            "return_pct": -2.267,
+            "return_pct": -2.539,
             "top_contributors": [
               {
                 "ticker": "00981A",
                 "bucket": "taiwan_tech",
-                "weight_pct": 5.236,
+                "weight_pct": 2.62,
                 "shock_pct": -35.0,
-                "contribution_pct": -1.833
+                "contribution_pct": -0.917
               },
               {
-                "ticker": "PICK",
-                "bucket": "commodity_equity",
-                "weight_pct": 2.076,
-                "shock_pct": -8.0,
-                "contribution_pct": -0.166
+                "ticker": "2382",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.947,
+                "shock_pct": -35.0,
+                "contribution_pct": -0.681
+              },
+              {
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.506,
+                "shock_pct": -35.0,
+                "contribution_pct": -0.527
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 0.57,
+                "weight_pct": 0.743,
                 "shock_pct": -25.0,
-                "contribution_pct": -0.143
+                "contribution_pct": -0.186
               },
               {
-                "ticker": "VOO",
-                "bucket": "us_equity",
-                "weight_pct": 0.812,
-                "shock_pct": -10.0,
-                "contribution_pct": -0.081
-              },
-              {
-                "ticker": "VEA",
-                "bucket": "developed_ex_us",
-                "weight_pct": 0.563,
+                "ticker": "PICK",
+                "bucket": "commodity_equity",
+                "weight_pct": 2.092,
                 "shock_pct": -8.0,
-                "contribution_pct": -0.045
+                "contribution_pct": -0.167
               }
             ]
           },
           "risk_off_usd_squeeze": {
-            "return_pct": -2.054,
+            "return_pct": -2.15,
             "top_contributors": [
               {
                 "ticker": "00981A",
                 "bucket": "taiwan_tech",
-                "weight_pct": 5.236,
+                "weight_pct": 2.62,
                 "shock_pct": -22.0,
-                "contribution_pct": -1.152
+                "contribution_pct": -0.576
+              },
+              {
+                "ticker": "2382",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.947,
+                "shock_pct": -22.0,
+                "contribution_pct": -0.428
               },
               {
                 "ticker": "PICK",
                 "bucket": "commodity_equity",
-                "weight_pct": 2.076,
+                "weight_pct": 2.092,
                 "shock_pct": -20.0,
-                "contribution_pct": -0.415
+                "contribution_pct": -0.418
+              },
+              {
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.506,
+                "shock_pct": -22.0,
+                "contribution_pct": -0.331
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 0.57,
+                "weight_pct": 0.743,
                 "shock_pct": -40.0,
-                "contribution_pct": -0.228
-              },
-              {
-                "ticker": "VOO",
-                "bucket": "us_equity",
-                "weight_pct": 0.812,
-                "shock_pct": -18.0,
-                "contribution_pct": -0.146
-              },
-              {
-                "ticker": "VEA",
-                "bucket": "developed_ex_us",
-                "weight_pct": 0.563,
-                "shock_pct": -20.0,
-                "contribution_pct": -0.113
+                "contribution_pct": -0.297
               }
             ]
           },
           "gold_hedge_failure": {
-            "return_pct": -1.36,
+            "return_pct": -1.435,
             "top_contributors": [
               {
                 "ticker": "00981A",
                 "bucket": "taiwan_tech",
-                "weight_pct": 5.236,
+                "weight_pct": 2.62,
                 "shock_pct": -14.0,
-                "contribution_pct": -0.733
+                "contribution_pct": -0.367
               },
               {
                 "ticker": "PICK",
                 "bucket": "commodity_equity",
-                "weight_pct": 2.076,
+                "weight_pct": 2.092,
                 "shock_pct": -14.0,
-                "contribution_pct": -0.291
+                "contribution_pct": -0.293
+              },
+              {
+                "ticker": "2382",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.947,
+                "shock_pct": -14.0,
+                "contribution_pct": -0.273
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 0.57,
+                "weight_pct": 0.743,
                 "shock_pct": -30.0,
-                "contribution_pct": -0.171
+                "contribution_pct": -0.223
               },
               {
-                "ticker": "VOO",
-                "bucket": "us_equity",
-                "weight_pct": 0.812,
-                "shock_pct": -12.0,
-                "contribution_pct": -0.097
-              },
-              {
-                "ticker": "VEA",
-                "bucket": "developed_ex_us",
-                "weight_pct": 0.563,
-                "shock_pct": -12.0,
-                "contribution_pct": -0.068
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.506,
+                "shock_pct": -14.0,
+                "contribution_pct": -0.211
               }
             ]
           },
           "theme_etf_liquidity_shock": {
-            "return_pct": -1.757,
+            "return_pct": -1.858,
             "top_contributors": [
-              {
-                "ticker": "00981A",
-                "bucket": "taiwan_tech",
-                "weight_pct": 5.236,
-                "shock_pct": -16.0,
-                "contribution_pct": -0.838
-              },
               {
                 "ticker": "PICK",
                 "bucket": "commodity_equity",
-                "weight_pct": 2.076,
+                "weight_pct": 2.092,
                 "shock_pct": -30.0,
-                "contribution_pct": -0.623
+                "contribution_pct": -0.628
+              },
+              {
+                "ticker": "00981A",
+                "bucket": "taiwan_tech",
+                "weight_pct": 2.62,
+                "shock_pct": -16.0,
+                "contribution_pct": -0.419
+              },
+              {
+                "ticker": "2382",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.947,
+                "shock_pct": -16.0,
+                "contribution_pct": -0.312
+              },
+              {
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 1.506,
+                "shock_pct": -16.0,
+                "contribution_pct": -0.241
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 0.57,
+                "weight_pct": 0.743,
                 "shock_pct": -25.0,
-                "contribution_pct": -0.143
-              },
-              {
-                "ticker": "VOO",
-                "bucket": "us_equity",
-                "weight_pct": 0.812,
-                "shock_pct": -12.0,
-                "contribution_pct": -0.097
-              },
-              {
-                "ticker": "VEA",
-                "bucket": "developed_ex_us",
-                "weight_pct": 0.563,
-                "shock_pct": -10.0,
-                "contribution_pct": -0.056
+                "contribution_pct": -0.186
               }
             ]
           }
@@ -2070,18 +2076,18 @@
         {
           "level": "violation",
           "code": "turnover_extreme",
-          "message": "換手率 77.44% 過高，暫不適合作為候選調整。"
+          "message": "換手率 80.13% 過高，暫不適合作為候選調整。"
         },
         {
           "level": "violation",
           "code": "cash_too_high",
-          "message": "現金 / BOXX 權重 90.74% 過高，像是降風險而非可執行配置。"
+          "message": "現金 / BOXX 權重 90.63% 過高，像是降風險而非可執行配置。"
         }
       ],
       "decision": {
         "status": "reject",
-        "score": -3.91,
-        "reason": "ES95 較目前改善 0.913 個百分點。；年化波動較目前降低 6.68 個百分點。；最差壓力情境較目前改善 23.05 個百分點。；跨樣本穩健性標記為穩定。；需要 77.44% 換手率。"
+        "score": 4.76,
+        "reason": "ES95 較目前改善 1.137 個百分點。；年化波動較目前降低 7.46 個百分點。；最差壓力情境較目前改善 23.63 個百分點。；跨樣本穩健性標記為穩定。；需要 80.13% 換手率。"
       }
     },
     {
@@ -2091,319 +2097,319 @@
       "type": "optimizer",
       "raw_status": "OK",
       "metrics": {
-        "annual_return_pct": 10.92,
-        "annual_vol_pct": 5.0,
-        "sharpe": 2.186,
-        "var95_pct": 0.357,
-        "es95_pct": 0.739,
-        "max_drawdown_pct": -3.07,
-        "worst_day_pct": -1.8,
-        "best_day_pct": 2.02,
-        "turnover_vs_current_pct": 75.29
+        "annual_return_pct": 9.23,
+        "annual_vol_pct": 4.82,
+        "sharpe": 1.916,
+        "var95_pct": 0.34,
+        "es95_pct": 0.707,
+        "max_drawdown_pct": -2.84,
+        "worst_day_pct": -1.92,
+        "best_day_pct": 1.97,
+        "turnover_vs_current_pct": 77.96
       },
       "exposure": {
-        "cash_pct": 88.593,
+        "cash_pct": 84.911,
         "gold_pct": 0.0,
-        "crypto_pct": 2.536,
-        "taiwan_pct": 5.336,
-        "other_pct": 3.535,
-        "max_single_weight_pct": 5.336,
-        "max_single_ticker": "00981A"
+        "crypto_pct": 1.984,
+        "taiwan_pct": 7.6,
+        "other_pct": 5.506,
+        "max_single_weight_pct": 5.366,
+        "max_single_ticker": "2317"
       },
       "top_weights": [
         {
           "ticker": "BOXX",
-          "weight_pct": 88.593,
-          "delta_vs_current_pct": 75.291
+          "weight_pct": 84.911,
+          "delta_vs_current_pct": 74.411
         },
         {
-          "ticker": "00981A",
-          "weight_pct": 5.336,
-          "delta_vs_current_pct": -4.21
-        },
-        {
-          "ticker": "BTC-USD",
-          "weight_pct": 2.536,
-          "delta_vs_current_pct": -7.225
-        },
-        {
-          "ticker": "PICK",
-          "weight_pct": 1.917,
-          "delta_vs_current_pct": -3.116
+          "ticker": "2317",
+          "weight_pct": 5.366,
+          "delta_vs_current_pct": 3.545
         },
         {
           "ticker": "AVUV",
-          "weight_pct": 1.618,
-          "delta_vs_current_pct": -9.132
+          "weight_pct": 3.055,
+          "delta_vs_current_pct": -8.102
         },
         {
-          "ticker": "QQQ",
-          "weight_pct": 0.0,
-          "delta_vs_current_pct": -12.252
+          "ticker": "IFRA",
+          "weight_pct": 2.298,
+          "delta_vs_current_pct": -1.274
+        },
+        {
+          "ticker": "00981A",
+          "weight_pct": 2.234,
+          "delta_vs_current_pct": -6.308
+        },
+        {
+          "ticker": "BTC-USD",
+          "weight_pct": 1.984,
+          "delta_vs_current_pct": -8.182
+        },
+        {
+          "ticker": "PICK",
+          "weight_pct": 0.153,
+          "delta_vs_current_pct": -3.168
         },
         {
           "ticker": "VOO",
           "weight_pct": 0.0,
-          "delta_vs_current_pct": -12.043
-        },
-        {
-          "ticker": "USMV",
-          "weight_pct": 0.0,
-          "delta_vs_current_pct": -7.957
+          "delta_vs_current_pct": -12.434
         }
       ],
       "robustness": {
         "status": "OK",
-        "verdict": "穩定",
-        "available_windows": 4,
-        "avg_pairwise_weight_turnover_pct": 5.26,
-        "max_asset_weight_range_pct": 4.46,
-        "es95_range_pct": 0.454,
-        "annual_vol_range_pct": 2.42
+        "verdict": "可觀察",
+        "available_windows": 5,
+        "avg_pairwise_weight_turnover_pct": 11.22,
+        "max_asset_weight_range_pct": 17.06,
+        "es95_range_pct": 0.217,
+        "annual_vol_range_pct": 1.34
       },
       "stress": {
         "status": "OK",
-        "worst_scenario_return_pct": -3.407,
-        "avg_scenario_return_pct": -2.689,
-        "best_scenario_return_pct": -2.003,
+        "worst_scenario_return_pct": -4.359,
+        "avg_scenario_return_pct": -3.287,
+        "best_scenario_return_pct": -2.384,
         "scenario_returns": {
           "rate_hike_2022_like": {
-            "return_pct": -3.407,
+            "return_pct": -4.359,
             "top_contributors": [
               {
-                "ticker": "00981A",
+                "ticker": "2317",
                 "bucket": "taiwan_tech",
-                "weight_pct": 5.336,
+                "weight_pct": 5.366,
                 "shock_pct": -28.0,
-                "contribution_pct": -1.494
+                "contribution_pct": -1.502
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 2.536,
+                "weight_pct": 1.984,
                 "shock_pct": -55.0,
-                "contribution_pct": -1.395
+                "contribution_pct": -1.091
               },
               {
                 "ticker": "AVUV",
                 "bucket": "us_small_value",
-                "weight_pct": 1.618,
+                "weight_pct": 3.055,
                 "shock_pct": -24.0,
-                "contribution_pct": -0.388
+                "contribution_pct": -0.733
               },
               {
-                "ticker": "PICK",
-                "bucket": "commodity_equity",
-                "weight_pct": 1.917,
-                "shock_pct": -16.0,
-                "contribution_pct": -0.307
+                "ticker": "00981A",
+                "bucket": "taiwan_tech",
+                "weight_pct": 2.234,
+                "shock_pct": -28.0,
+                "contribution_pct": -0.626
               },
               {
-                "ticker": "QQQ",
-                "bucket": "us_tech",
-                "weight_pct": 0.0,
-                "shock_pct": -32.0,
-                "contribution_pct": -0.0
+                "ticker": "IFRA",
+                "bucket": "infrastructure_theme",
+                "weight_pct": 2.298,
+                "shock_pct": -24.0,
+                "contribution_pct": -0.552
               }
             ]
           },
           "crypto_crash": {
-            "return_pct": -2.624,
+            "return_pct": -2.65,
             "top_contributors": [
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 2.536,
+                "weight_pct": 1.984,
                 "shock_pct": -70.0,
-                "contribution_pct": -1.775
+                "contribution_pct": -1.389
               },
               {
-                "ticker": "00981A",
+                "ticker": "2317",
                 "bucket": "taiwan_tech",
-                "weight_pct": 5.336,
+                "weight_pct": 5.366,
                 "shock_pct": -10.0,
-                "contribution_pct": -0.534
+                "contribution_pct": -0.537
               },
               {
                 "ticker": "AVUV",
                 "bucket": "us_small_value",
-                "weight_pct": 1.618,
+                "weight_pct": 3.055,
                 "shock_pct": -10.0,
-                "contribution_pct": -0.162
+                "contribution_pct": -0.305
               },
               {
-                "ticker": "PICK",
-                "bucket": "commodity_equity",
-                "weight_pct": 1.917,
+                "ticker": "00981A",
+                "bucket": "taiwan_tech",
+                "weight_pct": 2.234,
+                "shock_pct": -10.0,
+                "contribution_pct": -0.223
+              },
+              {
+                "ticker": "IFRA",
+                "bucket": "infrastructure_theme",
+                "weight_pct": 2.298,
                 "shock_pct": -8.0,
-                "contribution_pct": -0.153
-              },
-              {
-                "ticker": "BOXX",
-                "bucket": "cash",
-                "weight_pct": 88.593,
-                "shock_pct": 0.0,
-                "contribution_pct": 0.0
+                "contribution_pct": -0.184
               }
             ]
           },
           "taiwan_tech_correction": {
-            "return_pct": -2.849,
+            "return_pct": -3.765,
             "top_contributors": [
+              {
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 5.366,
+                "shock_pct": -35.0,
+                "contribution_pct": -1.878
+              },
               {
                 "ticker": "00981A",
                 "bucket": "taiwan_tech",
-                "weight_pct": 5.336,
+                "weight_pct": 2.234,
                 "shock_pct": -35.0,
-                "contribution_pct": -1.868
+                "contribution_pct": -0.782
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 2.536,
+                "weight_pct": 1.984,
                 "shock_pct": -25.0,
-                "contribution_pct": -0.634
+                "contribution_pct": -0.496
               },
               {
                 "ticker": "AVUV",
                 "bucket": "us_small_value",
-                "weight_pct": 1.618,
+                "weight_pct": 3.055,
                 "shock_pct": -12.0,
-                "contribution_pct": -0.194
+                "contribution_pct": -0.367
               },
               {
-                "ticker": "PICK",
-                "bucket": "commodity_equity",
-                "weight_pct": 1.917,
-                "shock_pct": -8.0,
-                "contribution_pct": -0.153
-              },
-              {
-                "ticker": "BOXX",
-                "bucket": "cash",
-                "weight_pct": 88.593,
-                "shock_pct": 0.0,
-                "contribution_pct": 0.0
+                "ticker": "IFRA",
+                "bucket": "infrastructure_theme",
+                "weight_pct": 2.298,
+                "shock_pct": -10.0,
+                "contribution_pct": -0.23
               }
             ]
           },
           "risk_off_usd_squeeze": {
-            "return_pct": -2.928,
+            "return_pct": -3.582,
             "top_contributors": [
               {
-                "ticker": "00981A",
+                "ticker": "2317",
                 "bucket": "taiwan_tech",
-                "weight_pct": 5.336,
+                "weight_pct": 5.366,
                 "shock_pct": -22.0,
-                "contribution_pct": -1.174
+                "contribution_pct": -1.181
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 2.536,
+                "weight_pct": 1.984,
                 "shock_pct": -40.0,
-                "contribution_pct": -1.014
-              },
-              {
-                "ticker": "PICK",
-                "bucket": "commodity_equity",
-                "weight_pct": 1.917,
-                "shock_pct": -20.0,
-                "contribution_pct": -0.383
+                "contribution_pct": -0.794
               },
               {
                 "ticker": "AVUV",
                 "bucket": "us_small_value",
-                "weight_pct": 1.618,
+                "weight_pct": 3.055,
                 "shock_pct": -22.0,
-                "contribution_pct": -0.356
+                "contribution_pct": -0.672
               },
               {
-                "ticker": "BOXX",
-                "bucket": "cash",
-                "weight_pct": 88.593,
-                "shock_pct": 0.0,
-                "contribution_pct": 0.0
+                "ticker": "00981A",
+                "bucket": "taiwan_tech",
+                "weight_pct": 2.234,
+                "shock_pct": -22.0,
+                "contribution_pct": -0.491
+              },
+              {
+                "ticker": "IFRA",
+                "bucket": "infrastructure_theme",
+                "weight_pct": 2.298,
+                "shock_pct": -18.0,
+                "contribution_pct": -0.414
               }
             ]
           },
           "gold_hedge_failure": {
-            "return_pct": -2.003,
+            "return_pct": -2.384,
             "top_contributors": [
+              {
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 5.366,
+                "shock_pct": -14.0,
+                "contribution_pct": -0.751
+              },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 2.536,
+                "weight_pct": 1.984,
                 "shock_pct": -30.0,
-                "contribution_pct": -0.761
-              },
-              {
-                "ticker": "00981A",
-                "bucket": "taiwan_tech",
-                "weight_pct": 5.336,
-                "shock_pct": -14.0,
-                "contribution_pct": -0.747
-              },
-              {
-                "ticker": "PICK",
-                "bucket": "commodity_equity",
-                "weight_pct": 1.917,
-                "shock_pct": -14.0,
-                "contribution_pct": -0.268
+                "contribution_pct": -0.595
               },
               {
                 "ticker": "AVUV",
                 "bucket": "us_small_value",
-                "weight_pct": 1.618,
+                "weight_pct": 3.055,
                 "shock_pct": -14.0,
-                "contribution_pct": -0.227
+                "contribution_pct": -0.428
               },
               {
-                "ticker": "BOXX",
-                "bucket": "cash",
-                "weight_pct": 88.593,
-                "shock_pct": 0.0,
-                "contribution_pct": 0.0
+                "ticker": "00981A",
+                "bucket": "taiwan_tech",
+                "weight_pct": 2.234,
+                "shock_pct": -14.0,
+                "contribution_pct": -0.313
+              },
+              {
+                "ticker": "IFRA",
+                "bucket": "infrastructure_theme",
+                "weight_pct": 2.298,
+                "shock_pct": -12.0,
+                "contribution_pct": -0.276
               }
             ]
           },
           "theme_etf_liquidity_shock": {
-            "return_pct": -2.322,
+            "return_pct": -2.982,
             "top_contributors": [
               {
-                "ticker": "00981A",
+                "ticker": "2317",
                 "bucket": "taiwan_tech",
-                "weight_pct": 5.336,
+                "weight_pct": 5.366,
                 "shock_pct": -16.0,
-                "contribution_pct": -0.854
+                "contribution_pct": -0.859
+              },
+              {
+                "ticker": "IFRA",
+                "bucket": "infrastructure_theme",
+                "weight_pct": 2.298,
+                "shock_pct": -32.0,
+                "contribution_pct": -0.735
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 2.536,
+                "weight_pct": 1.984,
                 "shock_pct": -25.0,
-                "contribution_pct": -0.634
-              },
-              {
-                "ticker": "PICK",
-                "bucket": "commodity_equity",
-                "weight_pct": 1.917,
-                "shock_pct": -30.0,
-                "contribution_pct": -0.575
+                "contribution_pct": -0.496
               },
               {
                 "ticker": "AVUV",
                 "bucket": "us_small_value",
-                "weight_pct": 1.618,
+                "weight_pct": 3.055,
                 "shock_pct": -16.0,
-                "contribution_pct": -0.259
+                "contribution_pct": -0.489
               },
               {
-                "ticker": "BOXX",
-                "bucket": "cash",
-                "weight_pct": 88.593,
-                "shock_pct": 0.0,
-                "contribution_pct": 0.0
+                "ticker": "00981A",
+                "bucket": "taiwan_tech",
+                "weight_pct": 2.234,
+                "shock_pct": -16.0,
+                "contribution_pct": -0.357
               }
             ]
           }
@@ -2413,18 +2419,18 @@
         {
           "level": "violation",
           "code": "turnover_extreme",
-          "message": "換手率 75.29% 過高，暫不適合作為候選調整。"
+          "message": "換手率 77.96% 過高，暫不適合作為候選調整。"
         },
         {
           "level": "violation",
           "code": "cash_too_high",
-          "message": "現金 / BOXX 權重 88.59% 過高，像是降風險而非可執行配置。"
+          "message": "現金 / BOXX 權重 84.91% 過高，像是降風險而非可執行配置。"
         }
       ],
       "decision": {
         "status": "reject",
-        "score": -3.94,
-        "reason": "ES95 較目前改善 0.917 個百分點。；年化波動較目前降低 6.62 個百分點。；最差壓力情境較目前改善 21.91 個百分點。；跨樣本穩健性標記為穩定。；需要 75.29% 換手率。"
+        "score": -3.29,
+        "reason": "ES95 較目前改善 1.147 個百分點。；年化波動較目前降低 7.32 個百分點。；最差壓力情境較目前改善 21.81 個百分點。；跨樣本穩健性僅為可觀察。；需要 77.96% 換手率。"
       }
     },
     {
@@ -2434,319 +2440,319 @@
       "type": "optimizer",
       "raw_status": "OK",
       "metrics": {
-        "annual_return_pct": 19.92,
-        "annual_vol_pct": 8.35,
-        "sharpe": 2.386,
-        "var95_pct": 0.757,
-        "es95_pct": 1.234,
-        "max_drawdown_pct": -3.75,
-        "worst_day_pct": -2.34,
-        "best_day_pct": 1.86,
-        "turnover_vs_current_pct": 29.44
+        "annual_return_pct": 12.38,
+        "annual_vol_pct": 8.17,
+        "sharpe": 1.515,
+        "var95_pct": 0.75,
+        "es95_pct": 1.311,
+        "max_drawdown_pct": -8.91,
+        "worst_day_pct": -2.42,
+        "best_day_pct": 2.46,
+        "turnover_vs_current_pct": 34.66
       },
       "exposure": {
-        "cash_pct": 27.973,
-        "gold_pct": 5.432,
-        "crypto_pct": 5.444,
-        "taiwan_pct": 8.509,
-        "other_pct": 52.642,
-        "max_single_weight_pct": 11.717,
+        "cash_pct": 33.368,
+        "gold_pct": 4.762,
+        "crypto_pct": 5.041,
+        "taiwan_pct": 13.234,
+        "other_pct": 43.594,
+        "max_single_weight_pct": 10.4,
         "max_single_ticker": "USMV"
       },
       "top_weights": [
         {
           "ticker": "BOXX",
-          "weight_pct": 27.973,
-          "delta_vs_current_pct": 14.672
+          "weight_pct": 33.368,
+          "delta_vs_current_pct": 22.869
         },
         {
           "ticker": "USMV",
-          "weight_pct": 11.717,
-          "delta_vs_current_pct": 3.76
-        },
-        {
-          "ticker": "00981A",
-          "weight_pct": 8.509,
-          "delta_vs_current_pct": -1.038
-        },
-        {
-          "ticker": "VOO",
-          "weight_pct": 7.027,
-          "delta_vs_current_pct": -5.016
+          "weight_pct": 10.4,
+          "delta_vs_current_pct": 1.457
         },
         {
           "ticker": "IFRA",
-          "weight_pct": 6.572,
-          "delta_vs_current_pct": 3.119
+          "weight_pct": 6.389,
+          "delta_vs_current_pct": 2.816
         },
         {
           "ticker": "AVUV",
-          "weight_pct": 6.257,
-          "delta_vs_current_pct": -4.493
+          "weight_pct": 6.092,
+          "delta_vs_current_pct": -5.064
         },
         {
-          "ticker": "SRVR",
-          "weight_pct": 6.145,
-          "delta_vs_current_pct": 4.888
+          "ticker": "VOO",
+          "weight_pct": 5.671,
+          "delta_vs_current_pct": -6.763
         },
         {
           "ticker": "VEA",
-          "weight_pct": 5.704,
-          "delta_vs_current_pct": -1.295
+          "weight_pct": 5.021,
+          "delta_vs_current_pct": 0.89
+        },
+        {
+          "ticker": "2317",
+          "weight_pct": 4.87,
+          "delta_vs_current_pct": 3.049
+        },
+        {
+          "ticker": "GLDM",
+          "weight_pct": 4.762,
+          "delta_vs_current_pct": 0.76
         }
       ],
       "robustness": {
         "status": "OK",
-        "verdict": "不穩定",
-        "available_windows": 4,
-        "avg_pairwise_weight_turnover_pct": 16.81,
-        "max_asset_weight_range_pct": 29.76,
-        "es95_range_pct": 0.624,
-        "annual_vol_range_pct": 4.12
+        "verdict": "可觀察",
+        "available_windows": 5,
+        "avg_pairwise_weight_turnover_pct": 12.56,
+        "max_asset_weight_range_pct": 20.8,
+        "es95_range_pct": 0.258,
+        "annual_vol_range_pct": 2.16
       },
       "stress": {
         "status": "OK",
-        "worst_scenario_return_pct": -17.937,
-        "avg_scenario_return_pct": -12.266,
-        "best_scenario_return_pct": -8.946,
+        "worst_scenario_return_pct": -16.708,
+        "avg_scenario_return_pct": -11.51,
+        "best_scenario_return_pct": -8.389,
         "scenario_returns": {
           "rate_hike_2022_like": {
-            "return_pct": -17.937,
+            "return_pct": -16.708,
             "top_contributors": [
               {
                 "ticker": "USMV",
                 "bucket": "us_equity",
-                "weight_pct": 11.717,
+                "weight_pct": 10.4,
                 "shock_pct": -22.0,
-                "contribution_pct": -2.578
-              },
-              {
-                "ticker": "00981A",
-                "bucket": "taiwan_tech",
-                "weight_pct": 8.509,
-                "shock_pct": -28.0,
-                "contribution_pct": -2.383
+                "contribution_pct": -2.288
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 3.334,
+                "weight_pct": 3.062,
                 "shock_pct": -55.0,
-                "contribution_pct": -1.834
-              },
-              {
-                "ticker": "QQQ",
-                "bucket": "us_tech",
-                "weight_pct": 5.552,
-                "shock_pct": -32.0,
-                "contribution_pct": -1.777
+                "contribution_pct": -1.684
               },
               {
                 "ticker": "IFRA",
                 "bucket": "infrastructure_theme",
-                "weight_pct": 6.572,
+                "weight_pct": 6.389,
                 "shock_pct": -24.0,
-                "contribution_pct": -1.577
-              }
-            ]
-          },
-          "crypto_crash": {
-            "return_pct": -8.946,
-            "top_contributors": [
-              {
-                "ticker": "BTC-USD",
-                "bucket": "crypto",
-                "weight_pct": 3.334,
-                "shock_pct": -70.0,
-                "contribution_pct": -2.334
-              },
-              {
-                "ticker": "ETH-USD",
-                "bucket": "crypto",
-                "weight_pct": 2.11,
-                "shock_pct": -70.0,
-                "contribution_pct": -1.477
-              },
-              {
-                "ticker": "USMV",
-                "bucket": "us_equity",
-                "weight_pct": 11.717,
-                "shock_pct": -8.0,
-                "contribution_pct": -0.937
-              },
-              {
-                "ticker": "00981A",
-                "bucket": "taiwan_tech",
-                "weight_pct": 8.509,
-                "shock_pct": -10.0,
-                "contribution_pct": -0.851
-              },
-              {
-                "ticker": "QQQ",
-                "bucket": "us_tech",
-                "weight_pct": 5.552,
-                "shock_pct": -12.0,
-                "contribution_pct": -0.666
-              }
-            ]
-          },
-          "taiwan_tech_correction": {
-            "return_pct": -9.656,
-            "top_contributors": [
-              {
-                "ticker": "00981A",
-                "bucket": "taiwan_tech",
-                "weight_pct": 8.509,
-                "shock_pct": -35.0,
-                "contribution_pct": -2.978
-              },
-              {
-                "ticker": "USMV",
-                "bucket": "us_equity",
-                "weight_pct": 11.717,
-                "shock_pct": -10.0,
-                "contribution_pct": -1.172
-              },
-              {
-                "ticker": "BTC-USD",
-                "bucket": "crypto",
-                "weight_pct": 3.334,
-                "shock_pct": -25.0,
-                "contribution_pct": -0.834
-              },
-              {
-                "ticker": "QQQ",
-                "bucket": "us_tech",
-                "weight_pct": 5.552,
-                "shock_pct": -15.0,
-                "contribution_pct": -0.833
+                "contribution_pct": -1.533
               },
               {
                 "ticker": "AVUV",
                 "bucket": "us_small_value",
-                "weight_pct": 6.257,
-                "shock_pct": -12.0,
-                "contribution_pct": -0.751
+                "weight_pct": 6.092,
+                "shock_pct": -24.0,
+                "contribution_pct": -1.462
+              },
+              {
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 4.87,
+                "shock_pct": -28.0,
+                "contribution_pct": -1.364
               }
             ]
           },
-          "risk_off_usd_squeeze": {
-            "return_pct": -13.913,
+          "crypto_crash": {
+            "return_pct": -8.389,
             "top_contributors": [
+              {
+                "ticker": "BTC-USD",
+                "bucket": "crypto",
+                "weight_pct": 3.062,
+                "shock_pct": -70.0,
+                "contribution_pct": -2.143
+              },
+              {
+                "ticker": "ETH-USD",
+                "bucket": "crypto",
+                "weight_pct": 1.979,
+                "shock_pct": -70.0,
+                "contribution_pct": -1.385
+              },
               {
                 "ticker": "USMV",
                 "bucket": "us_equity",
-                "weight_pct": 11.717,
-                "shock_pct": -18.0,
-                "contribution_pct": -2.109
+                "weight_pct": 10.4,
+                "shock_pct": -8.0,
+                "contribution_pct": -0.832
+              },
+              {
+                "ticker": "AVUV",
+                "bucket": "us_small_value",
+                "weight_pct": 6.092,
+                "shock_pct": -10.0,
+                "contribution_pct": -0.609
+              },
+              {
+                "ticker": "IFRA",
+                "bucket": "infrastructure_theme",
+                "weight_pct": 6.389,
+                "shock_pct": -8.0,
+                "contribution_pct": -0.511
+              }
+            ]
+          },
+          "taiwan_tech_correction": {
+            "return_pct": -10.276,
+            "top_contributors": [
+              {
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 4.87,
+                "shock_pct": -35.0,
+                "contribution_pct": -1.705
+              },
+              {
+                "ticker": "2382",
+                "bucket": "taiwan_tech",
+                "weight_pct": 4.542,
+                "shock_pct": -35.0,
+                "contribution_pct": -1.59
               },
               {
                 "ticker": "00981A",
                 "bucket": "taiwan_tech",
-                "weight_pct": 8.509,
-                "shock_pct": -22.0,
+                "weight_pct": 3.822,
+                "shock_pct": -35.0,
+                "contribution_pct": -1.338
+              },
+              {
+                "ticker": "USMV",
+                "bucket": "us_equity",
+                "weight_pct": 10.4,
+                "shock_pct": -10.0,
+                "contribution_pct": -1.04
+              },
+              {
+                "ticker": "BTC-USD",
+                "bucket": "crypto",
+                "weight_pct": 3.062,
+                "shock_pct": -25.0,
+                "contribution_pct": -0.766
+              }
+            ]
+          },
+          "risk_off_usd_squeeze": {
+            "return_pct": -13.114,
+            "top_contributors": [
+              {
+                "ticker": "USMV",
+                "bucket": "us_equity",
+                "weight_pct": 10.4,
+                "shock_pct": -18.0,
                 "contribution_pct": -1.872
               },
               {
                 "ticker": "AVUV",
                 "bucket": "us_small_value",
-                "weight_pct": 6.257,
+                "weight_pct": 6.092,
                 "shock_pct": -22.0,
-                "contribution_pct": -1.377
+                "contribution_pct": -1.34
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 3.334,
+                "weight_pct": 3.062,
                 "shock_pct": -40.0,
-                "contribution_pct": -1.334
+                "contribution_pct": -1.225
               },
               {
-                "ticker": "VOO",
-                "bucket": "us_equity",
-                "weight_pct": 7.027,
+                "ticker": "IFRA",
+                "bucket": "infrastructure_theme",
+                "weight_pct": 6.389,
                 "shock_pct": -18.0,
-                "contribution_pct": -1.265
+                "contribution_pct": -1.15
+              },
+              {
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 4.87,
+                "shock_pct": -22.0,
+                "contribution_pct": -1.071
               }
             ]
           },
           "gold_hedge_failure": {
-            "return_pct": -10.54,
+            "return_pct": -9.808,
             "top_contributors": [
               {
                 "ticker": "USMV",
                 "bucket": "us_equity",
-                "weight_pct": 11.717,
+                "weight_pct": 10.4,
                 "shock_pct": -12.0,
-                "contribution_pct": -1.406
-              },
-              {
-                "ticker": "00981A",
-                "bucket": "taiwan_tech",
-                "weight_pct": 8.509,
-                "shock_pct": -14.0,
-                "contribution_pct": -1.191
+                "contribution_pct": -1.248
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 3.334,
+                "weight_pct": 3.062,
                 "shock_pct": -30.0,
-                "contribution_pct": -1.0
+                "contribution_pct": -0.919
               },
               {
                 "ticker": "GLDM",
                 "bucket": "gold",
-                "weight_pct": 5.432,
+                "weight_pct": 4.762,
                 "shock_pct": -18.0,
-                "contribution_pct": -0.978
+                "contribution_pct": -0.857
               },
               {
-                "ticker": "QQQ",
-                "bucket": "us_tech",
-                "weight_pct": 5.552,
-                "shock_pct": -16.0,
-                "contribution_pct": -0.888
+                "ticker": "AVUV",
+                "bucket": "us_small_value",
+                "weight_pct": 6.092,
+                "shock_pct": -14.0,
+                "contribution_pct": -0.853
+              },
+              {
+                "ticker": "IFRA",
+                "bucket": "infrastructure_theme",
+                "weight_pct": 6.389,
+                "shock_pct": -12.0,
+                "contribution_pct": -0.767
               }
             ]
           },
           "theme_etf_liquidity_shock": {
-            "return_pct": -12.604,
+            "return_pct": -10.767,
             "top_contributors": [
               {
                 "ticker": "IFRA",
                 "bucket": "infrastructure_theme",
-                "weight_pct": 6.572,
+                "weight_pct": 6.389,
                 "shock_pct": -32.0,
-                "contribution_pct": -2.103
-              },
-              {
-                "ticker": "SRVR",
-                "bucket": "infrastructure_theme",
-                "weight_pct": 6.145,
-                "shock_pct": -32.0,
-                "contribution_pct": -1.966
+                "contribution_pct": -2.045
               },
               {
                 "ticker": "USMV",
                 "bucket": "us_equity",
-                "weight_pct": 11.717,
+                "weight_pct": 10.4,
                 "shock_pct": -12.0,
-                "contribution_pct": -1.406
+                "contribution_pct": -1.248
               },
               {
-                "ticker": "00981A",
-                "bucket": "taiwan_tech",
-                "weight_pct": 8.509,
+                "ticker": "AVUV",
+                "bucket": "us_small_value",
+                "weight_pct": 6.092,
                 "shock_pct": -16.0,
-                "contribution_pct": -1.361
+                "contribution_pct": -0.975
               },
               {
                 "ticker": "PICK",
                 "bucket": "commodity_equity",
-                "weight_pct": 3.668,
+                "weight_pct": 3.219,
                 "shock_pct": -30.0,
-                "contribution_pct": -1.1
+                "contribution_pct": -0.966
+              },
+              {
+                "ticker": "2317",
+                "bucket": "taiwan_tech",
+                "weight_pct": 4.87,
+                "shock_pct": -16.0,
+                "contribution_pct": -0.779
               }
             ]
           }
@@ -2754,9 +2760,9 @@
       },
       "constraint_flags": [],
       "decision": {
-        "status": "watch",
-        "score": 2.97,
-        "reason": "ES95 較目前改善 0.422 個百分點。；年化波動較目前降低 3.27 個百分點。；最差壓力情境較目前改善 7.38 個百分點。；穩健性資料不足或不穩定。；需要 29.44% 換手率。"
+        "status": "candidate",
+        "score": 24.24,
+        "reason": "ES95 較目前改善 0.543 個百分點。；年化波動較目前降低 3.97 個百分點。；最差壓力情境較目前改善 9.46 個百分點。；跨樣本穩健性僅為可觀察。；需要 34.66% 換手率。"
       }
     },
     {
@@ -2766,319 +2772,319 @@
       "type": "optimizer",
       "raw_status": "OK",
       "metrics": {
-        "annual_return_pct": 15.7,
-        "annual_vol_pct": 6.99,
-        "sharpe": 2.245,
-        "var95_pct": 0.61,
-        "es95_pct": 1.046,
-        "max_drawdown_pct": -3.33,
-        "worst_day_pct": -2.32,
-        "best_day_pct": 1.71,
-        "turnover_vs_current_pct": 41.11
+        "annual_return_pct": 11.1,
+        "annual_vol_pct": 6.45,
+        "sharpe": 1.72,
+        "var95_pct": 0.596,
+        "es95_pct": 1.017,
+        "max_drawdown_pct": -5.14,
+        "worst_day_pct": -2.3,
+        "best_day_pct": 1.81,
+        "turnover_vs_current_pct": 46.38
       },
       "exposure": {
-        "cash_pct": 40.747,
-        "gold_pct": 3.961,
-        "crypto_pct": 1.919,
-        "taiwan_pct": 3.157,
-        "other_pct": 50.217,
-        "max_single_weight_pct": 13.698,
+        "cash_pct": 47.802,
+        "gold_pct": 4.529,
+        "crypto_pct": 1.774,
+        "taiwan_pct": 4.695,
+        "other_pct": 41.2,
+        "max_single_weight_pct": 14.202,
         "max_single_ticker": "USMV"
       },
       "top_weights": [
         {
           "ticker": "BOXX",
-          "weight_pct": 40.747,
-          "delta_vs_current_pct": 27.445
+          "weight_pct": 47.802,
+          "delta_vs_current_pct": 37.302
         },
         {
           "ticker": "USMV",
-          "weight_pct": 13.698,
-          "delta_vs_current_pct": 5.741
-        },
-        {
-          "ticker": "VOO",
-          "weight_pct": 10.436,
-          "delta_vs_current_pct": -1.608
+          "weight_pct": 14.202,
+          "delta_vs_current_pct": 5.26
         },
         {
           "ticker": "IFRA",
-          "weight_pct": 6.114,
-          "delta_vs_current_pct": 2.661
+          "weight_pct": 6.012,
+          "delta_vs_current_pct": 2.439
         },
         {
-          "ticker": "VEA",
-          "weight_pct": 5.965,
-          "delta_vs_current_pct": -1.034
-        },
-        {
-          "ticker": "SRVR",
-          "weight_pct": 4.983,
-          "delta_vs_current_pct": 3.726
-        },
-        {
-          "ticker": "GLDM",
-          "weight_pct": 3.961,
-          "delta_vs_current_pct": 1.533
+          "ticker": "VOO",
+          "weight_pct": 5.851,
+          "delta_vs_current_pct": -6.583
         },
         {
           "ticker": "AVUV",
-          "weight_pct": 3.654,
-          "delta_vs_current_pct": -7.096
+          "weight_pct": 5.083,
+          "delta_vs_current_pct": -6.073
+        },
+        {
+          "ticker": "GLDM",
+          "weight_pct": 4.529,
+          "delta_vs_current_pct": 0.527
+        },
+        {
+          "ticker": "VEA",
+          "weight_pct": 4.395,
+          "delta_vs_current_pct": 0.264
+        },
+        {
+          "ticker": "QQQ",
+          "weight_pct": 2.668,
+          "delta_vs_current_pct": -9.296
         }
       ],
       "robustness": {
         "status": "OK",
         "verdict": "不穩定",
-        "available_windows": 4,
-        "avg_pairwise_weight_turnover_pct": 25.01,
-        "max_asset_weight_range_pct": 43.09,
-        "es95_range_pct": 0.698,
-        "annual_vol_range_pct": 4.32
+        "available_windows": 5,
+        "avg_pairwise_weight_turnover_pct": 19.64,
+        "max_asset_weight_range_pct": 31.97,
+        "es95_range_pct": 0.469,
+        "annual_vol_range_pct": 2.74
       },
       "stress": {
         "status": "OK",
-        "worst_scenario_return_pct": -13.613,
-        "avg_scenario_return_pct": -9.056,
-        "best_scenario_return_pct": -5.665,
+        "worst_scenario_return_pct": -11.903,
+        "avg_scenario_return_pct": -7.903,
+        "best_scenario_return_pct": -4.991,
         "scenario_returns": {
           "rate_hike_2022_like": {
-            "return_pct": -13.613,
+            "return_pct": -11.903,
             "top_contributors": [
               {
                 "ticker": "USMV",
                 "bucket": "us_equity",
-                "weight_pct": 13.698,
+                "weight_pct": 14.202,
                 "shock_pct": -22.0,
-                "contribution_pct": -3.014
-              },
-              {
-                "ticker": "VOO",
-                "bucket": "us_equity",
-                "weight_pct": 10.436,
-                "shock_pct": -22.0,
-                "contribution_pct": -2.296
+                "contribution_pct": -3.124
               },
               {
                 "ticker": "IFRA",
                 "bucket": "infrastructure_theme",
-                "weight_pct": 6.114,
+                "weight_pct": 6.012,
                 "shock_pct": -24.0,
-                "contribution_pct": -1.467
+                "contribution_pct": -1.443
               },
               {
-                "ticker": "SRVR",
-                "bucket": "infrastructure_theme",
-                "weight_pct": 4.983,
+                "ticker": "VOO",
+                "bucket": "us_equity",
+                "weight_pct": 5.851,
+                "shock_pct": -22.0,
+                "contribution_pct": -1.287
+              },
+              {
+                "ticker": "AVUV",
+                "bucket": "us_small_value",
+                "weight_pct": 5.083,
                 "shock_pct": -24.0,
-                "contribution_pct": -1.196
+                "contribution_pct": -1.22
               },
               {
                 "ticker": "VEA",
                 "bucket": "developed_ex_us",
-                "weight_pct": 5.965,
+                "weight_pct": 4.395,
                 "shock_pct": -20.0,
-                "contribution_pct": -1.193
+                "contribution_pct": -0.879
               }
             ]
           },
           "crypto_crash": {
-            "return_pct": -5.665,
+            "return_pct": -4.991,
             "top_contributors": [
               {
                 "ticker": "USMV",
                 "bucket": "us_equity",
-                "weight_pct": 13.698,
+                "weight_pct": 14.202,
                 "shock_pct": -8.0,
-                "contribution_pct": -1.096
+                "contribution_pct": -1.136
               },
               {
                 "ticker": "BTC-USD",
                 "bucket": "crypto",
-                "weight_pct": 1.368,
+                "weight_pct": 1.246,
                 "shock_pct": -70.0,
-                "contribution_pct": -0.958
+                "contribution_pct": -0.872
               },
               {
-                "ticker": "VOO",
-                "bucket": "us_equity",
-                "weight_pct": 10.436,
-                "shock_pct": -8.0,
-                "contribution_pct": -0.835
+                "ticker": "AVUV",
+                "bucket": "us_small_value",
+                "weight_pct": 5.083,
+                "shock_pct": -10.0,
+                "contribution_pct": -0.508
               },
               {
                 "ticker": "IFRA",
                 "bucket": "infrastructure_theme",
-                "weight_pct": 6.114,
+                "weight_pct": 6.012,
                 "shock_pct": -8.0,
-                "contribution_pct": -0.489
+                "contribution_pct": -0.481
               },
               {
-                "ticker": "VEA",
-                "bucket": "developed_ex_us",
-                "weight_pct": 5.965,
-                "shock_pct": -7.0,
-                "contribution_pct": -0.418
+                "ticker": "VOO",
+                "bucket": "us_equity",
+                "weight_pct": 5.851,
+                "shock_pct": -8.0,
+                "contribution_pct": -0.468
               }
             ]
           },
           "taiwan_tech_correction": {
-            "return_pct": -6.569,
+            "return_pct": -6.189,
             "top_contributors": [
               {
                 "ticker": "USMV",
                 "bucket": "us_equity",
-                "weight_pct": 13.698,
+                "weight_pct": 14.202,
                 "shock_pct": -10.0,
-                "contribution_pct": -1.37
+                "contribution_pct": -1.42
               },
               {
                 "ticker": "00981A",
                 "bucket": "taiwan_tech",
-                "weight_pct": 3.157,
+                "weight_pct": 1.875,
                 "shock_pct": -35.0,
-                "contribution_pct": -1.105
+                "contribution_pct": -0.656
               },
               {
-                "ticker": "VOO",
-                "bucket": "us_equity",
-                "weight_pct": 10.436,
-                "shock_pct": -10.0,
-                "contribution_pct": -1.044
+                "ticker": "AVUV",
+                "bucket": "us_small_value",
+                "weight_pct": 5.083,
+                "shock_pct": -12.0,
+                "contribution_pct": -0.61
               },
               {
                 "ticker": "IFRA",
                 "bucket": "infrastructure_theme",
-                "weight_pct": 6.114,
+                "weight_pct": 6.012,
                 "shock_pct": -10.0,
-                "contribution_pct": -0.611
+                "contribution_pct": -0.601
               },
               {
-                "ticker": "QQQ",
-                "bucket": "us_tech",
-                "weight_pct": 3.355,
-                "shock_pct": -15.0,
-                "contribution_pct": -0.503
+                "ticker": "VOO",
+                "bucket": "us_equity",
+                "weight_pct": 5.851,
+                "shock_pct": -10.0,
+                "contribution_pct": -0.585
               }
             ]
           },
           "risk_off_usd_squeeze": {
-            "return_pct": -10.743,
+            "return_pct": -9.359,
             "top_contributors": [
               {
                 "ticker": "USMV",
                 "bucket": "us_equity",
-                "weight_pct": 13.698,
+                "weight_pct": 14.202,
                 "shock_pct": -18.0,
-                "contribution_pct": -2.466
+                "contribution_pct": -2.556
               },
               {
-                "ticker": "VOO",
-                "bucket": "us_equity",
-                "weight_pct": 10.436,
-                "shock_pct": -18.0,
-                "contribution_pct": -1.878
-              },
-              {
-                "ticker": "VEA",
-                "bucket": "developed_ex_us",
-                "weight_pct": 5.965,
-                "shock_pct": -20.0,
-                "contribution_pct": -1.193
+                "ticker": "AVUV",
+                "bucket": "us_small_value",
+                "weight_pct": 5.083,
+                "shock_pct": -22.0,
+                "contribution_pct": -1.118
               },
               {
                 "ticker": "IFRA",
                 "bucket": "infrastructure_theme",
-                "weight_pct": 6.114,
+                "weight_pct": 6.012,
                 "shock_pct": -18.0,
-                "contribution_pct": -1.101
+                "contribution_pct": -1.082
               },
               {
-                "ticker": "SRVR",
-                "bucket": "infrastructure_theme",
-                "weight_pct": 4.983,
+                "ticker": "VOO",
+                "bucket": "us_equity",
+                "weight_pct": 5.851,
                 "shock_pct": -18.0,
-                "contribution_pct": -0.897
+                "contribution_pct": -1.053
+              },
+              {
+                "ticker": "VEA",
+                "bucket": "developed_ex_us",
+                "weight_pct": 4.395,
+                "shock_pct": -20.0,
+                "contribution_pct": -0.879
               }
             ]
           },
           "gold_hedge_failure": {
-            "return_pct": -8.004,
+            "return_pct": -7.186,
             "top_contributors": [
               {
                 "ticker": "USMV",
                 "bucket": "us_equity",
-                "weight_pct": 13.698,
+                "weight_pct": 14.202,
                 "shock_pct": -12.0,
-                "contribution_pct": -1.644
-              },
-              {
-                "ticker": "VOO",
-                "bucket": "us_equity",
-                "weight_pct": 10.436,
-                "shock_pct": -12.0,
-                "contribution_pct": -1.252
-              },
-              {
-                "ticker": "IFRA",
-                "bucket": "infrastructure_theme",
-                "weight_pct": 6.114,
-                "shock_pct": -12.0,
-                "contribution_pct": -0.734
-              },
-              {
-                "ticker": "VEA",
-                "bucket": "developed_ex_us",
-                "weight_pct": 5.965,
-                "shock_pct": -12.0,
-                "contribution_pct": -0.716
+                "contribution_pct": -1.704
               },
               {
                 "ticker": "GLDM",
                 "bucket": "gold",
-                "weight_pct": 3.961,
+                "weight_pct": 4.529,
                 "shock_pct": -18.0,
-                "contribution_pct": -0.713
-              }
-            ]
-          },
-          "theme_etf_liquidity_shock": {
-            "return_pct": -9.741,
-            "top_contributors": [
+                "contribution_pct": -0.815
+              },
               {
                 "ticker": "IFRA",
                 "bucket": "infrastructure_theme",
-                "weight_pct": 6.114,
-                "shock_pct": -32.0,
-                "contribution_pct": -1.956
-              },
-              {
-                "ticker": "USMV",
-                "bucket": "us_equity",
-                "weight_pct": 13.698,
+                "weight_pct": 6.012,
                 "shock_pct": -12.0,
-                "contribution_pct": -1.644
+                "contribution_pct": -0.721
               },
               {
-                "ticker": "SRVR",
-                "bucket": "infrastructure_theme",
-                "weight_pct": 4.983,
-                "shock_pct": -32.0,
-                "contribution_pct": -1.595
+                "ticker": "AVUV",
+                "bucket": "us_small_value",
+                "weight_pct": 5.083,
+                "shock_pct": -14.0,
+                "contribution_pct": -0.712
               },
               {
                 "ticker": "VOO",
                 "bucket": "us_equity",
-                "weight_pct": 10.436,
+                "weight_pct": 5.851,
                 "shock_pct": -12.0,
-                "contribution_pct": -1.252
+                "contribution_pct": -0.702
+              }
+            ]
+          },
+          "theme_etf_liquidity_shock": {
+            "return_pct": -7.79,
+            "top_contributors": [
+              {
+                "ticker": "IFRA",
+                "bucket": "infrastructure_theme",
+                "weight_pct": 6.012,
+                "shock_pct": -32.0,
+                "contribution_pct": -1.924
+              },
+              {
+                "ticker": "USMV",
+                "bucket": "us_equity",
+                "weight_pct": 14.202,
+                "shock_pct": -12.0,
+                "contribution_pct": -1.704
+              },
+              {
+                "ticker": "AVUV",
+                "bucket": "us_small_value",
+                "weight_pct": 5.083,
+                "shock_pct": -16.0,
+                "contribution_pct": -0.813
+              },
+              {
+                "ticker": "VOO",
+                "bucket": "us_equity",
+                "weight_pct": 5.851,
+                "shock_pct": -12.0,
+                "contribution_pct": -0.702
               },
               {
                 "ticker": "QQQ",
                 "bucket": "us_tech",
-                "weight_pct": 3.355,
+                "weight_pct": 2.668,
                 "shock_pct": -18.0,
-                "contribution_pct": -0.604
+                "contribution_pct": -0.48
               }
             ]
           }
@@ -3088,28 +3094,29 @@
         {
           "level": "warning",
           "code": "turnover_high",
-          "message": "換手率 41.11% 偏高，需要摩擦成本與人工審查。"
+          "message": "換手率 46.38% 偏高，需要摩擦成本與人工審查。"
         },
         {
           "level": "warning",
           "code": "cash_high",
-          "message": "現金 / BOXX 權重 40.75% 偏高，需要確認是否符合現金下限與機會成本。"
+          "message": "現金 / BOXX 權重 47.80% 偏高，需要確認是否符合現金下限與機會成本。"
         }
       ],
       "decision": {
         "status": "watch",
-        "score": -3.64,
-        "reason": "ES95 較目前改善 0.610 個百分點。；年化波動較目前降低 4.63 個百分點。；最差壓力情境較目前改善 11.70 個百分點。；穩健性資料不足或不穩定。；需要 41.11% 換手率。"
+        "score": 6.27,
+        "reason": "ES95 較目前改善 0.837 個百分點。；年化波動較目前降低 5.69 個百分點。；最差壓力情境較目前改善 14.27 個百分點。；穩健性資料不足或不穩定。；需要 46.38% 換手率。"
       }
     }
   ],
   "decision_summary": {
-    "verdict": "僅供觀察",
+    "verdict": "候選觀察",
     "safe_mode_note": "v2.0 只整合與分級模型輸出，不產生交易指令，不改正式持倉，不寫入 Supabase。",
-    "candidate_for_v2_1": [],
-    "watch": [
+    "candidate_for_v2_1": [
       "inverse_vol_baseline",
-      "riskfolio_risk_parity_mv",
+      "riskfolio_risk_parity_mv"
+    ],
+    "watch": [
       "riskfolio_hrp_mv"
     ],
     "rejected": [
@@ -3126,11 +3133,11 @@
     ],
     "best_es95": "skfolio_cvar_minimize",
     "lowest_turnover": "inverse_vol_baseline",
-    "best_worst_stress": "scipy_min_variance_fallback",
+    "best_worst_stress": "skfolio_min_variance",
     "counts": {
       "total": 9,
-      "candidate": 0,
-      "watch": 3,
+      "candidate": 2,
+      "watch": 1,
       "reject": 5,
       "missing_or_optional": 0
     }

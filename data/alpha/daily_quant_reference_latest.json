@@ -1,7 +1,7 @@
 {
   "version": "v10.5",
   "status": "OK",
-  "generated_at": "2026-08-10T04:03:27+00:00",
+  "generated_at": "2026-11-26T08:29:50+00:00",
   "mode": "daily_quant_reference_layer",
   "safe_mode": true,
   "research_only": true,
@@ -18,7 +18,7 @@
     "path": ".github/workflows/daily_update.yml",
     "exists": true,
     "name": "Daily Quant Pipeline",
-    "step_count": 7,
+    "step_count": 9,
     "steps": [
       "📥 下載程式碼",
       "🐍 設定 Python 環境",
@@ -26,6 +26,8 @@
       "🚀 執行量化分析腳本",
       "🧮 修正 X-Ray 實際資金權重",
       "🧩 更新 ETF Look-through",
+      "🎯 重建完整 delegated / blended target",
+      "🔄 同步完整目標至 Rebalance Monitor",
       "🧭 更新 Phase 3 Market Compass"
     ],
     "referenced_scripts": [
@@ -36,12 +38,12 @@
     "role": "data_and_risk_foundation_for_v10_delegated_drafts"
   },
   "settings_reference": {
-    "exchange_rate": 32.2,
+    "exchange_rate": 33,
     "liquidity_buffer_ratio": 0,
-    "price_map_count": 33
+    "price_map_count": 38
   },
   "stock_meta_reference": {
-    "stock_meta_count": 57,
+    "stock_meta_count": 56,
     "synthetic_risk_key": "__synthetic_portfolio_risk__",
     "synthetic_risk_available": true
   },
@@ -52,16 +54,16 @@
     "generated_at": null,
     "method": "current_weight_synthetic_daily_returns",
     "metrics": {
-      "sample_count": 437,
-      "ann_vol_pct": 11.6,
-      "var95_pct": 1.06,
-      "es95_pct": 1.65,
-      "max_drawdown_pct": -6.24
+      "sample_count": 548,
+      "ann_vol_pct": 12.14,
+      "var95_pct": 1.04,
+      "es95_pct": 1.85,
+      "max_drawdown_pct": -15.08
     },
     "coverage": {
-      "strict_sample": 437,
+      "strict_sample": 548,
       "flexible_sample": 730,
-      "usable_weight_pct": 100
+      "usable_weight_pct": 100.0
     },
     "quantstats_status": "OK",
     "ewma_regime_status": "OK",
@@ -71,30 +73,30 @@
   "monte_carlo_reference": {
     "available": true,
     "source": "Supabase chaos_meta produced by Daily Quant Pipeline / dashboard risk layer",
-    "stressed_var95_pct": 6.44,
-    "stressed_es95_pct": 9.0,
-    "contagion_loss_pct": 1.41,
-    "fire_sale_loss_pct": 1.15,
-    "liquidity_run_probability_pct": 19.15,
+    "stressed_var95_pct": 10.16,
+    "stressed_es95_pct": 15.43,
+    "contagion_loss_pct": 1.82,
+    "fire_sale_loss_pct": 3.45,
+    "liquidity_run_probability_pct": 49.78,
     "fragile_nodes": [
-      "BTC-USD",
       "VEA",
+      "QQQ",
       "PICK"
     ],
     "same_horizon_tail_comparison": {
       "horizon_weeks": 13,
-      "historical_var95": -1.65,
-      "historical_es95": -2.49,
-      "historical_sample_count": 50,
+      "historical_var95": -3.07,
+      "historical_es95": -8.62,
+      "historical_sample_count": 66,
       "historical_method": "overlapping_compounded_current_weight_returns",
-      "jump_stress_var95": -6.88,
-      "jump_stress_es95": -9.95
+      "jump_stress_var95": -16.16,
+      "jump_stress_es95": -21.17
     },
     "jump_stress_scenario": {
-      "jd_var95": -6.88,
-      "jd_es95": -9.95,
-      "jd_tail_loss": 9.95,
-      "jd_crash_prob": 1.87,
+      "jd_var95": -16.16,
+      "jd_es95": -21.17,
+      "jd_tail_loss": 21.17,
+      "jd_crash_prob": 11.56,
       "jd_crash_threshold_pct": -10.0,
       "jd_horizon_weeks": 13,
       "model_type": "asset_level_heuristic_jump_stress",
@@ -104,10 +106,10 @@
       "simulation_count": 20000
     },
     "jump_diffusion": {
-      "jd_var95": -6.88,
-      "jd_es95": -9.95,
-      "jd_tail_loss": 9.95,
-      "jd_crash_prob": 1.87,
+      "jd_var95": -16.16,
+      "jd_es95": -21.17,
+      "jd_tail_loss": 21.17,
+      "jd_crash_prob": 11.56,
       "jd_crash_threshold_pct": -10.0,
       "jd_horizon_weeks": 13,
       "model_type": "asset_level_heuristic_jump_stress",
@@ -117,31 +119,31 @@
       "simulation_count": 20000
     },
     "evt_tail_1w": {
-      "evt_var95": -0.6234,
-      "evt_es95": -0.9278,
-      "evt_shape_xi": 0.067277,
-      "evt_exceedance_count": 83,
+      "evt_var95": -0.6571,
+      "evt_es95": -0.9878,
+      "evt_shape_xi": 0.133999,
+      "evt_exceedance_count": 103,
       "horizon_weeks": null,
       "comparable_to_jump_stress": false,
       "comparison_note": "one_day_evt_not_directly_comparable_to_13_week_jump_stress"
     },
     "evt_tail": {
-      "evt_var95": -0.6234,
-      "evt_es95": -0.9278,
-      "evt_shape_xi": 0.067277,
-      "evt_exceedance_count": 83
+      "evt_var95": -0.6571,
+      "evt_es95": -0.9878,
+      "evt_shape_xi": 0.133999,
+      "evt_exceedance_count": 103
     },
     "sample_context": {
-      "sample_weeks": 62,
+      "sample_weeks": 78,
       "tail_sample_count": 4,
-      "crisis_sample_count": 7,
+      "crisis_sample_count": 8,
       "crisis_window_label": "SPY <= P10 weekly return"
     }
   },
   "trading_constraints_reference": {
-    "generated_at": "2026-08-10T04:03:25+00:00",
-    "asset_count": 14,
-    "real_world_price_success_count": 13,
+    "generated_at": "2026-11-26T08:29:46+00:00",
+    "asset_count": 15,
+    "real_world_price_success_count": 15,
     "liquidity_buffer_ratio_pct": 0.0
   },
   "source_priority_policy": [

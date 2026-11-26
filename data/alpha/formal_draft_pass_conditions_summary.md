@@ -1,11 +1,11 @@
 # v8.1 Formal Draft Pass Conditions
 
-- Generated: `2026-08-10T04:03:23+00:00`
+- Generated: `2026-11-26T08:29:44+00:00`
 - Pass status: **blocked**
 - Hard fails: `3`
 - Watch items: `0`
 - Alpha validation: `watch_only_validation`
-- Governance: `92.0` / `watch_only_with_governance_warnings`
+- Governance: `100.0` / `governance_ok_watch_only`
 
 ## Boundary
 - Passing this gate only permits a review-only formal draft; it is not a trade signal.

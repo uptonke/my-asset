@@ -1,7 +1,7 @@
 {
   "version": "v3.2",
   "status": "OK",
-  "generated_at": "2026-08-10T04:03:12+00:00",
+  "generated_at": "2026-11-26T08:29:23+00:00",
   "mode": "conservative_expected_return_model",
   "safe_mode": true,
   "safe_mode_note": "v3.2 Expected Return Model 是 relative prior / expected-return proxy sandbox；不啟用 alpha forecast、不啟用最大夏普最佳化、不產生 BUY / SELL 指令，不自動交易，不寫入 Supabase，不修改正式持倉或正式權重。",
@@ -26,8 +26,8 @@
     ]
   },
   "sample_quality": {
-    "strict_sample": 439,
-    "three_year_window_available": false,
+    "strict_sample": 548,
+    "three_year_window_available": true,
     "confidence_cap": 0.75
   },
   "bucket_priors": [
@@ -101,7 +101,7 @@
       "bucket": "emerging_market",
       "relative_score": -0.35,
       "prior_band": "neutral_or_no_edge_prior",
-      "confidence": 0.7,
+      "confidence": 0.75,
       "base_score": -0.1,
       "regime_adjustment": -0.25,
       "black_litterman_view_adjustment": 0.0,
@@ -112,7 +112,7 @@
       "bucket": "theme_etf",
       "relative_score": -0.45,
       "prior_band": "neutral_or_no_edge_prior",
-      "confidence": 0.7,
+      "confidence": 0.75,
       "base_score": -0.15,
       "regime_adjustment": -0.3,
       "black_litterman_view_adjustment": 0.0,
@@ -145,7 +145,7 @@
       "bucket": "crypto",
       "relative_score": -1.98,
       "prior_band": "relative_underweight_prior",
-      "confidence": 0.7,
+      "confidence": 0.75,
       "base_score": -0.4,
       "regime_adjustment": -0.9,
       "black_litterman_view_adjustment": -0.68,
@@ -157,7 +157,7 @@
     {
       "ticker": "BOXX",
       "bucket": "cash",
-      "current_weight_pct": 13.302,
+      "current_weight_pct": 10.5,
       "relative_score": 2.05,
       "prior_band": "relative_overweight_prior",
       "confidence": 0.75,
@@ -168,8 +168,30 @@
     {
       "ticker": "GLDM",
       "bucket": "gold",
-      "current_weight_pct": 2.427,
+      "current_weight_pct": 4.002,
       "relative_score": 0.622,
+      "prior_band": "neutral_or_no_edge_prior",
+      "confidence": 0.75,
+      "absolute_expected_return_pct": null,
+      "max_sharpe_input_allowed": false,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "ticker": "2317",
+      "bucket": "other",
+      "current_weight_pct": 1.82,
+      "relative_score": 0.0,
+      "prior_band": "neutral_or_no_edge_prior",
+      "confidence": 0.75,
+      "absolute_expected_return_pct": null,
+      "max_sharpe_input_allowed": false,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "ticker": "2382",
+      "bucket": "other",
+      "current_weight_pct": 3.383,
+      "relative_score": 0.0,
       "prior_band": "neutral_or_no_edge_prior",
       "confidence": 0.75,
       "absolute_expected_return_pct": null,
@@ -179,7 +201,18 @@
     {
       "ticker": "AVUV",
       "bucket": "other",
-      "current_weight_pct": 10.75,
+      "current_weight_pct": 11.156,
+      "relative_score": 0.0,
+      "prior_band": "neutral_or_no_edge_prior",
+      "confidence": 0.75,
+      "absolute_expected_return_pct": null,
+      "max_sharpe_input_allowed": false,
+      "rationale": "relative prior only; absolute expected return forecast is disabled"
+    },
+    {
+      "ticker": "NVDA",
+      "bucket": "other",
+      "current_weight_pct": 0.939,
       "relative_score": 0.0,
       "prior_band": "neutral_or_no_edge_prior",
       "confidence": 0.75,
@@ -190,7 +223,7 @@
     {
       "ticker": "PICK",
       "bucket": "other",
-      "current_weight_pct": 5.032,
+      "current_weight_pct": 3.321,
       "relative_score": 0.0,
       "prior_band": "neutral_or_no_edge_prior",
       "confidence": 0.75,
@@ -201,7 +234,7 @@
     {
       "ticker": "USMV",
       "bucket": "other",
-      "current_weight_pct": 7.957,
+      "current_weight_pct": 8.943,
       "relative_score": 0.0,
       "prior_band": "neutral_or_no_edge_prior",
       "confidence": 0.75,
@@ -212,7 +245,7 @@
     {
       "ticker": "VEA",
       "bucket": "other",
-      "current_weight_pct": 6.999,
+      "current_weight_pct": 4.131,
       "relative_score": 0.0,
       "prior_band": "neutral_or_no_edge_prior",
       "confidence": 0.75,
@@ -223,7 +256,7 @@
     {
       "ticker": "VOO",
       "bucket": "us_equity",
-      "current_weight_pct": 12.043,
+      "current_weight_pct": 12.434,
       "relative_score": 0.0,
       "prior_band": "neutral_or_no_edge_prior",
       "confidence": 0.75,
@@ -234,21 +267,10 @@
     {
       "ticker": "IFRA",
       "bucket": "theme_etf",
-      "current_weight_pct": 3.453,
+      "current_weight_pct": 3.573,
       "relative_score": -0.45,
       "prior_band": "neutral_or_no_edge_prior",
-      "confidence": 0.7,
-      "absolute_expected_return_pct": null,
-      "max_sharpe_input_allowed": false,
-      "rationale": "relative prior only; absolute expected return forecast is disabled"
-    },
-    {
-      "ticker": "SRVR",
-      "bucket": "theme_etf",
-      "current_weight_pct": 1.257,
-      "relative_score": -0.45,
-      "prior_band": "neutral_or_no_edge_prior",
-      "confidence": 0.7,
+      "confidence": 0.75,
       "absolute_expected_return_pct": null,
       "max_sharpe_input_allowed": false,
       "rationale": "relative prior only; absolute expected return forecast is disabled"
@@ -256,7 +278,7 @@
     {
       "ticker": "00981A",
       "bucket": "taiwan_tech",
-      "current_weight_pct": 9.547,
+      "current_weight_pct": 8.541,
       "relative_score": -0.55,
       "prior_band": "neutral_or_no_edge_prior",
       "confidence": 0.75,
@@ -267,7 +289,7 @@
     {
       "ticker": "QQQ",
       "bucket": "us_tech",
-      "current_weight_pct": 12.252,
+      "current_weight_pct": 11.964,
       "relative_score": -0.94,
       "prior_band": "relative_underweight_prior",
       "confidence": 0.75,
@@ -278,10 +300,10 @@
     {
       "ticker": "BTC-USD",
       "bucket": "crypto",
-      "current_weight_pct": 9.761,
+      "current_weight_pct": 10.166,
       "relative_score": -1.98,
       "prior_band": "relative_underweight_prior",
-      "confidence": 0.7,
+      "confidence": 0.75,
       "absolute_expected_return_pct": null,
       "max_sharpe_input_allowed": false,
       "rationale": "relative prior only; absolute expected return forecast is disabled"
@@ -289,10 +311,10 @@
     {
       "ticker": "ETH-USD",
       "bucket": "crypto",
-      "current_weight_pct": 5.22,
+      "current_weight_pct": 5.127,
       "relative_score": -1.98,
       "prior_band": "relative_underweight_prior",
-      "confidence": 0.7,
+      "confidence": 0.75,
       "absolute_expected_return_pct": null,
       "max_sharpe_input_allowed": false,
       "rationale": "relative prior only; absolute expected return forecast is disabled"
@@ -300,7 +322,7 @@
   ],
   "method_relative_priors": [
     {
-      "method": "riskfolio_cvar_minimize",
+      "method": "inverse_vol_baseline",
       "relative_model_prior_score": 0.45,
       "robustness_bonus": 0.45,
       "stress_penalty": 0.0,
@@ -324,14 +346,6 @@
       "max_sharpe_input_allowed": false
     },
     {
-      "method": "skfolio_cvar_minimize",
-      "relative_model_prior_score": 0.45,
-      "robustness_bonus": 0.45,
-      "stress_penalty": 0.0,
-      "decision_use": "ranking_context_only",
-      "max_sharpe_input_allowed": false
-    },
-    {
       "method": "skfolio_min_variance",
       "relative_model_prior_score": 0.45,
       "robustness_bonus": 0.45,
@@ -348,23 +362,31 @@
       "max_sharpe_input_allowed": false
     },
     {
-      "method": "riskfolio_risk_parity_mv",
-      "relative_model_prior_score": 0.25,
-      "robustness_bonus": 0.25,
-      "stress_penalty": 0.0,
-      "decision_use": "ranking_context_only",
-      "max_sharpe_input_allowed": false
-    },
-    {
-      "method": "inverse_vol_baseline",
-      "relative_model_prior_score": 0.2,
-      "robustness_bonus": 0.2,
-      "stress_penalty": 0.0,
-      "decision_use": "ranking_context_only",
-      "max_sharpe_input_allowed": false
-    },
-    {
       "method": "current_weight",
+      "relative_model_prior_score": 0.0,
+      "robustness_bonus": 0.0,
+      "stress_penalty": 0.0,
+      "decision_use": "ranking_context_only",
+      "max_sharpe_input_allowed": false
+    },
+    {
+      "method": "riskfolio_cvar_minimize",
+      "relative_model_prior_score": 0.0,
+      "robustness_bonus": 0.0,
+      "stress_penalty": 0.0,
+      "decision_use": "ranking_context_only",
+      "max_sharpe_input_allowed": false
+    },
+    {
+      "method": "riskfolio_risk_parity_mv",
+      "relative_model_prior_score": 0.0,
+      "robustness_bonus": 0.0,
+      "stress_penalty": 0.0,
+      "decision_use": "ranking_context_only",
+      "max_sharpe_input_allowed": false
+    },
+    {
+      "method": "skfolio_cvar_minimize",
       "relative_model_prior_score": 0.0,
       "robustness_bonus": 0.0,
       "stress_penalty": 0.0,
@@ -373,7 +395,7 @@
     }
   ],
   "summary": {
-    "asset_count": 13,
+    "asset_count": 15,
     "bucket_count": 11,
     "positive_prior_bucket_count": 2,
     "negative_prior_bucket_count": 3,
@@ -381,7 +403,6 @@
     "verdict": "relative_prior_only_no_max_sharpe"
   },
   "warnings": [
-    "3Y robustness window unavailable; expected return confidence capped.",
     "Absolute expected return forecast is disabled by design.",
     "Maximum Sharpe optimization is disabled; no alpha model is trusted enough."
   ],

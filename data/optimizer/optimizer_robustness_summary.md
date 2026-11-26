@@ -1,30 +1,30 @@
 # Optimizer Robustness v1.4
 
 - Status: `OK`
-- Strict sample: `439`
-- Period: `2025-05-28 → 2026-08-10`
-- Asset count: `13`
+- Strict sample: `548`
+- Period: `2025-05-28 → 2026-11-26`
+- Asset count: `15`
 
 ## Windows
 
 | Window | Status | Sample | Period / Reason |
 |---|---:|---:|---|
-| 6M | OK | 126 | 2026-04-06 → 2026-08-10 |
-| 1Y | OK | 252 | 2025-12-01 → 2026-08-10 |
-| FULL_STRICT | OK | 439 | 2025-05-28 → 2026-08-10 |
-| 2Y | OK | 439 | 2025-05-28 → 2026-08-10 |
-| 3Y | UNAVAILABLE | 439 | strict sample too short for this window |
+| 6M | OK | 126 | 2026-07-24 → 2026-11-26 |
+| 1Y | OK | 252 | 2026-03-20 → 2026-11-26 |
+| FULL_STRICT | OK | 548 | 2025-05-28 → 2026-11-26 |
+| 2Y | OK | 504 | 2025-07-11 → 2026-11-26 |
+| 3Y | OK | 548 | 2025-05-28 → 2026-11-26 |
 
 ## Method stability
 
 | Method | Verdict | Available windows | Avg pairwise turnover | Max weight range | ES95 range | Ann vol range |
 |---|---:|---:|---:|---:|---:|---:|
-| current_weight | 穩定 | 4 | 0.0% | 0.0% | 0.123% | 1.21% |
-| inverse_vol_baseline | 可觀察 | 4 | 7.88% | 11.26% | 0.367% | 2.36% |
-| riskfolio_cvar_minimize | 穩定 | 4 | 5.26% | 4.46% | 0.454% | 2.42% |
-| riskfolio_hrp_mv | 不穩定 | 4 | 25.01% | 43.09% | 0.698% | 4.32% |
-| riskfolio_min_variance | 穩定 | 4 | 4.9% | 3.74% | 0.428% | 2.46% |
-| riskfolio_risk_parity_mv | 不穩定 | 4 | 16.81% | 29.76% | 0.624% | 4.12% |
-| scipy_min_variance_fallback | 穩定 | 4 | 5.52% | 3.97% | 0.42% | 2.46% |
-| skfolio_cvar_minimize | 穩定 | 4 | 5.26% | 4.46% | 0.454% | 2.42% |
-| skfolio_min_variance | 穩定 | 4 | 4.86% | 3.74% | 0.428% | 2.46% |
+| current_weight | 穩定 | 5 | 0.0% | 0.0% | 0.506% | 1.78% |
+| inverse_vol_baseline | 穩定 | 5 | 5.29% | 6.89% | 0.159% | 0.56% |
+| riskfolio_cvar_minimize | 可觀察 | 5 | 11.22% | 17.06% | 0.217% | 1.34% |
+| riskfolio_hrp_mv | 不穩定 | 5 | 19.64% | 31.97% | 0.469% | 2.74% |
+| riskfolio_min_variance | 穩定 | 5 | 4.54% | 4.32% | 0.205% | 1.37% |
+| riskfolio_risk_parity_mv | 可觀察 | 5 | 12.56% | 20.8% | 0.258% | 2.16% |
+| scipy_min_variance_fallback | 穩定 | 5 | 4.52% | 3.82% | 0.204% | 1.37% |
+| skfolio_cvar_minimize | 可觀察 | 5 | 11.22% | 17.06% | 0.217% | 1.34% |
+| skfolio_min_variance | 穩定 | 5 | 4.55% | 4.33% | 0.205% | 1.37% |

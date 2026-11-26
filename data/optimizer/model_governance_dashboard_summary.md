@@ -1,6 +1,6 @@
 # Model Governance Dashboard v3.4
 
-Generated: `2026-08-10T04:03:18+00:00`
+Generated: `2026-11-26T08:29:34+00:00`
 
 ## Safety boundary
 
@@ -9,10 +9,10 @@ Generated: `2026-08-10T04:03:18+00:00`
 
 ## Summary
 
-- Governance score: `92`
-- Verdict: `watch_only_with_governance_warnings`
+- Governance score: `100`
+- Verdict: `governance_ok_watch_only`
 - Critical flags: `0`
-- Warning flags: `1`
+- Warning flags: `0`
 - Missing models: `0`
 
 ## Model registry
@@ -37,7 +37,7 @@ Generated: `2026-08-10T04:03:18+00:00`
 
 ## Governance flags
 
-- `warning` / `three_year_window_unavailable` — 樣本品質限制：three_year_window_unavailable
+None.
 
 ## Failure conditions
 
