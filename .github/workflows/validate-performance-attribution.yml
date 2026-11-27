@@ -62,6 +62,9 @@ on:
       - 'index.html'
       - 'data/attribution/fund_nav_history.csv'
       - '.github/workflows/validate-performance-attribution.yml'
+      - 'scripts/jensen_alpha.py'
+      - 'tests/test_performance_semantics.py'
+      - 'tests/test_performance_semantics.mjs'
   pull_request:
     paths:
       - 'scripts/**'
@@ -71,6 +74,65 @@ on:
       - '.github/workflows/capture-private-nav.yml'
       - 'index.html'
       - '.github/workflows/validate-performance-attribution.yml'
+      - 'scripts/build_performance_attribution.py'
+      - 'scripts/performance_data_quality.py'
+      - 'scripts/performance_market_data.py'
+      - 'scripts/performance_rolling_factor.py'
+      - 'scripts/performance_pit_nav.py'
+      - 'scripts/capture_private_nav.py'
+      - 'tests/test_automated_nav_v24.py'
+      - 'sql/automated_nav_capture.sql'
+      - 'scripts/restore_supabase_backup.py'
+      - 'tests/test_public_backup.py'
+      - 'scripts/performance_total_return.py'
+      - 'scripts/performance_quality_gate.py'
+      - 'scripts/performance_quality_diagnostics.py'
+      - 'scripts/performance_cashflow.py'
+      - 'scripts/performance_risk_research.py'
+      - 'scripts/performance_portfolio_risk.py'
+      - 'scripts/performance_currency_rebalance.py'
+      - 'scripts/performance_lookthrough.py'
+      - 'scripts/fetch_portfolio_holdings.py'
+      - 'tests/test_holdings_quality_v384.py'
+      - 'scripts/performance_oos_risk_budget.py'
+      - 'scripts/enrich_xray_lookthrough.py'
+      - 'tests/test_lookthrough_oos_v39.py'
+      - 'config/risk_rebalance_v36.json'
+      - 'tests/test_currency_rebalance_v36.py'
+      - 'config/portfolio_risk_v34.json'
+      - 'tests/test_portfolio_risk_v34.py'
+      - 'tests/test_research_v32.py'
+      - 'scripts/private_portfolio_backup.py'
+      - 'tests/test_attribution_v27.py'
+      - 'sql/attribution_policy_v27.sql'
+      - 'sql/private_backup_v27.sql'
+      - '.github/workflows/weekly_backup.yml.yml'
+      - '.github/workflows/restore-supabase-backup.yml'
+      - 'scripts/performance_brinson.py'
+      - 'scripts/performance_brinson_historical.py'
+      - 'scripts/performance_coverage.py'
+      - 'scripts/performance_calendar.py'
+      - 'tests/test_market_recovery_v231.py'
+      - 'requirements.txt'
+      - 'scripts/import_fund_nav_archive.py'
+      - 'tests/test_coverage_v23.py'
+      - 'tests/test_historical_brinson.py'
+      - 'config/attribution_benchmark.json'
+      - 'scripts/cost_walk_forward.py'
+      - 'config/cost_walk_forward.json'
+      - 'tests/test_cost_walk_forward.py'
+      - 'tests/test_pit_nav.mjs'
+      - 'scripts/run_cost_aware_optimizer.py'
+      - 'scripts/run_constrained_optimizer.py'
+      - 'config/optimizer_phase3.json'
+      - 'scripts/build_walk_forward_backtest.py'
+      - 'tests/test_performance_attribution.py'
+      - 'assets/js/src/app.bundle.source.js'
+      - 'assets/js/app.bundle.js'
+      - 'data/attribution/fund_nav_history.csv'
+      - 'scripts/jensen_alpha.py'
+      - 'tests/test_performance_semantics.py'
+      - 'tests/test_performance_semantics.mjs'
   workflow_dispatch:
 permissions:
   contents: read
@@ -96,9 +158,11 @@ jobs:
       - run: python -m unittest discover -s tests -p test_holdings_quality_v384.py
       - run: python -m unittest discover -s tests -p test_public_backup.py
       - run: python -m unittest discover -s tests -p test_cost_walk_forward.py
+      - run: python -m unittest discover -s tests -p test_performance_semantics.py
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
       - run: node --check assets/js/app.bundle.js
       - run: node tests/test_pit_nav.mjs
+      - run: node tests/test_performance_semantics.mjs
       - run: cmp assets/js/src/app.bundle.source.js assets/js/app.bundle.js
