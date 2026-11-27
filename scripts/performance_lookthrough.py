@@ -10,6 +10,45 @@ from enrich_xray_lookthrough import (SUPPORTED_FUNDS,SPECIAL_EXPOSURE_MODES,
     load_holdings_set,_snapshot_stale_limit_days)
 
 UNKNOWN="Unknown"
+
+# Explicit security identifiers only: no name-based or bare-ticker merges.
+# Alphabet Class A/C and Berkshire Hathaway Class A/B.
+ISSUER_GROUPS = {
+    "ALPHABET": ("Alphabet Inc.", ("US02079K3059", "US02079K1079")),
+    "BERKSHIRE": ("Berkshire Hathaway Inc.", ("US0846701086", "US0846707026")),
+}
+ISSUER_KEYS = {key: (issuer, name) for issuer, (name, ids) in ISSUER_GROUPS.items()
+               for i in ids for key in ("ISIN:"+i, "CUSIP:"+i[2:11])}
+
+def issuer_concentration(rows):
+    groups = {}
+    confirmed = 0.
+    total = sum(r["total_pct"] for r in rows)
+    for r in rows:
+        match = ISSUER_KEYS.get(r["key"])
+        key, name = match if match else ("PROXY:"+r["key"], r["name"] or r["ticker"])
+        if match:
+            confirmed += r["total_pct"]
+        row = groups.setdefault(key, {"key":key,"name":name,"direct_pct":0.,"indirect_pct":0.,"total_pct":0.,
+                                      "confirmed":bool(match),"securities":[],"source_funds":[]})
+        for field in ("direct_pct","indirect_pct","total_pct"):
+            row[field] += r[field]
+        row["securities"].append(r["key"])
+        row["source_funds"] = sorted(set(row["source_funds"]) | set(r["source_funds"]))
+    ranked = sorted(groups.values(),key=lambda r:-r["total_pct"])
+    hhi = sum((r["total_pct"]/total)**2 for r in ranked) if total else None
+    return {"status":"PARTIAL_RESEARCH_ONLY" if total else "UNAVAILABLE",
+            "method":"CURATED_IDENTIFIER_GROUPS_PLUS_UNVERIFIED_SECURITY_PROXIES",
+            "confirmed_mapping_pct":confirmed/total*100 if total else None,
+            "confirmed_mapping_nav_pct":confirmed,
+            "proxy_nav_pct":total-confirmed,
+            "hhi":hhi*10000 if hhi is not None else None,
+            "effective_issuers":1/hhi if hhi else None,
+            "top5_pct":sum(r["total_pct"] for r in ranked[:5]),
+            "top10_pct":sum(r["total_pct"] for r in ranked[:10]),
+            "issuer_proxy_count":len(ranked),"rows":ranked[:50],
+            "note":"Provisional issuer proxy concentration on mapped equity; unverified securities remain separate. Not certified issuer-level coverage."}
+
 def text(v):
     return str(v or "").strip()
 def symbol(v):
@@ -136,15 +175,17 @@ def combined_exposure(ex,snapshots=None,as_of=None):
     out.sort(key=lambda r:r["total_pct"],reverse=True)
     hhi=sum((r["total_pct"]/100/total)**2 for r in out) if total else None
     if any(r["key"].startswith("UNMATCHED:") for r in out):warnings.append("UNRESOLVED_SECURITY_IDENTITIES")
-    return {"version":"v3.8.1–v3.8.3","status":"PARTIAL_RESEARCH_ONLY" if unknown>1e-8 or warnings or any(UNKNOWN in d for d in dist.values()) else "RESEARCH_ONLY",
+    issuer=issuer_concentration(out)
+    return {"version":"v3.8.5","status":"PARTIAL_RESEARCH_ONLY" if unknown>1e-8 or warnings or any(UNKNOWN in d for d in dist.values()) else "RESEARCH_ONLY",
             "execution_permission":False,"as_of":ex["as_of"],"snapshot_reference_date":str(as_of),"basis":ex["basis"],
             "mapped_equity_pct":total*100,"unmapped_pct":unknown,"non_equity_pct":other,
             "direct_pct":sum(r["direct_pct"] for r in out),"indirect_pct":sum(r["indirect_pct"] for r in out),
             "top5_pct":sum(r["total_pct"] for r in out[:5]),"top10_pct":sum(r["total_pct"] for r in out[:10]),
             "mapped_equity_hhi":hhi*10000 if hhi else None,"effective_names":1/hhi if hhi else None,
+            "issuer_concentration":issuer,
             "mapped_equity_count":len(out),"rows":out[:50],"unmapped":unmapped,"non_equity":non_equity,"funds":funds,"warnings":warnings,
             "sector":[{"label":k,"portfolio_pct":v} for k,v in sorted(dist["sector"].items(),key=lambda x:-x[1])],
             "country":[{"label":k,"portfolio_pct":v} for k,v in sorted(dist["country"].items(),key=lambda x:-x[1])],
             "notes":["All weights relative to model NAV including TWD cash. HHI conditional on mapped equity only, not whole portfolio; unresolved identities may understate concentration.",
                      "Current holdings snapshot dates may differ; stale holdings retained as provisional. Sector/country from supplied records only, conflicts unknown; fresh matched records may fill absent labels. No fund domicile or ISIN prefix used as country classification.",
-                     "Direct equity requires matching market-qualified constituent evidence; unknown assets and fund residuals stay unmapped. No derivative notional or nested fund inference; security not issuer HHI."]}
+                     "Direct equity requires matching market-qualified constituent evidence; unknown assets and fund residuals stay unmapped. No derivative notional or nested fund inference. Original security HHI retained; issuer proxy HHI merges curated identifiers only."]}

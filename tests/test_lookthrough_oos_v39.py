@@ -5,7 +5,7 @@ from unittest.mock import patch
 import numpy as np
 import pandas as pd
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"scripts"))
-from performance_lookthrough import combined_exposure
+from performance_lookthrough import combined_exposure, issuer_concentration
 from performance_oos_risk_budget import validate_oos,METHODS
 
 def h(t,w,b="global_equity",c="USD"):
@@ -15,6 +15,19 @@ def stock(t,w,ident="",kind="ISIN",country=None,sector=None,exchange=None):
             "country":country,"sector":sector,"exchange":exchange}
 def snap(f,rows,d="2026-11-25",quality="OFFICIAL_DAILY"):
     return {"fund":f,"as_of":d,"source_quality":quality,"lookthrough_mode":"EQUITY_LOOKTHROUGH","holdings":rows}
+
+class IssuerTests(unittest.TestCase):
+    def test_explicit_merge_and_proxy(self):
+        rows=[{"key":"ISIN:US02079K3059","name":"Alphabet A","ticker":"GOOGL","direct_pct":3.,"indirect_pct":0.,"total_pct":3.,"source_funds":[]},
+              {"key":"CUSIP:02079K107","name":"Alphabet C","ticker":"GOOG","direct_pct":0.,"indirect_pct":4.,"total_pct":4.,"source_funds":["VOO"]},
+              {"key":"US:OTHER","name":"Other","ticker":"OTHER","direct_pct":5.,"indirect_pct":0.,"total_pct":5.,"source_funds":[]}]
+        r=issuer_concentration(rows)
+        self.assertAlmostEqual(r["hhi"],10000*((7/12)**2+(5/12)**2))
+        self.assertAlmostEqual(r["confirmed_mapping_pct"],100*7/12)
+        self.assertAlmostEqual(r["rows"][0]["total_pct"],7)
+        self.assertEqual(r["rows"][0]["source_funds"],["VOO"])
+        self.assertEqual(r["status"],"PARTIAL_RESEARCH_ONLY")
+        self.assertIsNone(issuer_concentration([])["hhi"])
 
 class LookthroughTests(unittest.TestCase):
     def setUp(self):
