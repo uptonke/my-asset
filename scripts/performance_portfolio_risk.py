@@ -263,5 +263,12 @@ def build_portfolio_risk(nav,tx,categories,market,captured,config=None,today=Non
                 except RiskBlocked as e:out["risk_windows"][str(n)]={"status":"UNAVAILABLE","reason":str(e)}
         out["historical"]=[historical(ex,frame,n) for n in (1,4)]
     except Exception:out["coverage"]={"status":"UNAVAILABLE","reason":"Common weekly marks failed"}
+    # Both new modules share this exact common-mark sample; no extra providers.
+    from performance_currency_rebalance import currency_summary,rebalance_report
+    if "latest" not in locals():latest=pd.DataFrame()
+    try:out["currency_risk"]=currency_summary(ex,latest,market)
+    except Exception:out["currency_risk"]={"status":"UNAVAILABLE","execution_permission":False}
+    try:out["rebalance"]=rebalance_report(ex,latest,config["scenarios"])
+    except Exception:out["rebalance"]={"status":"UNAVAILABLE","execution_permission":False}
     out["status"]="RESEARCH_ONLY" if any(r["status"]=="RESEARCH_ONLY" for r in out["risk_windows"].values()) else "PARTIAL_RESEARCH_ONLY"
     return out
