@@ -247,6 +247,9 @@ def build_portfolio_risk(nav,tx,categories,market,captured,config=None,today=Non
     except Exception as e:
         out["reason"]=str(e)[:160] if isinstance(e,RiskBlocked) else "EXPOSURE_MARK_OR_SOURCE_VALIDATION_FAILED"
         return out
+    from performance_lookthrough import combined_exposure
+    try:out["combined_lookthrough"]=combined_exposure(ex)
+    except Exception:out["combined_lookthrough"]={"status":"UNAVAILABLE","reason":"Snapshot or exposure identity failed"}
     # Keep scenarios useful even when weekly covariance history is insufficient.
     for s in config["scenarios"]:
         try:out["hypothetical"].append(hypothetical(ex,s))
@@ -262,6 +265,9 @@ def build_portfolio_risk(nav,tx,categories,market,captured,config=None,today=Non
                 try:out["risk_windows"][str(n)]=risk_contributions(latest.iloc[-n:],ex)
                 except RiskBlocked as e:out["risk_windows"][str(n)]={"status":"UNAVAILABLE","reason":str(e)}
         out["historical"]=[historical(ex,frame,n) for n in (1,4)]
+        from performance_oos_risk_budget import validate_oos
+        try:out["oos_risk_budget"]=validate_oos(ex,latest)
+        except Exception:out["oos_risk_budget"]={"status":"UNAVAILABLE","reason":"Common marks, constraints or validation failed","execution_permission":False}
         from performance_currency_rebalance import build_extensions
         try:out["currency_risk"],out["risk_rebalancing"]=build_extensions(ex,market,latest,out["hypothetical"])
         except Exception:

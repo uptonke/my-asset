@@ -17,6 +17,11 @@ def symbol(v):
 def isin(h):
     v=text(h.get("id")).upper()
     return v if text(h.get("id_type")).upper()=="ISIN" and re.fullmatch(r"[A-Z]{2}[A-Z0-9]{9}[0-9]",v) else ""
+def cusip(h):
+    i=isin(h)
+    if i.startswith(("US","CA")):return i[2:11]
+    v=text(h.get("id")).upper()
+    return v if text(h.get("id_type")).upper()=="CUSIP" and re.fullmatch(r"[A-Z0-9]{9}",v) else ""
 def alias(h):
     t=symbol(h.get("ticker"));c=text(h.get("country")).casefold();e=text(h.get("exchange")).upper()
     i=isin(h)
@@ -26,14 +31,14 @@ def alias(h):
     return ""
 def country(v):
     s=text(v)
-    return {"us":"United States","usa":"United States","united states of america":"United States","uk":"United Kingdom","taiwan, province of china":"Taiwan","台灣":"Taiwan"}.get(s.casefold(),s or UNKNOWN)
+    return {"us":"United States","usa":"United States","united states of america":"United States","united states":"United States","united kingdom":"United Kingdom","taiwan":"Taiwan","uk":"United Kingdom","taiwan, province of china":"Taiwan","台灣":"Taiwan"}.get(s.casefold(),s.title() if s else UNKNOWN)
 def sector(v):
     s=text(v)
-    return {"technology":"Information Technology","healthcare":"Health Care","consumer cyclical":"Consumer Discretionary","consumer defensive":"Consumer Staples","financial services":"Financials","basic materials":"Materials","communication services":"Communication Services"}.get(s.casefold(),s or UNKNOWN)
+    return {"information technology":"Information Technology","industrials":"Industrials","financials":"Financials","health care":"Health Care","consumer discretionary":"Consumer Discretionary","consumer staples":"Consumer Staples","energy":"Energy","materials":"Materials","utilities":"Utilities","real estate":"Real Estate","technology":"Information Technology","healthcare":"Health Care","consumer cyclical":"Consumer Discretionary","consumer defensive":"Consumer Staples","financial services":"Financials","basic materials":"Materials","communication services":"Communication Services"}.get(s.casefold(),s.title() if s else UNKNOWN)
 
 def combined_exposure(ex,snapshots=None,as_of=None):
     if snapshots is None:snapshots,_=load_holdings_set()
-    as_of=as_of or date.today()
+    as_of=as_of or date.fromisoformat(ex["as_of"])
     # All available snapshots may supply identity/classification evidence.
     # Future-dated snapshots are never used; stale metadata remains flagged.
     valid={};warnings=[]
@@ -44,13 +49,17 @@ def combined_exposure(ex,snapshots=None,as_of=None):
             if not isinstance(s["holdings"],list):continue
             valid[f]=s
         except Exception:continue
-    aliases=defaultdict(set)
+    aliases=defaultdict(set);cusips=defaultdict(set)
     for s in valid.values():
         for h in s["holdings"]:
-            if h.get("asset_class")=="equity" and alias(h) and isin(h):aliases[alias(h)].add(isin(h))
+            if h.get("asset_class")!="equity":continue
+            if alias(h) and isin(h):aliases[alias(h)].add(isin(h))
+            if cusip(h) and isin(h):cusips[cusip(h)].add(isin(h))
     def key(h,f,j):
-        i=isin(h);a=alias(h)
+        i=isin(h);a=alias(h);c=cusip(h)
         if i:return "ISIN:"+i
+        if c and len(cusips[c])==1:return "ISIN:"+next(iter(cusips[c]))
+        if c and not cusips[c] and not a:return "CUSIP:"+c
         if a and len(aliases[a])==1:return "ISIN:"+next(iter(aliases[a]))
         if a and not aliases[a]:return a
         # Exchange-qualified local identifier, not bare ambiguous ticker.
@@ -126,6 +135,7 @@ def combined_exposure(ex,snapshots=None,as_of=None):
                     "total_pct":v*100,"source_funds":sorted(r["funds"]),**fields})
     out.sort(key=lambda r:r["total_pct"],reverse=True)
     hhi=sum((r["total_pct"]/100/total)**2 for r in out) if total else None
+    if any(r["key"].startswith("UNMATCHED:") for r in out):warnings.append("UNRESOLVED_SECURITY_IDENTITIES")
     return {"version":"v3.8.1–v3.8.3","status":"PARTIAL_RESEARCH_ONLY" if unknown>1e-8 or warnings or any(UNKNOWN in d for d in dist.values()) else "RESEARCH_ONLY",
             "execution_permission":False,"as_of":ex["as_of"],"snapshot_reference_date":str(as_of),"basis":ex["basis"],
             "mapped_equity_pct":total*100,"unmapped_pct":unknown,"non_equity_pct":other,
