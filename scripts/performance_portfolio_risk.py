@@ -262,6 +262,11 @@ def build_portfolio_risk(nav,tx,categories,market,captured,config=None,today=Non
                 try:out["risk_windows"][str(n)]=risk_contributions(latest.iloc[-n:],ex)
                 except RiskBlocked as e:out["risk_windows"][str(n)]={"status":"UNAVAILABLE","reason":str(e)}
         out["historical"]=[historical(ex,frame,n) for n in (1,4)]
+        from performance_currency_rebalance import build_extensions
+        try:out["currency_risk"],out["risk_rebalancing"]=build_extensions(ex,market,latest,out["hypothetical"])
+        except Exception:
+            out["currency_risk"]={"status":"UNAVAILABLE","execution_permission":False}
+            out["risk_rebalancing"]={"status":"UNAVAILABLE","execution_permission":False}
     except Exception:out["coverage"]={"status":"UNAVAILABLE","reason":"Common weekly marks failed"}
     out["status"]="RESEARCH_ONLY" if any(r["status"]=="RESEARCH_ONLY" for r in out["risk_windows"].values()) else "PARTIAL_RESEARCH_ONLY"
     return out

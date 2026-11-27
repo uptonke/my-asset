@@ -19,6 +19,9 @@ on:
       - 'scripts/performance_cashflow.py'
       - 'scripts/performance_risk_research.py'
       - 'scripts/performance_portfolio_risk.py'
+      - 'scripts/performance_currency_rebalance.py'
+      - 'config/risk_rebalance_v36.json'
+      - 'tests/test_currency_rebalance_v36.py'
       - 'config/portfolio_risk_v34.json'
       - 'tests/test_portfolio_risk_v34.py'
       - 'tests/test_research_v32.py'
@@ -82,6 +85,7 @@ jobs:
       - run: python -m unittest discover -s tests -p test_attribution_v27.py
       - run: python -m unittest discover -s tests -p test_research_v32.py
       - run: python -m unittest discover -s tests -p test_portfolio_risk_v34.py
+      - run: python -m unittest discover -s tests -p test_currency_rebalance_v36.py
       - run: python -m unittest discover -s tests -p test_public_backup.py
       - run: python -m unittest discover -s tests -p test_cost_walk_forward.py
       - uses: actions/setup-node@v4
