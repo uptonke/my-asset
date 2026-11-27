@@ -73,9 +73,16 @@ class OOSTests(unittest.TestCase):
         self.assertLess(f["train_end"],f["execution_date"])
         self.assertLess(f["execution_date"],f["test_start"])
         other=self.r.copy();other.iloc[52:]*=1.7
+        pd.testing.assert_frame_equal(self.r.iloc[:52],other.iloc[:52],check_exact=True)
         rr=validate_oos(self.ex,other)
         for m in METHODS:
-            self.assertEqual(f["methods"][m]["signal_weights"],rr["folds"][0]["methods"][m]["signal_weights"])
+            a=f["methods"][m]["signal_weights"]
+            b=rr["folds"][0]["methods"][m]["signal_weights"]
+            self.assertEqual(a is None,b is None)
+            if a is not None:
+                self.assertEqual(set(a),set(b))
+                # SLSQP/BLAS roundoff is not lookahead: allow at most 0.0001 pp.
+                np.testing.assert_allclose([a[t] for t in sorted(a)],[b[t] for t in sorted(a)],rtol=0,atol=1e-6)
             self.assertEqual(r["aggregates"][m]["observations"],25)
             self.assertLessEqual(r["aggregates"][m]["net_return_pct"],r["aggregates"][m]["gross_return_pct"]+1e-7)
             self.assertAlmostEqual(sum(x["risk_pct"] for x in r["aggregates"][m]["realized_gross_risk"]),100.)

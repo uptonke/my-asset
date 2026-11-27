@@ -73,7 +73,9 @@ def validate_oos(ex,returns,config=None,opt=None):
     state={m:{"weights":start.copy(),"nav":1.,"gross_nav":1.,"net":[],"gross":[],"groups":[],"cost":0.,"turnover":0.,"failed":0,"breach":0} for m in METHODS}
     folds=[]
     for k in range(52,len(X)-4,5):
-        train=returns.iloc[k-52:k]
+        # Isolate the signal input from execution/test values and memory layout.
+        train=pd.DataFrame(np.array(returns.iloc[k-52:k][cols],dtype=np.float64,order="C",copy=True),
+                           index=returns.index[k-52:k].copy(),columns=cols)
         fold={"train_start":str((train.index[0]-pd.Timedelta(days=7)).date()),"train_end":str(train.index[-1].date()),
               "execution_date":str(returns.index[k].date()),"test_start":str(returns.index[k+1].date()),"test_end":str(returns.index[k+4].date()),"methods":{}}
         for m,s in state.items():
