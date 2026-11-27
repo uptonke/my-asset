@@ -39,6 +39,7 @@ jobs:
       - run: python -m unittest discover -s tests -p test_research_v32.py
       - run: python -m unittest discover -s tests -p test_portfolio_risk_v34.py
       - run: python -m unittest discover -s tests -p test_currency_rebalance_v36.py
+      - run: python -m unittest discover -s tests -p test_lookthrough_oos_v39.py
       - name: Publish private report only
         env:
           # Manual workflow dispatch always rebuilds. Reusable callers

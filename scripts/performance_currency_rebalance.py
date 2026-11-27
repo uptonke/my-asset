@@ -103,7 +103,7 @@ def rebalancing(ex,returns,scenarios,config=None,opt=None):
     opt=opt or json.loads(OPT.read_text())
     hs=ex["holdings"];cols=[h["ticker"] for h in hs];n=len(cols)
     w0=np.array([h["weight"] for h in hs],dtype=float)
-    X=returns[cols].to_numpy(dtype=float)
+    X=np.array(returns[cols],dtype=np.float64,order="C",copy=True)
     if len(X)!=52 or not np.isfinite(X).all() or min(w0)<0 or not np.isclose(w0.sum(),1.,atol=1e-9):
         raise ValueError("Require exact 52 complete weekly observations")
     if n<2 or len(set(cols))!=n:raise ValueError("Invalid universe")
