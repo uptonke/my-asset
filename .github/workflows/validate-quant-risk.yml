@@ -1,0 +1,123 @@
+name: Quant & Risk Validation
+on:
+  push:
+    paths:
+      - 'assets/js/src/app.bundle.source.js'
+      - 'assets/js/app.bundle.js'
+      - 'index.html'
+      - 'scripts/run_*optimizer*.py'
+      - 'scripts/run_skfolio_sandbox.py'
+      - 'scripts/run_riskfolio_sandbox.py'
+      - 'tests/test_optimizer_phase1.mjs'
+      - 'scripts/run_constrained_optimizer.py'
+      - 'scripts/update_stock_meta.py'
+      - 'tests/test_constrained_optimizer.py'
+      - 'tests/test_optimizer_phase2.mjs'
+      - 'scripts/run_cost_aware_optimizer.py'
+      - 'scripts/run_common_optimizer_snapshot.py'
+      - 'scripts/build_expected_return_model.py'
+      - 'scripts/build_black_litterman_sandbox.py'
+      - 'config/optimizer_phase3.json'
+      - 'tests/test_cost_aware_optimizer.py'
+      - 'tests/test_optimizer_phase3.mjs'
+      - 'update_stock_meta.py'
+      - 'tests/test_signed_component_es.py'
+      - '.github/workflows/validate-quant-risk.yml'
+      - 'tests/test_gbm_path_simulation.mjs'
+      - 'scripts/build_frontend_bundle.py'
+  pull_request:
+    paths:
+      - 'assets/js/src/app.bundle.source.js'
+      - 'assets/js/app.bundle.js'
+      - 'index.html'
+      - 'scripts/run_*optimizer*.py'
+      - 'scripts/run_skfolio_sandbox.py'
+      - 'scripts/run_riskfolio_sandbox.py'
+      - 'tests/test_optimizer_phase1.mjs'
+      - 'scripts/run_constrained_optimizer.py'
+      - 'scripts/update_stock_meta.py'
+      - 'tests/test_constrained_optimizer.py'
+      - 'tests/test_optimizer_phase2.mjs'
+      - 'scripts/run_cost_aware_optimizer.py'
+      - 'scripts/run_common_optimizer_snapshot.py'
+      - 'scripts/build_expected_return_model.py'
+      - 'scripts/build_black_litterman_sandbox.py'
+      - 'config/optimizer_phase3.json'
+      - 'tests/test_cost_aware_optimizer.py'
+      - 'tests/test_optimizer_phase3.mjs'
+      - 'update_stock_meta.py'
+      - 'tests/test_signed_component_es.py'
+      - '.github/workflows/validate-quant-risk.yml'
+      - 'tests/test_gbm_path_simulation.mjs'
+      - 'scripts/build_frontend_bundle.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  optimizer-phase1:
+    name: Optimizer Phase 1
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m py_compile scripts/run_skfolio_sandbox.py scripts/run_riskfolio_sandbox.py scripts/run_optimizer_robustness.py scripts/run_common_optimizer_snapshot.py
+      - run: node --check assets/js/app.bundle.js
+      - run: node tests/test_optimizer_phase1.mjs
+      - run: python scripts/build_frontend_bundle.py --check
+  optimizer-phase2:
+    name: Optimizer Phase 2
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install numpy==2.2.6 pandas==2.3.2 scipy==1.13.1 requests yfinance==0.2.66 'supabase>=2.7,<3'
+      - run: python -m py_compile scripts/run_constrained_optimizer.py scripts/run_skfolio_sandbox.py
+      - run: python -m unittest discover -s tests -p test_constrained_optimizer.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --check assets/js/app.bundle.js
+      - run: node tests/test_optimizer_phase2.mjs
+  optimizer-phase3:
+    name: Optimizer Phase 3
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install numpy==2.2.6 pandas==2.3.2 scipy==1.13.1
+      - run: python -m unittest discover -s tests -p test_cost_aware_optimizer.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node --check assets/js/app.bundle.js
+      - run: node tests/test_optimizer_phase3.mjs
+  signed-component-es:
+    name: Signed Component ES
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy==2.2.6 pandas==2.3.2
+      - run: python -m unittest discover -s tests -p test_signed_component_es.py
+  gbm-path-simulation:
+    name: GBM Path Simulation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node tests/test_gbm_path_simulation.mjs
