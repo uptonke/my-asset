@@ -182,6 +182,8 @@ def rebalancing(ex,returns,scenarios,config=None,opt=None):
                                    for i,t in enumerate(cols)])
             except Exception:row["status"]="FAILED"
             out["candidates"].append(row)
+    if not any(r["status"]=="RESEARCH_ONLY" for r in out["candidates"]):
+        out.update(status="NO_FEASIBLE_CANDIDATE",reason="No validated solution under the existing constraints")
     return out
 
 def build_extensions(ex,market,latest,scenarios):

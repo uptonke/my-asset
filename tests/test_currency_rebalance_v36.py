@@ -70,6 +70,12 @@ class CurrencyRebalanceTests(unittest.TestCase):
         self.assertEqual(r["status"],"BLOCKED")
         _,r=build_extensions(self.ex,self.market,self.returns.iloc[-26:],self.s)
         self.assertEqual(r["status"],"INSUFFICIENT_SAMPLE")
+    def test_infeasible_turnover_no_relaxation(self):
+        config={"risk_budget":{"global_equity":.5,"taiwan_equity":.2,"crypto":.2,"gold":.1,"cash":0.},"turnover_caps":[.001]}
+        r=rebalancing(self.ex,self.returns,self.s,config=config)
+        self.assertEqual(r["status"],"NO_FEASIBLE_CANDIDATE")
+        self.assertTrue(all(x["status"]=="INFEASIBLE" for x in r["candidates"]))
+        self.assertTrue(all("trades" not in x for x in r["candidates"]))
     def test_missing_fx_not_zero(self):
         with self.assertRaises(Exception):currency_risk(self.ex,{"fx":pd.Series(dtype=float)},self.returns)
 if __name__=="__main__":unittest.main()
