@@ -1318,6 +1318,57 @@
                         </template><div v-else class="text-xs">尚無可用曝險，未計算情境</div>
                     </div>
                     <div class="glass chart-card p-5 md:p-6 space-y-3">
+                        <h4 class="panel-title">Currency Risk Attribution · v3.5</h4>
+                        <p class="panel-subtitle">區分原幣價格、純匯率與交互項。計價幣別並非底層企業經濟曝險；固定匯率反事實不是避險策略回測。保留成交差額與未解釋損益，不新增股息。</p>
+                        <template v-if="performanceAttribution?.portfolio_risk?.currency_risk">
+                            <div class="text-xs">{{ performanceAttribution.portfolio_risk.currency_risk.status }}｜{{ performanceAttribution.portfolio_risk.currency_risk.as_of }}</div>
+                            <div class="text-xs">USD 計價 {{ performancePct(performanceAttribution.portfolio_risk.currency_risk.usd_quote_weight_pct) }}｜TWD 計價 {{ performancePct(performanceAttribution.portfolio_risk.currency_risk.twd_quote_weight_pct) }}｜USD/TWD +1% 敏感度 NT$ {{ formatNumber(performanceAttribution.portfolio_risk.currency_risk.usd_twd_1pct_sensitivity_twd) }}</div>
+                            <details class="text-xs" v-for="(r,k) in performanceAttribution.portfolio_risk.currency_risk.windows || {}" :key="k" :open="k==='52'">
+                                <summary>{{ k }} 週｜{{ r.status }}｜年化波動 {{ performancePct(r.annualized_vol_pct) }}｜固定匯率 {{ performancePct(r.constant_fx_ann_vol_pct) }}</summary>
+                                <template v-if="r.status==='RESEARCH_ONLY'">
+                                    <div>{{ r.start }} ～ {{ r.end }}｜純匯率 {{ r.components_pp.fx_pp.toFixed(3) }} pp｜交互 {{ r.components_pp.interaction_pp.toFixed(3) }} pp｜原幣價格 {{ r.components_pp.local_pp.toFixed(3) }} pp</div>
+                                    <div>匯率含交互風險占比 {{ performancePct(r.fx_including_interaction_risk_share_pct) }}｜Euler 核對 {{ r.identity_error_pp.toExponential(2) }} pp</div>
+                                    <div class="overflow-x-auto"><table class="w-full text-xs text-right"><thead><tr><th class="text-left">標的</th><th>原幣 pp</th><th>匯率 pp</th><th>交互 pp</th><th>合計 pp</th></tr></thead><tbody><tr v-for="s in r.rows" :key="s.ticker"><td class="text-left">{{ s.ticker==='__TWD_CASH__'?'TWD 現金':s.ticker }}</td><td>{{ s.local_pp.toFixed(3) }}</td><td>{{ s.fx_pp.toFixed(3) }}</td><td>{{ s.interaction_pp.toFixed(3) }}</td><td>{{ s.total_pp.toFixed(3) }}</td></tr></tbody></table></div>
+                                </template><div v-else>{{ r.reason || '共同樣本不足' }}</div>
+                            </details>
+                        </template>
+                        <template v-if="performanceAttribution?.currency_pnl">
+                            <h5 class="font-medium text-sm">帳載 NAV 歷史損益拆分（TWD）</h5>
+                            <details class="text-xs" v-for="(r,k) in performanceAttribution.currency_pnl.windows" :key="k" :open="k==='1M'">
+                                <summary>{{ k }}｜{{ r.status }}｜純匯率＋交互 NT$ {{ r.known_fx_including_interaction_twd===undefined?'—':formatNumber(r.known_fx_including_interaction_twd) }}</summary>
+                                <template v-if="r.status!=='UNAVAILABLE'">
+                                    <div>{{ r.start }} ～ {{ r.end }}｜實際 P&amp;L {{ formatNumber(r.actual_pnl_twd) }}</div>
+                                    <div>原幣價格 {{ formatNumber(r.price_twd) }}｜純匯率 {{ formatNumber(r.fx_twd) }}｜交互 {{ formatNumber(r.interaction_twd) }}｜成交 {{ formatNumber(r.execution_vs_close_twd) }}</div>
+                                    <div>未拆分 {{ formatNumber(r.unallocated_pnl_twd) }}｜其他現金流 {{ formatNumber(r.explicit_other_cashflow_twd) }}｜未解釋 {{ formatNumber(r.unexplained_twd) }}｜核對 {{ r.identity_error_twd.toFixed(6) }}</div>
+                                    <div>缺失 {{ r.missing.length }} 檔｜僅端點拆分 {{ r.partial_decomposition.length }} 檔</div>
+                                    <div v-for="s in r.rows" :key="s.ticker">{{ s.ticker }}｜價格 {{ s.price_twd==null?'—':formatNumber(s.price_twd) }}｜匯率 {{ s.fx_twd==null?'—':formatNumber(s.fx_twd) }}｜交互 {{ s.interaction_twd==null?'—':formatNumber(s.interaction_twd) }}</div>
+                                </template><div v-else>{{ r.reason }}</div>
+                            </details>
+                        </template><div v-else class="text-xs">等待更新</div>
+                    </div>
+                    <div class="glass chart-card p-5 md:p-6 space-y-3">
+                        <h4 class="panel-title">Risk Budget Rebalancing · v3.6</h4>
+                        <p class="panel-subtitle">僅現有標的＋TWD 現金，沿用既有研究限制。52 週同樣本最佳化，26 週重疊敏感度非樣本外。成本自 NAV 扣除，不自動交易；目標是示範非核准配置政策。</p>
+                        <template v-if="performanceAttribution?.portfolio_risk?.rebalance">
+                            <div class="text-xs">{{ performanceAttribution.portfolio_risk.rebalance.status }}｜{{ performanceAttribution.portfolio_risk.rebalance.reason || '' }}</div>
+                            <template v-if="performanceAttribution.portfolio_risk.rebalance.baseline">
+                                <div class="text-xs">{{ performanceAttribution.portfolio_risk.rebalance.start }} ～ {{ performanceAttribution.portfolio_risk.rebalance.end }}｜名目換手上限 {{ performancePct(performanceAttribution.portfolio_risk.rebalance.nominal_turnover_cap_pct) }}</div>
+                                <div class="text-xs">示範風險預算：<span v-for="(v,k) in performanceAttribution.portfolio_risk.rebalance.risk_budget_pct" :key="k">{{ k }} {{ performancePct(v) }}｜</span></div>
+                                <div class="text-xs text-amber-300" v-for="r in performanceAttribution.portfolio_risk.rebalance.current_policy_violations" :key="r.constraint">原投組超限 {{ r.constraint }}：{{ r.excess_pp.toFixed(3) }} pp</div>
+                                <div class="text-xs text-amber-300" v-for="(v,k) in performanceAttribution.portfolio_risk.rebalance.failures" :key="k">{{ k }}：{{ v }}</div>
+                                <div class="overflow-x-auto"><table class="w-full text-xs text-right"><thead><tr><th class="text-left">策略</th><th>52週波動</th><th>26週波動</th><th>ES95</th><th>預算RMSE pp</th><th>USD權重</th><th>名目換手</th><th>成本NT$</th></tr></thead><tbody><tr v-for="(r,k) in {baseline:performanceAttribution.portfolio_risk.rebalance.baseline,...performanceAttribution.portfolio_risk.rebalance.candidates}" :key="k"><td class="text-left">{{ k }}</td><td>{{ performancePct(r.annualized_vol_pct) }}</td><td>{{ performancePct(r.ann_vol_26w_pct) }}</td><td>{{ performancePct(r.es95_loss_pct) }}</td><td>{{ r.risk_budget_rmse_pp.toFixed(3) }}</td><td>{{ performancePct(r.usd_quote_weight_pct) }}</td><td>{{ performancePct(r.nominal_turnover_pct) }}</td><td>{{ formatNumber(r.estimated_cost_twd) }}</td></tr></tbody></table></div>
+                                <details class="text-xs" v-for="(r,k) in performanceAttribution.portfolio_risk.rebalance.candidates" :key="k">
+                                    <summary>{{ k }}｜候選組合明細（非下單指令）</summary>
+                                    <div>扣成本後 NAV {{ formatNumber(r.post_cost_nav_twd) }}｜實際半雙向換手 {{ performancePct(r.actual_half_gross_traded_pct) }}｜成本 0.5× / 2× {{ formatNumber(r.cost_sensitivity_twd['0.5']) }} / {{ formatNumber(r.cost_sensitivity_twd['2.0']) }} TWD</div>
+                                    <div v-for="g in r.groups" :key="g.bucket">{{ g.bucket }}｜資金 {{ performancePct(g.weight_pct) }}｜風險 {{ performancePct(g.risk_share_pct) }}</div>
+                                    <div v-for="s in r.weights" :key="s.ticker">{{ s.ticker==='__TWD_CASH__'?'TWD 現金':s.ticker }}｜{{ performancePct(s.before_pct) }} → {{ performancePct(s.after_pct) }}｜模型價值變化 NT$ {{ formatNumber(s.modeled_value_change_twd) }}</div>
+                                    <div v-for="s in r.stress" :key="s.id">{{ s.label }}｜原投組 {{ performancePct(performanceAttribution.portfolio_risk.rebalance.baseline.stress.find(x=>x.id===s.id)?.net_return_pct) }} → 扣成本 {{ performancePct(s.net_return_pct) }}｜NT$ {{ formatNumber(s.net_pnl_twd) }}</div>
+                                    <div>資金核對 NT$ {{ r.cashflow_identity_error_twd.toFixed(6) }}</div>
+                                </details>
+                            </template>
+                        </template><div v-else class="text-xs">尚無可用曝險，未計算</div>
+                    </div>
+                    <div class="glass chart-card p-5 md:p-6 space-y-3">
                         <h4 class="panel-title">Historical Brinson-Fachler · v2.3.3</h4>
                         <p class="panel-subtitle">歷史 NAV、流水帳及價格重建；研究用非正式基準。採交易日收盤切段與多期 Carino 主動報酬連結。現金為流水帳推算，非銀行核對；不跨缺漏區間，不回填原始 NAV。微額負現金 ≤ NT$1 僅在研究估值歸零；保留原始差額。</p>
                         <div class="text-xs text-amber-300">{{ performanceAttribution?.historical_brinson?.status || '等待新版歸因更新' }}｜{{ performanceAttribution?.historical_brinson?.reason || '' }}</div>
