@@ -78,6 +78,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add data/holdings/latest/
+          if [ -d data/holdings/archive ]; then git add data/holdings/archive/; fi
           if git diff --cached --quiet; then
             echo 'No holdings changes to commit.'
             exit 0

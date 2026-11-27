@@ -32,6 +32,8 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 import requests
 from bs4 import BeautifulSoup
@@ -58,6 +60,10 @@ class HoldingsError(RuntimeError):
 def _session() -> requests.Session:
     s = requests.Session()
     s.headers.update(HEADERS)
+    retry = Retry(total=2, connect=2, read=2, status=2, backoff_factor=1,
+                  status_forcelist=(429, 500, 502, 503, 504),
+                  allowed_methods=frozenset({"GET"}), respect_retry_after_header=False)
+    s.mount("https://", HTTPAdapter(max_retries=retry))
     return s
 
 
@@ -205,7 +211,9 @@ def _finalize(
     total_weight = sum(h["weight"] for h in holdings)
     equity_weight = sum(h["weight"] for h in holdings if h["asset_class"] == "equity")
     as_of_date = date.fromisoformat(as_of)
-    stale_days = max(0, (datetime.now(timezone.utc).date() - as_of_date).days)
+    stale_days = (datetime.now(timezone.utc).date() - as_of_date).days
+    if stale_days < 0:
+        raise HoldingsError(f"{fund}: future-dated holdings")
 
     # Sanity bounds catch HTML/CSV parser drift before a bad file replaces cache.
     if len(holdings) < 10:
@@ -296,7 +304,7 @@ def _fetch_ishares_csv(
     for row in rows:
         ticker = row.get("Ticker", "")
         name = row.get("Name", "")
-        weight = _weight_decimal(row.get("Weight (%)"))
+        weight = _weight_decimal(row.get("Weight (%)") or row.get("Weight") or row.get("Weight %"))
         if weight is None:
             continue
         h = _holding(
@@ -325,12 +333,13 @@ def _fetch_ishares_csv(
 
 
 def fetch_ifra(session: requests.Session) -> dict[str, Any]:
-    return _fetch_ishares_csv(
-        session,
-        fund="IFRA",
-        product_id="294315",
-        slug="ishares-u-s-infrastructure-etf",
-    )
+    errors = []
+    for slug in ("ishares-u-s-infrastructure-etf-ifra", "ishares-u-s-infrastructure-etf"):
+        try:
+            return _fetch_ishares_csv(session, fund="IFRA", product_id="294315", slug=slug)
+        except (HoldingsError, requests.RequestException) as exc:
+            errors.append(str(exc))
+    raise HoldingsError("IFRA: " + "; ".join(errors))
 
 
 def fetch_usmv(session: requests.Session) -> dict[str, Any]:
@@ -399,7 +408,7 @@ def fetch_grid(session: requests.Session) -> dict[str, Any]:
 
 
 def fetch_copx(session: requests.Session) -> dict[str, Any]:
-    page_url = "https://www.globalxetfs.com/funds/COPX"
+    page_url = "https://www.globalxetfs.com/funds/copx"
     p = session.get(page_url, timeout=HTTP_TIMEOUT)
     p.raise_for_status()
     soup = BeautifulSoup(p.text, "html.parser")
@@ -422,7 +431,7 @@ def fetch_copx(session: requests.Session) -> dict[str, Any]:
     text = r.content.decode("utf-8-sig", errors="replace")
     lines = text.splitlines()
     try:
-        header_idx = next(i for i, line in enumerate(lines) if line.startswith("% of Net Assets,Ticker,Name,"))
+        header_idx = next(i for i, line in enumerate(lines) if line.startswith(("% of Net Assets,Ticker,Name,", "Net Assets (%),Ticker,Name,")))
     except StopIteration as exc:
         raise HoldingsError("COPX: CSV header not found") from exc
     as_of = _extract_date(" ".join(lines[:header_idx])) or _extract_date(csv_url)
@@ -432,7 +441,7 @@ def fetch_copx(session: requests.Session) -> dict[str, Any]:
         h = _holding(
             ticker=row.get("Ticker"),
             name=row.get("Name"),
-            weight=_weight_decimal(row.get("% of Net Assets")),
+            weight=_weight_decimal(row.get("% of Net Assets") or row.get("Net Assets (%)")),
             id_type="SEDOL",
             identifier=row.get("SEDOL"),
             asset_class="equity",
@@ -856,6 +865,29 @@ def _snapshot_materially_equal(old: Any, new: Any) -> bool:
     return old_cmp == new_cmp
 
 
+def snapshot_quality(payload: dict[str, Any], today: date) -> dict[str, Any]:
+    try:
+        age = (today - date.fromisoformat(payload["as_of"])).days
+    except (KeyError, TypeError, ValueError):
+        age = None
+    limit = 45 if "MONTHLY" in str(payload.get("source_quality", "")).upper() else 5
+    try:
+        coverage = float(payload.get("coverage_pct"))
+    except (TypeError, ValueError):
+        coverage = math.nan
+    return {"stale_days": age if age is not None and age >= 0 else None,
+            "stale_limit_days": limit,
+            "freshness": "UNKNOWN" if age is None or age < 0 else ("STALE" if age > limit else "CURRENT"),
+            "coverage_status": "UNKNOWN" if not math.isfinite(coverage) else ("PARTIAL" if coverage < 98 else ("REPORTED_NEAR_FULL" if coverage <= 102 else "REVIEW"))}
+
+
+def archive_snapshot(output_dir: Path, fund: str, payload: dict[str, Any], today: date) -> None:
+    # First observed copy per UTC day; do not manufacture an earlier observation.
+    archive = output_dir.parent / "archive" / today.isoformat() / f"{fund}.json"
+    if not archive.exists():
+        _write_json(archive, payload)
+
+
 def run(output_dir: Path, strict: bool = False, funds: tuple[str, ...] = FUNDS) -> int:
     session = _session()
     summary: dict[str, Any] = {
@@ -864,6 +896,17 @@ def run(output_dir: Path, strict: bool = False, funds: tuple[str, ...] = FUNDS) 
         "funds": {},
     }
     hard_failures = 0
+    today = datetime.now(timezone.utc).date()
+    if set(funds) != set(FUNDS):
+        try:
+            previous = json.loads((output_dir / "summary.json").read_text(encoding="utf-8"))
+            for fund, meta in previous.get("funds", {}).items():
+                if fund not in funds:
+                    summary["funds"][fund] = {**meta, **snapshot_quality(meta, today)}
+                    if meta.get("status") == "FRESH" and summary["funds"][fund]["freshness"] != "CURRENT":
+                        summary["funds"][fund]["status"] = "STALE_SOURCE"
+        except (OSError, ValueError, TypeError):
+            pass
 
     for fund in funds:
         fetcher = FETCHERS[fund]
@@ -876,17 +919,26 @@ def run(output_dir: Path, strict: bool = False, funds: tuple[str, ...] = FUNDS) 
                     cached_before = json.loads(path.read_text(encoding="utf-8"))
                 except Exception:
                     cached_before = None
+            quality = snapshot_quality(payload, today)
+            if quality["freshness"] == "UNKNOWN":
+                raise HoldingsError(f"{fund}: invalid source date")
+            if cached_before and _iso_date(cached_before.get("as_of")) and payload["as_of"] < _iso_date(cached_before["as_of"]):
+                raise HoldingsError(f"{fund}: source date regressed")
+            archive_snapshot(output_dir, fund, payload, today)
             if not _snapshot_materially_equal(cached_before, payload):
                 _write_json(path, payload)
             summary["funds"][fund] = {
-                "status": "FRESH",
+                "status": "FRESH" if quality["freshness"] == "CURRENT" else "STALE_SOURCE",
+                "refresh_status": "SUCCESS",
                 "as_of": payload["as_of"],
-                "stale_days": payload["stale_days"],
+                **quality,
                 "source_quality": payload["source_quality"],
                 "holdings_count": payload["holdings_count"],
                 "coverage_pct": payload["coverage_pct"],
                 "equity_coverage_pct": payload["equity_coverage_pct"],
             }
+            if strict and quality["freshness"] != "CURRENT":
+                hard_failures += 1
             print(
                 f"✅ {fund}: {payload['holdings_count']} rows, "
                 f"coverage={payload['coverage_pct']:.2f}%, as_of={payload['as_of']}, "
@@ -904,7 +956,8 @@ def run(output_dir: Path, strict: bool = False, funds: tuple[str, ...] = FUNDS) 
                 summary["funds"][fund] = {
                     "status": "STALE_CACHE",
                     "as_of": cached.get("as_of"),
-                    "stale_days": cached.get("stale_days"),
+                    "refresh_status": "FAILED",
+                    **snapshot_quality(cached, today),
                     "source_quality": cached.get("source_quality"),
                     "holdings_count": cached.get("holdings_count"),
                     "coverage_pct": cached.get("coverage_pct"),
@@ -918,6 +971,8 @@ def run(output_dir: Path, strict: bool = False, funds: tuple[str, ...] = FUNDS) 
                 hard_failures += 1
                 summary["funds"][fund] = {
                     "status": "FAILED_NO_CACHE",
+                    "refresh_status": "FAILED",
+                    "freshness": "UNKNOWN",
                     "refresh_error": f"{type(exc).__name__}: {exc}",
                 }
                 print(f"❌ {fund}: no usable snapshot: {exc}", flush=True)
@@ -925,6 +980,7 @@ def run(output_dir: Path, strict: bool = False, funds: tuple[str, ...] = FUNDS) 
     statuses = [v.get("status") for v in summary["funds"].values()]
     summary["fresh_count"] = statuses.count("FRESH")
     summary["stale_cache_count"] = statuses.count("STALE_CACHE")
+    summary["stale_source_count"] = statuses.count("STALE_SOURCE")
     summary["failed_count"] = statuses.count("FAILED_NO_CACHE")
     _write_json(output_dir / "summary.json", summary)
 
