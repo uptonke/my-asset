@@ -25,6 +25,7 @@
     <link rel="stylesheet" href="assets/css/60-design-token-denoise.css">
     <link rel="stylesheet" href="assets/css/70-terminal-design-system.css?v=terminal-ds-1">
 <link rel="stylesheet" href="assets/css/90-typography.css?v=typography-2">
+<link rel="stylesheet" href="assets/css/95-research-workspace.css?v=research-1">
 <link rel="icon" href="data:,">
 </head>
 <body class="min-h-screen flex flex-col text-sm bg-[#0f172a]">
@@ -1095,8 +1096,20 @@
                             </div>
                         </div>
                     </div>
-                    <div class="glass chart-card p-5 md:p-6 space-y-4">
-                        <div><h4 class="panel-title">Actual P&amp;L Attribution（TWD）</h4>
+                    <section class="research-workspace" aria-label="績效歸因與投組研究">
+                        <div class="research-overview">
+                            <div class="research-overview-head"><div><h3>績效歸因與投組研究</h3><p>歷史歸因、風險與策略驗證 · 研究結果不等於交易指令</p></div><span class="research-state">RESEARCH</span></div>
+                            <div v-if="!performanceAttribution" class="research-empty">尚無有效私人報告，或流水帳／NAV 已變更。請執行 Update Private Performance Attribution 後重新整理。</div>
+                            <div class="research-metrics"><div class="research-metric"><span>NAV 日期</span><strong>{{ performanceAttribution?.nav_as_of || '—' }}</strong></div><div class="research-metric"><span>區間 Dietz</span><strong>{{ performancePct(performancePnlWindow?.dietz_return_pct) }}</strong></div><div class="research-metric"><span>歷史覆蓋率</span><strong>{{ performancePct(performanceAttribution?.historical_brinson?.coverage_pct) }}</strong></div><div class="research-metric"><span>品質初篩</span><strong>{{ performanceAttribution?.attribution_quality_gate ? `${performanceAttribution.attribution_quality_gate.screen_pass_intervals} / ${performanceAttribution.attribution_quality_gate.expected_intervals}` : '—' }}</strong></div><div class="research-metric"><span>52 週年化波動</span><strong>{{ performancePct(performanceAttribution?.portfolio_risk?.risk_windows?.['52']?.annualized_vol_pct) }}</strong></div><div class="research-metric"><span>單週 ES 95%</span><strong>{{ performancePct(performanceAttribution?.portfolio_risk?.risk_windows?.['52']?.tail?.es95_loss_pct) }}</strong></div></div>
+                            <div v-if="performanceAttribution" class="research-meta">引擎 {{ performanceAttribution.engine_version || 'v1.0' }} · 更新 {{ performanceAttribution.generated_at || '—' }}</div>
+                            <div class="research-jump" aria-label="研究區塊索引"><a href="#research-performance">績效與基準</a><a href="#research-quality">資料品質</a><a href="#research-risk">投組風險</a><a href="#research-strategy">策略研究</a></div>
+                        </div>
+                        <section id="research-performance" class="research-group" aria-label="績效與基準">
+                            <div class="research-group-head"><h3>績效與基準</h3><span>實際損益、基準比較、因子及現金流</span></div>
+                        <details class="research-module" open>
+                            <summary class="research-module-head"><span class="research-module-name">實際損益歸因<small>Actual P&amp;L Attribution（TWD）</small></span><span class="research-state" v-if="performancePnlWindow?.status">{{ performancePnlWindow?.status }}</span></summary>
+                            <div class="research-module-body space-y-3">
+                        <div>
                         <p class="panel-subtitle">已記錄 NAV 減外部資金流；逐檔損益依歷史持倉與未做股息調整的收盤價重建。非券商已實現成本基礎報表。</p></div>
                         <div v-if="!performanceAttribution" class="text-xs text-amber-300">尚無有效私人歸因報表，或流水帳 / NAV 已變更。請執行 Update Private Performance Attribution 後重新整理。</div>
                         <template v-else>
@@ -1133,9 +1146,87 @@
                                 </details>
                             </template>
                         </template>
-                    </div>
-                    <div class="glass chart-card p-5 md:p-6 space-y-4">
-                        <div><h4 class="panel-title">Actual Factor Return Attribution · Carino</h4><p class="panel-subtitle">實際歷史 NAV 的 Modified Dietz 報酬；USD 八因子樣本內迴歸，連結回 TWD 複利報酬。非目前權重合成報酬。</p></div>
+
+                            </div>
+                        </details>
+                        <details class="research-module">
+                            <summary class="research-module-head"><span class="research-module-name">基準總報酬比較<small>Benchmark &amp; Total-return Comparison · v2.5</small></span><span class="research-state" v-if="performanceAttribution?.total_return_attribution?.status">{{ performanceAttribution?.total_return_attribution?.status }}</span></summary>
+                            <div class="research-module-body space-y-3">
+                        
+                        <p class="panel-subtitle">ETF 配息調整基準、BTC 現貨、台幣換算。實際 NAV 使用 Dietz；持倉仍採未調整報價及帳載現金。非完整個券股息歸因，不是正式核准政策。</p>
+                        <template v-if="performanceAttribution?.total_return_attribution">
+                            <div class="text-xs">{{ performanceAttribution.total_return_attribution.status }}｜{{ performanceAttribution.total_return_attribution.benchmark?.approved ? '使用者核准權重' : '示範權重' }}｜合格 {{ performanceAttribution.total_return_attribution.eligible_intervals ?? 0 }} / {{ performanceAttribution.total_return_attribution.expected_intervals ?? '—' }}</div>
+                            <div class="text-xs">{{ performanceAttribution.total_return_attribution.reason || '' }}</div>
+                            <div v-if="performanceAttribution.total_return_attribution.latest_segment" class="text-xs space-y-1">
+                                <div>{{ performanceAttribution.total_return_attribution.latest_segment.start }} ～ {{ performanceAttribution.total_return_attribution.latest_segment.end }}｜NAV {{ performancePct(performanceAttribution.total_return_attribution.latest_segment.portfolio_return_pct) }}｜調整基準 {{ performancePct(performanceAttribution.total_return_attribution.latest_segment.benchmark_return_pct) }}｜主動 {{ performanceAttribution.total_return_attribution.latest_segment.active_return_pp.toFixed(3) }} pp</div>
+                                <div v-for="(v,k) in performanceAttribution.total_return_attribution.latest_segment.effects_pp" :key="k">{{ k }}：{{ v.toFixed(3) }} pp</div>
+                            </div>
+                            <details class="text-xs"><summary>同區段價格基準 vs 配息調整基準</summary>
+                                <div v-for="r in performanceAttribution.total_return_attribution.matched_price_comparison || []" :key="r.start">{{ r.start }} ～ {{ r.end }}｜價格 {{ performancePct(r.price_benchmark_return_pct) }}｜調整 {{ performancePct(r.adjusted_benchmark_return_pct) }}｜差 {{ r.distribution_adjustment_pp.toFixed(3) }} pp</div>
+                            </details>
+                            <details v-if="performanceAttribution.total_return_attribution.calibration" class="text-xs"><summary>權重校準：最近合格區間期初曝險（非最佳化）</summary>
+                                <div>{{ performanceAttribution.total_return_attribution.calibration.date }}｜單向權重距離 {{ performancePct(performanceAttribution.total_return_attribution.calibration.one_way_distance_pct) }}</div>
+                                <div v-for="r in performanceAttribution.total_return_attribution.calibration.weights" :key="r.bucket">{{ r.bucket }}｜投組 {{ performancePct(r.portfolio_pct) }}｜目標 {{ performancePct(r.target_pct) }}｜差 {{ r.gap_pp.toFixed(2) }} pp</div>
+                            </details>
+                        </template><div v-else class="text-xs">等待更新</div>
+
+                            </div>
+                        </details>
+                        <details class="research-module">
+                            <summary class="research-module-head"><span class="research-module-name">歷史 Brinson-Fachler 歸因<small>Historical Brinson-Fachler · v2.3.3</small></span><span class="research-state" v-if="performanceAttribution?.historical_brinson?.status">{{ performanceAttribution?.historical_brinson?.status }}</span></summary>
+                            <div class="research-module-body space-y-3">
+                        
+                        <p class="panel-subtitle">歷史 NAV、流水帳及價格重建；研究用非正式基準。採交易日收盤切段與多期 Carino 主動報酬連結。現金為流水帳推算，非銀行核對；不跨缺漏區間，不回填原始 NAV。微額負現金 ≤ NT$1 僅在研究估值歸零；保留原始差額。</p>
+                        <div class="text-xs text-amber-300">{{ performanceAttribution?.historical_brinson?.status || '等待新版歸因更新' }}｜{{ performanceAttribution?.historical_brinson?.reason || '' }}</div>
+                        <template v-if="performanceAttribution?.historical_brinson">
+                            <div class="text-xs">合格 {{ performanceAttribution.historical_brinson.eligible_intervals ?? 0 }} / {{ performanceAttribution.historical_brinson.expected_intervals ?? '—' }} 區間｜覆蓋率 {{ performancePct(performanceAttribution.historical_brinson.coverage_pct) }}</div>
+                            <details v-if="performanceAttribution.historical_brinson.coverage_diagnostics" open class="text-xs space-y-2">
+                                <summary>v2.3.3 資料品質診斷（原因可重疊）</summary>
+                                <div>微額現金容許區間 {{ performanceAttribution.historical_brinson.coverage_diagnostics.micro_cash_intervals }}｜已核實申購區間 {{ performanceAttribution.historical_brinson.coverage_diagnostics.pending_subscription_intervals }}</div>
+                                <div v-for="(n,k) in performanceAttribution.historical_brinson.coverage_diagnostics.reason_interval_counts" :key="k">{{ k }}：{{ n }} 期</div>
+                                <div v-for="(n,t) in performanceAttribution.historical_brinson.coverage_diagnostics.ticker_interval_counts" :key="t">{{ t }}：{{ n }} 期</div>
+                            </details>
+                            <details v-if="performanceAttribution.historical_brinson.market_recovery" class="text-xs space-y-2">
+                                <summary>歷史基金淨值來源與覆蓋範圍</summary>
+                                <div v-for="r in performanceAttribution.historical_brinson.market_recovery" :key="r.ticker">{{ r.ticker }}｜{{ r.status }}｜{{ r.source }}｜{{ r.first_available || "—" }} ～ {{ r.last_available || "—" }}｜{{ r.observations }} 筆</div>
+                            </details>
+                            <details v-if="performanceAttribution.historical_brinson.cash_trace" class="text-xs space-y-2">
+                                <summary>歷史現金缺口（流水帳推算，未核對期初資金）</summary>
+                                <div>重大負現金交易日 {{ performanceAttribution.historical_brinson.cash_trace.material_negative_days }}｜最低 {{ performanceAttribution.historical_brinson.cash_trace.minimum_cash_twd.toFixed(2) }} TWD</div>
+                                <div v-for="r in performanceAttribution.historical_brinson.cash_trace.negative_days" :key="r.date">{{ r.date }}｜日現金流 {{ r.daily_flow_twd.toFixed(2) }}｜累計 {{ r.cash_twd.toFixed(2) }} TWD｜{{ r.status }}</div>
+                            </details>
+                            <details v-if="performanceAttribution.historical_brinson.latest_segment" open class="text-xs space-y-2">
+                                <summary>最新連續區間（不跨缺口）</summary>
+                                <div>{{ performanceAttribution.historical_brinson.latest_segment.start }} ～ {{ performanceAttribution.historical_brinson.latest_segment.end }}｜{{ performanceAttribution.historical_brinson.latest_segment.period_count }} 期｜實際 NAV Dietz 連結 {{ performancePct(performanceAttribution.historical_brinson.latest_segment.portfolio_return_pct) }}｜基準 {{ performancePct(performanceAttribution.historical_brinson.latest_segment.benchmark_return_pct) }}｜主動 {{ performanceAttribution.historical_brinson.latest_segment.active_return_pp.toFixed(3) }} pp</div>
+                                <div v-for="(v,k) in performanceAttribution.historical_brinson.latest_segment.effects_pp" :key="k" class="flex justify-between"><span>{{ ({allocation:'配置',selection:'選擇',interaction:'交互',execution_other:'成交及其他現金流',nav_bridge:'NAV／方法差額'})[k] || k }}</span><span :class="performanceTone(v)">{{ v.toFixed(3) }} pp</span></div>
+                                <div class="research-table-scroll"><table class="w-full text-xs"><thead><tr><th class="text-left">類別</th><th class="text-right">配置 pp</th><th class="text-right">選擇 pp</th><th class="text-right">交互 pp</th></tr></thead><tbody><tr v-for="r in performanceAttribution.historical_brinson.latest_segment.rows" :key="r.bucket"><td>{{ r.bucket }}</td><td v-for="k in ['allocation_pp','selection_pp','interaction_pp']" :key="k" class="text-right">{{ r[k].toFixed(3) }}</td></tr></tbody></table></div>
+                                <div>連結核對差額 {{ performanceAttribution.historical_brinson.latest_segment.identity_error_pp.toExponential(2) }} pp</div>
+                            </details>
+                            <details class="text-xs"><summary>所有連續區段</summary><div v-for="r in performanceAttribution.historical_brinson.segments || []" :key="r.start">{{ r.start }} ～ {{ r.end }}｜{{ r.period_count }} 期｜主動 {{ r.active_return_pp.toFixed(3) }} pp</div></details>
+                            <details class="text-xs"><summary>逐期估值差額及排除區間</summary><div class="max-h-[320px] overflow-y-auto"><div v-for="r in performanceAttribution.historical_brinson.periods || []" :key="r.start"> {{ r.start }} ～ {{ r.end }}｜期初 / 期末 NAV 差額 {{ r.start_nav_gap_twd.toFixed(0) }} / {{ r.end_nav_gap_twd.toFixed(0) }} TWD｜方法差額 {{ r.effects_pp.nav_bridge.toFixed(3) }} pp</div><details v-for="r in performanceAttribution.historical_brinson.skipped || []" :key="r.start"><summary>{{ r.start }} ～ {{ r.end }}：{{ r.reason }}</summary><div v-for="(z,i) in r.diagnostics?.issues || []" :key="i" class="pl-2">{{ z.date }}｜{{ z.ticker }}｜{{ z.code }}｜{{ z.source || "" }}｜首次 {{ z.first_available || "—" }}｜末次 {{ z.last_available || "—" }}｜當日前末次 {{ z.last_on_or_before || "—" }}｜應有交易日 {{ z.expected_session || "—" }}｜日曆 {{ z.calendar || "—" }}｜現金 {{ z.cash_twd ?? "—" }}</div></details></div></details>
+                        </template>
+
+                            </div>
+                        </details>
+                        <details class="research-module">
+                            <summary class="research-module-head"><span class="research-module-name">已擷取快照歸因<small>Brinson-Fachler Attribution · v2.1</small></span><span class="research-state" v-if="performanceAttribution?.brinson?.status">{{ performanceAttribution?.brinson?.status }}</span></summary>
+                            <div class="research-module-body space-y-3">
+                        
+                        <p class="panel-subtitle">示範基準：VT 60%、0050 20%、BOXX 10%、GLDM 5%、BTC 5%；非核准政策。僅比較無交易／現金流且具完整擷取估值的連續區間。基準是前一日或更早的價格收盤值，非總報酬或同步成交價。</p>
+                        <div class="text-xs text-amber-300">{{ performanceAttribution?.brinson?.status || '等待更新' }}｜{{ performanceAttribution?.brinson?.reason || '' }}</div>
+                        <div v-if="performanceAttribution?.brinson?.latest" class="space-y-2">
+                            <div class="text-xs">{{ performanceAttribution.brinson.latest.start }} ～ {{ performanceAttribution.brinson.latest.end }}｜主動報酬 {{ performancePct(performanceAttribution.brinson.latest.active_return_pp).replace('%',' pp') }}</div>
+                            <div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr><th class="text-left p-2">類別</th><th class="text-right p-2">投組%</th><th class="text-right p-2">基準%</th><th class="text-right p-2">配置 pp</th><th class="text-right p-2">選擇 pp</th><th class="text-right p-2">交互 pp</th></tr></thead><tbody><tr v-for="r in performanceAttribution.brinson.latest.rows" :key="r.bucket" class="border-t border-white/5"><td class="p-2">{{ r.bucket }}</td><td class="p-2 text-right">{{ r.portfolio_weight_pct.toFixed(2) }}</td><td class="p-2 text-right">{{ r.benchmark_weight_pct.toFixed(2) }}</td><td v-for="k in ['allocation_pp','selection_pp','interaction_pp']" :key="k" class="p-2 text-right" :class="performanceTone(r[k])">{{ r[k].toFixed(3) }}</td></tr></tbody></table></div>
+                        </div>
+                        <div v-else class="text-xs text-gray-400">尚無合格配對，不使用歷史重建估值冒充正式歸因。</div>
+                        <details v-if="performanceAttribution?.brinson?.skipped?.length" class="text-xs"><summary>排除區間</summary><div v-for="r in performanceAttribution.brinson.skipped" :key="r.end">{{ r.start }} ～ {{ r.end }}：{{ r.reason }}</div></details>
+
+                            </div>
+                        </details>
+                        <details class="research-module">
+                            <summary class="research-module-head"><span class="research-module-name">因子報酬歸因<small>Actual Factor Return Attribution · Carino</small></span><span class="research-state" v-if="performanceAttribution?.factor?.status">{{ performanceAttribution?.factor?.status }}</span></summary>
+                            <div class="research-module-body space-y-3">
+                        <p class="panel-subtitle">實際歷史 NAV 的 Modified Dietz 報酬；USD 八因子樣本內迴歸，連結回 TWD 複利報酬。非目前權重合成報酬。</p>
                         <div v-if="!performanceAttribution?.factor" class="text-xs text-gray-400">尚無因子資料。</div>
                         <template v-else>
                             <div class="text-xs" :class="performanceAttribution.factor.status==='OK'?'text-gray-400':'text-amber-300'">{{ performanceAttribution.factor.status }}｜有效區間數 {{ performanceAttribution.factor.sample_count ?? '—' }}｜{{ performanceAttribution.factor.reason || '' }}<span v-if="performanceAttribution.factor.end">｜因子截至 {{ performanceAttribution.factor.end }}（NAV {{ performanceAttribution.nav_as_of }}）</span></div>
@@ -1153,9 +1244,13 @@
                             <details v-if="performanceAttribution.factor.skipped?.length" class="text-xs text-amber-300"><summary class="cursor-pointer">未涵蓋期間 {{ performanceAttribution.factor.skipped.length }} 筆</summary><div class="max-h-[250px] overflow-y-auto"><div v-for="r in performanceAttribution.factor.skipped" :key="r.end" class="py-1">{{ r.start }} ～ {{ r.end }}：{{ r.reason }}</div></div></details>
                             <div class="text-xs text-gray-400">因子貢獻為樣本內解釋，不等同因果或可交易 Alpha。Carino 僅連結最新連續可用期間；保留 Residual 與 Dietz 幣別橋接差額。因子資料可能較 NAV 延遲。</div>
                         </template>
-                    </div>
-                    <div class="glass chart-card p-5 md:p-6 space-y-4">
-                        <div><h4 class="panel-title">Rolling Factor Attribution · v2.0</h4><p class="panel-subtitle">使用之前的 52 個有效區間估計 Beta，假設因子發布延遲 60 天。為修訂後歷史資料的回顧式偽樣本外歸因，並非經驗證的即時資料版本回測或預測。</p></div>
+
+                            </div>
+                        </details>
+                        <details class="research-module">
+                            <summary class="research-module-head"><span class="research-module-name">滾動因子歸因<small>Rolling Factor Attribution · v2.0</small></span><span class="research-state" v-if="performanceAttribution?.rolling_factor?.status">{{ performanceAttribution?.rolling_factor?.status }}</span></summary>
+                            <div class="research-module-body space-y-3">
+                        <p class="panel-subtitle">使用之前的 52 個有效區間估計 Beta，假設因子發布延遲 60 天。為修訂後歷史資料的回顧式偽樣本外歸因，並非經驗證的即時資料版本回測或預測。</p>
                         <div v-if="!performanceAttribution?.rolling_factor" class="text-xs text-gray-400">尚無新版報表；重新執行 Update Private Performance Attribution 或等待既有排程。</div>
                         <template v-else>
                             <div class="text-xs text-amber-200">{{ performanceAttribution.rolling_factor.status }}｜可評估 {{ performanceAttribution.rolling_factor.evaluated_intervals ?? 0 }} / {{ performanceAttribution.rolling_factor.eligible_intervals ?? '—' }} 區間｜{{ performanceAttribution.rolling_factor.reason || '' }}</div>
@@ -1170,9 +1265,32 @@
                                 <details class="border border-white/10 rounded-lg p-2"><summary class="cursor-pointer text-xs text-gray-300">歷史 Beta 與訓練時間</summary><div class="overflow-x-auto max-h-[380px]"><table class="w-full text-[11px]"><thead class="text-gray-400"><tr><th class="p-1 text-left">評估截止</th><th class="p-1 text-left">訓練截止</th><th v-for="k in Object.keys(performanceAttribution.rolling_factor.latest.beta)" :key="k" class="p-1 text-right">{{ k }}</th></tr></thead><tbody><tr v-for="r in performanceAttribution.rolling_factor.rows" :key="r.end" class="border-t border-white/5"><td class="p-1">{{ r.end }}</td><td class="p-1">{{ r.train_end }}</td><td v-for="(v,k) in r.beta" :key="k" class="p-1 text-right">{{ v.toFixed(3) }}</td></tr></tbody></table></div></details>
                             </template>
                         </template>
-                    </div>
-                    <div class="glass chart-card p-5 md:p-6 space-y-3">
-                        <h4 class="panel-title">Point-in-Time NAV Reconciliation · v2.4</h4>
+
+                            </div>
+                        </details>
+                        <details class="research-module">
+                            <summary class="research-module-head"><span class="research-module-name">現金流分類<small>Cash Flow Classification · v2.9.1</small></span><span class="research-state" v-if="performanceAttribution?.cashflow_attribution?.status">{{ performanceAttribution?.cashflow_attribution?.status }}</span></summary>
+                            <div class="research-module-body space-y-3">
+                        
+                        <p class="panel-subtitle">僅分類已入帳現金流，不新增個券股息歸因，不改變原始 NAV 或持倉損益。</p>
+                        <template v-if="performanceAttribution?.cashflow_attribution">
+                            <details class="text-xs" v-for="(r,k) in performanceAttribution.cashflow_attribution.windows" :key="k" :open="k==='SI'">
+                                <summary>{{ k }}｜{{ r.start }} ～ {{ r.end }}｜其他現金流 {{ formatNumber(r.explicit_other_cashflow_twd ?? 0) }} TWD</summary>
+                                <div v-if="r.status==='UNAVAILABLE'">無法核對</div>
+                                <div v-for="(v,t) in r.totals_twd" :key="t">{{ t }}：{{ formatNumber(v) }} TWD｜Dietz {{ r.other_dietz_pp?.[t]?.toFixed(3) ?? '—' }} pp</div>
+                                <div>未分類／未連結事件 {{ r.unclassified?.length ?? 0 }} 筆｜核對差 {{ r.identity_error_twd?.toFixed(6) ?? '—' }} TWD</div>
+                            </details>
+                        </template><div v-else class="text-xs">等待更新</div>
+
+                            </div>
+                        </details>
+                        </section>
+                        <section id="research-quality" class="research-group" aria-label="資料品質">
+                            <div class="research-group-head"><h3>資料品質</h3><span>快照、品質閘門與診斷</span></div>
+                        <details class="research-module">
+                            <summary class="research-module-head"><span class="research-module-name">NAV 快照核對<small>Point-in-Time NAV Reconciliation · v2.4</small></span><span class="research-state" v-if="performanceAttribution?.point_in_time ? `${performanceAttribution.point_in_time.valid_count ?? 0} 有效快照` : ''">{{ performanceAttribution?.point_in_time ? `${performanceAttribution.point_in_time.valid_count ?? 0} 有效快照` : '' }}</span></summary>
+                            <div class="research-module-body space-y-3">
+                        
                         <p class="panel-subtitle">新建即時 NAV 保存當時的估值明細、股數、匯率、現金及擷取時間；歷史手動 NAV 不回填。擷取時間不等於交易所報價時間。每週六 10:15 台北時間自動擷取（需先部署 SQL）；使用已完成日線及來源日期，非同步即時價。自動快照不可覆寫，儲存前請重新整理網站。</p>
                         <div v-if="!performanceAttribution?.point_in_time" class="text-xs text-gray-400">等待新版歸因更新。</div>
                         <template v-else>
@@ -1186,48 +1304,26 @@
                             </div>
                             <details class="text-xs"><summary class="cursor-pointer">快照診斷</summary><div class="max-h-[250px] overflow-y-auto"><div v-for="r in performanceAttribution.point_in_time.snapshots" :key="r.date">{{ r.date }}｜{{ r.status }}｜{{ r.capture_mode || '' }}｜{{ r.reason || r.captured_at || '' }}｜報價截止 {{ r.cutoff_date || '—' }}｜FX {{ r.fx_quote_date || '—' }}｜{{ r.quote_dates_verified ? '日期已核對；精確時間未核對' : '報價日期未核對' }}</div></div></details>
                         </template>
-                    </div>
-                    <div class="glass chart-card p-5 md:p-6 space-y-3">
-                        <h4 class="panel-title">Brinson-Fachler Attribution · v2.1</h4>
-                        <p class="panel-subtitle">示範基準：VT 60%、0050 20%、BOXX 10%、GLDM 5%、BTC 5%；非核准政策。僅比較無交易／現金流且具完整擷取估值的連續區間。基準是前一日或更早的價格收盤值，非總報酬或同步成交價。</p>
-                        <div class="text-xs text-amber-300">{{ performanceAttribution?.brinson?.status || '等待更新' }}｜{{ performanceAttribution?.brinson?.reason || '' }}</div>
-                        <div v-if="performanceAttribution?.brinson?.latest" class="space-y-2">
-                            <div class="text-xs">{{ performanceAttribution.brinson.latest.start }} ～ {{ performanceAttribution.brinson.latest.end }}｜主動報酬 {{ performancePct(performanceAttribution.brinson.latest.active_return_pp).replace('%',' pp') }}</div>
-                            <div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr><th class="text-left p-2">類別</th><th class="text-right p-2">投組%</th><th class="text-right p-2">基準%</th><th class="text-right p-2">配置 pp</th><th class="text-right p-2">選擇 pp</th><th class="text-right p-2">交互 pp</th></tr></thead><tbody><tr v-for="r in performanceAttribution.brinson.latest.rows" :key="r.bucket" class="border-t border-white/5"><td class="p-2">{{ r.bucket }}</td><td class="p-2 text-right">{{ r.portfolio_weight_pct.toFixed(2) }}</td><td class="p-2 text-right">{{ r.benchmark_weight_pct.toFixed(2) }}</td><td v-for="k in ['allocation_pp','selection_pp','interaction_pp']" :key="k" class="p-2 text-right" :class="performanceTone(r[k])">{{ r[k].toFixed(3) }}</td></tr></tbody></table></div>
-                        </div>
-                        <div v-else class="text-xs text-gray-400">尚無合格配對，不使用歷史重建估值冒充正式歸因。</div>
-                        <details v-if="performanceAttribution?.brinson?.skipped?.length" class="text-xs"><summary>排除區間</summary><div v-for="r in performanceAttribution.brinson.skipped" :key="r.end">{{ r.start }} ～ {{ r.end }}：{{ r.reason }}</div></details>
-                    </div>
-                    <div class="glass chart-card p-5 md:p-6 space-y-3">
-                        <h4 class="panel-title">Benchmark &amp; Total-return Comparison · v2.5</h4>
-                        <p class="panel-subtitle">ETF 配息調整基準、BTC 現貨、台幣換算。實際 NAV 使用 Dietz；持倉仍採未調整報價及帳載現金。非完整個券股息歸因，不是正式核准政策。</p>
-                        <template v-if="performanceAttribution?.total_return_attribution">
-                            <div class="text-xs">{{ performanceAttribution.total_return_attribution.status }}｜{{ performanceAttribution.total_return_attribution.benchmark?.approved ? '使用者核准權重' : '示範權重' }}｜合格 {{ performanceAttribution.total_return_attribution.eligible_intervals ?? 0 }} / {{ performanceAttribution.total_return_attribution.expected_intervals ?? '—' }}</div>
-                            <div class="text-xs">{{ performanceAttribution.total_return_attribution.reason || '' }}</div>
-                            <div v-if="performanceAttribution.total_return_attribution.latest_segment" class="text-xs space-y-1">
-                                <div>{{ performanceAttribution.total_return_attribution.latest_segment.start }} ～ {{ performanceAttribution.total_return_attribution.latest_segment.end }}｜NAV {{ performancePct(performanceAttribution.total_return_attribution.latest_segment.portfolio_return_pct) }}｜調整基準 {{ performancePct(performanceAttribution.total_return_attribution.latest_segment.benchmark_return_pct) }}｜主動 {{ performanceAttribution.total_return_attribution.latest_segment.active_return_pp.toFixed(3) }} pp</div>
-                                <div v-for="(v,k) in performanceAttribution.total_return_attribution.latest_segment.effects_pp" :key="k">{{ k }}：{{ v.toFixed(3) }} pp</div>
+
                             </div>
-                            <details class="text-xs"><summary>同區段價格基準 vs 配息調整基準</summary>
-                                <div v-for="r in performanceAttribution.total_return_attribution.matched_price_comparison || []" :key="r.start">{{ r.start }} ～ {{ r.end }}｜價格 {{ performancePct(r.price_benchmark_return_pct) }}｜調整 {{ performancePct(r.adjusted_benchmark_return_pct) }}｜差 {{ r.distribution_adjustment_pp.toFixed(3) }} pp</div>
-                            </details>
-                            <details v-if="performanceAttribution.total_return_attribution.calibration" class="text-xs"><summary>權重校準：最近合格區間期初曝險（非最佳化）</summary>
-                                <div>{{ performanceAttribution.total_return_attribution.calibration.date }}｜單向權重距離 {{ performancePct(performanceAttribution.total_return_attribution.calibration.one_way_distance_pct) }}</div>
-                                <div v-for="r in performanceAttribution.total_return_attribution.calibration.weights" :key="r.bucket">{{ r.bucket }}｜投組 {{ performancePct(r.portfolio_pct) }}｜目標 {{ performancePct(r.target_pct) }}｜差 {{ r.gap_pp.toFixed(2) }} pp</div>
-                            </details>
-                        </template><div v-else class="text-xs">等待更新</div>
-                    </div>
-                    <div class="glass chart-card p-5 md:p-6 space-y-3">
-                        <h4 class="panel-title">Attribution Quality Gate · v2.6</h4>
+                        </details>
+                        <details class="research-module">
+                            <summary class="research-module-head"><span class="research-module-name">歸因品質閘門<small>Attribution Quality Gate · v2.6</small></span><span class="research-state" v-if="performanceAttribution?.attribution_quality_gate?.status">{{ performanceAttribution?.attribution_quality_gate?.status }}</span></summary>
+                            <div class="research-module-body space-y-3">
+                        
                         <p class="panel-subtitle">品質閘門只允許研究解讀；不授予正式歸因或交易權限。預設期末及期初差額上限 1%、方法橋接 0.5 pp。</p>
                         <template v-if="performanceAttribution?.attribution_quality_gate">
                             <div class="text-xs">{{ performanceAttribution.attribution_quality_gate.status }}｜{{ performanceAttribution.attribution_quality_gate.basis }}｜品質初篩通過 {{ performanceAttribution.attribution_quality_gate.screen_pass_intervals }} / {{ performanceAttribution.attribution_quality_gate.eligible_intervals }} 合格期（全部 {{ performanceAttribution.attribution_quality_gate.expected_intervals }} 期）</div>
                             <div class="text-xs" v-for="r in performanceAttribution.attribution_quality_gate.reasons" :key="r">{{ r }}</div>
                             <details class="text-xs"><summary>品質問題逐期診斷</summary><div class="max-h-[250px] overflow-y-auto"><div v-for="r in performanceAttribution.attribution_quality_gate.periods.filter(r=>r.status!=='RESEARCH_SCREEN_PASS')" :key="r.start">{{ r.start }} ～ {{ r.end }}｜{{ r.reasons.join(', ') }}｜估值差額 {{ performancePct(r.max_nav_gap_pct) }}｜方法差 {{ r.abs_nav_bridge_pp?.toFixed(3) ?? '—' }} pp</div></div></details>
                         </template><div v-else class="text-xs">等待更新</div>
-                    </div>
-                    <div class="glass chart-card p-5 md:p-6 space-y-3">
-                        <h4 class="panel-title">Attribution Quality Diagnostics · v2.6.1</h4>
+
+                            </div>
+                        </details>
+                        <details class="research-module">
+                            <summary class="research-module-head"><span class="research-module-name">品質診斷<small>Attribution Quality Diagnostics · v2.6.1</small></span><span class="research-state" v-if="performanceAttribution?.quality_diagnostics?.status">{{ performanceAttribution?.quality_diagnostics?.status }}</span></summary>
+                            <div class="research-module-body space-y-3">
+                        
                         <template v-if="performanceAttribution?.quality_diagnostics">
                             <div class="text-xs" v-for="(r,k) in performanceAttribution.quality_diagnostics.windows" :key="k">{{ k }} 週｜初篩 {{ r.passed }} / {{ r.expected }}｜合格 {{ r.eligible }}｜全區間通過 {{ performancePct(r.pass_pct_all) }}</div>
                             <div class="text-xs" v-for="(v,k) in performanceAttribution.quality_diagnostics.reason_counts" :key="k">{{ k }}：{{ v }} 期</div>
@@ -1235,42 +1331,16 @@
                             <details class="text-xs"><summary>品質通過連續區段（日期不同不可直接比較）</summary><div v-for="r in performanceAttribution.quality_diagnostics.quality_segments" :key="r.start">{{ r.start }} ～ {{ r.end }}｜{{ r.period_count }} 期｜NAV {{ performancePct(r.portfolio_return_pct) }}｜基準 {{ performancePct(r.benchmark_return_pct) }}｜主動 {{ r.active_return_pp.toFixed(3) }} pp</div></details>
                             <details class="text-xs"><summary>月份／交易類型／標的關聯（非因果）</summary><div class="max-h-[250px] overflow-y-auto"><div v-for="r in performanceAttribution.quality_diagnostics.cohorts" :key="r.group">{{ r.group }}｜待審／排除 {{ r.review_or_excluded }} / {{ r.intervals }}</div></div></details>
                         </template><div v-else class="text-xs">等待更新</div>
-                    </div>
-                    <div class="glass chart-card p-5 md:p-6 space-y-3">
-                        <h4 class="panel-title">Cash Flow Classification · v2.9.1</h4>
-                        <p class="panel-subtitle">僅分類已入帳現金流，不新增個券股息歸因，不改變原始 NAV 或持倉損益。</p>
-                        <template v-if="performanceAttribution?.cashflow_attribution">
-                            <details class="text-xs" v-for="(r,k) in performanceAttribution.cashflow_attribution.windows" :key="k" :open="k==='SI'">
-                                <summary>{{ k }}｜{{ r.start }} ～ {{ r.end }}｜其他現金流 {{ formatNumber(r.explicit_other_cashflow_twd ?? 0) }} TWD</summary>
-                                <div v-if="r.status==='UNAVAILABLE'">無法核對</div>
-                                <div v-for="(v,t) in r.totals_twd" :key="t">{{ t }}：{{ formatNumber(v) }} TWD｜Dietz {{ r.other_dietz_pp?.[t]?.toFixed(3) ?? '—' }} pp</div>
-                                <div>未分類／未連結事件 {{ r.unclassified?.length ?? 0 }} 筆｜核對差 {{ r.identity_error_twd?.toFixed(6) ?? '—' }} TWD</div>
-                            </details>
-                        </template><div v-else class="text-xs">等待更新</div>
-                    </div>
-                    <div class="glass chart-card p-5 md:p-6 space-y-3">
-                        <h4 class="panel-title">Regime-aware Optimization &amp; Factor Risk Budget · v3.1 / v3.2</h4>
-                        <p class="panel-subtitle">固定研究標的，不代表實際持倉；同樣本、成本及限制的 walk-forward 比較。市場狀態只用訓練期 VOO 台幣報酬，風險預算為示範，無交易權限。</p>
-                        <template v-if="performanceAttribution?.regime_factor_research">
-                            <div class="text-xs">{{ performanceAttribution.regime_factor_research.status }}｜{{ performanceAttribution.regime_factor_research.reason || '' }}</div>
-                            <div v-if="performanceAttribution.regime_factor_research.comparison" class="text-xs space-y-1">
-                                <div>{{ performanceAttribution.regime_factor_research.comparison.start }} ～ {{ performanceAttribution.regime_factor_research.comparison.end }}</div>
-                                <div v-for="(r,k) in performanceAttribution.regime_factor_research.comparison.aggregate" :key="k">{{ k }}｜淨報酬 {{ performancePct(r.net_return_pct) }}｜CAGR {{ performancePct(r.net_cagr_pct) }}｜波動 {{ performancePct(r.net_vol_pct) }}｜MDD {{ performancePct(r.net_max_drawdown_pct) }}｜成本/初始 NAV {{ performancePct(r.paid_cost_pct_initial_nav) }}｜失敗 {{ r.failed_rebalances }} / {{ r.fold_count }}</div>
-                                <div>最近已完成測試折市場狀態：{{ performanceAttribution.regime_factor_research.latest_fold?.methods?.regime_aware?.model?.regime || '—' }}</div>
-                                <details class="text-xs"><summary>最近研究折的因子風險預算（非即時配置）</summary>
-                                    <div v-for="r in performanceAttribution.regime_factor_research.latest_fold?.methods?.factor_budget?.model?.risk_shares || []" :key="r.factor">{{ r.factor }}｜原 {{ performancePct(r.before_pct) }}｜候選 {{ performancePct(r.candidate_pct) }}｜示範 {{ performancePct(r.target_pct) }}</div>
-                                    <div>預算誤差 RMSE {{ performanceAttribution.regime_factor_research.latest_fold?.methods?.factor_budget?.model?.budget_match_rmse_pp?.toFixed(3) ?? '—' }} pp</div>
-                                </details>
+
                             </div>
-                        </template><div v-else class="text-xs">等待更新</div>
-                        <template v-if="performanceAttribution?.factor_risk_budget">
-                            <h5 class="font-medium text-sm">實際 NAV 因子風險診斷（USD 超額報酬）</h5>
-                            <div class="text-xs">{{ performanceAttribution.factor_risk_budget.status }}｜{{ performanceAttribution.factor_risk_budget.observations ?? 0 }} 個七日樣本</div>
-                            <div class="text-xs" v-for="r in performanceAttribution.factor_risk_budget.rows || []" :key="r.factor">{{ r.factor }}｜風險貢獻 {{ performancePct(r.risk_pct) }}｜示範預算 {{ performancePct(r.illustrative_budget_pct) }}｜差 {{ r.gap_pp.toFixed(3) }} pp</div>
-                        </template>
-                    </div>
-                    <div class="glass chart-card p-5 md:p-6 space-y-3">
-                        <h4 class="panel-title">Marginal &amp; Component Risk Contribution · v3.3</h4>
+                        </details>
+                        </section>
+                        <section id="research-risk" class="research-group" aria-label="投組風險">
+                            <div class="research-group-head"><h3>投組風險</h3><span>波動、尾部損失、壓力測試與匯率</span></div>
+                        <details class="research-module">
+                            <summary class="research-module-head"><span class="research-module-name">邊際與成分風險<small>Marginal &amp; Component Risk Contribution · v3.3</small></span><span class="research-state" v-if="performanceAttribution?.portfolio_risk?.status">{{ performanceAttribution?.portfolio_risk?.status }}</span></summary>
+                            <div class="research-module-body space-y-3">
+                        
                         <p class="panel-subtitle">最新 NAV 日期的全部標的曝險（非即時）。有效自動快照優先；否則採前一日已完成報價及流水帳重建。不把未解釋差額補成現金，不剔除缺價持倉。使用台幣價格報酬，不新增股息。</p>
                         <template v-if="performanceAttribution?.portfolio_risk">
                             <div class="text-xs">{{ performanceAttribution.portfolio_risk.status }}｜{{ performanceAttribution.portfolio_risk.reason || '' }}</div>
@@ -1292,9 +1362,13 @@
                                 </details>
                             </template>
                         </template><div v-else class="text-xs">等待更新</div>
-                    </div>
-                    <div class="glass chart-card p-5 md:p-6 space-y-3">
-                        <h4 class="panel-title">Stress Testing &amp; Scenario Analysis · v3.4</h4>
+
+                            </div>
+                        </details>
+                        <details class="research-module">
+                            <summary class="research-module-head"><span class="research-module-name">壓力測試<small>Stress Testing &amp; Scenario Analysis · v3.4</small></span><span class="research-state" v-if="performanceAttribution?.portfolio_risk?.hypothetical?.length ? `${performanceAttribution.portfolio_risk.hypothetical.length} 情境` : ''">{{ performanceAttribution?.portfolio_risk?.hypothetical?.length ? `${performanceAttribution.portfolio_risk.hypothetical.length} 情境` : '' }}</span></summary>
+                            <div class="research-module-body space-y-3">
+                        
                         <p class="panel-subtitle">固定目前曝險、假設標的價格及匯率同時變動；不代表未來預測。美元資產以 (1+價格變動)×(1+匯率變動)−1 計算；TWD 現金維持不變。歷史重播不是當時實際投組報酬。</p>
                         <template v-if="performanceAttribution?.portfolio_risk?.exposure">
                             <details class="text-xs" v-for="r in performanceAttribution.portfolio_risk.hypothetical" :key="r.id">
@@ -1316,9 +1390,13 @@
                                 <div v-for="s in r.rows || []" :key="s.ticker">{{ s.ticker }}｜{{ s.contribution_pp.toFixed(3) }} pp</div>
                             </details>
                         </template><div v-else class="text-xs">尚無可用曝險，未計算情境</div>
-                    </div>
-                    <div class="glass chart-card p-5 md:p-6 space-y-3">
-                        <h4 class="panel-title">Currency Risk Attribution · v3.5</h4>
+
+                            </div>
+                        </details>
+                        <details class="research-module">
+                            <summary class="research-module-head"><span class="research-module-name">匯率風險與損益<small>Currency Risk Attribution · v3.5</small></span><span class="research-state" v-if="performanceAttribution?.portfolio_risk?.currency_risk?.status">{{ performanceAttribution?.portfolio_risk?.currency_risk?.status }}</span></summary>
+                            <div class="research-module-body space-y-3">
+                        
                         <p class="panel-subtitle">歷史流水帳損益與固定目前曝險的週風險分開。純匯率、當地價格及交互作用精確加總；美元計價不等於底層經濟曝險。未新增股息或模擬避險交易。</p>
                         <template v-if="performanceAttribution?.portfolio_risk?.currency_risk">
                             <div class="text-xs">{{ performanceAttribution.portfolio_risk.currency_risk.status }}</div>
@@ -1345,9 +1423,16 @@
                                 </template>
                             </details>
                         </template>
-                    </div>
-                    <div class="glass chart-card p-5 md:p-6 space-y-3">
-                        <h4 class="panel-title">Risk Budget Rebalancing · v3.6</h4>
+
+                            </div>
+                        </details>
+                        </section>
+                        <section id="research-strategy" class="research-group" aria-label="策略研究">
+                            <div class="research-group-head"><h3>策略研究</h3><span>配置最佳化、風險預算與樣本外驗證</span></div>
+                        <details class="research-module">
+                            <summary class="research-module-head"><span class="research-module-name">風險預算再平衡<small>Risk Budget Rebalancing · v3.6</small></span><span class="research-state" v-if="performanceAttribution?.portfolio_risk?.risk_rebalancing?.status">{{ performanceAttribution?.portfolio_risk?.risk_rebalancing?.status }}</span></summary>
+                            <div class="research-module-body space-y-3">
+                        
                         <p class="panel-subtitle">使用同一 52 週價格風險樣本及現有標的，5/10/15% 單向換手上限；受既有配置限制。示範風險目標不是核准政策。樣本內模擬，估計一次交易成本，不是交易指令。</p>
                         <template v-if="performanceAttribution?.portfolio_risk?.risk_rebalancing">
                             <div class="text-xs">{{ performanceAttribution.portfolio_risk.risk_rebalancing.status }}｜{{ performanceAttribution.portfolio_risk.risk_rebalancing.reason || '' }}</div>
@@ -1367,9 +1452,13 @@
                                 </details>
                             </template>
                         </template><div v-else class="text-xs">尚無可用曝險或共同樣本</div>
-                    </div>
-                    <div class="glass chart-card p-5 md:p-6 space-y-3">
-                        <h4 class="panel-title">Out-of-sample Risk Budget Validation · v3.9</h4>
+
+                            </div>
+                        </details>
+                        <details class="research-module">
+                            <summary class="research-module-head"><span class="research-module-name">樣本外風險預算驗證<small>Out-of-sample Risk Budget Validation · v3.9</small></span><span class="research-state" v-if="performanceAttribution?.portfolio_risk?.oos_risk_budget?.status">{{ performanceAttribution?.portfolio_risk?.oos_risk_budget?.status }}</span></summary>
+                            <div class="research-module-body space-y-3">
+                        
                         <p class="panel-subtitle">目前標的回溯、非歷史可投資宇宙。52 週訓練、延後一週執行、四週持有；相同初始配置、10% 單向換手上限與成本。非正式投資政策、不下單。</p>
                         <template v-if="performanceAttribution?.portfolio_risk?.oos_risk_budget">
                             <div class="text-xs">{{ performanceAttribution.portfolio_risk.oos_risk_budget.status }}｜{{ performanceAttribution.portfolio_risk.oos_risk_budget.reason || '' }}｜共同樣本 {{ performanceAttribution.portfolio_risk.oos_risk_budget.available ?? '—' }} / 最低 {{ performanceAttribution.portfolio_risk.oos_risk_budget.required ?? 57 }}</div>
@@ -1384,39 +1473,36 @@
                                 <details class="text-xs"><summary>逐折驗證</summary><div v-for="f in performanceAttribution.portfolio_risk.oos_risk_budget.folds" :key="f.execution_date" class="mb-2"><div>訓練至 {{ f.train_end }}｜執行 {{ f.execution_date }}｜測試 {{ f.test_start }} ～ {{ f.test_end }}</div><div v-for="(r,k) in f.methods" :key="k">{{ k }}｜{{ r.status }}｜淨 {{ performancePct(r.net_return_pct) }}｜換手 {{ performancePct(r.turnover_pct) }}</div></div></details>
                             </template>
                         </template><div v-else class="text-xs">等待更新</div>
-                    </div>
-                    <div class="glass chart-card p-5 md:p-6 space-y-3">
-                        <h4 class="panel-title">Historical Brinson-Fachler · v2.3.3</h4>
-                        <p class="panel-subtitle">歷史 NAV、流水帳及價格重建；研究用非正式基準。採交易日收盤切段與多期 Carino 主動報酬連結。現金為流水帳推算，非銀行核對；不跨缺漏區間，不回填原始 NAV。微額負現金 ≤ NT$1 僅在研究估值歸零；保留原始差額。</p>
-                        <div class="text-xs text-amber-300">{{ performanceAttribution?.historical_brinson?.status || '等待新版歸因更新' }}｜{{ performanceAttribution?.historical_brinson?.reason || '' }}</div>
-                        <template v-if="performanceAttribution?.historical_brinson">
-                            <div class="text-xs">合格 {{ performanceAttribution.historical_brinson.eligible_intervals ?? 0 }} / {{ performanceAttribution.historical_brinson.expected_intervals ?? '—' }} 區間｜覆蓋率 {{ performancePct(performanceAttribution.historical_brinson.coverage_pct) }}</div>
-                            <details v-if="performanceAttribution.historical_brinson.coverage_diagnostics" open class="text-xs space-y-2">
-                                <summary>v2.3.3 資料品質診斷（原因可重疊）</summary>
-                                <div>微額現金容許區間 {{ performanceAttribution.historical_brinson.coverage_diagnostics.micro_cash_intervals }}｜已核實申購區間 {{ performanceAttribution.historical_brinson.coverage_diagnostics.pending_subscription_intervals }}</div>
-                                <div v-for="(n,k) in performanceAttribution.historical_brinson.coverage_diagnostics.reason_interval_counts" :key="k">{{ k }}：{{ n }} 期</div>
-                                <div v-for="(n,t) in performanceAttribution.historical_brinson.coverage_diagnostics.ticker_interval_counts" :key="t">{{ t }}：{{ n }} 期</div>
-                            </details>
-                            <details v-if="performanceAttribution.historical_brinson.market_recovery" class="text-xs space-y-2">
-                                <summary>歷史基金淨值來源與覆蓋範圍</summary>
-                                <div v-for="r in performanceAttribution.historical_brinson.market_recovery" :key="r.ticker">{{ r.ticker }}｜{{ r.status }}｜{{ r.source }}｜{{ r.first_available || "—" }} ～ {{ r.last_available || "—" }}｜{{ r.observations }} 筆</div>
-                            </details>
-                            <details v-if="performanceAttribution.historical_brinson.cash_trace" class="text-xs space-y-2">
-                                <summary>歷史現金缺口（流水帳推算，未核對期初資金）</summary>
-                                <div>重大負現金交易日 {{ performanceAttribution.historical_brinson.cash_trace.material_negative_days }}｜最低 {{ performanceAttribution.historical_brinson.cash_trace.minimum_cash_twd.toFixed(2) }} TWD</div>
-                                <div v-for="r in performanceAttribution.historical_brinson.cash_trace.negative_days" :key="r.date">{{ r.date }}｜日現金流 {{ r.daily_flow_twd.toFixed(2) }}｜累計 {{ r.cash_twd.toFixed(2) }} TWD｜{{ r.status }}</div>
-                            </details>
-                            <details v-if="performanceAttribution.historical_brinson.latest_segment" open class="text-xs space-y-2">
-                                <summary>最新連續區間（不跨缺口）</summary>
-                                <div>{{ performanceAttribution.historical_brinson.latest_segment.start }} ～ {{ performanceAttribution.historical_brinson.latest_segment.end }}｜{{ performanceAttribution.historical_brinson.latest_segment.period_count }} 期｜實際 NAV Dietz 連結 {{ performancePct(performanceAttribution.historical_brinson.latest_segment.portfolio_return_pct) }}｜基準 {{ performancePct(performanceAttribution.historical_brinson.latest_segment.benchmark_return_pct) }}｜主動 {{ performanceAttribution.historical_brinson.latest_segment.active_return_pp.toFixed(3) }} pp</div>
-                                <div v-for="(v,k) in performanceAttribution.historical_brinson.latest_segment.effects_pp" :key="k" class="flex justify-between"><span>{{ ({allocation:'配置',selection:'選擇',interaction:'交互',execution_other:'成交及其他現金流',nav_bridge:'NAV／方法差額'})[k] || k }}</span><span :class="performanceTone(v)">{{ v.toFixed(3) }} pp</span></div>
-                                <table class="w-full text-xs"><thead><tr><th class="text-left">類別</th><th class="text-right">配置 pp</th><th class="text-right">選擇 pp</th><th class="text-right">交互 pp</th></tr></thead><tbody><tr v-for="r in performanceAttribution.historical_brinson.latest_segment.rows" :key="r.bucket"><td>{{ r.bucket }}</td><td v-for="k in ['allocation_pp','selection_pp','interaction_pp']" :key="k" class="text-right">{{ r[k].toFixed(3) }}</td></tr></tbody></table>
-                                <div>連結核對差額 {{ performanceAttribution.historical_brinson.latest_segment.identity_error_pp.toExponential(2) }} pp</div>
-                            </details>
-                            <details class="text-xs"><summary>所有連續區段</summary><div v-for="r in performanceAttribution.historical_brinson.segments || []" :key="r.start">{{ r.start }} ～ {{ r.end }}｜{{ r.period_count }} 期｜主動 {{ r.active_return_pp.toFixed(3) }} pp</div></details>
-                            <details class="text-xs"><summary>逐期估值差額及排除區間</summary><div class="max-h-[320px] overflow-y-auto"><div v-for="r in performanceAttribution.historical_brinson.periods || []" :key="r.start"> {{ r.start }} ～ {{ r.end }}｜期初 / 期末 NAV 差額 {{ r.start_nav_gap_twd.toFixed(0) }} / {{ r.end_nav_gap_twd.toFixed(0) }} TWD｜方法差額 {{ r.effects_pp.nav_bridge.toFixed(3) }} pp</div><details v-for="r in performanceAttribution.historical_brinson.skipped || []" :key="r.start"><summary>{{ r.start }} ～ {{ r.end }}：{{ r.reason }}</summary><div v-for="(z,i) in r.diagnostics?.issues || []" :key="i" class="pl-2">{{ z.date }}｜{{ z.ticker }}｜{{ z.code }}｜{{ z.source || "" }}｜首次 {{ z.first_available || "—" }}｜末次 {{ z.last_available || "—" }}｜當日前末次 {{ z.last_on_or_before || "—" }}｜應有交易日 {{ z.expected_session || "—" }}｜日曆 {{ z.calendar || "—" }}｜現金 {{ z.cash_twd ?? "—" }}</div></details></div></details>
+
+                            </div>
+                        </details>
+                        <details class="research-module">
+                            <summary class="research-module-head"><span class="research-module-name">市場狀態與因子預算<small>Regime-aware Optimization &amp; Factor Risk Budget · v3.1 / v3.2</small></span><span class="research-state" v-if="performanceAttribution?.regime_factor_research?.status">{{ performanceAttribution?.regime_factor_research?.status }}</span></summary>
+                            <div class="research-module-body space-y-3">
+                        
+                        <p class="panel-subtitle">固定研究標的，不代表實際持倉；同樣本、成本及限制的 walk-forward 比較。市場狀態只用訓練期 VOO 台幣報酬，風險預算為示範，無交易權限。</p>
+                        <template v-if="performanceAttribution?.regime_factor_research">
+                            <div class="text-xs">{{ performanceAttribution.regime_factor_research.status }}｜{{ performanceAttribution.regime_factor_research.reason || '' }}</div>
+                            <div v-if="performanceAttribution.regime_factor_research.comparison" class="text-xs space-y-1">
+                                <div>{{ performanceAttribution.regime_factor_research.comparison.start }} ～ {{ performanceAttribution.regime_factor_research.comparison.end }}</div>
+                                <div v-for="(r,k) in performanceAttribution.regime_factor_research.comparison.aggregate" :key="k">{{ k }}｜淨報酬 {{ performancePct(r.net_return_pct) }}｜CAGR {{ performancePct(r.net_cagr_pct) }}｜波動 {{ performancePct(r.net_vol_pct) }}｜MDD {{ performancePct(r.net_max_drawdown_pct) }}｜成本/初始 NAV {{ performancePct(r.paid_cost_pct_initial_nav) }}｜失敗 {{ r.failed_rebalances }} / {{ r.fold_count }}</div>
+                                <div>最近已完成測試折市場狀態：{{ performanceAttribution.regime_factor_research.latest_fold?.methods?.regime_aware?.model?.regime || '—' }}</div>
+                                <details class="text-xs"><summary>最近研究折的因子風險預算（非即時配置）</summary>
+                                    <div v-for="r in performanceAttribution.regime_factor_research.latest_fold?.methods?.factor_budget?.model?.risk_shares || []" :key="r.factor">{{ r.factor }}｜原 {{ performancePct(r.before_pct) }}｜候選 {{ performancePct(r.candidate_pct) }}｜示範 {{ performancePct(r.target_pct) }}</div>
+                                    <div>預算誤差 RMSE {{ performanceAttribution.regime_factor_research.latest_fold?.methods?.factor_budget?.model?.budget_match_rmse_pp?.toFixed(3) ?? '—' }} pp</div>
+                                </details>
+                            </div>
+                        </template><div v-else class="text-xs">等待更新</div>
+                        <template v-if="performanceAttribution?.factor_risk_budget">
+                            <h5 class="font-medium text-sm">實際 NAV 因子風險診斷（USD 超額報酬）</h5>
+                            <div class="text-xs">{{ performanceAttribution.factor_risk_budget.status }}｜{{ performanceAttribution.factor_risk_budget.observations ?? 0 }} 個七日樣本</div>
+                            <div class="text-xs" v-for="r in performanceAttribution.factor_risk_budget.rows || []" :key="r.factor">{{ r.factor }}｜風險貢獻 {{ performancePct(r.risk_pct) }}｜示範預算 {{ performancePct(r.illustrative_budget_pct) }}｜差 {{ r.gap_pp.toFixed(3) }} pp</div>
                         </template>
-                    </div>
+
+                            </div>
+                        </details>
+                        </section>
+                    </section>
                 </div>
             </section>
 
@@ -6312,19 +6398,18 @@
                                         </div>
                                     </div>
 
-                                    <div v-if="performanceAttribution?.portfolio_risk?.combined_lookthrough" class="rounded-xl border border-cyan-500/20 p-3 space-y-2 text-xs">
-                                        <div class="font-bold text-white">全 NAV 直接＋間接穿透 / 產業 / 國家 / HHI · v3.8.1–3.8.3</div>
+                                    <div v-if="performanceAttribution?.portfolio_risk?.combined_lookthrough" class="research-xray space-y-3 text-xs">
+                                        <h4 class="research-xray-title">全投組底層曝險 <small>直接＋間接 · v3.8.1–3.8.3</small></h4>
                                         <div>{{ performanceAttribution.portfolio_risk.combined_lookthrough.status }}｜{{ performanceAttribution.portfolio_risk.combined_lookthrough.reason || '' }}</div>
                                         <template v-if="performanceAttribution.portfolio_risk.combined_lookthrough.rows">
                                             <div>曝險 {{ performanceAttribution.portfolio_risk.combined_lookthrough.as_of }}｜{{ performanceAttribution.portfolio_risk.combined_lookthrough.basis }}｜與上方舊 X-Ray 權重分母不同，不直接比較。</div>
-                                            <div>直接 {{ performancePct(performanceAttribution.portfolio_risk.combined_lookthrough.direct_pct) }}｜間接 {{ performancePct(performanceAttribution.portfolio_risk.combined_lookthrough.indirect_pct) }}｜已映射股票 {{ performancePct(performanceAttribution.portfolio_risk.combined_lookthrough.mapped_equity_pct) }}｜未映射 {{ performancePct(performanceAttribution.portfolio_risk.combined_lookthrough.unmapped_pct) }}｜已知非股票 {{ performancePct(performanceAttribution.portfolio_risk.combined_lookthrough.non_equity_pct) }}</div>
-                                            <div>Top 5 {{ performancePct(performanceAttribution.portfolio_risk.combined_lookthrough.top5_pct) }}｜Top 10 {{ performancePct(performanceAttribution.portfolio_risk.combined_lookthrough.top10_pct) }}｜映射股票 HHI {{ performanceAttribution.portfolio_risk.combined_lookthrough.mapped_equity_hhi?.toFixed(2) ?? '—' }} / 10000｜有效持股數 {{ performanceAttribution.portfolio_risk.combined_lookthrough.effective_names?.toFixed(1) ?? '—' }}</div>
+                                            <div class="research-metrics"><div class="research-metric"><span>直接股票</span><strong>{{ performancePct(performanceAttribution.portfolio_risk.combined_lookthrough.direct_pct) }}</strong></div><div class="research-metric"><span>間接股票</span><strong>{{ performancePct(performanceAttribution.portfolio_risk.combined_lookthrough.indirect_pct) }}</strong></div><div class="research-metric"><span>已映射股票</span><strong>{{ performancePct(performanceAttribution.portfolio_risk.combined_lookthrough.mapped_equity_pct) }}</strong></div><div class="research-metric"><span>未映射</span><strong>{{ performancePct(performanceAttribution.portfolio_risk.combined_lookthrough.unmapped_pct) }}</strong></div><div class="research-metric"><span>已知非股票</span><strong>{{ performancePct(performanceAttribution.portfolio_risk.combined_lookthrough.non_equity_pct) }}</strong></div><div class="research-metric"><span>前五大</span><strong>{{ performancePct(performanceAttribution.portfolio_risk.combined_lookthrough.top5_pct) }}</strong></div><div class="research-metric"><span>前十大</span><strong>{{ performancePct(performanceAttribution.portfolio_risk.combined_lookthrough.top10_pct) }}</strong></div><div class="research-metric"><span>映射股票 HHI / 10000</span><strong>{{ performanceAttribution.portfolio_risk.combined_lookthrough.mapped_equity_hhi?.toFixed(2) ?? '—' }}</strong></div><div class="research-metric"><span>有效持股數</span><strong>{{ performanceAttribution.portfolio_risk.combined_lookthrough.effective_names?.toFixed(1) ?? '—' }}</strong></div></div>
                                             <div class="text-amber-300">{{ performanceAttribution.portfolio_risk.combined_lookthrough.warnings.join('｜') }}</div>
-                                            <details open><summary>底層合併持股（前 50；非發行人合併）</summary>
+                                            <details><summary>底層合併持股（前 50；非發行人合併）</summary>
                                                 <div class="overflow-x-auto max-h-80"><table class="w-full text-right"><thead><tr><th class="text-left">證券</th><th>直接</th><th>間接</th><th>合計</th><th>產業</th><th>國家</th><th>來源 ETF</th></tr></thead><tbody><tr v-for="r in performanceAttribution.portfolio_risk.combined_lookthrough.rows" :key="r.key"><td class="text-left">{{ r.ticker || r.name || r.key }}</td><td>{{ performancePct(r.direct_pct) }}</td><td>{{ performancePct(r.indirect_pct) }}</td><td>{{ performancePct(r.total_pct) }}</td><td>{{ r.sector }}</td><td>{{ r.country }}</td><td>{{ r.source_funds.join(' / ') }}</td></tr></tbody></table></div>
                                             </details>
-                                            <details><summary>產業曝險（全 NAV 分母；Unknown 為未分類已映射股票）</summary><div v-for="r in performanceAttribution.portfolio_risk.combined_lookthrough.sector" :key="r.label">{{ r.label }}｜{{ performancePct(r.portfolio_pct) }}</div></details>
-                                            <details><summary>國家曝險（來源分類；非營收地理）</summary><div v-for="r in performanceAttribution.portfolio_risk.combined_lookthrough.country" :key="r.label">{{ r.label }}｜{{ performancePct(r.portfolio_pct) }}</div></details>
+                                            <details><summary>產業曝險（全 NAV 分母；Unknown 為未分類已映射股票）</summary><div v-for="r in performanceAttribution.portfolio_risk.combined_lookthrough.sector" :key="r.label" class="research-exposure-row"><span>{{ r.label }}</span><div class="research-exposure-track" aria-hidden="true"><div :style="{width: Math.max(0,Math.min(100,r.portfolio_pct))+'%'}"></div></div><strong>{{ performancePct(r.portfolio_pct) }}</strong></div></details>
+                                            <details><summary>國家曝險（來源分類；非營收地理）</summary><div v-for="r in performanceAttribution.portfolio_risk.combined_lookthrough.country" :key="r.label" class="research-exposure-row"><span>{{ r.label }}</span><div class="research-exposure-track" aria-hidden="true"><div :style="{width: Math.max(0,Math.min(100,r.portfolio_pct))+'%'}"></div></div><strong>{{ performancePct(r.portfolio_pct) }}</strong></div></details>
                                             <details><summary>未映射曝險與資料日期</summary><div v-for="r in performanceAttribution.portfolio_risk.combined_lookthrough.unmapped" :key="r.ticker">{{ r.ticker }}｜{{ performancePct(r.weight_pct) }}｜{{ r.reason }}</div><div v-for="r in performanceAttribution.portfolio_risk.combined_lookthrough.funds" :key="r.ticker">{{ r.ticker }}｜{{ r.as_of }}｜{{ r.source_quality }}｜{{ r.stale ? '過期暫估' : '未超過來源時效門檻' }}</div></details>
                                             <p class="text-gray-400">HHI 僅以已映射股票重新標準化；缺失證券識別可能低估集中度。保留舊 ETF 重疊矩陣，不以新結果覆寫。非即時或 PIT 持股揭露。</p>
                                         </template>
