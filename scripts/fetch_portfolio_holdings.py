@@ -475,7 +475,7 @@ def fetch_copx(session: requests.Session) -> dict[str, Any]:
              if "copx" in str(a["href"]).lower() and "full-holdings" in str(a["href"]).lower()
              and str(a["href"]).lower().endswith(".csv")]
     if not links:
-        links = re.findall(r'https?://[^"'\s]*copx[^"'\s]*full-holdings[^"'\s]*\.csv', p.text, flags=re.I)
+        links = re.findall(r"""https?://[^"'\s]*copx[^"'\s]*full-holdings[^"'\s]*\.csv""", p.text, flags=re.I)
     links = [u for u in links if u.startswith("https://assets.globalxetfs.com/") or u.startswith("https://www.globalxetfs.com/")]
     if not links:
         raise HoldingsError("COPX: official full-holdings CSV link not found")
