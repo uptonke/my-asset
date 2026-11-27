@@ -28,7 +28,7 @@ import math
 import re
 import sys
 import urllib.request
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
@@ -304,7 +304,7 @@ def _fetch_ishares_csv(
     for row in rows:
         ticker = row.get("Ticker", "")
         name = row.get("Name", "")
-        weight = _weight_decimal(row.get("Weight (%)") or row.get("Weight") or row.get("Weight %"))
+        weight = _weight_decimal(row.get("Market Weight") or row.get("Weight (%)") or row.get("Weight") or row.get("Weight %"))
         if weight is None:
             continue
         h = _holding(
@@ -321,6 +321,12 @@ def _fetch_ishares_csv(
             shares=row.get("Quantity"),
         )
         if h:
+            # Issuer asset class overrides ambiguous company-name heuristics.
+            raw_class = _clean(row.get("Asset Class")).casefold()
+            if raw_class in ("equity", "equities"):
+                h["asset_class"] = "equity"
+            elif raw_class == "cash":
+                h["asset_class"] = "cash"
             holdings.append(h)
     return _finalize(
         fund=fund,
@@ -334,7 +340,7 @@ def _fetch_ishares_csv(
 
 def fetch_ifra(session: requests.Session) -> dict[str, Any]:
     errors = []
-    for slug in ("ishares-u-s-infrastructure-etf-ifra", "ishares-u-s-infrastructure-etf"):
+    for slug in ("ishares-u-s-infrastructure-etf", "fund", "ishares-u-s-infrastructure-etf-ifra"):
         try:
             return _fetch_ishares_csv(session, fund="IFRA", product_id="294315", slug=slug)
         except (HoldingsError, requests.RequestException) as exc:
@@ -407,26 +413,7 @@ def fetch_grid(session: requests.Session) -> dict[str, Any]:
     )
 
 
-def fetch_copx(session: requests.Session) -> dict[str, Any]:
-    page_url = "https://www.globalxetfs.com/funds/copx"
-    p = session.get(page_url, timeout=HTTP_TIMEOUT)
-    p.raise_for_status()
-    soup = BeautifulSoup(p.text, "html.parser")
-    csv_links: list[str] = []
-    for a in soup.find_all("a", href=True):
-        href = str(a["href"])
-        if "full-holdings" in href.lower() and href.lower().endswith(".csv"):
-            csv_links.append(urljoin(page_url, href))
-    if not csv_links:
-        csv_links = re.findall(
-            r'https?://[^"\']*copx[^"\']*full-holdings[^"\']*\.csv',
-            p.text,
-            flags=re.I,
-        )
-    if not csv_links:
-        raise HoldingsError("COPX: official full-holdings CSV link not found")
-    csv_url = csv_links[0]
-    r = session.get(csv_url, timeout=HTTP_TIMEOUT)
+def _parse_copx_csv(r, csv_url: str) -> dict[str, Any]:
     r.raise_for_status()
     text = r.content.decode("utf-8-sig", errors="replace")
     lines = text.splitlines()
@@ -434,7 +421,12 @@ def fetch_copx(session: requests.Session) -> dict[str, Any]:
         header_idx = next(i for i, line in enumerate(lines) if line.startswith(("% of Net Assets,Ticker,Name,", "Net Assets (%),Ticker,Name,")))
     except StopIteration as exc:
         raise HoldingsError("COPX: CSV header not found") from exc
-    as_of = _extract_date(" ".join(lines[:header_idx])) or _extract_date(csv_url)
+    as_of = _extract_date(" ".join(lines[:header_idx]))
+    match = re.search(r"copx_full-holdings_(\d{8})\.csv(?:\?|$)", csv_url, re.I)
+    file_date = datetime.strptime(match.group(1), "%Y%m%d").date().isoformat() if match else None
+    if as_of and file_date and as_of != file_date:
+        raise HoldingsError("COPX: CSV effective date disagrees with filename")
+    as_of = as_of or file_date
     rows = csv.DictReader(io.StringIO("\n".join(lines[header_idx:])))
     holdings: list[dict[str, Any]] = []
     for row in rows:
@@ -449,6 +441,8 @@ def fetch_copx(session: requests.Session) -> dict[str, Any]:
         )
         if h:
             holdings.append(h)
+    if len(holdings) < 30:
+        raise HoldingsError("COPX: incomplete full holdings")
     return _finalize(
         fund="COPX",
         as_of=as_of,
@@ -457,6 +451,36 @@ def fetch_copx(session: requests.Session) -> dict[str, Any]:
         source_url=csv_url,
         holdings=holdings,
     )
+
+
+def fetch_copx(session: requests.Session) -> dict[str, Any]:
+    # Official CDN filename convention observed in previously valid snapshot.
+    # 404 means file not present; other HTTP errors propagate.
+    today = datetime.now(timezone.utc).date()
+    for offset in range(7):
+        d = today - timedelta(days=offset)
+        if d.weekday() >= 5:
+            continue
+        url = f"https://assets.globalxetfs.com/funds/holdings/copx_full-holdings_{d:%Y%m%d}.csv"
+        r = session.get(url, timeout=HTTP_TIMEOUT)
+        if r.status_code == 404:
+            continue
+        return _parse_copx_csv(r, url)
+
+    page_url = "https://www.globalxetfs.com/funds/copx"
+    p = session.get(page_url, timeout=HTTP_TIMEOUT)
+    p.raise_for_status()
+    soup = BeautifulSoup(p.text, "html.parser")
+    links = [urljoin(page_url, str(a["href"])) for a in soup.find_all("a", href=True)
+             if "copx" in str(a["href"]).lower() and "full-holdings" in str(a["href"]).lower()
+             and str(a["href"]).lower().endswith(".csv")]
+    if not links:
+        links = re.findall(r'https?://[^"'\s]*copx[^"'\s]*full-holdings[^"'\s]*\.csv', p.text, flags=re.I)
+    links = [u for u in links if u.startswith("https://assets.globalxetfs.com/") or u.startswith("https://www.globalxetfs.com/")]
+    if not links:
+        raise HoldingsError("COPX: official full-holdings CSV link not found")
+    csv_url = links[0]
+    return _parse_copx_csv(session.get(csv_url, timeout=HTTP_TIMEOUT), csv_url)
 
 
 def fetch_vnm(session: requests.Session) -> dict[str, Any]:
@@ -517,7 +541,17 @@ def fetch_vnm(session: requests.Session) -> dict[str, Any]:
 
 
 def _fetch_vanguard(session: requests.Session, fund: str) -> dict[str, Any]:
-    base_url = f"https://investor.vanguard.com/investment-products/etfs/profile/api/{fund}/portfolio-holding/stock"
+    errors = []
+    for prefix in ("vmf/api", "investment-products/etfs/profile/api"):
+        base_url = f"https://investor.vanguard.com/{prefix}/{fund}/portfolio-holding/stock"
+        try:
+            return _fetch_vanguard_pages(session, fund, base_url)
+        except (HoldingsError, requests.RequestException, ValueError, TypeError, AttributeError) as exc:
+            errors.append(f"{prefix}: {exc}")
+    raise HoldingsError(f"{fund}: " + "; ".join(errors))
+
+
+def _fetch_vanguard_pages(session: requests.Session, fund: str, base_url: str) -> dict[str, Any]:
     start = 1
     page_size = 500
     raw_rows: list[dict[str, Any]] = []
@@ -528,26 +562,43 @@ def _fetch_vanguard(session: requests.Session, fund: str) -> dict[str, Any]:
         r = session.get(base_url, params={"start": start, "count": page_size}, timeout=HTTP_TIMEOUT)
         r.raise_for_status()
         data = r.json()
-        if as_of is None:
-            as_of = _iso_date(data.get("asOfDate"))
+        page_date = _iso_date(data.get("asOfDate"))
+        if not page_date or (as_of is not None and page_date != as_of):
+            raise HoldingsError(f"{fund}: inconsistent Vanguard snapshot dates")
+        as_of = page_date
         try:
-            reported_count = int(data.get("size"))
+            count = int(data.get("size"))
         except (TypeError, ValueError):
-            reported_count = None
+            count = None
+        if count is not None:
+            if reported_count is not None and count != reported_count:
+                raise HoldingsError(f"{fund}: inconsistent Vanguard reported count")
+            reported_count = count
         rows = ((data.get("fund") or {}).get("entity") or [])
         if not isinstance(rows, list) or not rows:
             break
         raw_rows.extend(row for row in rows if isinstance(row, dict))
-        if (reported_count is not None and len(raw_rows) >= reported_count) or len(rows) < page_size:
+        if reported_count is not None and len(raw_rows) >= reported_count:
+            break
+        if reported_count is None and len(rows) < page_size:
             break
         start += len(rows)
         if start > 10000:
             raise HoldingsError(f"{fund}: Vanguard pagination exceeded safety limit")
 
     holdings: list[dict[str, Any]] = []
+    if reported_count is not None and len(raw_rows) != reported_count:
+        raise HoldingsError(f"{fund}: incomplete Vanguard pagination")
+    if len(raw_rows) < (400 if fund == "VOO" else 2500):
+        raise HoldingsError(f"{fund}: suspiciously incomplete Vanguard holdings")
+    seen = set()
     for row in raw_rows:
         ident = row.get("isin") or row.get("cusip") or row.get("sedol")
         ident_type = "ISIN" if row.get("isin") else ("CUSIP" if row.get("cusip") else "SEDOL")
+        if ident and (ident_type, ident) in seen:
+            raise HoldingsError(f"{fund}: duplicate Vanguard security identifier")
+        if ident:
+            seen.add((ident_type, ident))
         h = _holding(
             ticker=row.get("ticker"),
             name=row.get("longName") or row.get("shortName"),

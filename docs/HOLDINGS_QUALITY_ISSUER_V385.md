@@ -4,3 +4,10 @@
 - Archive first successfully observed snapshot per UTC day under data/holdings/archive. Its path is observation date, not publication or effective date; no historical dates are backfilled. Archive growth must be monitored. This is not a point-in-time universe database.
 - Original security HHI remains unchanged. Issuer proxy HHI is conditional on mapped equity; curated Alphabet and Berkshire ISIN/CUSIP groups are merged; all other securities remain separate. Confirmed mapping coverage uses mapped equity denominator, not all NAV. No ticker/name heuristics. Unmapped and stale exposures remain provisional. No automatic execution.
 - v3.9.1 and v3.9.2 not included in this change.
+
+## v3.8.6 source recovery
+
+- IFRA issuer CSV now exposes Market Weight and Notional Weight; parse market weight (not notional) and retain legacy columns. Official CSV dated 2026-11-25 verified at https://www.ishares.com/us/products/294315/ishares-u-s-infrastructure-etf/latest-holdings.csv.
+- VOO/VEA try the candidate Vanguard vmf/api path before legacy endpoint. Require consistent pagination dates/counts and reject duplicate IDs and unusually small full holdings lists (400/2500). New path not independently live verified.
+- COPX tries recent dated official asset CDN files using the existing observed filename convention; 404-only date probing is bounded. Reject incomplete CSVs or conflicting source dates. Product page fallback remains. Recent CDN file availability not live verified.
+- All existing freshness, regression, coverage and archive checks remain. No third-party supplier added. Actual four-fund recovery must be checked on Actions; mock regression tests do not establish live availability.
