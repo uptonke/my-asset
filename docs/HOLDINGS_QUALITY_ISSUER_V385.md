@@ -11,3 +11,9 @@
 - VOO/VEA try the candidate Vanguard vmf/api path before legacy endpoint. Require consistent pagination dates/counts and reject duplicate IDs and unusually small full holdings lists (400/2500). New path not independently live verified.
 - COPX tries recent dated official asset CDN files using the existing observed filename convention; 404-only date probing is bounded. Reject incomplete CSVs or conflicting source dates. Product page fallback remains. Recent CDN file availability not live verified.
 - All existing freshness, regression, coverage and archive checks remain. No third-party supplier added. Actual four-fund recovery must be checked on Actions; mock regression tests do not establish live availability.
+
+## v3.8.7 Vanguard position normalization
+
+- Missing or placeholder ISIN/CUSIP/SEDOL values no longer collide; use another syntactically valid security identifier or a snapshot-local row ID. No cross-fund merge for unknown identities.
+- Distinct positions sharing a valid identifier and identical ticker/name may be aggregated with weight-mass preservation. Identical raw rows, indistinguishable economic positions and conflicting identity labels are rejected. If merging or unknown identifiers occur, a second page size must reproduce the entire raw snapshot. Coverage guard 90–100.5% is a conservative research assumption, not proof of complete coverage; no renormalization.
+- A read-only PR-only VEA live probe runs on the v3.8.7 research branch. It uses a temporary directory, no credentials, no Git commits, and no Supabase write. Live recovery is not established until this check succeeds. Existing cache remains unchanged on failure.

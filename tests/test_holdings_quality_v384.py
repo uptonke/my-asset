@@ -73,4 +73,48 @@ class SourceRecoveryTests(unittest.TestCase):
         self.assertIn("/vmf/api/VOO/",fetch.call_args_list[0].args[2])
         self.assertIn("/profile/api/VOO/",fetch.call_args_list[1].args[2])
 
+class VanguardDedupTests(unittest.TestCase):
+    def row(self, ticker="ABC", isin="US1234567890", weight=40, shares=100, **kw):
+        return {"ticker":ticker,"isin":isin,"longName":ticker+" Corp",
+                "percentWeight":weight,"sharesHeld":shares,**kw}
+
+    def test_distinct_positions_preserve_mass(self):
+        rows=[self.row(),self.row(weight=20,shares=50),
+              self.row("XYZ","N/A",40,100)]
+        holdings,d=m._vanguard_normalize("VEA","2026-10-31",rows)
+        self.assertEqual(len(holdings),2)
+        self.assertAlmostEqual(holdings[0]["weight"],.6)
+        self.assertEqual(holdings[0]["shares"],150)
+        self.assertEqual(holdings[1]["id_type"],"VANGUARD_ROW")
+        self.assertEqual(d["merged_position_rows"],1)
+        self.assertEqual(d["unverified_identifier_rows"],1)
+        self.assertAlmostEqual(d["raw_weight_pct"],d["normalized_weight_pct"])
+
+    def test_placeholders_use_secondary_identifier(self):
+        self.assertEqual(m._vanguard_identifier({"isin":"N/A","cusip":"123456789"}),("CUSIP","123456789"))
+        self.assertIsNone(m._vanguard_identifier({"isin":"US0000000000","cusip":"000000000","sedol":"0000000"}))
+
+    def test_conflict_and_economic_duplicate_rejected(self):
+        with self.assertRaisesRegex(m.HoldingsError,"conflicting"):
+            m._vanguard_normalize("VEA","2026-10-31",[self.row(),self.row("XYZ",weight=60)])
+        with self.assertRaisesRegex(m.HoldingsError,"ambiguous repeated"):
+            m._vanguard_normalize("VEA","2026-10-31",[self.row(),self.row(extra="different")])
+
+    def test_repeated_raw_row_rejected(self):
+        from unittest.mock import Mock
+        session=Mock()
+        r=Mock()
+        r.json.return_value={"asOfDate":"2026-10-31","size":2,"fund":{"entity":[self.row(),self.row()]}}
+        session.get.return_value=r
+        with self.assertRaisesRegex(m.HoldingsError,"identical Vanguard raw row"):
+            m._vanguard_raw_pages(session,"VEA","https://example.com",500)
+
+    def test_alternate_pagination_mismatch_rejected(self):
+        from unittest.mock import Mock
+        rows=[self.row(),self.row(weight=60,shares=200)]
+        with patch.object(m,"_vanguard_raw_pages",side_effect=[
+            (rows,"2026-10-31",2,{"a","b"}),(rows,"2026-10-31",2,{"a","c"})]):
+            with self.assertRaisesRegex(m.HoldingsError,"alternate pagination mismatch"):
+                m._fetch_vanguard_pages(Mock(),"VEA","https://example.com")
+
 if __name__=="__main__":unittest.main()
