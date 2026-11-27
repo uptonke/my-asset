@@ -1,0 +1,58 @@
+/* Scoped research UI; existing terminal styling elsewhere is unchanged. */
+.research-workspace {display:grid;gap:18px;min-width:0;max-width:100%;color:var(--terminal-text,#e5e7eb)}
+.research-overview,.research-group,.research-xray {min-width:0;border:1px solid var(--terminal-border,rgba(148,163,184,.2));border-radius:14px;background:#0c1423;padding:16px}
+.research-overview-head {display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.research-overview-head h3,.research-group-head h3 {font-size:17px!important;color:#f1f5f9;line-height:1.4;margin:0}
+.research-overview-head p,.research-group-head span,.research-meta {color:var(--terminal-muted,#94a3b8);font-size:12px!important;font-weight:400;line-height:1.55;overflow-wrap:anywhere}
+.research-metrics {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(145px,100%),1fr));gap:8px;min-width:0}
+.research-metric {min-width:0;background:#080f1c;border:1px solid var(--terminal-border);border-radius:9px;padding:11px 12px;display:flex;flex-direction:column;gap:5px}
+.research-metric>span {font-size:12px!important;font-weight:500;color:#a8b5c7;line-height:1.35}
+.research-metric>strong {font-family:var(--font-number,monospace);font-size:19px!important;font-weight:650;color:#f1f5f9;line-height:1.35;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.research-meta {margin-top:10px}
+.research-empty {color:var(--terminal-warning,#f59e0b);font-size:13px;padding:8px 0 12px}
+.research-jump {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}
+.research-jump>a {display:flex;justify-content:center;align-items:center;min-height:44px;padding:8px;text-align:center;border:1px solid var(--terminal-border);border-radius:8px;background:#131e30;color:#cbd5e1;font-size:13px;font-weight:600;text-decoration:none}
+.research-jump>a:hover,.research-jump>a:focus-visible {border-color:#64748b;color:#fff}
+.research-group {scroll-margin-top:160px;display:grid;gap:8px}
+.research-group-head {display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 12px;padding:2px 0 6px}
+.research-module {border:1px solid var(--terminal-border);border-radius:9px;min-width:0;background:#0a1220}
+.research-module-head {display:flex;align-items:center;gap:10px;cursor:pointer;min-height:56px;padding:10px 13px;list-style:none}
+.research-module-head::-webkit-details-marker {display:none}
+.research-module-head::before {content:"";width:7px;height:7px;border-right:2px solid #94a3b8;border-bottom:2px solid #94a3b8;transform:rotate(-45deg);flex-shrink:0}
+.research-module[open]>.research-module-head::before {transform:rotate(45deg)}
+.research-module[open]>.research-module-head {border-bottom:1px solid var(--terminal-border)}
+.research-module-name {flex:1;min-width:0;font-size:14px!important;font-weight:650;color:#e2e8f0}
+.research-module-name small,.research-xray-title small {display:block;font-weight:400;font-size:11px!important;color:#94a3b8;line-height:1.4;margin-top:2px}
+.research-state {font-size:10px!important;font-weight:600;letter-spacing:.01em;max-width:44%;overflow-wrap:anywhere;text-align:right;line-height:1.4;color:#aebbd0}
+.research-module-body {min-width:0;padding:14px;overflow-wrap:anywhere}
+.research-module-body .panel-subtitle {font-size:12px!important;line-height:1.65!important;color:#94a3b8!important;font-weight:400!important}
+.research-module-body .text-xs,.research-xray .text-xs,.research-xray {font-size:13px!important;font-weight:400!important;line-height:1.55!important;letter-spacing:normal!important}
+.research-module-body details,.research-xray details {border:1px solid var(--terminal-border);border-radius:8px;padding:8px 10px;margin:6px 0;min-width:0}
+.research-module-body details>summary,.research-xray details>summary {cursor:pointer;color:#d4dfed;font-weight:600;min-height:32px;line-height:1.55;padding:5px 0;overflow-wrap:anywhere}
+.research-module-body details[open]>summary,.research-xray details[open]>summary {border-bottom:1px solid var(--terminal-border);margin-bottom:8px}
+.research-module-body details>div,.research-xray details>div {padding-block:3px}
+.research-module-body .overflow-x-auto,.research-xray .overflow-x-auto,.research-table-scroll {max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch}
+.research-module-body table,.research-xray table {min-width:460px}
+.research-module-body th,.research-module-body td,.research-xray th,.research-xray td {padding:8px 10px!important;white-space:nowrap;line-height:1.5!important}
+.research-module-body th,.research-xray th {text-transform:none;letter-spacing:normal!important}
+.research-module-body table th:first-child,.research-module-body table td:first-child,.research-xray table th:first-child,.research-xray table td:first-child {position:sticky;left:0;z-index:1;background:#101a2a!important}
+.research-module-body button {min-height:40px}
+.research-xray-title {font-size:16px!important;color:#e2e8f0;margin:0}
+.research-exposure-row {display:grid;grid-template-columns:minmax(100px,1fr) minmax(32px,1fr) 68px;align-items:center;gap:8px;border-bottom:1px solid rgba(148,163,184,.09)}
+.research-exposure-row>span {overflow-wrap:anywhere}
+.research-exposure-row>strong {text-align:right;font-family:var(--font-number,monospace);font-size:12px!important;font-weight:500}
+.research-exposure-track {height:7px;background:#1e293b;border-radius:4px;overflow:hidden}
+.research-exposure-track>div {height:100%;background:#6c92b8;border-radius:4px}
+@media(max-width:768px) {
+ .research-workspace {gap:12px}
+ .research-overview,.research-group,.research-xray {padding:11px}
+ .research-metrics {grid-template-columns:repeat(2,minmax(0,1fr))}
+ .research-metric {padding:9px}
+ .research-metric>strong {font-size:17px!important}
+ .research-jump {grid-template-columns:repeat(2,minmax(0,1fr))}
+ .research-module-head {padding:10px;min-height:60px}
+ .research-module-body {padding:10px}
+ .research-group {scroll-margin-top:200px}
+ .research-state {max-width:36%}
+ .research-exposure-row {grid-template-columns:minmax(84px,1fr) minmax(24px,.7fr) 60px;gap:5px}
+}
