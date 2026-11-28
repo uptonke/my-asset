@@ -100,6 +100,25 @@ class VanguardDedupTests(unittest.TestCase):
         with self.assertRaisesRegex(m.HoldingsError,"ambiguous repeated"):
             m._vanguard_normalize("VEA","2026-10-31",[self.row(),self.row(extra="different")])
 
+    def test_verified_sampo_cross_listing_preserves_mass(self):
+        rows=[self.row("SAMPO","FI4000552500",40,100,longName="Sampo Oyj Class A"),
+              self.row("SAMPO DKK","FI4000552500",60,150,longName="Sampo plc A")]
+        holdings,d=m._vanguard_normalize("VEA","2026-10-31",rows)
+        self.assertEqual(len(holdings),1)
+        self.assertAlmostEqual(holdings[0]["weight"],1.)
+        self.assertEqual(holdings[0]["shares"],250)
+        self.assertEqual(d["cross_listing_position_rows"],1)
+        self.assertEqual(len(holdings[0]["source_listing_labels"]),2)
+        self.assertAlmostEqual(d["raw_weight_pct"],d["normalized_weight_pct"])
+
+    def test_sampo_unverified_or_sdr_labels_rejected(self):
+        first=self.row("SAMPO","FI4000552500",40,100,longName="Sampo Oyj Class A")
+        for ticker,name in [("XYZ","Different Corp"),("SAMPO SDB","Sampo SDR"),("SAMPO","Sampo Class B")]:
+            with self.subTest(ticker=ticker,name=name):
+                with self.assertRaisesRegex(m.HoldingsError,"conflicting"):
+                    m._vanguard_normalize("VEA","2026-10-31",
+                        [first,self.row(ticker,"FI4000552500",60,150,longName=name)])
+
     def test_repeated_raw_row_rejected(self):
         from unittest.mock import Mock
         session=Mock()

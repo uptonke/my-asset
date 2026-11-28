@@ -611,11 +611,29 @@ def _vanguard_raw_pages(session, fund, base_url, page_size):
     return raw_rows, as_of, reported_count, seen_rows
 
 
+# Verified cross-listing evidence: Sampo A shares have the same ISIN on
+# Helsinki, Copenhagen and (following the SDR conversion) Stockholm.
+# https://www.sampo.com/globalassets/year2025/esef/sampo2025-board-report-financial-statements.htm
+# https://www.sampo.com/globalassets/investors/share/documents/exemption-document-regarding-listing-of-the-sampo-plc-a-shares-in-accordance-with-article-1.5-ba-of-the-regulation-eu-2017_1129.pdf
+def _vanguard_compatible_labels(ident, left, right):
+    if (left["ticker"].casefold(), left["name"].casefold()) == (right["ticker"].casefold(), right["name"].casefold()):
+        return True
+    if ident != ("ISIN", "FI4000552500"):
+        return False
+    def sampo_label(h):
+        name = h["name"].upper()
+        ticker = h["ticker"].upper()
+        return (re.match(r"^SAMPO(?:\b|[.\-_/])", name) is not None
+                and re.match(r"^SAMPO(?:\b|[.\-_/])", ticker) is not None
+                and not re.search(r"\b(?:SDR|SDB|DEPOSITARY|DEPOSITORY|CLASS B|CL B|PREFERRED|PREF)\b", name + " " + ticker))
+    return sampo_label(left) and sampo_label(right)
+
+
 def _vanguard_normalize(fund, as_of, raw_rows):
     holdings = []
     groups = {}
     diagnostics = {"raw_rows": len(raw_rows), "merged_position_rows": 0,
-                   "unverified_identifier_rows": 0}
+                   "cross_listing_position_rows": 0, "unverified_identifier_rows": 0}
     for index, row in enumerate(raw_rows):
         ident = _vanguard_identifier(row)
         weight = _weight_decimal(row.get("percentWeight"))
@@ -644,8 +662,17 @@ def _vanguard_normalize(fund, as_of, raw_rows):
         prior, positions = existing
         # Same validated identifier plus matching reported identity; never merge
         # conflicting labels or indistinguishable economic positions.
+        if not _vanguard_compatible_labels(ident, prior, h):
+            raise HoldingsError(f"{fund}: conflicting Vanguard identity for {kind}:{value}; "
+                                f"first={prior['ticker']!r}/{prior['name']!r}, "
+                                f"next={h['ticker']!r}/{h['name']!r}")
         if (prior["ticker"].casefold(), prior["name"].casefold()) != (h["ticker"].casefold(), h["name"].casefold()):
-            raise HoldingsError(f"{fund}: conflicting Vanguard identity for {kind}:{value}")
+            aliases = prior.setdefault("source_listing_labels", [
+                {"ticker": prior["ticker"], "name": prior["name"]}])
+            label = {"ticker": h["ticker"], "name": h["name"]}
+            if label not in aliases:
+                aliases.append(label)
+            diagnostics["cross_listing_position_rows"] += 1
         position = (h["weight"], h["shares"])
         if position in positions:
             raise HoldingsError(f"{fund}: ambiguous repeated Vanguard position for {kind}:{value}")

@@ -17,3 +17,7 @@
 - Missing or placeholder ISIN/CUSIP/SEDOL values no longer collide; use another syntactically valid security identifier or a snapshot-local row ID. No cross-fund merge for unknown identities.
 - Distinct positions sharing a valid identifier and identical ticker/name may be aggregated with weight-mass preservation. Identical raw rows, indistinguishable economic positions and conflicting identity labels are rejected. If merging or unknown identifiers occur, a second page size must reproduce the entire raw snapshot. Coverage guard 90–100.5% is a conservative research assumption, not proof of complete coverage; no renormalization.
 - A read-only PR-only VEA live probe runs on the v3.8.7 research branch. It uses a temporary directory, no credentials, no Git commits, and no Supabase write. Live recovery is not established until this check succeeds. Existing cache remains unchanged on failure.
+
+### v3.8.7 live-probe follow-up
+
+The initial read-only VEA probe failed specifically on FI4000552500 (Sampo A). Sampo's official listing documentation confirms this ISIN is shared across its Nordic listings. Permit matching Sampo labels for that verified ISIN only, excluding depositary receipt and class B labels. Retain original listing labels in the normalized record, distinct-position checks, weight-mass checks and alternate-pagination verification. Other conflicting identifiers fail with both source labels in the error for diagnosis. Live response rows were not available outside Actions; recovery is not yet verified.
