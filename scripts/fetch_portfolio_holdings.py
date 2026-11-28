@@ -615,8 +615,45 @@ def _vanguard_raw_pages(session, fund, base_url, page_size):
 # Helsinki, Copenhagen and (following the SDR conversion) Stockholm.
 # https://www.sampo.com/globalassets/year2025/esef/sampo2025-board-report-financial-statements.htm
 # https://www.sampo.com/globalassets/investors/share/documents/exemption-document-regarding-listing-of-the-sampo-plc-a-shares-in-accordance-with-article-1.5-ba-of-the-regulation-eu-2017_1129.pdf
+_VANGUARD_LISTING_CURRENCIES = frozenset(
+    "AUD CAD CHF CNY CZK DKK EUR GBP GBX HKD HUF ILS INR JPY KRW MXN NOK NZD PLN SEK SGD TWD USD ZAR".split()
+)
+
+
+def _valid_isin_checksum(value):
+    if not re.fullmatch(r"[A-Z]{2}[A-Z0-9]{9}[0-9]", value):
+        return False
+    digits = "".join(str(ord(c) - 55) if c.isalpha() else c for c in value)
+    total = 0
+    for index, digit in enumerate(reversed(digits)):
+        n = int(digit) * (2 if index % 2 else 1)
+        total += n - 9 if n > 9 else n
+    return total % 10 == 0
+
+
+def _vanguard_listing_base(ticker):
+    # Only an explicit, separate currency token is removable. Never strip
+    # share-class letters, exchange codes, or arbitrary suffixes.
+    parts = ticker.upper().split()
+    if len(parts) > 1 and parts[-1] in _VANGUARD_LISTING_CURRENCIES:
+        parts.pop()
+    return " ".join(parts)
+
+
 def _vanguard_compatible_labels(ident, left, right):
     if (left["ticker"].casefold(), left["name"].casefold()) == (right["ticker"].casefold(), right["name"].casefold()):
+        return True
+    # Generalized cross-listing rule: the same checksum-valid ISIN, same
+    # nonempty source name and same base ticker after currency normalization.
+    # Evidence example: BETCO / BETCO DKK, DK0060952240:
+    # https://bettercollective.com/investors/share-information/
+    # https://www.nasdaq.com/press-release/exchange-notice-regarding-better-collective-a-s-2023-11-16
+    if ident[0] != "ISIN" or not _valid_isin_checksum(ident[1]):
+        return False
+    left_base = _vanguard_listing_base(left["ticker"])
+    right_base = _vanguard_listing_base(right["ticker"])
+    if (left["name"] and left["name"].casefold() == right["name"].casefold()
+            and left_base and left_base == right_base):
         return True
     if ident != ("ISIN", "FI4000552500"):
         return False
@@ -632,6 +669,7 @@ def _vanguard_compatible_labels(ident, left, right):
 def _vanguard_normalize(fund, as_of, raw_rows):
     holdings = []
     groups = {}
+    identity_conflicts = []
     diagnostics = {"raw_rows": len(raw_rows), "merged_position_rows": 0,
                    "cross_listing_position_rows": 0, "unverified_identifier_rows": 0}
     for index, row in enumerate(raw_rows):
@@ -663,9 +701,10 @@ def _vanguard_normalize(fund, as_of, raw_rows):
         # Same validated identifier plus matching reported identity; never merge
         # conflicting labels or indistinguishable economic positions.
         if not _vanguard_compatible_labels(ident, prior, h):
-            raise HoldingsError(f"{fund}: conflicting Vanguard identity for {kind}:{value}; "
-                                f"first={prior['ticker']!r}/{prior['name']!r}, "
-                                f"next={h['ticker']!r}/{h['name']!r}")
+            identity_conflicts.append(f"{kind}:{value}; "
+                                      f"first={prior['ticker']!r}/{prior['name']!r}, "
+                                      f"next={h['ticker']!r}/{h['name']!r}")
+            continue
         if (prior["ticker"].casefold(), prior["name"].casefold()) != (h["ticker"].casefold(), h["name"].casefold()):
             aliases = prior.setdefault("source_listing_labels", [
                 {"ticker": prior["ticker"], "name": prior["name"]}])
@@ -681,6 +720,13 @@ def _vanguard_normalize(fund, as_of, raw_rows):
         prior["shares"] = (prior["shares"] + h["shares"]
                            if prior["shares"] is not None and h["shares"] is not None else None)
         diagnostics["merged_position_rows"] += 1
+    if identity_conflicts:
+        # Report all distinct label conflicts from this snapshot in one probe;
+        # no conflicted snapshot is published or renormalized.
+        unique = list(dict.fromkeys(identity_conflicts))
+        raise HoldingsError(f"{fund}: conflicting Vanguard identity ({len(unique)}): "
+                            + " | ".join(unique[:25])
+                            + (" | additional conflicts omitted" if len(unique) > 25 else ""))
     before = sum(_weight_decimal(row["percentWeight"]) for row in raw_rows)
     after = sum(h["weight"] for h in holdings)
     if not math.isclose(before, after, rel_tol=0, abs_tol=1e-6):

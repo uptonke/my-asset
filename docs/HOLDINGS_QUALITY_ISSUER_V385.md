@@ -21,3 +21,7 @@
 ### v3.8.7 live-probe follow-up
 
 The initial read-only VEA probe failed specifically on FI4000552500 (Sampo A). Sampo's official listing documentation confirms this ISIN is shared across its Nordic listings. Permit matching Sampo labels for that verified ISIN only, excluding depositary receipt and class B labels. Retain original listing labels in the normalized record, distinct-position checks, weight-mass checks and alternate-pagination verification. Other conflicting identifiers fail with both source labels in the error for diagnosis. Live response rows were not available outside Actions; recovery is not yet verified.
+
+### General currency-suffix cross-listing normalization
+
+The second VEA live probe failed for DK0060952240, BETCO vs BETCO DKK, identical issuer name. Better Collective and Nasdaq confirm the Stockholm/Copenhagen dual listing (https://bettercollective.com/investors/share-information/ and https://www.nasdaq.com/press-release/exchange-notice-regarding-better-collective-a-s-2023-11-16). Generalize to the same checksum-valid ISIN, identical nonempty source name, and identical ticker base after removing an explicit trailing supported currency token. Do not remove share-class letters or arbitrary suffixes. Keep the verified Sampo exception and all prior pagination, position-distinctness, and weight-mass guards. Report up to 25 distinct unresolved label conflicts together and reject the entire snapshot if any remain. Live verification still required.

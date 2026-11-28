@@ -111,6 +111,41 @@ class VanguardDedupTests(unittest.TestCase):
         self.assertEqual(len(holdings[0]["source_listing_labels"]),2)
         self.assertAlmostEqual(d["raw_weight_pct"],d["normalized_weight_pct"])
 
+    def test_generic_currency_suffix_cross_listing(self):
+        rows=[self.row("BETCO","DK0060952240",40,100,longName="Better Collective A/S"),
+              self.row("BETCO DKK","DK0060952240",60,150,longName="Better Collective A/S")]
+        holdings,d=m._vanguard_normalize("VEA","2026-10-31",rows)
+        self.assertEqual(len(holdings),1)
+        self.assertAlmostEqual(holdings[0]["weight"],1.)
+        self.assertEqual(holdings[0]["shares"],250)
+        self.assertEqual(d["cross_listing_position_rows"],1)
+        self.assertEqual(len(holdings[0]["source_listing_labels"]),2)
+
+    def test_currency_rule_is_not_a_fuzzy_match(self):
+        left={"ticker":"BETCO","name":"Better Collective A/S"}
+        for ident,right in [
+            (("ISIN","DK0060952241"),{"ticker":"BETCO DKK","name":left["name"]}),
+            (("CUSIP","123456789"),{"ticker":"BETCO DKK","name":left["name"]}),
+            (("ISIN","DK0060952240"),{"ticker":"BETCO B","name":left["name"]}),
+            (("ISIN","DK0060952240"),{"ticker":"BETCO DKK","name":"Different Company"}),
+            (("ISIN","DK0060952240"),{"ticker":"BETCO XYZ","name":left["name"]}),
+        ]:
+            with self.subTest(ident=ident,right=right):
+                self.assertFalse(m._vanguard_compatible_labels(ident,left,right))
+        self.assertTrue(m._vanguard_compatible_labels(("ISIN","DK0060952240"),
+            {"ticker":"BETCO SEK","name":left["name"]},{"ticker":"BETCO DKK","name":left["name"]}))
+
+    def test_all_identity_conflicts_are_reported(self):
+        rows=[self.row("AAA","DK0060952240",20,100),
+              self.row("BBB","DK0060952240",30,150),
+              self.row("CCC","FI4000552500",20,100),
+              self.row("DDD","FI4000552500",30,150)]
+        with self.assertRaises(m.HoldingsError) as ctx:
+            m._vanguard_normalize("VEA","2026-10-31",rows)
+        self.assertIn("DK0060952240",str(ctx.exception))
+        self.assertIn("FI4000552500",str(ctx.exception))
+        self.assertIn("(2)",str(ctx.exception))
+
     def test_sampo_unverified_or_sdr_labels_rejected(self):
         first=self.row("SAMPO","FI4000552500",40,100,longName="Sampo Oyj Class A")
         for ticker,name in [("XYZ","Different Corp"),("SAMPO SDB","Sampo SDR"),("SAMPO","Sampo Class B")]:
