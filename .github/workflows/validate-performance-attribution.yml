@@ -166,3 +166,16 @@ jobs:
       - run: node tests/test_pit_nav.mjs
       - run: node tests/test_performance_semantics.mjs
       - run: cmp assets/js/src/app.bundle.source.js assets/js/app.bundle.js
+
+  vea-live-probe:
+    if: github.event_name == 'pull_request' && github.head_ref == 'research/v3.8.7-vanguard-dedup'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install 'requests>=2.31,<3' 'openpyxl>=3.1,<4' 'beautifulsoup4>=4.12,<5'
+      - name: Verify fresh VEA from official source without writing production data
+        run: python scripts/fetch_portfolio_holdings.py --fund VEA --strict --output-dir "$RUNNER_TEMP/vea-probe/latest"

@@ -551,13 +551,25 @@ def _fetch_vanguard(session: requests.Session, fund: str) -> dict[str, Any]:
     raise HoldingsError(f"{fund}: " + "; ".join(errors))
 
 
-def _fetch_vanguard_pages(session: requests.Session, fund: str, base_url: str) -> dict[str, Any]:
-    start = 1
-    page_size = 500
-    raw_rows: list[dict[str, Any]] = []
-    as_of: str | None = None
-    reported_count: int | None = None
+def _vanguard_identifier(row):
+    # Never treat issuer placeholders as globally unique security identifiers.
+    for field, kind, pattern in (
+        ("isin", "ISIN", r"[A-Z]{2}[A-Z0-9]{9}[0-9]"),
+        ("cusip", "CUSIP", r"[A-Z0-9]{8}[0-9]"),
+        ("sedol", "SEDOL", r"[A-Z0-9]{6}[0-9]"),
+    ):
+        value = _clean(row.get(field)).upper()
+        if re.fullmatch(pattern, value) and len(set(value)) > 1 and value not in {"US0000000000", "XX0000000000"}:
+            return kind, value
+    return None
 
+
+def _vanguard_raw_pages(session, fund, base_url, page_size):
+    start = 1
+    raw_rows = []
+    as_of = None
+    reported_count = None
+    seen_rows = set()
     while True:
         r = session.get(base_url, params={"start": start, "count": page_size}, timeout=HTTP_TIMEOUT)
         r.raise_for_status()
@@ -575,9 +587,16 @@ def _fetch_vanguard_pages(session: requests.Session, fund: str, base_url: str) -
                 raise HoldingsError(f"{fund}: inconsistent Vanguard reported count")
             reported_count = count
         rows = ((data.get("fund") or {}).get("entity") or [])
-        if not isinstance(rows, list) or not rows:
+        if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+            raise HoldingsError(f"{fund}: invalid Vanguard page")
+        if not rows:
             break
-        raw_rows.extend(row for row in rows if isinstance(row, dict))
+        for row in rows:
+            fingerprint = json.dumps(row, sort_keys=True, separators=(",", ":"))
+            if fingerprint in seen_rows:
+                raise HoldingsError(f"{fund}: identical Vanguard raw row; ambiguous pagination or duplicate position at start={start}")
+            seen_rows.add(fingerprint)
+        raw_rows.extend(rows)
         if reported_count is not None and len(raw_rows) >= reported_count:
             break
         if reported_count is None and len(rows) < page_size:
@@ -585,41 +604,161 @@ def _fetch_vanguard_pages(session: requests.Session, fund: str, base_url: str) -
         start += len(rows)
         if start > 10000:
             raise HoldingsError(f"{fund}: Vanguard pagination exceeded safety limit")
-
-    holdings: list[dict[str, Any]] = []
     if reported_count is not None and len(raw_rows) != reported_count:
         raise HoldingsError(f"{fund}: incomplete Vanguard pagination")
     if len(raw_rows) < (400 if fund == "VOO" else 2500):
         raise HoldingsError(f"{fund}: suspiciously incomplete Vanguard holdings")
-    seen = set()
-    for row in raw_rows:
-        ident = row.get("isin") or row.get("cusip") or row.get("sedol")
-        ident_type = "ISIN" if row.get("isin") else ("CUSIP" if row.get("cusip") else "SEDOL")
-        if ident and (ident_type, ident) in seen:
-            raise HoldingsError(f"{fund}: duplicate Vanguard security identifier")
-        if ident:
-            seen.add((ident_type, ident))
-        h = _holding(
-            ticker=row.get("ticker"),
-            name=row.get("longName") or row.get("shortName"),
-            weight=_weight_decimal(row.get("percentWeight")),
-            id_type=ident_type,
-            identifier=ident,
-            asset_class="equity",
-            shares=row.get("sharesHeld"),
-        )
-        if h:
-            holdings.append(h)
+    return raw_rows, as_of, reported_count, seen_rows
 
-    return _finalize(
-        fund=fund,
-        as_of=as_of,
+
+# Verified cross-listing evidence: Sampo A shares have the same ISIN on
+# Helsinki, Copenhagen and (following the SDR conversion) Stockholm.
+# https://www.sampo.com/globalassets/year2025/esef/sampo2025-board-report-financial-statements.htm
+# https://www.sampo.com/globalassets/investors/share/documents/exemption-document-regarding-listing-of-the-sampo-plc-a-shares-in-accordance-with-article-1.5-ba-of-the-regulation-eu-2017_1129.pdf
+_VANGUARD_LISTING_CURRENCIES = frozenset(
+    "AUD CAD CHF CNY CZK DKK EUR GBP GBX HKD HUF ILS INR JPY KRW MXN NOK NZD PLN SEK SGD TWD USD ZAR".split()
+)
+
+
+def _valid_isin_checksum(value):
+    if not re.fullmatch(r"[A-Z]{2}[A-Z0-9]{9}[0-9]", value):
+        return False
+    digits = "".join(str(ord(c) - 55) if c.isalpha() else c for c in value)
+    total = 0
+    for index, digit in enumerate(reversed(digits)):
+        n = int(digit) * (2 if index % 2 else 1)
+        total += n - 9 if n > 9 else n
+    return total % 10 == 0
+
+
+def _vanguard_listing_base(ticker):
+    # Only an explicit, separate currency token is removable. Never strip
+    # share-class letters, exchange codes, or arbitrary suffixes.
+    parts = ticker.upper().split()
+    if len(parts) > 1 and parts[-1] in _VANGUARD_LISTING_CURRENCIES:
+        parts.pop()
+    return " ".join(parts)
+
+
+def _vanguard_compatible_labels(ident, left, right):
+    if (left["ticker"].casefold(), left["name"].casefold()) == (right["ticker"].casefold(), right["name"].casefold()):
+        return True
+    # Generalized cross-listing rule: the same checksum-valid ISIN, same
+    # nonempty source name and same base ticker after currency normalization.
+    # Evidence example: BETCO / BETCO DKK, DK0060952240:
+    # https://bettercollective.com/investors/share-information/
+    # https://www.nasdaq.com/press-release/exchange-notice-regarding-better-collective-a-s-2023-11-16
+    if ident[0] != "ISIN" or not _valid_isin_checksum(ident[1]):
+        return False
+    left_base = _vanguard_listing_base(left["ticker"])
+    right_base = _vanguard_listing_base(right["ticker"])
+    if (left["name"] and left["name"].casefold() == right["name"].casefold()
+            and left_base and left_base == right_base):
+        return True
+    if ident != ("ISIN", "FI4000552500"):
+        return False
+    def sampo_label(h):
+        name = h["name"].upper()
+        ticker = h["ticker"].upper()
+        return (re.match(r"^SAMPO(?:\b|[.\-_/])", name) is not None
+                and re.match(r"^SAMPO(?:\b|[.\-_/])", ticker) is not None
+                and not re.search(r"\b(?:SDR|SDB|DEPOSITARY|DEPOSITORY|CLASS B|CL B|PREFERRED|PREF)\b", name + " " + ticker))
+    return sampo_label(left) and sampo_label(right)
+
+
+def _vanguard_normalize(fund, as_of, raw_rows):
+    holdings = []
+    groups = {}
+    identity_conflicts = []
+    diagnostics = {"raw_rows": len(raw_rows), "merged_position_rows": 0,
+                   "cross_listing_position_rows": 0, "unverified_identifier_rows": 0}
+    for index, row in enumerate(raw_rows):
+        ident = _vanguard_identifier(row)
+        weight = _weight_decimal(row.get("percentWeight"))
+        if weight is None or not math.isfinite(weight) or weight < 0:
+            raise HoldingsError(f"{fund}: invalid Vanguard position weight at row {index}")
+        name = _clean(row.get("longName") or row.get("shortName"))
+        ticker = _clean(row.get("ticker"))
+        if not ident and not (name or ticker):
+            raise HoldingsError(f"{fund}: missing Vanguard position identity at row {index}")
+        # Missing identifiers are local, not cross-fund security joins.
+        kind, value = ident or ("VANGUARD_ROW", f"{fund}:{as_of}:{index}")
+        h = _holding(ticker=ticker, name=name, weight=weight, id_type=kind,
+                     identifier=value, asset_class="equity", shares=row.get("sharesHeld"))
+        if h is None:
+            raise HoldingsError(f"{fund}: unparseable Vanguard row {index}")
+        h["asset_class"] = "equity"  # stock endpoint; do not classify by company name
+        if not ident:
+            diagnostics["unverified_identifier_rows"] += 1
+            holdings.append(h)
+            continue
+        existing = groups.get(ident)
+        if existing is None:
+            groups[ident] = (h, {(h["weight"], h["shares"])})
+            holdings.append(h)
+            continue
+        prior, positions = existing
+        # Same validated identifier plus matching reported identity; never merge
+        # conflicting labels or indistinguishable economic positions.
+        if not _vanguard_compatible_labels(ident, prior, h):
+            identity_conflicts.append(f"{kind}:{value}; "
+                                      f"first={prior['ticker']!r}/{prior['name']!r}, "
+                                      f"next={h['ticker']!r}/{h['name']!r}")
+            continue
+        if (prior["ticker"].casefold(), prior["name"].casefold()) != (h["ticker"].casefold(), h["name"].casefold()):
+            aliases = prior.setdefault("source_listing_labels", [
+                {"ticker": prior["ticker"], "name": prior["name"]}])
+            label = {"ticker": h["ticker"], "name": h["name"]}
+            if label not in aliases:
+                aliases.append(label)
+            diagnostics["cross_listing_position_rows"] += 1
+        position = (h["weight"], h["shares"])
+        if position in positions:
+            raise HoldingsError(f"{fund}: ambiguous repeated Vanguard position for {kind}:{value}")
+        positions.add(position)
+        prior["weight"] = round(prior["weight"] + h["weight"], 10)
+        prior["shares"] = (prior["shares"] + h["shares"]
+                           if prior["shares"] is not None and h["shares"] is not None else None)
+        diagnostics["merged_position_rows"] += 1
+    if identity_conflicts:
+        # Report all distinct label conflicts from this snapshot in one probe;
+        # no conflicted snapshot is published or renormalized.
+        unique = list(dict.fromkeys(identity_conflicts))
+        raise HoldingsError(f"{fund}: conflicting Vanguard identity ({len(unique)}): "
+                            + " | ".join(unique[:25])
+                            + (" | additional conflicts omitted" if len(unique) > 25 else ""))
+    before = sum(_weight_decimal(row["percentWeight"]) for row in raw_rows)
+    after = sum(h["weight"] for h in holdings)
+    if not math.isclose(before, after, rel_tol=0, abs_tol=1e-6):
+        raise HoldingsError(f"{fund}: Vanguard weight mass changed during normalization")
+    if not 0.90 <= after <= 1.005:
+        raise HoldingsError(f"{fund}: Vanguard equity coverage {after:.6f} outside guarded range")
+    diagnostics["raw_weight_pct"] = round(before * 100, 6)
+    diagnostics["normalized_weight_pct"] = round(after * 100, 6)
+    return holdings, diagnostics
+
+
+def _fetch_vanguard_pages(session: requests.Session, fund: str, base_url: str) -> dict[str, Any]:
+    raw_rows, as_of, reported_count, fingerprints = _vanguard_raw_pages(session, fund, base_url, 500)
+    holdings, diagnostics = _vanguard_normalize(fund, as_of, raw_rows)
+    if diagnostics["merged_position_rows"] or diagnostics["unverified_identifier_rows"]:
+        # A second independent partition must reproduce the same date and rows.
+        check_rows, check_date, check_count, check_fingerprints = _vanguard_raw_pages(session, fund, base_url, 400)
+        if (check_date != as_of or check_count != reported_count
+                or len(check_rows) != len(raw_rows) or check_fingerprints != fingerprints):
+            raise HoldingsError(f"{fund}: Vanguard alternate pagination mismatch")
+        diagnostics["alternate_pagination_verified"] = True
+    else:
+        diagnostics["alternate_pagination_verified"] = False
+    result = _finalize(
+        fund=fund, as_of=as_of,
         source="Vanguard official portfolio holdings API",
-        source_quality="OFFICIAL_MONTHLY",
-        source_url=base_url,
-        holdings=holdings,
-        reported_count=reported_count,
+        source_quality="OFFICIAL_MONTHLY", source_url=base_url,
+        holdings=holdings, reported_count=reported_count,
     )
+    result["normalization_diagnostics"] = diagnostics
+    print(f"{fund} Vanguard normalization: {json.dumps(diagnostics, sort_keys=True)}", flush=True)
+    return result
 
 
 def fetch_voo(session: requests.Session) -> dict[str, Any]:

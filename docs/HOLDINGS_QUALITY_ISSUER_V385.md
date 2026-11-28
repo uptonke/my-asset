@@ -11,3 +11,17 @@
 - VOO/VEA try the candidate Vanguard vmf/api path before legacy endpoint. Require consistent pagination dates/counts and reject duplicate IDs and unusually small full holdings lists (400/2500). New path not independently live verified.
 - COPX tries recent dated official asset CDN files using the existing observed filename convention; 404-only date probing is bounded. Reject incomplete CSVs or conflicting source dates. Product page fallback remains. Recent CDN file availability not live verified.
 - All existing freshness, regression, coverage and archive checks remain. No third-party supplier added. Actual four-fund recovery must be checked on Actions; mock regression tests do not establish live availability.
+
+## v3.8.7 Vanguard position normalization
+
+- Missing or placeholder ISIN/CUSIP/SEDOL values no longer collide; use another syntactically valid security identifier or a snapshot-local row ID. No cross-fund merge for unknown identities.
+- Distinct positions sharing a valid identifier and identical ticker/name may be aggregated with weight-mass preservation. Identical raw rows, indistinguishable economic positions and conflicting identity labels are rejected. If merging or unknown identifiers occur, a second page size must reproduce the entire raw snapshot. Coverage guard 90–100.5% is a conservative research assumption, not proof of complete coverage; no renormalization.
+- A read-only PR-only VEA live probe runs on the v3.8.7 research branch. It uses a temporary directory, no credentials, no Git commits, and no Supabase write. Live recovery is not established until this check succeeds. Existing cache remains unchanged on failure.
+
+### v3.8.7 live-probe follow-up
+
+The initial read-only VEA probe failed specifically on FI4000552500 (Sampo A). Sampo's official listing documentation confirms this ISIN is shared across its Nordic listings. Permit matching Sampo labels for that verified ISIN only, excluding depositary receipt and class B labels. Retain original listing labels in the normalized record, distinct-position checks, weight-mass checks and alternate-pagination verification. Other conflicting identifiers fail with both source labels in the error for diagnosis. Live response rows were not available outside Actions; recovery is not yet verified.
+
+### General currency-suffix cross-listing normalization
+
+The second VEA live probe failed for DK0060952240, BETCO vs BETCO DKK, identical issuer name. Better Collective and Nasdaq confirm the Stockholm/Copenhagen dual listing (https://bettercollective.com/investors/share-information/ and https://www.nasdaq.com/press-release/exchange-notice-regarding-better-collective-a-s-2023-11-16). Generalize to the same checksum-valid ISIN, identical nonempty source name, and identical ticker base after removing an explicit trailing supported currency token. Do not remove share-class letters or arbitrary suffixes. Keep the verified Sampo exception and all prior pagination, position-distinctness, and weight-mass guards. Report up to 25 distinct unresolved label conflicts together and reject the entire snapshot if any remain. Live verification still required.
